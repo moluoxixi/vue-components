@@ -70,3 +70,9 @@ if (!('kind' in snapshot)) {
 - Registry lock 或组件 capability 不匹配时编译失败，不静默修复输入。
 
 完整跨包架构见 [ConfigForm README](../README.md)。
+
+## 独立事件源码
+
+`getConfigFormRuntimeSources()` 返回构建时收集的 Core `flow/expression/reaction/json` TypeScript 源码及完整相对导入闭包。Source backend 将这些文件写入导出工程的 `src/runtime`，页面只生成实例级适配器，因此导出无需安装 ConfigForm，也无需维护第二套解释器。
+
+节点 `events` 中的动作列表与页面 `flows` 都编译为 Canonical Flow plans，预览与 Source 使用同一监听投影。当前编译器版本为 `4.0.0`。

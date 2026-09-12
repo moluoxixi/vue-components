@@ -3,11 +3,12 @@ import type {
   ConfigFormRendererNode,
 } from '@moluoxixi/config-form'
 import type {
-  CanonicalPageIR,
   PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
+import type { ConfigFormFlow, ConfigFormFlowActionContext } from '@moluoxixi/config-form-core'
 import type {
+  CanonicalRuntimePage,
   VueRuntimeBindingResolver,
   VueRuntimeComponentBinding,
 } from '../index'
@@ -17,8 +18,9 @@ import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
+import { analyzeConfigFormFlow, CONFIG_FORM_FLOW_VERSION, getConfigFormFlowSemanticHash } from '@moluoxixi/config-form-core'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, shallowRef } from 'vue'
 import { compileCanonicalPageRuntime } from '../index'
@@ -77,7 +79,7 @@ function resolver(overrides: Partial<VueRuntimeBindingResolver> = {}): VueRuntim
   }
 }
 
-function pageFixture(): CanonicalPageIR {
+function pageFixture(): CanonicalRuntimePage {
   return {
     id: 'home',
     name: 'Home',
@@ -92,6 +94,8 @@ function pageFixture(): CanonicalPageIR {
         tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
       },
     },
+    scopedFields: [{ field: 'name', nodeId: 'name' }],
+    valueScopes: [],
     rootIds: ['section'],
     nodesById: {
       section: {
@@ -202,7 +206,7 @@ function pageCompilationFixture(page = pageFixture()): PageCompilation {
 }
 
 function compilePage(
-  page: CanonicalPageIR,
+  page: CanonicalRuntimePage,
   bindingResolver: VueRuntimeBindingResolver = resolver(),
 ) {
   return compileCanonicalPageRuntime({
@@ -236,14 +240,15 @@ describe('vue Runtime backend', () => {
     })
     expect(Object.isFrozen(result.artifact)).toBe(true)
     expect(Object.isFrozen(result.artifact.compilationKey)).toBe(true)
-    expect(Object.isFrozen(result.artifact.plan)).toBe(true)
-    expect(result.artifact.plan.renderer.labelWidth).toBe(120)
-    expect(result.artifact.plan.renderer.responsive).toEqual({
+    expect(Object.isFrozen(result.artifact.renderer.plan)).toBe(true)
+    expect(Object.isFrozen(result.artifact.renderer)).toBe(true)
+    expect(result.artifact.renderer.labelWidth).toBe(120)
+    expect(result.artifact.renderer.responsive).toEqual({
       mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
       tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
     })
 
-    const root = result.artifact.plan.renderer.fields[0]!
+    const root = result.artifact.renderer.fields[0]!
     const field = nestedField(root)
     expect(field).toMatchObject({
       id: 'name',
@@ -270,7 +275,7 @@ describe('vue Runtime backend', () => {
 
     const wrapper = mount(ConfigFormRenderer, {
       props: {
-        ...result.artifact.plan.renderer,
+        ...result.artifact.renderer,
         model: createConfigFormModel(shallowRef<Record<string, unknown>>({ name: 'Ada' })),
       },
     })
@@ -326,9 +331,7 @@ describe('vue Runtime backend', () => {
     if (!result.success)
       return
 
-    expect(nestedField(result.artifact.plan.renderer.fields[0]!).extensions).toMatchObject({
-      'mx.low-code': { flowEvents: ['click'] },
-    })
+    expect(nestedField(result.artifact.renderer.fields[0]!).eventNames).toEqual(['click'])
   })
 
   it('does not reinterpret Flow plans when the canonical node listener projection is absent', () => {
@@ -350,7 +353,7 @@ describe('vue Runtime backend', () => {
     expect(result.success).toBe(true)
     if (!result.success)
       return
-    const metadata = nestedField(result.artifact.plan.renderer.fields[0]!).extensions?.['mx.low-code']
+    const metadata = nestedField(result.artifact.renderer.fields[0]!).extensions?.['mx.low-code']
     expect(metadata).not.toHaveProperty('flowEvents')
   })
 
@@ -383,7 +386,7 @@ describe('vue Runtime backend', () => {
     }
     const section = page.nodesById.section!
     const nextSection = { ...section, subtreeHash: 'fnv1a:section-next' }
-    const nextPage: CanonicalPageIR = {
+    const nextPage: CanonicalRuntimePage = {
       ...page,
       nodesById: {
         ...page.nodesById,
@@ -397,8 +400,8 @@ describe('vue Runtime backend', () => {
       return
 
     expect(resolveBinding).toHaveBeenCalledTimes(5)
-    expect(second.artifact.plan.renderer.fields[0]).not.toBe(first.artifact.plan.renderer.fields[0])
-    expect(second.artifact.plan.renderer.fields[1]).toBe(first.artifact.plan.renderer.fields[1])
+    expect(second.artifact.renderer.fields[0]).not.toBe(first.artifact.renderer.fields[0])
+    expect(second.artifact.renderer.fields[1]).toBe(first.artifact.renderer.fields[1])
   })
 
   it('rejects a nested relation whose parent placement disagrees with the IR', () => {
@@ -452,7 +455,53 @@ describe('vue Runtime backend', () => {
     expect(result.success).toBe(true)
     if (!result.success)
       return
-    expect(result.artifact.plan.renderer.fields).toHaveLength(2_000)
+    expect(result.artifact.renderer.fields).toHaveLength(2_000)
     expect(duration).toBeLessThan(750)
+  })
+})
+
+describe('compiled event runtime plans', () => {
+  it('carries and executes plans without separately providing raw flows', async () => {
+    const flow: ConfigFormFlow = {
+      version: CONFIG_FORM_FLOW_VERSION,
+      id: 'initialize-name',
+      name: 'Initialize name',
+      trigger: { kind: 'page.mount' as const },
+      nodes: [
+        { id: 'start', type: 'trigger' as const },
+        { id: 'assign', type: 'action' as const, ref: 'set-name', config: { input: { name: 'Grace' } } },
+        { id: 'end', type: 'end' as const },
+      ],
+      edges: [
+        { id: 'first', source: 'start', target: 'assign' },
+        { id: 'last', source: 'assign', target: 'end' },
+      ],
+    }
+    const analyzed = analyzeConfigFormFlow(flow)
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success)
+      return
+    const page = pageFixture()
+    page.flows = [{ semanticHash: getConfigFormFlowSemanticHash(flow), plan: analyzed.plan }]
+    const compiled = compileCanonicalPageRuntime({ compilation: compilationFixture(page), pageId: 'home' }, resolver())
+    expect(compiled.success).toBe(true)
+    if (!compiled.success)
+      return
+    const renderer = compiled.artifact.renderer
+    expect(renderer.plan.flows).toEqual([analyzed.plan])
+    expect(Object.isFrozen(renderer.plan.flows)).toBe(true)
+    const state = shallowRef<Record<string, unknown>>({ name: 'Ada' })
+    const execute = vi.fn((_input: unknown, context: ConfigFormFlowActionContext) => context.form.setValue('name', 'Grace'))
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        ...renderer,
+        model: createConfigFormModel(state),
+        flowActions: { get: ref => ref === 'set-name' ? { execute } : undefined },
+      },
+    })
+    await flushPromises()
+    expect(execute).toHaveBeenCalledOnce()
+    expect(state.value.name).toBe('Grace')
+    wrapper.unmount()
   })
 })

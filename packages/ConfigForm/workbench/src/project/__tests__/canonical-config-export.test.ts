@@ -1,17 +1,38 @@
+// @vitest-environment happy-dom
+import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { Buffer } from 'node:buffer'
-import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import type { CanonicalProjectSourceExport } from '../export'
 import { parse } from '@babel/parser'
-import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
+import { compileCanonicalProject, getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { parse as parseSfc } from '@vue/compiler-sfc'
-import { transformWithEsbuild } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import ElementPlus from 'element-plus'
+import { afterEach, describe, expect, it } from 'vitest'
 import { normalizeProjectPath, safeProjectSlug } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
 import { createCanonicalProjectConfigExport, createCanonicalProjectSourceExport } from '../export'
 import { createBuiltInProjectFixture } from './fixtures'
+import { createGeneratedModuleLoader } from './generated-runtime-module'
+
+const mountedPages: Array<{ unmount: () => void }> = []
+afterEach(() => {
+  mountedPages.splice(0).forEach(page => page.unmount())
+})
+
+async function generatedPage(
+  exported: CanonicalProjectSourceExport,
+  configure?: (load: Awaited<ReturnType<typeof createGeneratedModuleLoader>>) => void,
+) {
+  const load = await createGeneratedModuleLoader(Object.fromEntries(Object.entries(exported.files)
+    .filter(([, file]) => file.kind === 'text')
+    .map(([path, file]) => [path, file.content as string])))
+  configure?.(load)
+  const wrapper = mount(load('src/pages/home/Page.vue').default, { global: { plugins: [ElementPlus] } })
+  mountedPages.push(wrapper)
+  await flushPromises()
+  return { wrapper, load, api: wrapper.vm as unknown as ConfigFormRendererExpose }
+}
 
 async function fixture(update?: (
   document: ProjectDocument,
@@ -33,7 +54,7 @@ async function fixture(update?: (
 }
 
 describe('canonical Config export', () => {
-  it('generates a project file and defineField source for every ProjectDocument page', async () => {
+  it('generates an executable Canonical Config module for every compiled page', async () => {
     const { adapter, compilation } = await fixture()
     const exported = createCanonicalProjectConfigExport(compilation, adapter.sourceResolver)
 
@@ -49,9 +70,10 @@ describe('canonical Config export', () => {
     expect(pageFile?.kind).toBe('text')
     if (pageFile?.kind !== 'text')
       return
-    expect(pageFile.content).toContain('import { defineFields } from \'@moluoxixi/config-form-headless\'')
-    expect(pageFile.content).toContain('const { defineField } = defineFields<PageFormValues>()')
-    expect(pageFile.content).toContain('defineField({')
+    expect(pageFile.content).toContain('export const pageCompilation: PageCompilation = {')
+    expect(pageFile.content).toContain('export const plan: ConfigFormPageRuntimePlan = {')
+    expect(pageFile.content).toContain('compileCanonicalPageRuntime({ compilation: pageCompilation }, resolver)')
+    expect(pageFile.content).not.toContain('defineFields')
     expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
   })
 
@@ -63,7 +85,7 @@ describe('canonical Config export', () => {
     })).toThrow('does not match the ProjectCompilation Registry identity')
   })
 
-  it('preserves graph, relation placement, Registry lock, and Flow authoring metadata', async () => {
+  it('preserves canonical graph props, relation placement, Registry lock, and compiled Flow identity', async () => {
     const { adapter, compilation } = await fixture((document) => {
       const page = document.pagesById.home!
       page.graph.props = { authoringSurface: 'customer-profile' }
@@ -92,17 +114,28 @@ describe('canonical Config export', () => {
     if (pageFile?.kind !== 'text' || projectFile?.kind !== 'text')
       return
 
-    expect(pageFile.content).toContain('export const graph = {')
+    expect(pageFile.content).toContain('export const pageCompilation: PageCompilation = {')
     expect(pageFile.content).toContain('authoringSurface: "customer-profile"')
     expect(pageFile.content).toContain('placement: {')
     expect(pageFile.content).toContain('basis: "42%"')
     expect(pageFile.content).toContain('lane: "main"')
-    expect(pageFile.content).toContain('position: {')
-    expect(pageFile.content).toContain('x: 13')
+    expect(pageFile.content).toContain('flowId: "positioned-flow"')
+    expect(pageFile.content).toContain('semanticHash: ')
+    expect(pageFile.content).not.toContain('position: {')
+    expect(projectFile.content).toContain('export const pageConfigs = {')
     expect(projectFile.content).toContain('version: 4')
     expect(projectFile.content).toContain('registryLock: {')
     expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
     expect(() => parse(projectFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
+  })
+
+  it('rejects configuration props that write HTML into generated DOM', async () => {
+    const { adapter, compilation } = await fixture((document) => {
+      const node = Object.values(document.pagesById.home!.graph.nodesById)[0]!
+      node.props.innerHTML = '<img src=x onerror=alert(1)>'
+    })
+    expect(() => createCanonicalProjectSourceExport(compilation, adapter.sourceResolver))
+      .toThrow('blocked DOM sink prop "innerHTML"')
   })
 })
 
@@ -113,7 +146,8 @@ describe('canonical standalone Source export', () => {
     const paths = Object.keys(exported.files)
 
     expect(exported.entry).toBe(normalizeProjectPath('src/main.ts'))
-    expect(paths).toEqual([
+    expect(paths.filter(path => !path.startsWith('src/runtime/'))).toEqual([
+      'src/actions/index.ts',
       'src/pages/home/Page.vue',
       'src/pages/home/flows.ts',
       'src/pages/home/validation.ts',
@@ -128,11 +162,22 @@ describe('canonical standalone Source export', () => {
       'vite.config.ts',
     ])
     expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/i)
+    expect(paths).toContain('src/runtime/flow/services/runtime.ts')
+    expect(paths).toContain('src/runtime/expression/services/evaluate.ts')
+
+    const runtimeSources = getConfigFormRuntimeSources()
+    expect(paths.filter(path => path.startsWith('src/runtime/'))).toEqual([
+      ...Object.keys(runtimeSources).map(path => `src/runtime/${path}`),
+      'src/runtime/source-page.ts',
+    ])
+    for (const [path, content] of Object.entries(runtimeSources))
+      expect(exported.files[normalizeProjectPath(`src/runtime/${path}`)]).toMatchObject({ kind: 'text', content })
 
     const manifest = exported.files[normalizeProjectPath('package.json')]
     expect(manifest?.kind).toBe('text')
     if (manifest?.kind === 'text') {
       expect(JSON.parse(manifest.content).dependencies).toEqual({
+        '@lucide/vue': '^1.28.0',
         '@moluoxixi/zod3-to-rule': '^0.1.2',
         'element-plus': '^2.9.1',
         'vue': expect.any(String),
@@ -148,19 +193,15 @@ describe('canonical standalone Source export', () => {
         expect(parseSfc(file.content).errors).toEqual([])
     }
 
-    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
-    const styles = exported.files[normalizeProjectPath('src/styles.css')]
-    expect(page?.kind).toBe('text')
-    expect(styles?.kind).toBe('text')
-    if (page?.kind === 'text') {
-      expect(page.content).toContain('data-label-position="left"')
-      expect(page.content).toContain('--source-label-width-desktop: 120px')
-      expect(page.content).toContain('--source-label-width-tablet: 96px')
-      expect(page.content).toContain('--source-label-width-mobile: 72px')
-      expect(page.content).toContain('gap: 16px')
-    }
-    if (styles?.kind === 'text')
-      expect(styles.content).toContain('grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr)')
+    const { wrapper } = await generatedPage(exported)
+    expect(wrapper.get('[data-field]').attributes('data-label-position')).toBe('left')
+    const layout = wrapper.get('[data-config-form-responsive-layout]').attributes('style')
+    expect(layout).toContain('--mx-config-form-label-width-desktop: 120px')
+    expect(layout).toContain('--mx-config-form-label-width-tablet: 96px')
+    expect(layout).toContain('--mx-config-form-label-width-mobile: 72px')
+    expect(layout).toContain('gap: 16px')
+    expect(wrapper.get('[data-field]').attributes('style'))
+      .toContain('grid-template-columns: var(--mx-config-form-active-label-width, max-content) minmax(0, 1fr)')
   })
 
   it('projects form-level readonly into generated field state', async () => {
@@ -168,12 +209,10 @@ describe('canonical standalone Source export', () => {
       document.pagesById.home!.graph.form.readonly = true
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
-    expect(page?.kind).toBe('text')
-    if (page?.kind === 'text') {
-      expect(page.content).toContain('const formReadonly = ref(true)')
-      expect(page.content).toContain('state.readonly = true')
-    }
+    const { wrapper, api } = await generatedPage(exported)
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.find('.mx-config-form__readonly').exists()).toBe(true)
+    expect(Object.keys(api.getValues()).length).toBeGreaterThan(0)
   })
 
   it('preserves page order across generated files and router entries', async () => {
@@ -191,7 +230,8 @@ describe('canonical standalone Source export', () => {
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
 
-    expect(Object.keys(exported.files)).toEqual([
+    expect(Object.keys(exported.files).filter(path => !path.startsWith('src/runtime/'))).toEqual([
+      'src/actions/index.ts',
       'src/pages/home/Page.vue',
       'src/pages/home/flows.ts',
       'src/pages/home/validation.ts',
@@ -268,13 +308,10 @@ describe('canonical standalone Source export', () => {
       }]
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
-    expect(page?.kind).toBe('text')
-    if (page?.kind !== 'text')
-      return
-
-    expect(page.content).toContain('@tab-change=\'runNodeEvent("event-tabs", "tab-change", $event)\'')
-    expect(page.content).not.toContain('runNodeEvent("idle-collapse", "change"')
+    const { wrapper, load } = await generatedPage(exported)
+    const fields = wrapper.findComponent(load('src/runtime/vue/renderer/index.ts').ConfigFormRenderer).props('fields')
+    expect(fields.find((node: { id: string }) => node.id === 'event-tabs')).toMatchObject({ eventNames: ['tab-change'] })
+    expect(fields.find((node: { id: string }) => node.id === 'idle-collapse')).not.toHaveProperty('eventNames')
   })
 
   it('executes required, RuleSet, custom-validator, and validateOn semantics in generated source', async () => {
@@ -295,46 +332,32 @@ describe('canonical standalone Source export', () => {
       }
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const validation = exported.files[normalizeProjectPath('src/pages/home/validation.ts')]
-    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
-    expect(validation?.kind).toBe('text')
-    expect(page?.kind).toBe('text')
-    if (validation?.kind !== 'text' || page?.kind !== 'text')
-      return
-
-    expect(validation.content).toContain('"validateOn": [\n      "blur",\n      "submit"')
-    expect(page.content).toContain('validateOn(field, \'change\')')
-    expect(page.content).toContain('validateOn(field, \'blur\')')
-    expect(page.content).toContain('await validateRequestedFields(fields)')
-    expect(page.content).toContain('fieldErrors["name-field-4"]')
-
-    const transformed = await transformWithEsbuild(validation.content, 'validation.ts', {
-      format: 'esm',
-      loader: 'ts',
-      target: 'es2022',
+    const { wrapper, api, load } = await generatedPage(exported, (load) => {
+      load('src/pages/home/validation.ts').registerFieldValidator(
+        'available-name',
+        (value: unknown) => value === 'taken' ? 'Name is unavailable' : undefined,
+      )
     })
-    const ruleRuntime = pathToFileURL(resolve(
-      process.cwd(),
-      '../../zod3-to-rule/dist/index.js',
-    )).href
-    const executable = transformed.code.replaceAll(
-      '@moluoxixi/zod3-to-rule',
-      ruleRuntime,
-    )
-    const runtime = await import(`data:text/javascript;base64,${Buffer.from(executable).toString('base64')}`) as {
-      registerFieldValidator: (key: string, validator: (value: unknown) => string | undefined) => void
-      validateField: (field: string, values: Record<string, unknown>) => Promise<string[]>
-      validateFieldForTrigger: (field: string, trigger: 'blur' | 'change' | 'submit', values: Record<string, unknown>) => Promise<string[] | undefined>
-    }
-    runtime.registerFieldValidator('available-name', value => value === 'taken' ? 'Name is unavailable' : undefined)
-
     const nameField = 'name-field-4'
-    await expect(runtime.validateField(nameField, { [nameField]: '' })).resolves.toContain('Name is required')
-    await expect(runtime.validateField(nameField, { [nameField]: 'ab' })).resolves.toContain('Name is too short')
-    await expect(runtime.validateField(nameField, { [nameField]: 'taken' })).resolves.toContain('Name is unavailable')
-    await expect(runtime.validateField(nameField, { [nameField]: 'available' })).resolves.toEqual([])
-    await expect(runtime.validateFieldForTrigger(nameField, 'change', { [nameField]: '' })).resolves.toBeUndefined()
-    await expect(runtime.validateFieldForTrigger(nameField, 'blur', { [nameField]: '' })).resolves.toContain('Name is required')
+    const name = Object.values(compilation.ir.pagesById.home!.nodesById).find(node => node.kind === 'field' && node.field === nameField)!
+    const address = { nodeId: name.id, scope: [] }
+    const validation = load('src/pages/home/validation.ts')
+    expect(Object.values(validation.fieldValidation)).toContainEqual(expect.objectContaining({ validateOn: ['blur', 'submit'] }))
+    for (const [value, error] of [['', 'Name is required'], ['ab', 'Name is too short'], ['taken', 'Name is unavailable']]) {
+      api.setValues({ [nameField]: value })
+      await expect(api.validateField(nameField, 'submit')).resolves.toBe(false)
+      expect(api.getInstanceErrors(address)).toContain(error)
+      await flushPromises()
+      expect(wrapper.get(`[data-field="${nameField}"]`).text()).toContain(error)
+    }
+    api.setValues({ [nameField]: 'available' })
+    await expect(api.validateField(nameField, 'submit')).resolves.toBe(true)
+    expect(api.getErrors()).toEqual({})
+    api.setValues({ [nameField]: '' })
+    await expect(api.validateField(nameField, 'change')).resolves.toBe(true)
+    expect(api.getErrors()).toEqual({})
+    await expect(api.validateField(nameField, 'blur')).resolves.toBe(false)
+    expect(api.getInstanceErrors(address)).toContain('Name is required')
   })
 
   it('preserves cascading desktop, tablet, and mobile layout for fields and containers', async () => {
@@ -364,20 +387,16 @@ describe('canonical standalone Source export', () => {
       )
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
-    const styles = exported.files[normalizeProjectPath('src/styles.css')]
-    expect(page?.kind).toBe('text')
-    expect(styles?.kind).toBe('text')
-    if (page?.kind !== 'text' || styles?.kind !== 'text')
-      return
-
-    expect(page.content).toContain('--source-columns-desktop: 24; --source-columns-tablet: 12; --source-columns-mobile: 4')
-    expect(page.content).toContain('--source-span-desktop: 8; --source-span-tablet: 6; --source-span-mobile: 4')
-    expect(page.content).toContain('"--source-span-desktop": "8"')
-    expect(page.content).toContain('"--source-span-tablet": "6"')
-    expect(page.content).toContain('"--source-span-mobile": "4"')
-    expect(styles.content).toContain('@media (max-width: 1024px)')
-    expect(styles.content).toContain('@media (max-width: 720px)')
-    expect(styles.content).not.toContain('grid-template-columns: 1fr !important')
+    const { wrapper } = await generatedPage(exported)
+    const layout = wrapper.get('[data-config-form-responsive-layout]').attributes('style')
+    for (const [breakpoint, columns] of [['desktop', 24], ['tablet', 12], ['mobile', 4]])
+      expect(layout).toContain(`--mx-config-form-columns-${breakpoint}: ${columns}`)
+    const cells = wrapper.findAll('[data-config-form-responsive-cell]')
+    for (const cell of [cells[0]!, cells.at(-1)!]) {
+      for (const [breakpoint, span] of [['desktop', 8], ['tablet', 6], ['mobile', 4]])
+        expect(cell.attributes('style')).toContain(`--mx-config-form-span-${breakpoint}: ${span}`)
+    }
+    expect(exported.files[normalizeProjectPath('src/runtime/vue/styles/responsive.scss')]?.kind).toBe('text')
+    // Raw SCSS is stubbed by Vitest; its media rules and built CSS are verified by the standalone integration test.
   })
 })

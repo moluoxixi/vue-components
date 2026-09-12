@@ -1,16 +1,17 @@
-import type { ProjectPage, RegistryContractComponentSnapshot } from '@moluoxixi/config-form-model'
 import type { ProjectPath, WorkspaceFile } from '../../types'
-import type {
-  CanonicalSourceBindingResolver,
-} from './bindings'
 
 export interface CanonicalConfigExport {
   entry: ProjectPath
   files: Record<ProjectPath, WorkspaceFile>
 }
 
-export interface ConfigGenerationContext {
-  contracts: ReadonlyMap<string, RegistryContractComponentSnapshot>
-  page: ProjectPage
-  resolver: CanonicalSourceBindingResolver
+/** Host implementations are deliberately excluded from the exported data. */
+export interface ConfigRuntimeBindingRequirement {
+  kind: 'component' | 'validator' | 'action' | 'dataSource'
+  ref: string
+  pageId: string
+  path: Array<string | number>
+  nodeId?: string
+  flowId?: string
+  sourceId?: string
 }

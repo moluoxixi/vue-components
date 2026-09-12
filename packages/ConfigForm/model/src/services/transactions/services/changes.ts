@@ -49,8 +49,9 @@ export function changed(
   changedNodeIds: NodeId[] = [],
   changedProject = false,
   changedNodeChanges: ProjectNodeChange[] = defaultNodeChanges(changedPageIds, changedNodeIds),
+  validatePageContent = false,
 ): OperationResult {
-  return { changedProject, inverse, changedPageIds, changedNodeIds, changedNodeChanges }
+  return { changedProject, inverse, changedPageIds, changedNodeIds, changedNodeChanges, validatePageContent }
 }
 
 export function unchanged(): OperationResult {
@@ -67,7 +68,7 @@ function defaultNodeChanges(pageIds: PageId[], nodeIds: NodeId[]): ProjectNodeCh
 export function normalizeNodeChanges(changes: ProjectNodeChange[]): ProjectNodeChange[] {
   const normalized = new Map<string, ProjectNodeChange>()
   for (const change of changes) {
-    const key = `${change.pageId}\u0000${change.nodeId}`
+    const key = JSON.stringify([change.pageId, change.nodeId])
     const previous = normalized.get(key)
     if (!previous) {
       normalized.set(key, change)
@@ -75,13 +76,16 @@ export function normalizeNodeChanges(changes: ProjectNodeChange[]): ProjectNodeC
     }
     const before = previous.before ?? change.before
     const after = change.after ?? previous.after
-    const kind = previous.kind === 'insert' && change.kind === 'remove'
-      ? 'content'
+    // A move can reuse node content only when no operation changed that content.
+    const kind = change.kind === 'remove'
+      ? previous.kind === 'insert' ? 'content' : 'remove'
       : previous.kind === 'remove' && change.kind === 'insert'
-        ? 'move'
-        : change.kind === 'content'
-          ? previous.kind
-          : change.kind
+        ? 'content'
+        : previous.kind === 'insert'
+          ? 'insert'
+          : previous.kind === 'content' || change.kind === 'content'
+            ? 'content'
+            : change.kind
     normalized.set(key, {
       kind,
       pageId: change.pageId,

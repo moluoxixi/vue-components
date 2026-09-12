@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { HTMLAttributes } from 'vue'
 import type {
@@ -11,6 +12,7 @@ export function createRuntimeNodeMetadata<TValues extends ConfigFormValues>(
   path: string,
   kind: ConfigFormRuntimeNodeMetadata<TValues>['kind'],
   mode: ConfigFormRenderMode,
+  scope: ConfigFormScopePath,
   slot?: string,
 ): ConfigFormRuntimeNodeMetadata<TValues> {
   return {
@@ -20,6 +22,7 @@ export function createRuntimeNodeMetadata<TValues extends ConfigFormValues>(
     node,
     nodeId: node.id,
     path,
+    scope: scope.map(entry => ({ ...entry })),
     slot,
   }
 }

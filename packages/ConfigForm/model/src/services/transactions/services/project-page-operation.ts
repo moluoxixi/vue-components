@@ -1,10 +1,10 @@
 import type { ProjectDocument, ProjectOperation } from '../../../types'
 import type { OperationResult } from '../types'
-import { formSettingsSchema, modelJsonObjectSchema, projectPageSchema } from '../../../schemas'
+import { configFormPageRuntimeConfigurationSchema, formSettingsSchema, modelJsonObjectSchema, projectPageSchema } from '../../../schemas'
 import { invalid } from '../errors'
 import { requireParsedValue } from '../validation'
 import { changed, cloneModelValue, semanticallyEqual, unchanged } from './changes'
-import { assertInsertIndex, requirePage } from './graph'
+import { assertInsertIndex, collectInsertedNodeChanges, collectRemovedNodeChanges, requirePage } from './graph'
 
 type ProjectPageOperation = Extract<ProjectOperation, { type:
   | 'page.add'
@@ -14,6 +14,7 @@ type ProjectPageOperation = Extract<ProjectOperation, { type:
   | 'page.remove'
   | 'page.rename'
   | 'page.route'
+  | 'page.runtime'
   | 'project.home'
   | 'project.settings' }>
 
@@ -40,13 +41,25 @@ export function applyProjectPageOperation(
       assertInsertIndex(index, document.pageOrder.length, 'PROJECT_PAGE_INDEX_INVALID')
       document.pagesById[page.id] = page
       document.pageOrder.splice(index, 0, page.id)
-      return changed([{ type: 'page.remove', pageId: page.id }], [page.id], [], true)
+      return changed(
+        [{ type: 'page.remove', pageId: page.id }],
+        [page.id],
+        Object.keys(page.graph.nodesById),
+        true,
+        collectInsertedNodeChanges(page.id, page.graph, { parentId: null }),
+      )
     }
     case 'page.remove': {
       const page = requirePage(document, operation.pageId)
       if (document.pageOrder.length === 1)
         invalid('PROJECT_FINAL_PAGE_REMOVE', 'The final project page cannot be removed.', operation.pageId)
       const index = document.pageOrder.indexOf(operation.pageId)
+      const nodeChanges = page.graph.root.flatMap((item, rootIndex) => collectRemovedNodeChanges(
+        page.id,
+        page.graph,
+        item.nodeId,
+        { parentId: null, sequence: page.graph.root, item, index: rootIndex },
+      ))
       document.pageOrder.splice(index, 1)
       delete document.pagesById[operation.pageId]
       const inverse: ProjectOperation[] = [{ type: 'page.add', page: cloneModelValue(page), index }]
@@ -55,7 +68,7 @@ export function applyProjectPageOperation(
         document.homePageId = document.pageOrder[Math.min(index, document.pageOrder.length - 1)]!
         inverse.push({ type: 'project.home', pageId: previousHomePageId })
       }
-      return changed(inverse, [operation.pageId], [], true)
+      return changed(inverse, [operation.pageId], Object.keys(page.graph.nodesById), true, nodeChanges)
     }
     case 'page.move': {
       requirePage(document, operation.pageId)
@@ -139,6 +152,29 @@ export function applyProjectPageOperation(
         return unchanged()
       page.graph.form = form
       return changed([{ type: 'page.form', pageId: page.id, form: previous }], [page.id])
+    }
+    case 'page.runtime': {
+      const page = requirePage(document, operation.pageId)
+      const previous = page.runtime === undefined ? undefined : cloneModelValue(page.runtime)
+      const runtime = operation.runtime === undefined
+        ? undefined
+        : requireParsedValue(
+            configFormPageRuntimeConfigurationSchema.safeParse(operation.runtime),
+            'PROJECT_PAGE_RUNTIME_INVALID',
+            'Page runtime configuration is invalid.',
+            page.id,
+          )
+      if (semanticallyEqual(previous, runtime))
+        return unchanged()
+      if (runtime === undefined)
+        delete page.runtime
+      else
+        page.runtime = cloneModelValue(runtime)
+      return changed([{
+        type: 'page.runtime',
+        pageId: page.id,
+        ...(previous === undefined ? {} : { runtime: previous }),
+      }], [page.id])
     }
   }
 }

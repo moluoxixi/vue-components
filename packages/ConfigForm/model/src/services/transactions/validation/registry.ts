@@ -1,5 +1,6 @@
 import type { ComponentContract, ComponentContractRegistry, LayoutNode, NodeId, PageNode, ProjectDocument, ProjectPage } from '../../../types'
 import type { ValidationPlan } from '../types'
+import { analyzeProjectPageValueScopes } from '../../value-scope'
 import { invalid } from '../errors'
 import { requireNodeLocation } from '../services/graph'
 
@@ -35,8 +36,12 @@ export function validateDocumentAgainstRegistry(
     if (plan.registryPageIds.has(pageId))
       return
     const page = document.pagesById[pageId]
-    if (page)
-      nodeIds.forEach(nodeId => validateNodePlacement(page, nodeId, registry))
+    if (!page)
+      return
+    nodeIds.forEach((nodeId) => {
+      if (page.graph.nodesById[nodeId])
+        validateNodePlacement(page, nodeId, registry)
+    })
   })
 }
 
@@ -55,11 +60,20 @@ export function validateRegistryLock(document: ProjectDocument, registry: Compon
   }
   if (document.registryLock.fingerprint !== registry.lock.fingerprint)
     invalid('PROJECT_REGISTRY_FINGERPRINT_MISMATCH', 'Project registry fingerprint does not match the active component registry.')
-  const usedComponents = new Set(Object.values(document.pagesById)
-    .flatMap(page => Object.values(page.graph.nodesById).map(node => node.component)))
+  const usedComponents = new Set<string>()
+  for (const page of Object.values(document.pagesById)) {
+    for (const node of Object.values(page.graph.nodesById))
+      usedComponents.add(node.component)
+  }
   for (const component of usedComponents) {
-    if (!registry.lock.components[component])
+    const record = Object.hasOwn(registry.lock.components, component) ? registry.lock.components[component] : undefined
+    if (!record || typeof record !== 'object' || Array.isArray(record)
+      || !Object.hasOwn(record, 'contractVersion') || !Object.hasOwn(record, 'fingerprint')
+      || typeof record.contractVersion !== 'string' || !record.contractVersion.trim()
+      || typeof record.fingerprint !== 'string' || !record.fingerprint.trim()
+      || !registry.get(component)) {
       invalid('PROJECT_COMPONENT_UNKNOWN', `Component is not registered: ${component}`)
+    }
   }
   for (const component of registryComponents) {
     const expected = document.registryLock.components[component]
@@ -80,17 +94,25 @@ export function validateRegistryLock(document: ProjectDocument, registry: Compon
 }
 
 function validatePageAgainstRegistry(page: ProjectPage, registry: ComponentContractRegistry): void {
-  const fields = new Set<string>()
+  const scopeIssue = analyzeProjectPageValueScopes(page.graph).issues[0]
+  if (scopeIssue) {
+    const nodeId = scopeIssue.path[0] === 'nodesById' && typeof scopeIssue.path[1] === 'string'
+      ? scopeIssue.path[1]
+      : undefined
+    const duplicate = scopeIssue.message.startsWith('Field name must be unique:')
+      || scopeIssue.message.startsWith('Duplicate value key in the same scope:')
+    invalid(
+      duplicate ? 'PROJECT_FIELD_DUPLICATE' : 'PROJECT_VALUE_SCOPE_INVALID',
+      scopeIssue.message,
+      page.id,
+      nodeId,
+    )
+  }
   Object.values(page.graph.nodesById).forEach((node) => {
     const contract = requireComponentContract(registry, page, node)
     validateNodeContract(page, node, contract)
-    if (node.kind === 'field') {
-      if (fields.has(node.field))
-        invalid('PROJECT_FIELD_DUPLICATE', `Field name must be unique: ${node.field}`, page.id, node.id)
-      fields.add(node.field)
-      return
-    }
-    validateLayoutSlots(page, node, contract, registry)
+    if (node.kind === 'layout')
+      validateLayoutSlots(page, node, contract, registry)
   })
   page.graph.root.forEach((item) => {
     const node = page.graph.nodesById[item.nodeId]

@@ -28,6 +28,9 @@ const expectedKeys = [
   'element.collapse-item',
   'element.flex',
   'element.grid',
+  'element.object-group',
+  'element.array-subform',
+  'element.detail-table',
 ]
 
 function graphForRootMaterials(): PageGraph {

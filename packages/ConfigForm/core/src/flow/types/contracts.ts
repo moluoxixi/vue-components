@@ -8,14 +8,21 @@ import type {
   ConfigFormReactionProjection,
 } from '../../reaction'
 import type {
+  ConfigFormValueContext,
+  ConfigFormValueInput,
+  ConfigFormValueReferenceScope,
+} from '../../value-reference'
+import type { ConfigFormScopePath } from '../../value-scope'
+import type {
   CONFIG_FORM_FLOW_PLAN_VERSION,
   CONFIG_FORM_FLOW_RUNTIME_VERSION,
+  CONFIG_FORM_FLOW_TRIGGER_KINDS,
   CONFIG_FORM_FLOW_VERSION,
 } from '../constants'
 
-export type ConfigFormFlowTriggerKind = 'page.mount' | 'form.submit' | 'component.event'
+export type ConfigFormFlowTriggerKind = typeof CONFIG_FORM_FLOW_TRIGGER_KINDS[number]
 export type ConfigFormFlowConcurrency = 'latest' | 'queue' | 'ignore'
-export type ConfigFormFlowNodeType = 'trigger' | 'condition' | 'reaction' | 'action' | 'success' | 'failure' | 'end'
+export type ConfigFormFlowNodeType = 'trigger' | 'condition' | 'reaction' | 'action' | 'success' | 'failure' | 'end' | 'blocked'
 export type ConfigFormFlowEdgeCondition = 'next' | 'true' | 'false' | 'error'
 
 export interface ConfigFormFlowTrigger {
@@ -31,6 +38,14 @@ export interface ConfigFormFlowErrorPolicy {
   timeoutMs?: number
 }
 
+export interface ConfigFormFlowNodePolicy {
+  when?: ConfigFormReactionCondition
+  stopWhen?: ConfigFormReactionCondition
+  onError?: 'continue' | 'failure'
+  /** Overrides the flow timeout. Zero explicitly disables the timeout. */
+  timeoutMs?: number
+}
+
 export interface ConfigFormFlowNode {
   id: string
   type: ConfigFormFlowNodeType
@@ -38,6 +53,7 @@ export interface ConfigFormFlowNode {
   ref?: string
   /** JSON-only node configuration. */
   config?: ConfigFormJsonObject
+  policy?: ConfigFormFlowNodePolicy
   /** Presentation-only position; excluded from semantic hashes and execution. */
   position?: { x: number, y: number }
 }
@@ -68,6 +84,7 @@ export interface ConfigFormFlowDiagnostic {
   path?: string
   nodeId?: string
   edgeId?: string
+  severity?: 'error' | 'warning'
 }
 
 export interface ConfigFormFlowPlanNode extends Omit<ConfigFormFlowNode, 'position'> {
@@ -127,20 +144,139 @@ export interface ConfigFormFlowActionContext {
   node: ConfigFormFlowExecutionPlan['nodes'][number]
   revision: number
   runId: string
+  /** Aborted on cancellation, timeout, or runtime-observed rejection/completion of this action. */
   signal: AbortSignal
   values: Readonly<Record<string, unknown>>
   outputs: Readonly<Record<string, unknown>>
+  event: ConfigFormFlowEvent
+  form: ConfigFormFlowFormApi
+}
+
+/** Serializable event snapshot; live component instances never enter a run. */
+export interface ConfigFormFlowEvent {
+  trigger: Readonly<ConfigFormFlowTrigger>
+  args: readonly ConfigFormJsonValue[]
+  field?: string
+  /** Array row identity chain captured when the event was emitted. */
+  scope?: ConfigFormScopePath
+}
+
+export type ConfigFormFlowValueContextFactory = (
+  values: Readonly<Record<string, unknown>>,
+  event: ConfigFormFlowEvent,
+  outputs: Readonly<Record<string, unknown>>,
+) => ConfigFormValueContext
+
+/** Stable field and variable operations supplied by a mounted form runtime. */
+export interface ConfigFormFlowStructuredFormApi {
+  getField: (nodeId: string, scope?: ConfigFormValueReferenceScope) => unknown
+  setField: (nodeId: string, value: unknown, scope?: ConfigFormValueReferenceScope) => void
+  getVariable: (variableId: string) => unknown
+  setVariable: (variableId: string, value: unknown) => void
+  setFieldState: (
+    nodeId: string,
+    state: 'visible' | 'disabled' | 'readonly',
+    value: boolean,
+    scope?: ConfigFormValueReferenceScope,
+  ) => void
+}
+
+/**
+ * Writes stay run-local. Action access expires when the runtime observes settlement or abort;
+ * retained methods synchronously throw FLOW_ACTION_INACTIVE before touching state.
+ * Read results and write inputs are defensive copies, including structured methods.
+ */
+export interface ConfigFormFlowFormApi extends Partial<ConfigFormFlowStructuredFormApi> {
+  getValue: (field: string) => unknown
+  getValues: () => Record<string, unknown>
+  setValue: (field: string, value: unknown) => void
+  setValues: (values: Record<string, unknown>) => void
+}
+
+export interface ConfigFormFlowValuePatch {
+  remove: string[]
+  set: Record<string, unknown>
+}
+
+/**
+ * Per-run adapter for non-root form state. It is created when a queued run
+ * actually starts and commits only after the complete Flow succeeds.
+ * Its form methods are exposed to each action through node-lifetime guards;
+ * readValueContext and commit remain interpreter/runtime-owned capabilities.
+ */
+export interface ConfigFormFlowTransaction {
+  form: ConfigFormFlowStructuredFormApi
+  readValueContext?: (outputs: Readonly<Record<string, unknown>>) => ConfigFormValueContext
+  commit: (valuePatch: ConfigFormFlowValuePatch) => void | Promise<void>
+}
+
+export interface ConfigFormFlowTransactionFactoryInput {
+  values: Record<string, unknown>
+  event: ConfigFormFlowEvent
+  signal: AbortSignal
+}
+
+export type ConfigFormFlowTransactionFactory = (
+  input: ConfigFormFlowTransactionFactoryInput,
+) => ConfigFormFlowTransaction
+
+export type ConfigFormFlowActionParameterControl
+  = | 'text'
+    | 'number'
+    | 'boolean'
+    | 'enum'
+    | 'value'
+    | 'field'
+    | 'variable'
+    | 'dataSource'
+    | 'object'
+    | 'array'
+
+export interface ConfigFormFlowActionParameterOption {
+  title: string
+  value: ConfigFormJsonValue
+}
+
+/** JSON-only authoring metadata; it never carries an execute function. */
+export interface ConfigFormFlowActionParameter {
+  name: string
+  title: string
+  control: ConfigFormFlowActionParameterControl
+  required?: boolean
+  description?: string
+  defaultValue?: ConfigFormJsonValue
+  options?: ConfigFormFlowActionParameterOption[]
+}
+
+export interface ConfigFormFlowActionOutput {
+  name: string
+  title: string
+  description?: string
+}
+
+export interface ConfigFormFlowActionDescriptor {
+  ref: string
+  title: string
+  category: string
+  parameters: ConfigFormFlowActionParameter[]
+  outputs: ConfigFormFlowActionOutput[]
+  capabilities: string[]
 }
 
 export interface ConfigFormFlowAction {
+  descriptor?: ConfigFormFlowActionDescriptor
+  /** Returns cloneable Flow data (including undefined) or a native Promise of it, never a custom thenable. */
   execute: (input: unknown, context: ConfigFormFlowActionContext) => unknown | Promise<unknown>
 }
 
 export interface ConfigFormFlowActionRegistry {
   get: (ref: string) => ConfigFormFlowAction | undefined
+  /** Optional for trusted execute-only hosts; authoring surfaces diagnose its absence. */
+  list?: () => readonly ConfigFormFlowActionDescriptor[]
+  describe?: (ref: string) => ConfigFormFlowActionDescriptor | undefined
 }
 
-/** Refs of the built-in action library shipped with the flow runtime. */
+/** Refs of the executable built-in action library shipped with the flow runtime. */
 export type ConfigFormFlowBuiltinActionRef
   = | 'builtin.http.request'
     | 'builtin.delay'
@@ -196,7 +332,7 @@ export interface ConfigFormFlowActionHost {
   confirm?: (input: ConfigFormFlowUiConfirmInput) => boolean | Promise<boolean>
 }
 
-export type ConfigFormFlowRunStatus = 'success' | 'failure' | 'end' | 'aborted' | 'timeout' | 'ignored'
+export type ConfigFormFlowRunStatus = 'success' | 'failure' | 'end' | 'blocked' | 'aborted' | 'timeout' | 'ignored'
 
 export interface ConfigFormFlowTraceEvent {
   type: 'start' | 'enter' | 'exit' | 'error' | 'abort' | 'finish'
@@ -206,6 +342,13 @@ export interface ConfigFormFlowTraceEvent {
   nodeId?: string
   status?: ConfigFormFlowRunStatus
   error?: string
+  /** Optional in fixtures; every runtime-emitted event includes one. */
+  timestamp?: number
+  durationMs?: number
+  input?: ConfigFormJsonValue
+  output?: ConfigFormJsonValue
+  valuePatch?: ConfigFormJsonObject
+  truncated?: boolean
 }
 
 export interface ConfigFormFlowRunResult {
@@ -218,6 +361,7 @@ export interface ConfigFormFlowRunResult {
   /** Atomic transient projection produced by reaction nodes in this run. */
   projection: ConfigFormReactionProjection<Record<string, unknown>>
   trace: ConfigFormFlowTraceEvent[]
+  diagnostics: ConfigFormFlowDiagnostic[]
   error?: ConfigFormFlowDiagnostic
 }
 
@@ -227,6 +371,19 @@ export interface ConfigFormFlowRunOptions {
   values?: Record<string, unknown>
   signal?: AbortSignal
   onTrace?: (event: ConfigFormFlowTraceEvent) => void
+  /** Scheduler identity in addition to Flow ID; mounted renderers derive it from stable row scope. */
+  concurrencyKey?: string
+  event?: ConfigFormFlowEvent
+  /** Static reference context. Use readValueContext for fields backed by transactional values. */
+  valueContext?: ConfigFormValueContext
+  /** Rebuilt at each resolution with the current run-local values, event, and outputs. */
+  readValueContext?: ConfigFormFlowValueContextFactory
+  /** Optional mounted-runtime transaction for stable field instances and variables. */
+  createTransaction?: ConfigFormFlowTransactionFactory
+  /** Read when a queued run actually starts. */
+  readValues?: () => Record<string, unknown>
+  /** Runs and settles before the next queued item starts. */
+  onComplete?: (result: ConfigFormFlowRunResult) => void | Promise<void>
 }
 
 export interface ConfigFormFlowReactionNodeConfig {
@@ -238,6 +395,6 @@ export interface ConfigFormFlowConditionNodeConfig {
 }
 
 export interface ConfigFormFlowActionNodeConfig {
-  input?: ConfigFormJsonValue
-  output?: ConfigFormJsonObject
+  input?: ConfigFormValueInput
+  output?: Record<string, ConfigFormValueInput>
 }

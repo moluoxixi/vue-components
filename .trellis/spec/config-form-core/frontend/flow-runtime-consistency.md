@@ -1,238 +1,148 @@
-# ConfigForm Flow Runtime Consistency
+# ConfigForm Event Runtime Contract
 
 ## 1. Scope / Trigger
 
-Apply this contract whenever a change touches the Flow IR, Core interpreter,
-Workbench Preview scheduling, generated Source runtime, cancellation, value
-commit, or reaction projection behavior.
-
-The same JSON Flow model has two runtime implementations:
-
-```text
-ProjectDocument.pagesById[pageId].flows
-  -> ConfigFormFlowInterpreter -> PreviewFlowCoordinator -> Workbench Preview
-  -> generated flows.ts -> generated Vue page
-```
-
-The generated runtime remains self-contained, but it must implement the same
-observable state machine as Core. Similar source text is not evidence of
-equivalent behavior.
+Apply when changing event binding, Flow execution, iframe transport, public forms,
+preview state, action configuration, or standalone Source generation.
 
 ## 2. Signatures
 
 ```ts
-const CONFIG_FORM_FLOW_RUNTIME_VERSION = 1
+CONFIG_FORM_FLOW_VERSION = 1
+CONFIG_FORM_FLOW_RUNTIME_VERSION = 2
+RUNTIME_HOST_PROTOCOL_VERSION = 4
 
-ConfigFormFlowInterpreter.run(
-  flow: ConfigFormFlow,
-  options?: ConfigFormFlowRunOptions,
-): Promise<ConfigFormFlowRunResult>
+createConfigFormEventRuntime({
+  actions, readValues, writeValues, onProjection, onTrace, onDiagnostic,
+})
+runtime.sync(plans, { reset })
+runtime.dispatch({ trigger, event, revision, signal, isCurrent })
+runtime.dispose()
 
-PreviewFlowCoordinator.dispatch(
-  input: PreviewFlowDispatchInput,
-): Promise<PreviewFlowDispatchResult>
+ConfigFormFlowEvent = { trigger, args: ConfigFormJsonValue[], field?: string }
+ConfigFormFlowActionContext = {
+  flow, node, revision, runId, signal, values, outputs, event, form,
+}
+// form exposes getValue/getValues/setValue/setValues; writes remain run-local.
 
-runFlows(
-  trigger: FlowTrigger,
-  input?: FlowValues,
-  signal?: AbortSignal,
-): Promise<FlowDispatchResult>
-
-applyFlowValuePatch(
-  target: FlowValues,
-  before: FlowValues,
-  after: FlowValues,
-): void
+ConfigFormRenderer({ model, fields, flows?, flowActions? })
+// Notifications: runtimeEvent, flowResult, flowError
+// Explicit host subscriptions: node.eventNames
 ```
-
-Core execution statuses are `success`, `end`, `ignored`, `aborted`,
-`failure`, and `timeout`. Preview/generated dispatch may additionally return
-`committed` and `noop`.
 
 ## 3. Contracts
 
-- `ProjectPage.flows` is persistent and page-local. Its trigger field references,
-  model order, and Flow ID uniqueness are resolved within that owning page.
-  `PageGraph` owns only visual nodes and placement; it must not own Flow state.
-  Active runs, queues, signals, outputs, projections, and traces are transient
-  runtime state.
-- Workbench event execution is owned by one page-scoped Flow Engine, not by the
-  shell/controller. The engine owns the injected action Registry, active
-  execution plans, scheduler, projection retention, trace/error boundary, and
-  a stale generation. Preview values remain Preview-session state and cross
-  the engine through explicit read/write ports so a Flow-owned patch is
-  applied to the latest values.
-- Flow authoring enters from a concrete Inspector event or the Form property
-  surface. A FlowWorkspace receives one locked trigger and at most one matching
-  Flow; it must not expose a global trigger selector or silently switch to a
-  different event. `page.mount` and `form.submit` are entered from Form events,
-  while component events are entered from the selected node.
-- The current Flow trigger union is `page.mount | form.submit | component.event`.
-  `field.change` is unsupported at current schema/compiler boundaries; there is
-  no migration or runtime compatibility path.
-- Core and generated Source publish the same
-  `CONFIG_FORM_FLOW_RUNTIME_VERSION`. Generated `flows.ts` embeds that version
-  and is executed in parity tests; a version string match without observable
-  scheduling/error parity is insufficient.
-- Workbench component-event authoring has one normal entry: the Inspector lists
-  events from the selected node's Registry contract and opens the Flow dialog
-  with that exact `{ nodeId, event }` trigger. If a matching Flow exists it is
-  selected; otherwise creation starts from that event source. The Workbench
-  does not expose a comma-separated `node.events` action editor beside Flow.
-- Replacing the owning project/page clears all retained Flow projections and
-  invalidates pending work. Updating the same page prunes projections for
-  removed Flow IDs while retaining the last successful projection of active
-  Flows. A late run from an earlier engine generation must settle stale and
-  cannot write values or projections.
-- A `ConfigFormFlow` must not also be stored at ProjectDocument root. Future
-  cross-page automation uses a distinct Project Workflow contract so page
-  triggers and field references do not acquire ambiguous scope.
-- Concurrency is owned by Flow ID. Never add a global trigger revision that
-  converts every Flow into `latest` behavior.
-- `latest` aborts only the previous run with the same Flow ID. A run must settle
-  as `aborted` even when an action ignores its `AbortSignal`.
-- `queue` executes in trigger order. An externally aborted queued item settles
-  immediately and is removed before the active item completes.
-- `ignore` preserves the active run. The ignored trigger publishes no values,
-  empty projection, or error.
-- A page/model/lifecycle signal invalidates active and queued work. Listener,
-  timer, and child-controller cleanup occurs on every terminal path.
-- `page.mount` belongs to a mounted Runtime session, not to a document revision.
-  Updating the RenderPlan for the same project, adapter, and page may abort stale
-  asynchronous work, but must not remount the Runtime or dispatch `page.mount`
-  again. Reopening Preview, switching page/project/adapter, or recovering the
-  first successful Runtime mount starts a new session and dispatches it once.
-- Canonical Flow plans own the Runtime listener set for `component.event`.
-  The Vue backend attaches the referenced registered `nodeId + event` pairs to
-  the Runtime plan; ConfigFormRenderer listens on the real component and emits the
-  canonical Registry event name. A value-binding event and a Flow listener that
-  resolve to the same Vue handler key must be installed once and emitted once.
-- Runtime and generated Source install the union of a node's explicit action
-  events and Canonical `flowEvents`, not every event exposed by its component
-  Registry. An unreferenced registered event must not allocate a listener or
-  publish a Runtime event.
-- The Vue backend consumes `CanonicalNodeIR.flowEvents`; it must not walk Flow
-  plans and independently rebuild the listener projection. The semantic
-  compiler is the single owner of that projection.
-- Action timeout uses an action-local controller. Timing out one action must
-  not mark the whole Flow lifecycle signal as externally aborted.
-- Matching Flows execute in model order and pass successful values to the next
-  Flow in that dispatch.
-- Values commit as a patch from dispatch input to dispatch result. Applying the
-  patch to current UI state must preserve unrelated values changed after the
-  dispatch began.
-- Projection state is keyed by Flow ID. Only `success` or `end` replaces that
-  Flow's last successful projection.
-- Semantic compilation rejects a Flow when its reaction writes a capability
-  that the same field already owns through synchronous binding/reaction logic.
-  The overlap set includes value, state, prop, and validation targets. A pure
-  synchronous Flow reaction on a binding event is redundant; an event Flow
-  containing a condition or action remains valid because it expresses branch
-  or side-effect behavior rather than a second declarative binding.
+- Core owns the sole event scheduler and interpreter. Workbench PageFlowEngine
+  adapts it to Vue refs and Preview value ports. The old PreviewFlowCoordinator
+  implementation is removed.
+- Compiler packages actual Core flow/expression/reaction/json TypeScript source
+  through getConfigFormRuntimeSources. Source exports those modules under
+  src/runtime and generates a per-instance createPageEventRuntime adapter.
+  Generated pages have no ConfigForm package dependency. Do not write another
+  scheduler, expression evaluator, or reaction reducer into a template string.
+- Each mounted form or page owns its own runtime. Never keep action registries,
+  queues, projections, or model ports in a generated module singleton.
+- ProjectPage.flows remains the persisted page-local authoring graph. Running
+  values, outputs, trace and signals never enter ProjectDocument/history.
+- Component event names come from Registry metadata. Compiler owns the canonical
+  listener projection. Vue backend maps it to node.eventNames; Renderer unions
+  those names with subscriptions from its flows prop. No DOM discovery or
+  private mx.low-code.flowEvents lookup is allowed.
+- Node events containing registered action lists compile to the same Flow plans.
+  Authored flows run first in model order, followed by node action plans. They
+  must not be executed again by a separate Source event handler.
+- One normalized Vue event key owns one listener channel. Design interception
+  runs first, then internal value/validation bookkeeping, configured listeners,
+  and one canonical runtimeEvent. Configured listener rejection is reported
+  through flowError and cannot suppress value updates or subscribed execution.
+- iframe events carry nodeId, event, args, optional field, and the synchronous
+  values snapshot. The existing origin/source/session/revision/sequence checks
+  remain mandatory. Preview installs payload.values before dispatch.
+- Native event arguments remain local. snapshotConfigFormEventArgs produces
+  JSON data, including selected DOM event fields and primitive target
+  value/checked/name. Dates become ISO strings, undefined becomes null.
+  Functions, cycles, unsupported objects, unsafe keys, depth > 32 or > 10000
+  entries fail with diagnostics. Receiver validates JSON data without rebuilding
+  or guessing missing arguments.
+- Actions use explicit $field, $event (e.g. args.0), $output or $expression
+  references. Expressions can read $event and $outputs. Missing event/output
+  references and invalid expressions produce failures, not silent undefined.
+- Action values/outputs/event and resolved inputs are defensive copies.
+  context.form writes only the current run. Successful/end runs commit a patch
+  against latest values, preserving unrelated concurrent user edits.
+- Queue inputs read current form values when execution starts, while event args
+  remain the captured event snapshot. Commit completes before the next queued
+  item starts.
+- latest, queue and ignore are scoped by Flow ID. latest settles the superseded
+  action even if it ignores its signal; ignore preserves the previous projection.
+- sync/clear/dispose abort active and queued work. Changed page resets retained
+  projections; same-page sync prunes removed Flow IDs. A stale result cannot
+  commit or notify an unmounted Renderer.
+- page.mount belongs to mounted session identity, not document revision.
+- Conditions have exactly one true and false outlet. Other non-terminal nodes
+  require one next outlet; each allowed outlet has at most one edge. Terminals
+  have no outgoing edges, triggers no incoming edges. The graph is acyclic and
+  every node is reachable.
+- Error edges run under the default failure policy. Explicit onError:end commits
+  completed work while retaining the diagnostic. Timeout uses an action-local
+  AbortController. Validation failure never dispatches form.submit.
+- Designer opens from a concrete Inspector/Form event. All accepted edits remain
+  Project Commands and use existing undo/redo. Action inputs use Element Plus
+  controls; advanced JSON drafts preserve syntax errors across node selection.
+  New flows default to failure policy and a 10000ms timeout.
 
 ## 4. Validation & Error Matrix
 
-| Condition | Execution result | Value commit | Projection commit |
-| --- | --- | --- | --- |
-| No Flow matches | `noop` | none | none |
-| `latest` supersedes active | old `aborted`, new executes | new success only | new success only |
-| `queue` trigger | executes after active | each success in order | each success in order |
-| `ignore` while active | `ignored` | none | preserve previous |
-| Revision/lifecycle abort | `aborted` or stale dispatch | none | none |
-| Same-page RenderPlan revision | abort stale work; no new `page.mount` | preserve compatible values | preserve compatible Flow projections |
-| Registered `component.event` | exact `nodeId + event` plans run | binding update happens before dispatch | successful Flow only |
-| Unregistered component event | compiler diagnostic before Runtime | none | none |
-| Action timeout | `timeout`, or failure edge policy | none unless terminal policy succeeds | none unless terminal policy succeeds |
-| Ordinary error + `onError: end` | `end` with diagnostic | commit successful prior changes | commit Flow projection |
-| Ordinary error + `onError: failure` | follow error edge or `failure` | commit only if Flow reaches success/end | same |
-| Flow reaction overlaps synchronous value/state/prop/validate ownership | `COMPILER_FLOW_REACTION_CAPABILITY_CONFLICT` | none | none |
-| Flow contains only a synchronous reaction already expressible declaratively | `COMPILER_FLOW_SYNC_REACTION_REDUNDANT` | none | none |
-| Binding event Flow duplicates only the existing binding reaction | `COMPILER_FLOW_BINDING_REACTION_REDUNDANT` | none | none |
+| Condition | Result |
+| --- | --- |
+| No matching plan | noop, no values/projection mutation |
+| Superseded latest | old aborted, new executes |
+| Queue | event order, live values at actual start |
+| Ignore during active run | ignored, preserve prior projection |
+| Runtime sync/dispose | pending work settles stale/aborted, no late commit |
+| Missing event/output or invalid expression | failure diagnostic |
+| Invalid iframe arguments | reject before dispatch |
+| Duplicate graph outlet | FLOW_EXIT_DUPLICATE |
+| Illegal outlet/terminal edge | FLOW_EXIT_INVALID |
+| Explicit failure terminal | FLOW_TERMINAL_FAILURE |
+| Rejected configured Vue listener | FLOW_COMPONENT_LISTENER_ERROR |
+| Timeout | timeout or declared error branch |
+| Invalid form submit | field errors, no submit Flow |
 
-Invalid Flow IR must fail analysis before scheduling. Unknown action refs and
-node execution failures return diagnostics; they must not leave active or
-queued entries behind.
+## 5. Good / Base / Bad
 
-## 5. Good / Base / Bad Cases
-
-- Good: two overlapping `latest` triggers where the first action never
-  resolves; the first call still settles `aborted` and the second commits.
-- Good: two matching Flows where Flow B reads Flow A's output, while an
-  unrelated user edit made during execution survives the final patch.
-- Base: no matching Flow returns `noop` and preserves object identity at the
-  UI patch boundary.
-- Bad: a global trigger counter discards an earlier `queue` result because a
-  later unrelated trigger incremented the counter.
-- Bad: an ignored trigger stores an empty projection and clears the active
-  Flow's last successful UI state.
+Good: two queued increments observe count 0 then 1 and commit 2, while a newer
+unrelated note survives. Base: an unconfigured event allocates no subscription.
+Bad: a global trigger counter cancels unrelated flows; Source owns duplicate
+execution code; iframe drops event arguments.
 
 ## 6. Tests Required
 
-- Core unit tests: hanging action cancellation, queued abort, listener cleanup,
-  timeout, `latest` / `queue` / `ignore`, and both error policies.
-- Preview coordinator tests: model-order value passing, Flow-owned value patch,
-  projection retention, stale revision, and no-op object identity.
-- Workbench page Flow Engine tests: exact component-event dispatch, action
-  Registry ownership, projection merge/prune, page-change invalidation, and
-  proof that late work cannot commit through the Preview value port.
-- Generated `flows.ts` executable tests: import transpiled generated code and
-  run the same concurrency/error/order matrix. String containment alone is
-  insufficient.
-- Version tests assert Core interpreter and generated `flows.ts` expose the
-  same `CONFIG_FORM_FLOW_RUNTIME_VERSION` before executing the parity matrix.
-- Compiler tests cover value/state/prop/validation conflicts, redundant pure
-  synchronous reactions, and the allowed condition/action event-Flow cases.
-- Generated project integration: install, type-check, and build Element Plus
-  and Ant Design Vue complete exports and pure Source exports.
-- Browser verification: observe `page.mount`, `component.event`, and
-  `form.submit` updates through the real Renderer; filter console warnings and
-  errors from an operation timestamp.
-- Preview lifecycle tests: a same-page revision keeps one Runtime instance and
-  does not emit a second mount; closing/reopening or switching page emits one.
-- Component-event tests: cover a non-binding event such as `click`, a binding
-  trigger such as `update:modelValue`, handler-name normalization, and a hard
-  assertion that one component emit produces one Flow dispatch.
-- Provider browser tests: exercise both Element Plus and Ant Design Vue binding
-  triggers plus one real non-binding event from each provider.
-- Canonical Source tests: assert a referenced event is emitted into the Vue SFC
-  while an unreferenced event from another registered node is absent.
+- Core event-runtime and flow tests: event snapshot, form API isolation, queue
+  commit ordering, hanging cancellation, latest/ignore, timeout and failure edges.
+- Renderer events tests: binding before callback, full multi-argument payload,
+  one dispatch when binding and blur share a key, design suppression, rejected
+  listener diagnostics, no notification after unmount.
+- Workbench engine/preview/protocol tests: value snapshot before dispatch,
+  generation cancellation, projection retention, wrong identity and malformed args.
+- Generated-runtime-module tests execute the exported source import closure.
+  Flow and field-runtime parity tests exercise behavior, not only source strings.
+- Both Element Plus and Ant Design Vue standalone projects install, type-check,
+  and build. Browser tests cover both binding and non-binding events, form
+  submission, undo/redo, responsive controls and axe.
 
 ## 7. Wrong vs Correct
 
-### Wrong
+Wrong: serialize a DOM Event across iframe, drop args, then run a hand-written
+export interpreter.
+
+Correct:
 
 ```ts
-const revision = ++globalTriggerRevision
-const result = await runFlow(flow, snapshot)
-if (revision !== globalTriggerRevision)
-  return
-model.value = result.values
-
-// Also wrong: coupling Runtime identity to every edit revision.
-<ConfigFormRenderer :key="editVersion" />
-runTrigger({ kind: 'page.mount' })
-```
-
-This overrides per-Flow concurrency and replaces unrelated newer UI values.
-
-### Correct
-
-```ts
-const result = await coordinator.dispatch({
-  flows,
+const trigger = { kind: 'component.event', nodeId, event }
+await runtime.dispatch({
   trigger,
-  values: snapshot,
-  signal: lifecycle.signal,
-  revision: modelRevision,
+  event: { trigger, args: snapshotConfigFormEventArgs(args), field },
+  signal: lifetime.signal,
 })
-
-if (result.status === 'committed')
-  model.value = applyPreviewFlowValuePatch(model.value, result.valuePatch)
-
-// Runtime identity follows the mounted page session; revision stays a stale-work key.
-<ConfigFormRenderer :key="runtimeSessionKey" />
-onRuntimeMounted(() => runTrigger({ kind: 'page.mount' }))
 ```
-
-The coordinator delegates concurrency to the Flow-ID scheduler and returns
-only Flow-owned changes.

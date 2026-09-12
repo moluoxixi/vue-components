@@ -1,23 +1,42 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
+  ConfigFormFlowActionRegistry,
+  ConfigFormFlowDiagnostic,
   ConfigFormFlowTraceEvent,
-  ConfigFormFlowTrigger,
   ConfigFormReactionProjection,
+  ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type { PageGraph } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
+import type { WorkbenchFlowActionHooks } from '../../flow'
 import type {
-  PageFlowEngine,
-  WorkbenchPageFlowEngineOptions,
-} from '../../flow'
-import type {
+  PreviewRuntimeFlowDiagnosticEvent,
+  PreviewRuntimeFlowProjectionEvent,
+  PreviewRuntimeFlowResultEvent,
+  PreviewRuntimeFlowTraceEvent,
+  RuntimeHostFieldInstance,
   RuntimeHostRuntimeStatePayload,
   RuntimeHostSubmitResultPayload,
 } from '../../runtime-host'
 import type { PagePreviewProjection } from './projection'
 
-export type PreviewFieldContracts = Record<string, string>
+export interface PreviewScopeContract {
+  definition: ConfigFormValueScopeDefinition
+  signature: string
+}
+
+export interface PreviewFieldContract {
+  field: string
+  signature: string
+  scopes: readonly ConfigFormValueScopeDefinition[]
+  defaultValue?: unknown
+}
+
+export interface PreviewFieldContracts {
+  fields: Record<string, PreviewFieldContract>
+  scopes: readonly PreviewScopeContract[]
+}
 export type PreviewValidationState = Record<string, string[]>
 
 export interface LastReadyPreview {
@@ -45,6 +64,11 @@ export interface PreviewRuntimeIdentity {
   readonly revision: string
 }
 
+export type PreviewRuntimeSubmitEvent = PreviewRuntimeIdentity & { requestId: string } & (
+  | { phase: 'request' }
+  | { phase: 'success', values: Record<string, unknown> }
+)
+
 export interface PreviewRuntimeStateEvent extends PreviewRuntimeIdentity {
   readonly state: RuntimeHostRuntimeStatePayload
 }
@@ -54,34 +78,32 @@ export interface PreviewRuntimeSubmitResultEvent extends PreviewRuntimeIdentity 
 }
 
 export interface PreviewSubmission {
+  readonly requestId: string
+  readonly fields: readonly RuntimeHostFieldInstance[]
   readonly revisionKey: string
-  readonly status: 'invalid' | 'success'
+  readonly status: 'blocked' | 'failure' | 'invalid' | 'success'
   readonly submittedAt: number
   readonly touched: readonly string[]
   readonly validation: Readonly<PreviewValidationState>
   readonly values: Record<string, unknown>
 }
 
-export interface PreviewSessionValuePorts {
-  readonly readValues: () => Record<string, unknown>
-  readonly writeValues: (values: Record<string, unknown>) => void
-}
-
-export interface PreviewSessionFlowPorts extends PreviewSessionValuePorts {
-  readonly onTrace: (event: ConfigFormFlowTraceEvent) => void
-}
-
 export interface CreatePreviewSessionOptions {
-  readonly createFlowEngine: (ports: PreviewSessionFlowPorts) => PageFlowEngine
+  readonly actions?: ConfigFormFlowActionRegistry
+  readonly onDiagnostic?: (diagnostic: ConfigFormFlowDiagnostic) => void
   readonly onTrace?: (event: ConfigFormFlowTraceEvent) => void
 }
 
-export type CreateWorkbenchPreviewSessionOptions = Pick<
-  WorkbenchPageFlowEngineOptions,
-  'onDiagnostic' | 'onNotify' | 'onTrace'
->
+export type CreateWorkbenchPreviewSessionOptions = WorkbenchFlowActionHooks & {
+  readonly actions?: ConfigFormFlowActionRegistry
+  readonly onDiagnostic?: (diagnostic: ConfigFormFlowDiagnostic) => void
+  readonly onTrace?: (event: ConfigFormFlowTraceEvent) => void
+}
 
 export interface PreviewSession {
+  /** Trusted action registry supplied to the parent RuntimeHost capability port. */
+  readonly actions: ConfigFormFlowActionRegistry
+  readonly flowDiagnostics: ShallowRef<readonly ConfigFormFlowDiagnostic[]>
   readonly flowProjection: ComputedRef<ConfigFormReactionProjection<Record<string, unknown>>>
   readonly lastSubmission: ShallowRef<PreviewSubmission | undefined>
   readonly projection: ShallowRef<PagePreviewProjection | undefined>
@@ -94,29 +116,19 @@ export interface PreviewSession {
   accept: (input: PreviewSessionAcceptInput) => PagePreviewProjection | undefined
   clear: (reason?: unknown) => void
   clearSubmission: () => void
-  dispatch: (
-    triggerOrKind: ConfigFormFlowTrigger['kind'] | ConfigFormFlowTrigger,
-    values?: Record<string, unknown>,
-  ) => ReturnType<PageFlowEngine['dispatch']> | undefined
   dispose: () => void
   getCompilation: () => PageCompilation | undefined
   getRuntimeModel: () => Record<string, unknown>
-  handleFieldChange: (payload: {
-    field: string
-    values: Record<string, unknown>
-  }) => ReturnType<PageFlowEngine['dispatch']> | undefined
-  handleRuntimeEvent: (payload: {
-    event: string
-    nodeId: string
-  }) => ReturnType<PageFlowEngine['dispatch']> | undefined
-  handleRuntimeMounted: (
-    event: PreviewRuntimeIdentity,
-  ) => ReturnType<PageFlowEngine['dispatch']> | undefined
+  handleFieldChange: (payload: import('../../runtime-host').PreviewRuntimeFieldChangeEvent) => void
+  handleFlowError: (event: PreviewRuntimeFlowDiagnosticEvent) => void
+  handleFlowProjection: (event: PreviewRuntimeFlowProjectionEvent) => void
+  handleFlowResult: (event: PreviewRuntimeFlowResultEvent) => void
+  handleFlowTrace: (event: PreviewRuntimeFlowTraceEvent) => void
+  handleRuntimeEvent: (payload: import('../../runtime-host').PreviewRuntimeComponentEvent) => void
+  handleRuntimeMounted: (event: PreviewRuntimeIdentity) => void
   handleRuntimeReady: (event: PreviewRuntimeIdentity) => void
   handleRuntimeState: (event: PreviewRuntimeStateEvent) => void
-  handleSubmit: (
-    values: Record<string, unknown>,
-  ) => ReturnType<PageFlowEngine['dispatch']> | undefined
+  handleSubmit: (event: PreviewRuntimeSubmitEvent) => void
   handleSubmitResult: (event: PreviewRuntimeSubmitResultEvent) => void
   updateRuntimeModel: (value: Record<string, unknown>) => void
 }

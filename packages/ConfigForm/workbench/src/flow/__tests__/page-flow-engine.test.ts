@@ -76,7 +76,6 @@ describe('page flow engine', () => {
 
     await expect(engine.dispatch({
       trigger: flow.trigger,
-      values,
       revision: 1,
     })).resolves.toMatchObject({ status: 'committed' })
 
@@ -98,7 +97,7 @@ describe('page flow engine', () => {
     })
     const flow = componentEventFlow({ action: 'work', projection: true })
     engine.sync({ pageKey: 'project:page-a', plans: [executionPlan(flow)] })
-    const pending = engine.dispatch({ trigger: flow.trigger, values, revision: 1 })
+    const pending = engine.dispatch({ trigger: flow.trigger, revision: 1 })
     await vi.waitFor(() => expect(release).toBeTypeOf('function'))
 
     engine.sync({ pageKey: 'project:page-b', plans: [] })
@@ -122,7 +121,7 @@ describe('page flow engine', () => {
     })
     const flow = componentEventFlow({ projection: true })
     engine.sync({ pageKey: 'project:page-a', plans: [executionPlan(flow)] })
-    await engine.dispatch({ trigger: flow.trigger, values, revision: 1 })
+    await engine.dispatch({ trigger: flow.trigger, revision: 1 })
     expect(engine.projection.value.props).toHaveProperty('result')
 
     engine.sync({ pageKey: 'project:page-a', plans: [] })
@@ -133,7 +132,19 @@ describe('page flow engine', () => {
     let values: Record<string, unknown> = {}
     const onDiagnostic = vi.fn()
     const engine = createPageFlowEngine({
-      actions: { get: () => ({ execute: () => Promise.reject(new Error('request failed')) }) },
+      actions: {
+        get: () => ({
+          descriptor: {
+            ref: 'work',
+            title: 'Failing request',
+            category: 'test',
+            parameters: [],
+            outputs: [],
+            capabilities: [],
+          },
+          execute: () => Promise.reject(new Error('request failed')),
+        }),
+      },
       readValues: () => values,
       writeValues: next => values = next,
       onDiagnostic,
@@ -142,7 +153,7 @@ describe('page flow engine', () => {
     engine.sync({ pageKey: 'project:page-a', plans: [executionPlan(flow)] })
 
     await expect(
-      engine.dispatch({ trigger: flow.trigger, values, revision: 1 }),
+      engine.dispatch({ trigger: flow.trigger, revision: 1 }),
     ).resolves.toMatchObject({ status: 'failure' })
     expect(onDiagnostic).toHaveBeenCalledTimes(1)
     expect(onDiagnostic).toHaveBeenCalledWith(expect.objectContaining({ message: 'request failed' }))

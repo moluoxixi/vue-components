@@ -22,7 +22,8 @@ ConfigForm({ model, fields, runtime? })
 - ConfigForm preprocesses plugins/registrations/readonly adapters into Renderer nodes. Removed RecursiveField, FormContext and useForm state/queue services must not return.
 - Plugins receive complete nested slots. Resolve the tree once, then attach readonly adapters using the resolved nodes including their slots; projection must not run hooks twice.
 - Core owns validateOn normalization and responsive layout. Compiler emits normalized validateOn arrays in CanonicalFieldDescriptor; Vue and Source consume them.
-- Events run in order: Design interception, configured listener, binding listener, Preview runtimeEvent. Only Canonical Flow subscriptions emit runtimeEvent.
+- Events run in order: Design interception, binding/validation bookkeeping, configured listeners, then one runtimeEvent. node.eventNames and public flows own subscriptions. Rejected configured listeners report flowError without blocking bindings or event execution.
+- ConfigFormRenderer and ConfigForm accept flows/flowActions and execute through Core createConfigFormEventRuntime. flowResult/flowError remain transient notifications; unmount cancels work and suppresses late notifications.
 - Designer Canvas receives a required runtime/dragVisual host integration. It does not compile Vue plans or render production controls. Inspector renderer is explicitly injected by the host.
 - Source defaults come only from Canonical fields. Missing defaults stay absent, bindings do not guess alternate keys, form readonly dominates field state, hidden/disabled fields are filtered, and readonly fields skip validation.
 - Source validation checks request ownership, value snapshot, projection revision and page lifetime before publishing errors or a submission.

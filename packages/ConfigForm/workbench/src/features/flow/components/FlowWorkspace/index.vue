@@ -1,363 +1,574 @@
 <script setup lang="ts">
-import type { ConfigFormFlowNode } from '@moluoxixi/config-form-core'
-import type { FlowWorkspaceEmits, FlowWorkspaceProps } from './types'
+import type {
+  ConfigFormFlowActionDescriptor,
+  ConfigFormFlowStep,
+  ConfigFormReactionCondition,
+} from '@moluoxixi/config-form-core'
+import type {
+  FlowTreeEntry,
+  FlowWorkspaceDiagnostic,
+  FlowWorkspaceEmits,
+  FlowWorkspaceExpose,
+  FlowWorkspaceProps,
+} from './types'
 import {
+  ArrowDown,
+  ArrowUp,
   CircleStop,
+  Copy,
   GitBranch,
-  Play,
   Plus,
+  Save,
   Trash2,
+  Undo2,
+  Workflow,
   Zap,
 } from '@lucide/vue'
-import { Handle, Position, VueFlow } from '@vue-flow/core'
+import { computed, nextTick, ref } from 'vue'
+import { cloneWorkbenchJson as structuredClone } from '../../../../utils'
 import { useFlowWorkspace } from './composables'
-import { WORKBENCH_FLOW_ACTION_PRESETS } from './services'
-import '@vue-flow/core/dist/style.css'
-import '@vue-flow/core/dist/theme-default.css'
+import {
+  ActionInputs,
+  ConditionEditor,
+  ReactionEditor,
+  StepPolicyEditor,
+} from './components'
 
 const props = defineProps<FlowWorkspaceProps>()
 const emit = defineEmits<FlowWorkspaceEmits>()
+const workspaceRoot = ref<HTMLElement>()
+const workspace = useFlowWorkspace({ props, onClose: () => emit('close') })
 const {
+  actionDescriptors,
   addFlow,
-  addNode,
-  commitNodeConfig,
+  addStep,
+  blocked,
+  canEdit,
+  canMove,
+  cancel,
+  changeActionDescriptor,
+  confirmClose,
+  descriptorTitle,
+  diagnostics,
+  dirty,
+  draftMetadata,
+  duplicateStep,
+  eventArguments,
+  invalidParameters,
+  fields,
   flowTriggerLabel,
-  graphEdges,
-  graphError,
-  graphNodes,
-  handleConnect,
-  handleEdgesChange,
-  handleNodesChange,
-  isNodeDeletable,
-  isValidConnection,
+  hasDraft,
   locale,
   lockedTrigger,
+  locateDiagnostic,
+  moveStep,
+  outputOptions,
+  patchMetadata,
+  patchSelectedStep,
+  removed,
+  removeStep,
+  replaceSelectedStep,
+  representable,
+  requestClose,
+  restoreRemovedFlow,
+  save,
+  saving,
+  selectedDescriptor,
+  selectedStep,
+  selectedStepId,
+  setStepInput,
+  setStepReactions,
+  stageRemoveFlow,
+  stepTitle,
+  steps,
+  treeEntries,
   triggerConflict,
-  triggerConflictMessage,
-  nodeConfigDraft,
-  patchSelected,
-  patchSelectedNode,
-  removeFlow,
-  removeNode,
-  selectedFlow,
-  selectedId,
-  selectedNode,
-  selectedNodeId,
   updateConcurrency,
-  updateErrorPolicy,
-  updateTimeout,
-} = useFlowWorkspace({ emit: (event, command) => emit(event, command), onClose: () => emit('close'), props })
+  updateFlowErrorPolicy,
+  updateFlowTimeout,
+  updateStepPolicy,
+} = workspace
 
-function nodeIcon(node: ConfigFormFlowNode) {
-  if (node.type === 'trigger')
-    return Play
-  if (node.type === 'condition')
-    return GitBranch
-  if (node.type === 'end' || node.type === 'success' || node.type === 'failure')
-    return CircleStop
-  return Zap
+defineExpose<FlowWorkspaceExpose>({ confirmClose, requestClose, save })
+
+type AddCommand = ConfigFormFlowStep['type']
+const descriptorGroups = computed(() => {
+  const groups = new Map<string, ConfigFormFlowActionDescriptor[]>()
+  actionDescriptors.value.forEach((descriptor) => {
+    const items = groups.get(descriptor.category) ?? []
+    items.push(descriptor)
+    groups.set(descriptor.category, items)
+  })
+  return [...groups].map(([category, descriptors]) => ({ category, descriptors }))
+})
+
+function addToBranch(entry: Extract<FlowTreeEntry, { entryType: 'branch' }>, type: AddCommand): void {
+  addStep(type, {
+    parentId: entry.conditionId,
+    branch: entry.branch,
+    index: entry.index,
+  })
 }
 
-// Picking a preset also seeds config.input with an editable skeleton unless
-// the node already carries an input.
-function applyActionRef(ref: unknown): void {
-  if (typeof ref !== 'string' || !ref)
+function addAtRoot(type: AddCommand): void {
+  addStep(type, { index: steps.value.length })
+}
+
+function depthStyle(depth: number): Record<string, string> {
+  return { '--flow-depth': String(depth) }
+}
+
+function stepIcon(step: ConfigFormFlowStep) {
+  if (step.type === 'condition')
+    return GitBranch
+  if (step.type === 'reaction')
+    return Zap
+  if (step.type === 'terminate')
+    return CircleStop
+  return Workflow
+}
+
+function stepTypeLabel(step: ConfigFormFlowStep): string {
+  if (step.type === 'condition')
+    return locale.value.t('flow.step.condition', 'Condition')
+  if (step.type === 'reaction')
+    return locale.value.t('flow.step.reaction', 'Update form')
+  if (step.type === 'terminate')
+    return locale.value.t('flow.step.terminate', 'Finish')
+  return locale.value.t('flow.step.action', 'Action')
+}
+
+function updateTitle(value: string): void {
+  const title = value.trim()
+  patchSelectedStep(title ? { title } : { title: undefined })
+}
+
+function updateCondition(value: ConfigFormReactionCondition): void {
+  const step = selectedStep.value
+  if (step?.type === 'condition')
+    replaceSelectedStep({ ...structuredClone(step), when: value })
+}
+
+function updateOutcome(value: unknown): void {
+  const step = selectedStep.value
+  if (step?.type === 'terminate' && (value === 'end' || value === 'success' || value === 'failure' || value === 'blocked'))
+    replaceSelectedStep({ ...structuredClone(step), outcome: value })
+}
+
+function categoryTitle(category: string): string {
+  return locale.value.t(`flow.actionCategory.${category}`, category)
+}
+
+function formatDiagnosticPath(path: FlowWorkspaceDiagnostic['path']): string {
+  if (typeof path === 'string')
+    return path
+  return path ? path.map(String).join(' / ') : ''
+}
+
+async function activateDiagnostic(diagnostic: FlowWorkspaceDiagnostic): Promise<void> {
+  const target = locateDiagnostic(diagnostic)
+  await nextTick()
+  const root = workspaceRoot.value
+  if (!root)
     return
-  const preset = WORKBENCH_FLOW_ACTION_PRESETS.find(candidate => candidate.ref === ref)
-  const config = selectedNode.value?.config
-  patchSelectedNode(preset && config?.input === undefined
-    ? { config: { ...config, input: structuredClone(preset.input) }, ref }
-    : { ref })
+  const stepElement = target.stepId
+    ? [...root.querySelectorAll<HTMLElement>('[data-step-id]')].find(element => element.dataset.stepId === target.stepId)
+    : undefined
+  if (stepElement && typeof stepElement.scrollIntoView === 'function')
+    stepElement.scrollIntoView({ block: 'nearest' })
+  if (target.parameter) {
+    const parameter = [...root.querySelectorAll<HTMLElement>('[data-parameter]')]
+      .find(element => element.dataset.parameter === target.parameter)
+    const focusTarget = parameter?.querySelector<HTMLElement>('input:not([disabled]), textarea:not([disabled]), [tabindex="0"]') ?? parameter
+    if (focusTarget) {
+      focusTarget.focus()
+      return
+    }
+  }
+  stepElement?.focus({ preventScroll: true })
 }
 </script>
 
 <template>
-  <section class="flow-workspace" :aria-label="locale.t('flow.workspace', 'Event flow workspace')">
-    <header class="flow-workspace-header">
-      <div>
-        <strong>{{ locale.t('flow.title', 'Event flow') }}</strong>
-        <small v-if="selectedFlow">{{ locale.t('flow.summary', '{nodes} nodes · {edges} edges', { nodes: selectedFlow.nodes.length, edges: selectedFlow.edges.length }) }}</small>
-        <small v-else>{{ flowTriggerLabel(lockedTrigger) }}</small>
-      </div>
+  <section ref="workspaceRoot" class="flow-workspace" :aria-label="locale.t('flow.workspace', 'Event flow workspace')">
+    <div v-if="diagnostics.length" class="flow-diagnostics" role="alert" aria-live="polite">
       <ElButton
-        v-if="!selectedFlow"
+        v-for="(diagnostic, index) in diagnostics"
+        :key="`${diagnostic.code}-${formatDiagnosticPath(diagnostic.path)}-${index}`"
+        class="flow-diagnostic"
         native-type="button"
-        :disabled="readonly || triggerConflict"
-        data-testid="add-flow"
-        :title="locale.t('flow.add', 'Add event flow')"
-        @click="addFlow"
+        text
+        @click="activateDiagnostic(diagnostic)"
       >
-        <Plus :size="14" aria-hidden="true" />
-        <span>{{ locale.t('flow.add', 'Add event flow') }}</span>
+        <span class="flow-diagnostic-code">{{ diagnostic.code }}</span>
+        <code v-if="diagnostic.path" class="flow-diagnostic-path">{{ formatDiagnosticPath(diagnostic.path) }}</code>
+        <span class="flow-diagnostic-message">{{ diagnostic.message }}</span>
       </ElButton>
-    </header>
-    <p v-if="triggerConflict" class="flow-trigger-conflict" role="alert">{{ triggerConflictMessage }}</p>
+    </div>
 
-    <div v-if="selectedFlow" class="flow-workspace-body">
-      <div v-if="selectedFlow" class="flow-editor">
-        <div class="flow-editor-toolbar">
-          <div class="flow-editor-title">
-            <strong>{{ selectedFlow.name }}</strong>
-            <code>{{ flowTriggerLabel(selectedFlow.trigger) }}</code>
-          </div>
-          <ElPopconfirm
-            :title="locale.t('flow.deleteConfirm', 'Delete this event flow?')"
-            :confirm-button-text="locale.t('flow.delete', 'Delete flow')"
-            :cancel-button-text="locale.t('action.cancel', 'Cancel')"
-            :disabled="readonly || triggerConflict"
-            @confirm="removeFlow(selectedFlow.id)"
-          >
-            <template #reference>
-              <ElButton
-                native-type="button"
-                class="is-danger"
-                :disabled="readonly"
-                :title="locale.t('flow.delete', 'Delete flow')"
-                :aria-label="locale.t('flow.delete', 'Delete flow')"
-              >
-                <Trash2 :size="14" aria-hidden="true" />
-                <span>{{ locale.t('flow.delete', 'Delete flow') }}</span>
-              </ElButton>
-            </template>
-          </ElPopconfirm>
-          <div class="flow-node-palette" role="toolbar" :aria-label="locale.t('flow.addNode', 'Add flow node')">
-            <button type="button" :disabled="readonly || triggerConflict" data-testid="add-condition" @click="addNode('condition')">
-              <GitBranch :size="14" aria-hidden="true" />{{ locale.t('flow.condition', 'Condition') }}
-            </button>
-            <button type="button" :disabled="readonly || triggerConflict" data-testid="add-reaction" @click="addNode('reaction')">
-              <Zap :size="14" aria-hidden="true" />{{ locale.t('flow.reaction', 'Update form state') }}
-            </button>
-            <button type="button" :disabled="readonly || triggerConflict" data-testid="add-action" @click="addNode('action')">
-              <Plus :size="14" aria-hidden="true" />{{ locale.t('flow.action', 'Action') }}
-            </button>
-          </div>
-        </div>
+    <div v-if="!hasDraft" class="flow-empty">
+      <GitBranch :size="26" aria-hidden="true" />
+      <strong>{{ locale.t('flow.empty.title', 'No flow configured for this event') }}</strong>
+      <span>{{ flowTriggerLabel(lockedTrigger) }}</span>
+      <ElButton type="primary" data-testid="create-first-flow" :disabled="readonly || triggerConflict" @click="addFlow">
+        <Plus :size="15" aria-hidden="true" />
+        {{ locale.t('flow.empty.action', 'Create event flow') }}
+      </ElButton>
+    </div>
 
-        <div class="flow-graph-shell" :aria-label="locale.t('flow.graph', '{name} graph', { name: selectedFlow.name })">
-          <VueFlow
-            :id="`flow-${selectedFlow.id}`"
-            class="flow-graph"
-            :nodes="graphNodes"
-            :edges="graphEdges"
-            :apply-default="false"
-            :nodes-draggable="!readonly"
-            :nodes-connectable="!readonly"
-            :elements-selectable="true"
-            :is-valid-connection="isValidConnection"
-            :min-zoom="0.35"
-            :max-zoom="1.8"
-            :snap-to-grid="true"
-            :snap-grid="[16, 16]"
-            fit-view-on-init
-            @connect="handleConnect"
-            @nodes-change="handleNodesChange"
-            @edges-change="handleEdgesChange"
-            @pane-click="selectedNodeId = undefined"
-          >
-            <template #node-flow="{ data, selected }">
-              <article
-                class="flow-node"
-                :class="[`is-${data.node.type}`, { 'is-selected': selected }]"
-                :data-node-id="data.node.id"
-                @click.stop="selectedNodeId = data.node.id"
-              >
-                <Handle v-if="data.node.type !== 'trigger'" id="input" type="target" :position="Position.Left" :connectable="!readonly" />
-                <component :is="nodeIcon(data.node)" :size="15" aria-hidden="true" />
-                <div>
-                  <span>{{ locale.t(`flow.nodeType.${data.node.type}`, data.node.type) }}</span>
-                  <strong>{{ data.title }}</strong>
-                </div>
-                <button v-if="data.deletable" type="button" :disabled="readonly || triggerConflict" :title="locale.t('flow.deleteNode', 'Delete node')" :aria-label="locale.t('flow.deleteNode', 'Delete node')" @click.stop="removeNode(data.node.id)">
-                  <Trash2 :size="12" aria-hidden="true" />
-                </button>
-                <template v-if="data.node.type === 'condition'">
-                  <Handle id="true" class="is-true" type="source" :position="Position.Right" :connectable="!readonly" />
-                  <Handle id="false" class="is-false" type="source" :position="Position.Right" :connectable="!readonly" />
-                </template>
-                <template v-else-if="!['end', 'success', 'failure'].includes(data.node.type)">
-                  <Handle id="next" class="is-next" type="source" :position="Position.Right" :connectable="!readonly" />
-                  <Handle v-if="data.node.type === 'action'" id="error" class="is-error" type="source" :position="Position.Right" :connectable="!readonly" />
-                </template>
-              </article>
-            </template>
-          </VueFlow>
-          <p v-if="graphError" class="flow-graph-error" role="alert">{{ graphError }}</p>
-        </div>
-      </div>
-
-      <aside v-if="selectedFlow" class="flow-inspector" :aria-label="locale.t('flow.inspector', 'Event flow inspector')">
-        <section>
+    <template v-else>
+      <div class="flow-workspace-body">
+        <aside class="flow-event-settings" :aria-label="locale.t('flow.settings', 'Event settings')">
           <header>
-            <strong>{{ locale.t('flow.settings', 'Event flow settings') }}</strong>
-            <code>{{ selectedFlow.version }}</code>
+            <strong>{{ locale.t('flow.settings', 'Event settings') }}</strong>
+            <span v-if="dirty" class="flow-dirty-state">{{ locale.t('flow.unsaved', 'Unsaved') }}</span>
           </header>
+
           <label>
-            <span>{{ locale.t('flow.name', 'Event flow name') }}</span>
-            <div data-flow-control="name">
-              <ElInput
-                :model-value="selectedFlow.name"
-                :disabled="readonly || triggerConflict"
-                :aria-label="locale.t('flow.name', 'Event flow name')"
-                @change="patchSelected({ name: $event })"
-              />
-            </div>
+            <span>{{ locale.t('flow.name', 'Flow name') }}</span>
+            <ElInput
+              data-flow-control="name"
+              :model-value="draftMetadata?.name"
+              :disabled="!canEdit"
+              :aria-label="locale.t('flow.name', 'Flow name')"
+              @update:model-value="patchMetadata({ name: $event })"
+            />
           </label>
+
           <div class="flow-locked-trigger" data-flow-control="locked-trigger">
-            <span>{{ locale.t('flow.trigger', 'Event source') }}</span>
-            <strong>{{ flowTriggerLabel(selectedFlow.trigger) }}</strong>
-            <code>{{ selectedFlow.trigger.kind === 'component.event' ? `${selectedFlow.trigger.nodeId}:${selectedFlow.trigger.event}` : selectedFlow.trigger.kind }}</code>
+            <span>{{ locale.t('flow.trigger', 'Event') }}</span>
+            <strong>{{ flowTriggerLabel(lockedTrigger) }}</strong>
           </div>
+
           <label>
-            <span>{{ locale.t('flow.concurrency', 'Concurrency') }}</span>
-            <ElSelect data-flow-control="concurrency" :model-value="selectedFlow.concurrency ?? 'latest'" :disabled="readonly || triggerConflict" :aria-label="locale.t('flow.concurrency', 'Concurrency')" @change="updateConcurrency">
-              <ElOption value="latest" :label="locale.t('flow.concurrency.latest', 'Latest')" />
-              <ElOption value="queue" :label="locale.t('flow.concurrency.queue', 'Queue')" />
-              <ElOption value="ignore" :label="locale.t('flow.concurrency.ignore', 'Ignore')" />
+            <span>{{ locale.t('flow.concurrency', 'Repeated events') }}</span>
+            <ElSelect :model-value="draftMetadata?.concurrency ?? 'latest'" :disabled="!canEdit" append-to="#workbench-overlays" @change="updateConcurrency">
+              <ElOption value="latest" :label="locale.t('flow.concurrency.latest', 'Run the latest')" />
+              <ElOption value="queue" :label="locale.t('flow.concurrency.queue', 'Run in order')" />
+              <ElOption value="ignore" :label="locale.t('flow.concurrency.ignore', 'Ignore while running')" />
             </ElSelect>
           </label>
+
           <label>
-            <span>{{ locale.t('flow.onError', 'On error') }}</span>
-            <ElSelect data-flow-control="error-policy" :model-value="selectedFlow.errorPolicy?.onError ?? 'end'" :disabled="readonly || triggerConflict" :aria-label="locale.t('flow.onError', 'On error')" @change="updateErrorPolicy">
-              <ElOption value="end" :label="locale.t('flow.onError.end', 'End')" />
-              <ElOption value="failure" :label="locale.t('flow.onError.failure', 'Failure branch')" />
+            <span>{{ locale.t('flow.onError', 'Unhandled error') }}</span>
+            <ElSelect :model-value="draftMetadata?.errorPolicy?.onError ?? 'failure'" :disabled="!canEdit" append-to="#workbench-overlays" @change="updateFlowErrorPolicy">
+              <ElOption value="failure" :label="locale.t('flow.onError.failure', 'Finish as failure')" />
+              <ElOption value="end" :label="locale.t('flow.onError.end', 'End the flow')" />
             </ElSelect>
           </label>
+
           <label>
-            <span>{{ locale.t('flow.timeout', 'Timeout (ms)') }}</span>
+            <span>{{ locale.t('flow.timeout', 'Flow timeout (ms)') }}</span>
             <ElInputNumber
-              :model-value="selectedFlow.errorPolicy?.timeoutMs ?? 10000"
-              :disabled="readonly || triggerConflict"
+              :model-value="draftMetadata?.errorPolicy?.timeoutMs ?? 10000"
+              :disabled="!canEdit"
               :min="0"
               :step="100"
               controls-position="right"
-              :aria-label="locale.t('flow.timeout', 'Timeout (ms)')"
-              @change="updateTimeout"
+              @change="updateFlowTimeout"
             />
           </label>
-        </section>
 
-        <section v-if="selectedNode" class="flow-node-inspector">
-          <header>
-            <strong>{{ locale.t('flow.nodeSettings', 'Node settings') }}</strong>
-            <code>{{ selectedNode.type }}</code>
+          <ElPopconfirm
+            :title="locale.t('flow.deleteConfirm', 'Remove this event flow when you save?')"
+            :confirm-button-text="locale.t('flow.delete', 'Remove flow')"
+            :cancel-button-text="locale.t('action.cancel', 'Cancel')"
+            :disabled="blocked || removed"
+            @confirm="stageRemoveFlow"
+          >
+            <template #reference>
+              <ElButton class="flow-danger-button" :disabled="blocked || removed" :title="locale.t('flow.delete', 'Remove flow')">
+                <Trash2 :size="14" aria-hidden="true" />
+                {{ locale.t('flow.delete', 'Remove flow') }}
+              </ElButton>
+            </template>
+          </ElPopconfirm>
+        </aside>
+
+        <main class="flow-step-workspace" :aria-label="locale.t('flow.steps', 'Ordered steps')">
+          <header class="flow-step-toolbar">
+            <div>
+              <strong>{{ locale.t('flow.steps', 'Ordered steps') }}</strong>
+              <span>{{ locale.t('flow.stepCount', '{count} steps', { count: steps.length }) }}</span>
+            </div>
+            <div class="flow-add-actions" role="toolbar" :aria-label="locale.t('flow.addStep', 'Add step')">
+              <ElButton data-testid="add-action" :disabled="!canEdit" @click="addAtRoot('action')"><Plus :size="14" />{{ locale.t('flow.step.action', 'Action') }}</ElButton>
+              <ElButton data-testid="add-condition" :disabled="!canEdit" @click="addAtRoot('condition')"><GitBranch :size="14" />{{ locale.t('flow.step.condition', 'Condition') }}</ElButton>
+              <ElButton data-testid="add-reaction" :disabled="!canEdit" @click="addAtRoot('reaction')"><Zap :size="14" />{{ locale.t('flow.step.reaction', 'Update form') }}</ElButton>
+              <ElButton data-testid="add-terminate" :disabled="!canEdit" @click="addAtRoot('terminate')"><CircleStop :size="14" />{{ locale.t('flow.step.terminate', 'Finish') }}</ElButton>
+            </div>
           </header>
-          <label>
-            <span>{{ locale.t('flow.nodeId', 'Node ID') }}</span>
-            <ElInput :model-value="selectedNode.id" :aria-label="locale.t('flow.nodeId', 'Node ID')" readonly />
-          </label>
-          <label v-if="selectedNode.type === 'action'">
-            <span>{{ locale.t('flow.actionRef', 'Action ref') }}</span>
-            <ElSelect
-              :model-value="selectedNode.ref ?? ''"
-              :disabled="readonly || triggerConflict"
-              :aria-label="locale.t('flow.actionRef', 'Action ref')"
-              filterable
-              allow-create
-              default-first-option
-              @update:model-value="applyActionRef"
-            >
-              <ElOption
-                v-for="preset in WORKBENCH_FLOW_ACTION_PRESETS"
-                :key="preset.ref"
-                :value="preset.ref"
-                :label="`${locale.t(`flow.action.${preset.ref}`, preset.label)} · ${preset.ref}`"
-              />
-            </ElSelect>
-          </label>
-          <label v-if="['condition', 'reaction', 'action'].includes(selectedNode.type)">
-            <span>{{ locale.t('flow.nodeConfig', 'Node config') }}</span>
-            <ElInput
-              v-model="nodeConfigDraft"
-              type="textarea"
-              :disabled="readonly || triggerConflict"
-              :aria-label="locale.t('flow.nodeConfig', 'Node config')"
-              :autosize="false"
-              spellcheck="false"
-              @blur="commitNodeConfig"
-            />
-          </label>
-          <button v-if="isNodeDeletable(selectedNode)" type="button" class="is-danger" :disabled="readonly || triggerConflict" @click="removeNode(selectedNode.id)">
-            <Trash2 :size="14" aria-hidden="true" />{{ locale.t('flow.deleteNode', 'Delete node') }}
-          </button>
-        </section>
-      </aside>
-    </div>
 
-    <div v-else class="flow-empty">
-      <GitBranch :size="24" aria-hidden="true" />
-      <strong>{{ locale.t('flow.empty.title', 'No flow configured for this event') }}</strong>
-      <button type="button" :disabled="readonly" data-testid="create-first-flow" @click="addFlow">
-        <Plus :size="14" aria-hidden="true" />{{ locale.t('flow.empty.action', 'Add flow') }}
-      </button>
-    </div>
+          <div v-if="removed" class="flow-removed-state">
+            <Trash2 :size="24" aria-hidden="true" />
+            <strong>{{ locale.t('flow.removed.title', 'Flow marked for removal') }}</strong>
+            <ElButton :disabled="readonly" @click="restoreRemovedFlow"><Undo2 :size="14" />{{ locale.t('flow.removed.undo', 'Keep flow') }}</ElButton>
+          </div>
+
+          <div v-else-if="!representable" class="flow-unrepresentable-state">
+            <GitBranch :size="24" aria-hidden="true" />
+            <strong>{{ locale.t('flow.unrepresentable.title', 'This imported graph cannot be edited as ordered steps') }}</strong>
+          </div>
+
+          <div v-else class="flow-step-tree" data-testid="step-tree">
+            <div v-if="treeEntries.length === 0" class="flow-step-empty">
+              {{ locale.t('flow.steps.empty', 'Add the first action, condition, update, or finish step.') }}
+            </div>
+
+            <template v-for="entry in treeEntries" :key="entry.entryType === 'step' ? entry.step.id : `${entry.conditionId}-${entry.branch}`">
+              <div
+                v-if="entry.entryType === 'branch'"
+                class="flow-branch-row"
+                :class="`is-${entry.branch}`"
+                :style="depthStyle(entry.depth)"
+              >
+                <span>{{ entry.branch === 'then' ? locale.t('flow.branch.then', 'Then') : locale.t('flow.branch.else', 'Otherwise') }}</span>
+                <span class="flow-branch-line" />
+                <ElDropdown
+                  trigger="click"
+                  placement="bottom-end"
+                  append-to="#workbench-overlays"
+                  :disabled="!canEdit"
+                  @command="addToBranch(entry, $event)"
+                >
+                  <ElButton text :disabled="!canEdit" :title="locale.t('flow.branch.add', 'Add step to branch')" :aria-label="locale.t('flow.branch.add', 'Add step to branch')">
+                    <Plus :size="14" aria-hidden="true" />
+                  </ElButton>
+                  <template #dropdown>
+                    <ElDropdownMenu>
+                      <ElDropdownItem command="action"><Workflow :size="14" />{{ locale.t('flow.step.action', 'Action') }}</ElDropdownItem>
+                      <ElDropdownItem command="condition"><GitBranch :size="14" />{{ locale.t('flow.step.condition', 'Condition') }}</ElDropdownItem>
+                      <ElDropdownItem command="reaction"><Zap :size="14" />{{ locale.t('flow.step.reaction', 'Update form') }}</ElDropdownItem>
+                      <ElDropdownItem command="terminate"><CircleStop :size="14" />{{ locale.t('flow.step.terminate', 'Finish') }}</ElDropdownItem>
+                    </ElDropdownMenu>
+                  </template>
+                </ElDropdown>
+              </div>
+
+              <article
+                v-else
+                class="flow-step-row"
+                :class="[`is-${entry.step.type}`, { 'is-selected': selectedStepId === entry.step.id }]"
+                :style="depthStyle(entry.depth)"
+                :data-step-id="entry.step.id"
+                tabindex="0"
+                @click="selectedStepId = entry.step.id"
+                @keydown.enter.prevent="selectedStepId = entry.step.id"
+                @keydown.space.prevent="selectedStepId = entry.step.id"
+              >
+                <span class="flow-step-order">{{ entry.index + 1 }}</span>
+                <component :is="stepIcon(entry.step)" :size="16" aria-hidden="true" />
+                <div class="flow-step-label">
+                  <span>{{ stepTypeLabel(entry.step) }}</span>
+                  <strong>{{ stepTitle(entry.step) }}</strong>
+                </div>
+                <div class="flow-step-actions">
+                  <ElButton text :disabled="!canEdit || !canMove(entry.step.id, -1)" :title="locale.t('flow.moveUp', 'Move up')" :aria-label="locale.t('flow.moveUp', 'Move up')" @click.stop="moveStep(entry.step.id, -1)"><ArrowUp :size="13" /></ElButton>
+                  <ElButton text :disabled="!canEdit || !canMove(entry.step.id, 1)" :title="locale.t('flow.moveDown', 'Move down')" :aria-label="locale.t('flow.moveDown', 'Move down')" @click.stop="moveStep(entry.step.id, 1)"><ArrowDown :size="13" /></ElButton>
+                  <ElButton text :disabled="!canEdit" :title="locale.t('flow.duplicateStep', 'Duplicate step')" :aria-label="locale.t('flow.duplicateStep', 'Duplicate step')" @click.stop="duplicateStep(entry.step.id)"><Copy :size="13" /></ElButton>
+                  <ElButton text :disabled="!canEdit" :title="locale.t('flow.deleteStep', 'Delete step')" :aria-label="locale.t('flow.deleteStep', 'Delete step')" @click.stop="removeStep(entry.step.id)"><Trash2 :size="13" /></ElButton>
+                </div>
+              </article>
+            </template>
+          </div>
+        </main>
+
+        <aside class="flow-step-inspector" :aria-label="locale.t('flow.inspector', 'Step settings')">
+          <template v-if="selectedStep && !removed">
+            <header>
+              <div>
+                <span>{{ stepTypeLabel(selectedStep) }}</span>
+                <strong>{{ stepTitle(selectedStep) }}</strong>
+              </div>
+            </header>
+
+            <section class="flow-inspector-group">
+              <label>
+                <span>{{ locale.t('flow.step.title', 'Step label') }}</span>
+                <ElInput :model-value="selectedStep.title ?? ''" :disabled="!canEdit" :aria-label="locale.t('flow.step.title', 'Step label')" @change="updateTitle" />
+              </label>
+            </section>
+
+            <section v-if="selectedStep.type === 'action'" class="flow-inspector-group">
+              <label>
+                <span>{{ locale.t('flow.action.choose', 'Action') }}</span>
+                <ElSelect :model-value="selectedStep.ref" :disabled="!canEdit" filterable append-to="#workbench-overlays" @change="changeActionDescriptor">
+                  <ElOptionGroup v-for="group in descriptorGroups" :key="group.category" :label="categoryTitle(group.category)">
+                    <ElOption v-for="descriptor in group.descriptors" :key="descriptor.ref" :value="descriptor.ref" :label="descriptorTitle(descriptor)" />
+                  </ElOptionGroup>
+                </ElSelect>
+              </label>
+              <ActionInputs
+                v-if="selectedDescriptor"
+                :model-value="selectedStep.input"
+                :descriptor="selectedDescriptor"
+                :disabled="!canEdit"
+                :invalid-parameters="invalidParameters"
+                :fields="fields"
+                :event-arguments="eventArguments"
+                :outputs="outputOptions"
+                :variables="sourceCatalog?.variables"
+                :data-sources="sourceCatalog?.dataSources"
+                :locale="locale"
+                @update:model-value="setStepInput"
+              />
+              <p v-else class="flow-inline-error" role="alert">{{ locale.t('flow.validation.actionUnavailable', 'Choose an available action.') }}</p>
+            </section>
+
+            <section v-else-if="selectedStep.type === 'condition'" class="flow-inspector-group">
+              <ConditionEditor
+                :model-value="selectedStep.when"
+                :disabled="!canEdit"
+                :fields="fields"
+                :event-arguments="eventArguments"
+                :outputs="outputOptions"
+                :locale="locale"
+                @update:model-value="updateCondition"
+              />
+            </section>
+
+            <section v-else-if="selectedStep.type === 'reaction'" class="flow-inspector-group">
+              <ReactionEditor
+                :model-value="selectedStep.reactions"
+                :disabled="!canEdit"
+                :fields="fields"
+                :event-arguments="eventArguments"
+                :outputs="outputOptions"
+                :locale="locale"
+                @update:model-value="setStepReactions"
+              />
+            </section>
+
+            <section v-else-if="selectedStep.type === 'terminate'" class="flow-inspector-group">
+              <label>
+                <span>{{ locale.t('flow.outcome', 'Flow outcome') }}</span>
+                <ElSelect :model-value="selectedStep.outcome" :disabled="!canEdit" append-to="#workbench-overlays" @change="updateOutcome">
+                  <ElOption value="end" :label="locale.t('flow.outcome.end', 'End')" />
+                  <ElOption value="success" :label="locale.t('flow.outcome.success', 'Success')" />
+                  <ElOption value="failure" :label="locale.t('flow.outcome.failure', 'Failure')" />
+                  <ElOption value="blocked" :label="locale.t('flow.outcome.blocked', 'Blocked')" />
+                </ElSelect>
+              </label>
+            </section>
+
+            <section v-if="selectedStep.type === 'action' || selectedStep.type === 'reaction'" class="flow-inspector-group">
+              <strong>{{ locale.t('flow.policy.title', 'Execution policy') }}</strong>
+              <StepPolicyEditor
+                :model-value="selectedStep.policy"
+                :disabled="!canEdit"
+                :fields="fields"
+                :event-arguments="eventArguments"
+                :outputs="outputOptions"
+                :locale="locale"
+                @update:model-value="updateStepPolicy"
+              />
+            </section>
+          </template>
+          <div v-else class="flow-inspector-empty">
+            <Workflow :size="22" aria-hidden="true" />
+            <span>{{ locale.t('flow.inspector.empty', 'Select a step to edit it.') }}</span>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="flow-workspace-footer">
+        <span class="flow-save-state">
+          {{ saving ? locale.t('flow.saving', 'Saving...') : dirty ? locale.t('flow.unsavedChanges', 'Unsaved changes') : locale.t('flow.noChanges', 'No changes') }}
+        </span>
+        <ElButton data-testid="cancel-flow" :disabled="saving" @click="cancel">
+          {{ locale.t('action.cancel', 'Cancel') }}
+        </ElButton>
+        <ElButton
+          type="primary"
+          data-testid="save-flow"
+          :loading="saving"
+          :disabled="saving || blocked || !dirty || (!representable && !removed)"
+          @click="save"
+        >
+          <Save :size="14" aria-hidden="true" />
+          {{ locale.t('flow.save', 'Save flow') }}
+        </ElButton>
+      </footer>
+    </template>
   </section>
 </template>
 
 <style scoped>
-.flow-workspace { display: grid; height: 100%; min-height: 0; grid-template-rows: 44px minmax(0, 1fr); color: var(--wb-text); background: var(--wb-surface); }
-.flow-workspace-header { display: flex; min-width: 0; padding: 7px 10px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--wb-separator); }
-.flow-workspace-header > div:first-child { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
-.flow-workspace-header small { color: var(--wb-muted); font-size: 10px; }
-.flow-trigger-conflict { margin: 0; padding: 8px 10px; color: var(--wb-danger); border-bottom: 1px solid var(--wb-danger); background: var(--wb-danger-soft); font-size: 11px; }
-.flow-workspace button { display: inline-flex; min-height: 28px; padding: 0 8px; align-items: center; justify-content: center; gap: 5px; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; background: var(--wb-bg); cursor: pointer; white-space: nowrap; }
-.flow-workspace button:hover:not(:disabled), .flow-list-item.is-active { border-color: var(--wb-accent); background: var(--wb-hover); }
-.flow-workspace button:disabled { cursor: default; opacity: .5; }
-.flow-workspace-body { position: relative; display: grid; min-width: 0; min-height: 0; grid-template-columns: minmax(320px, 1fr) 248px; }
-.flow-editor { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
-.flow-editor-toolbar { display: flex; min-width: 0; min-height: 48px; padding: 7px 9px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-separator); }
-.flow-editor-title { display: grid; min-width: 0; }
-.flow-editor-title strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.flow-editor-title code { color: var(--wb-muted); font-size: 11px; }
-.flow-node-palette { display: flex; min-width: 0; overflow-x: auto; gap: 5px; }
-.flow-node-palette button { flex: 0 0 auto; font-size: 11px; }
-.flow-editor-toolbar > .el-popconfirm { flex: 0 0 auto; }
-.flow-graph-shell { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--wb-bg); }
-.flow-graph { width: 100%; height: 100%; background: var(--wb-bg); }
-.flow-graph :deep(.vue-flow__pane) { cursor: default; }
-.flow-graph :deep(.vue-flow__edge-path) { stroke: var(--wb-control-border); stroke-width: 1.5; }
-.flow-graph :deep(.vue-flow__edge.is-true .vue-flow__edge-path) { stroke: #35a66f; }
-.flow-graph :deep(.vue-flow__edge.is-false .vue-flow__edge-path), .flow-graph :deep(.vue-flow__edge.is-error .vue-flow__edge-path) { stroke: var(--wb-danger); }
-.flow-graph :deep(.vue-flow__edge-textbg) { fill: var(--wb-elevated); }
-.flow-graph :deep(.vue-flow__edge-text) { fill: var(--wb-muted); font-size: 10px; }
-.flow-graph :deep(.vue-flow__node) { width: 176px; }
-.flow-node { position: relative; display: grid; width: 176px; min-height: 62px; grid-template-columns: 22px minmax(0, 1fr) 22px; padding: 9px 7px; align-items: center; gap: 6px; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 6px; background: var(--wb-elevated); box-shadow: 0 5px 14px rgb(0 0 0 / 18%); }
-.flow-node.is-selected { border-color: var(--wb-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-accent) 24%, transparent), 0 7px 18px rgb(0 0 0 / 20%); }
-.flow-node.is-trigger { border-left: 3px solid var(--wb-accent); }
-.flow-node.is-condition { border-left: 3px solid #d49a22; }
-.flow-node.is-end, .flow-node.is-success { border-left: 3px solid #35a66f; }
-.flow-node.is-failure { border-left: 3px solid var(--wb-danger); }
-.flow-node > div { display: grid; min-width: 0; gap: 1px; }
-.flow-node > div span { color: var(--wb-muted); font-size: 11px; text-transform: uppercase; }
-.flow-node > div strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.flow-node > button { width: 22px; min-height: 22px; padding: 0; color: var(--wb-muted); border-color: transparent; background: transparent; }
-.flow-node :deep(.vue-flow__handle) { width: 9px; height: 9px; background: var(--wb-accent); border: 2px solid var(--wb-elevated); }
-.flow-node :deep(.vue-flow__handle.is-true) { top: 34%; background: #35a66f; }
-.flow-node :deep(.vue-flow__handle.is-false) { top: 68%; background: var(--wb-danger); }
-.flow-node :deep(.vue-flow__handle.is-next) { top: 50%; }
-.flow-node :deep(.vue-flow__handle.is-error) { top: 76%; background: var(--wb-danger); }
-.flow-graph-error { position: absolute; z-index: 5; right: 10px; bottom: 10px; max-width: min(420px, calc(100% - 20px)); margin: 0; padding: 7px 9px; color: #ffd6d6; border: 1px solid color-mix(in srgb, var(--wb-danger) 72%, transparent); border-radius: 5px; background: color-mix(in srgb, var(--wb-danger) 24%, var(--wb-elevated)); font-size: 11px; }
-.flow-inspector { min-width: 0; overflow: auto; border-left: 1px solid var(--wb-separator); background: var(--wb-surface); }
-.flow-inspector section { display: grid; padding: 10px; gap: 9px; border-bottom: 1px solid var(--wb-separator); }
-.flow-inspector section > header { display: flex; align-items: center; justify-content: space-between; }
-.flow-inspector section > header strong { font-size: 11px; }
-.flow-inspector code { color: var(--wb-muted); font-size: 11px; }
-.flow-inspector label { display: grid; min-width: 0; gap: 4px; color: var(--wb-muted); font-size: 10px; }
-.flow-inspector :deep(.el-input), .flow-inspector :deep(.el-select), .flow-inspector :deep(.el-input-number) { width: 100%; }
-.flow-inspector :deep(.el-textarea__inner) { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.45; }
-.flow-inspector button.is-danger { color: #ffb9b9; border-color: color-mix(in srgb, var(--wb-danger) 70%, transparent); background: color-mix(in srgb, var(--wb-danger) 14%, transparent); }
-.flow-empty { display: grid; min-height: 180px; place-content: center; justify-items: center; gap: 10px; padding: 20px; text-align: center; }
-.flow-empty > svg { color: var(--wb-muted); }
+.flow-workspace { display: grid; width: 100%; height: 100%; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; color: var(--wb-text); background: var(--wb-surface); }
+.flow-diagnostics { max-height: 92px; overflow: auto; padding: 7px 12px; border-bottom: 1px solid color-mix(in srgb, var(--wb-danger) 56%, var(--wb-separator)); background: var(--wb-danger-soft); }
+.flow-diagnostic.el-button { width: 100%; height: auto; min-height: 24px; margin: 0; padding: 3px 4px; justify-content: flex-start; color: var(--wb-danger); font-size: 11px; text-align: left; white-space: normal; }
+.flow-diagnostic.el-button + .flow-diagnostic.el-button { margin-top: 3px; }
+.flow-diagnostic :deep(> span) { display: flex; min-width: 0; align-items: baseline; flex-wrap: wrap; gap: 4px 7px; }
+.flow-diagnostic-code { flex: 0 0 auto; font-weight: 700; }
+.flow-diagnostic-path { color: inherit; font-size: 10px; overflow-wrap: anywhere; }
+.flow-diagnostic-message { min-width: 0; overflow-wrap: anywhere; }
+.flow-empty, .flow-removed-state, .flow-unrepresentable-state { display: grid; min-height: 220px; place-content: center; justify-items: center; gap: 10px; padding: 24px; text-align: center; }
+.flow-empty > svg, .flow-removed-state > svg, .flow-unrepresentable-state > svg { color: var(--wb-muted); }
+.flow-empty > span { color: var(--wb-muted); font-size: 11px; }
+.flow-workspace-body { display: grid; min-width: 0; min-height: 0; grid-template-columns: 220px minmax(360px, 1fr) 360px; }
+.flow-event-settings, .flow-step-inspector { min-width: 0; min-height: 0; overflow: auto; background: var(--wb-surface); }
+.flow-event-settings { display: flex; padding: 12px; flex-direction: column; gap: 13px; border-right: 1px solid var(--wb-separator); }
+.flow-event-settings > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.flow-event-settings > header strong { font-size: 12px; }
+.flow-dirty-state { color: var(--wb-accent); font-size: 10px; }
+.flow-event-settings > label, .flow-inspector-group > label { display: grid; min-width: 0; gap: 5px; }
+.flow-event-settings > label > span, .flow-inspector-group > label > span, .flow-locked-trigger > span { color: var(--wb-muted); font-size: 10px; }
+.flow-event-settings :deep(.el-select), .flow-event-settings :deep(.el-input-number), .flow-step-inspector :deep(.el-select), .flow-step-inspector :deep(.el-input-number) { width: 100%; }
+.flow-locked-trigger { display: grid; gap: 4px; }
+.flow-locked-trigger strong { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.flow-danger-button { margin-top: auto; color: var(--wb-danger); border-color: color-mix(in srgb, var(--wb-danger) 55%, var(--wb-control-border)); }
+.flow-step-workspace { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); background: var(--wb-bg); }
+.flow-step-toolbar { display: flex; min-width: 0; padding: 9px 12px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-separator); background: var(--wb-surface); }
+.flow-step-toolbar > div:first-child { display: grid; min-width: 0; }
+.flow-step-toolbar strong { font-size: 12px; }
+.flow-step-toolbar span { color: var(--wb-muted); font-size: 10px; }
+.flow-add-actions { display: flex; min-width: 0; overflow-x: auto; gap: 5px; }
+.flow-add-actions .el-button { flex: 0 0 auto; margin: 0; padding: 0 8px; font-size: 11px; }
+.flow-step-tree { min-width: 0; min-height: 0; overflow: auto; padding: 14px; }
+.flow-step-empty { display: grid; min-height: 140px; place-content: center; color: var(--wb-muted); font-size: 11px; text-align: center; }
+.flow-step-row, .flow-branch-row { margin-left: min(calc(var(--flow-depth) * 18px), 45%); }
+.flow-step-row { position: relative; display: grid; min-width: 250px; min-height: 52px; grid-template-columns: 24px 22px minmax(0, 1fr) auto; padding: 7px 8px; align-items: center; gap: 7px; border: 1px solid var(--wb-control-border); border-left: 3px solid var(--wb-accent); border-radius: 6px; background: var(--wb-elevated); cursor: pointer; }
+.flow-step-row + .flow-step-row, .flow-branch-row + .flow-step-row { margin-top: 7px; }
+.flow-step-row.is-condition { border-left-color: #c58c20; }
+.flow-step-row.is-reaction { border-left-color: #3b8d72; }
+.flow-step-row.is-terminate { border-left-color: var(--wb-muted); }
+.flow-step-row.is-selected { border-color: var(--wb-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-accent) 20%, transparent); }
+.flow-step-order { color: var(--wb-muted); font-size: 10px; text-align: center; }
+.flow-step-label { display: grid; min-width: 0; gap: 1px; }
+.flow-step-label span { color: var(--wb-muted); font-size: 10px; text-transform: uppercase; }
+.flow-step-label strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.flow-step-actions { display: flex; opacity: .7; }
+.flow-step-row:hover .flow-step-actions, .flow-step-row.is-selected .flow-step-actions, .flow-step-actions:focus-within { opacity: 1; }
+.flow-step-actions .el-button { width: 25px; min-height: 25px; margin: 0; padding: 0; }
+.flow-branch-row { display: flex; min-width: 220px; height: 34px; align-items: center; gap: 7px; color: #328362; }
+.flow-branch-row.is-else { color: #a16c20; }
+.flow-branch-row > span:first-child { flex: 0 0 auto; font-size: 10px; font-weight: 650; text-transform: uppercase; }
+.flow-branch-line { height: 1px; flex: 1 1 auto; background: currentColor; opacity: .35; }
+.flow-branch-row .el-button { width: 26px; min-height: 26px; padding: 0; color: currentColor; }
+.flow-step-inspector { border-left: 1px solid var(--wb-separator); }
+.flow-step-inspector > header { padding: 11px 12px; border-bottom: 1px solid var(--wb-separator); }
+.flow-step-inspector > header > div { display: grid; gap: 2px; }
+.flow-step-inspector > header span { color: var(--wb-muted); font-size: 10px; text-transform: uppercase; }
+.flow-step-inspector > header strong { font-size: 12px; overflow-wrap: anywhere; }
+.flow-inspector-group { display: grid; min-width: 0; padding: 12px; gap: 10px; border-bottom: 1px solid var(--wb-separator); }
+.flow-inspector-group > strong { font-size: 11px; }
+.flow-inspector-empty { display: grid; min-height: 180px; place-content: center; justify-items: center; gap: 8px; padding: 20px; color: var(--wb-muted); font-size: 11px; text-align: center; }
+.flow-inline-error { margin: 0; color: var(--wb-danger); font-size: 11px; }
+.flow-workspace-footer { display: flex; min-height: 52px; padding: 9px 12px; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--wb-separator); background: var(--wb-elevated); }
+.flow-save-state { margin-right: auto; color: var(--wb-muted); font-size: 10px; }
 
-@media (max-width: 900px) {
-  .flow-workspace-body { grid-template-columns: minmax(280px, 1fr); }
-  .flow-inspector { position: absolute; z-index: 10; right: 0; bottom: 0; width: min(260px, 80%); max-height: calc(100% - 93px); border-top: 1px solid var(--wb-separator); box-shadow: -10px 0 30px rgb(0 0 0 / 22%); }
-  .flow-editor-toolbar { align-items: flex-start; flex-direction: column; }
+@media (max-width: 1050px) {
+  .flow-workspace-body { grid-template-columns: 210px minmax(320px, 1fr); overflow: auto; }
+  .flow-step-inspector { grid-column: 1 / -1; min-height: 260px; max-height: 360px; border-top: 1px solid var(--wb-separator); border-left: 0; }
 }
 
-@media (max-width: 620px) {
-  .flow-workspace-body { grid-template-columns: minmax(0, 1fr); }
-  .flow-node-palette { width: 100%; }
-  .flow-node-palette button { flex: 1 0 auto; }
-  .flow-inspector { right: 0; left: 0; box-sizing: border-box; width: 100%; max-height: 44%; border-left: 0; }
+@media (max-width: 680px) {
+  .flow-workspace-body { display: block; overflow: auto; }
+  .flow-event-settings, .flow-step-workspace, .flow-step-inspector { min-height: 260px; overflow: visible; border: 0; border-bottom: 1px solid var(--wb-separator); }
+  .flow-step-toolbar { align-items: flex-start; flex-direction: column; }
+  .flow-add-actions { width: 100%; }
+  .flow-step-tree { overflow: visible; }
+  .flow-step-actions { opacity: 1; }
+  .flow-workspace-footer { position: sticky; z-index: 2; bottom: 0; }
 }
 </style>

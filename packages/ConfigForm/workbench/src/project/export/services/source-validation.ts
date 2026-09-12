@@ -10,7 +10,7 @@ function collectFieldValidation(
 ): Record<string, StandaloneSourceFieldValidation> {
   for (const node of nodes) {
     if (node.kind === 'field') {
-      target[node.field] = {
+      target[node.id] = {
         ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
         validateOn: [...node.validateOn],
       }
@@ -24,25 +24,29 @@ function collectFieldValidation(
 
 export function createStandaloneValidationRuntimeSource(nodes: StandaloneSourceNode[]): string {
   const fields = collectFieldValidation(nodes)
-  return `import type { RuleCustomValidator, RuleSet, RuleValidationResult } from '@moluoxixi/zod3-to-rule'
+  return `import type { ConfigFormFieldValidator } from '../../runtime/headless'
+import type { CompiledRuleSet, RuleCustomValidator, RuleSet } from '@moluoxixi/zod3-to-rule'
 import { compileRules } from '@moluoxixi/zod3-to-rule'
 
 export type GeneratedValidationTrigger = 'submit' | 'blur' | 'change'
 export type GeneratedFieldValidation = { validation?: RuleSet, validateOn: GeneratedValidationTrigger[] }
+export interface GeneratedFieldRuntimeValidation {
+  validateOn: GeneratedValidationTrigger[]
+  required?: boolean
+  requiredMessage?: string
+  schema?: CompiledRuleSet['schema']
+  validator?: ConfigFormFieldValidator
+}
 
 export const fieldValidation = ${scriptJson(fields, 2)} as Record<string, GeneratedFieldValidation>
 const customValidators: Record<string, RuleCustomValidator> = Object.create(null)
+const compiledFields = new Map<string, GeneratedFieldRuntimeValidation>()
 
 export function registerFieldValidator(key: string, validator: RuleCustomValidator): void {
   if (!key.trim() || typeof validator !== 'function')
     throw new Error('Field validator keys must be non-empty and executable.')
   customValidators[key] = validator
-}
-
-function validationMessages(result: RuleValidationResult): string[] {
-  if (!result)
-    return []
-  return Array.isArray(result) ? result.filter(Boolean) : [result]
+  compiledFields.clear()
 }
 
 function ruleContext(ruleSet: RuleSet): { custom: Record<string, RuleCustomValidator> } {
@@ -54,48 +58,31 @@ function ruleContext(ruleSet: RuleSet): { custom: Record<string, RuleCustomValid
   return { custom }
 }
 
-export async function validateField(field: string, values: Record<string, unknown>): Promise<string[]> {
-  const ruleSet = fieldValidation[field]?.validation
-  if (!ruleSet)
-    return []
-  try {
-    const compiled = compileRules(ruleSet, ruleContext(ruleSet))
-    const diagnostics = compiled.diagnostics
-      .filter(item => item.severity === 'error')
-      .map(item => item.message)
-    if (diagnostics.length)
-      return diagnostics
-    const parsed = await compiled.schema.safeParseAsync(values[field])
-    if (!parsed.success)
-      return parsed.error.issues.map(issue => issue.message)
-    return compiled.validator
-      ? validationMessages(await compiled.validator(parsed.data, values))
-      : []
+export function resolveFieldValidation(nodeId: string): GeneratedFieldRuntimeValidation {
+  const current = compiledFields.get(nodeId)
+  if (current)
+    return current
+  const descriptor = fieldValidation[nodeId]
+  if (!descriptor)
+    throw new Error(\`Unknown generated field validation: \${nodeId}\`)
+  if (!descriptor.validation) {
+    const empty = { validateOn: [...descriptor.validateOn] }
+    compiledFields.set(nodeId, empty)
+    return empty
   }
-  catch (error) {
-    return [error instanceof Error ? error.message : String(error)]
+  const compiled = compileRules(descriptor.validation, ruleContext(descriptor.validation))
+  const errors = compiled.diagnostics.filter(item => item.severity === 'error')
+  if (errors.length)
+    throw new Error(errors.map(item => item.message).join('; '))
+  const result: GeneratedFieldRuntimeValidation = {
+    validateOn: [...descriptor.validateOn],
+    ...(compiled.required === undefined ? {} : { required: compiled.required }),
+    ...(compiled.requiredMessage === undefined ? {} : { requiredMessage: compiled.requiredMessage }),
+    schema: compiled.schema,
+    ...(compiled.validator ? { validator: compiled.validator } : {}),
   }
-}
-
-export async function validateFieldForTrigger(
-  field: string,
-  trigger: GeneratedValidationTrigger,
-  values: Record<string, unknown>,
-): Promise<string[] | undefined> {
-  if (!fieldValidation[field]?.validateOn.includes(trigger))
-    return undefined
-  return validateField(field, values)
-}
-
-export async function validateFields(
-  fields: readonly string[],
-  values: Record<string, unknown>,
-): Promise<Record<string, string[]>> {
-  const entries = await Promise.all([...new Set(fields)].map(async field => [
-    field,
-    await validateField(field, values),
-  ] as const))
-  return Object.fromEntries(entries)
+  compiledFields.set(nodeId, result)
+  return result
 }
 `
 }

@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormMeta } from './meta'
 import type {
   ConfigFormErrors,
@@ -5,10 +6,14 @@ import type {
   ConfigFormValidateTrigger,
   ConfigFormValues,
 } from './props'
+import type { ConfigFormFieldAddress } from './scope'
 
 export interface ConfigFormFieldChangePayload<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 被更新的字段名。 */
   field: ConfigFormFieldKey<TValues> | string
+  /** Scoped controllers include the exact field instance identity. */
+  address?: ConfigFormFieldAddress
+  scope?: ConfigFormScopePath
   /** 本次写入的字段值。 */
   value: unknown
   /** 写入后的完整表单值。 */
@@ -16,7 +21,7 @@ export interface ConfigFormFieldChangePayload<TValues extends ConfigFormValues =
 }
 
 export interface ConfigFormFieldChangeRequest<TValues extends ConfigFormValues = ConfigFormValues> {
-  /** 被更新的字段名。 */
+  /** 被更新的根字段名。 */
   field: ConfigFormFieldKey<TValues> | string
   /** 写入根表单模型的新字段值。 */
   value: unknown

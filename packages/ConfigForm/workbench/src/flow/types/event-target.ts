@@ -5,4 +5,5 @@ export interface FlowEventTarget {
   eventLabel: string
   nodeId: string
   nodeLabel: string
+  field?: string
 }

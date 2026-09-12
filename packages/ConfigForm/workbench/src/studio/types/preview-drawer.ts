@@ -1,12 +1,28 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type {
+  ConfigFormDataSourceHost,
+  ConfigFormFlow,
+  ConfigFormFlowActionRegistry,
+  ConfigFormFlowDiagnostic,
+  ConfigFormFlowTraceEvent,
+  ConfigFormReactionProjection,
+} from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { WorkbenchAdapterId } from '../../adapters'
-import type { RuntimeHostRuntimeStatePayload } from '../../runtime-host'
+import type {
+  PreviewRuntimeComponentEvent,
+  PreviewRuntimeFieldChangeEvent,
+  PreviewRuntimeFlowDiagnosticEvent,
+  PreviewRuntimeFlowProjectionEvent,
+  PreviewRuntimeFlowResultEvent,
+  PreviewRuntimeFlowTraceEvent,
+  RuntimeHostRuntimeStatePayload,
+} from '../../runtime-host'
 import type {
   PagePreviewProjection,
   PreviewRuntimeIdentity,
   PreviewRuntimeStateEvent,
+  PreviewRuntimeSubmitEvent,
   PreviewRuntimeSubmitResultEvent,
   PreviewSubmission,
 } from '../../session'
@@ -17,7 +33,12 @@ export interface PreviewDrawerProps {
   adapter?: WorkbenchAdapterId
   compilation?: PageCompilation
   configError?: string
+  dataSourceHost?: ConfigFormDataSourceHost
   expanded?: boolean
+  flowActions?: ConfigFormFlowActionRegistry
+  flowDiagnostics?: readonly ConfigFormFlowDiagnostic[]
+  flowTrace?: readonly ConfigFormFlowTraceEvent[]
+  flows?: readonly ConfigFormFlow[]
   lastSubmission?: PreviewSubmission
   locale?: DesignerLocaleOptions
   namespace?: string
@@ -33,13 +54,17 @@ export interface PreviewDrawerEmits {
   'clearSubmission': []
   'close': []
   'error': [error: unknown]
-  'fieldChange': [payload: { field: string, values: Record<string, unknown> }]
+  'fieldChange': [payload: PreviewRuntimeFieldChangeEvent]
+  'flowError': [event: PreviewRuntimeFlowDiagnosticEvent]
+  'flowProjection': [event: PreviewRuntimeFlowProjectionEvent]
+  'flowResult': [event: PreviewRuntimeFlowResultEvent]
+  'flowTrace': [event: PreviewRuntimeFlowTraceEvent]
   'message': [message: string]
   'ready': [event: PreviewRuntimeIdentity]
-  'runtimeEvent': [payload: { event: string, nodeId: string }]
+  'runtimeEvent': [payload: PreviewRuntimeComponentEvent]
   'runtimeMounted': [event: PreviewRuntimeIdentity]
   'runtimeState': [event: PreviewRuntimeStateEvent]
-  'submit': [values: Record<string, unknown>]
+  'submit': [event: PreviewRuntimeSubmitEvent]
   'submitResult': [event: PreviewRuntimeSubmitResultEvent]
   'update:expanded': [expanded: boolean]
   'update:viewport': [viewport: PreviewViewport]

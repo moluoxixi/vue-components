@@ -8,6 +8,7 @@ import type {
   ProjectOperation,
   ProjectTransaction,
   ProjectTransactionResult,
+  ProjectTransactionSuccess,
 } from '../../../types'
 import { Immer } from 'immer'
 import { failure, TransactionError } from '../errors'
@@ -19,6 +20,7 @@ import {
 } from '../validation'
 import { applyOperation } from './apply-operation'
 import { hasSemanticChanges, normalizeNodeChanges, semanticallyEqual } from './changes'
+import { publishProjectTransactionSuccess } from './publication'
 
 const projectDocumentImmer = new Immer({ autoFreeze: false })
 
@@ -152,7 +154,7 @@ function applyProjectChange(
       return { success: false, document, diagnostics: validation }
   }
 
-  return {
+  const result: ProjectTransactionSuccess = {
     success: true,
     changed: true,
     document: draftCandidate,
@@ -167,4 +169,5 @@ function applyProjectChange(
     changedNodeIds: [...changedNodeIds],
     changedNodeChanges: normalizeNodeChanges(changedNodeChanges),
   }
+  return validateDocument ? publishProjectTransactionSuccess(document, result) : result
 }

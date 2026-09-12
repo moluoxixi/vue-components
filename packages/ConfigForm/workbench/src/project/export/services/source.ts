@@ -6,11 +6,13 @@ import type {
   CanonicalSourceLibraryBinding,
 } from '../types'
 import type { StandaloneSourceProject } from '../types/source'
+import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
 import { normalizeProjectPath } from '../../utils'
+import { collectSourceActionBindings } from './source-action-bindings'
 import { canonicalSourcePage, createCanonicalSourceRegistry, textFile } from './source-canonical'
 import { createStandaloneFlowRuntimeSource } from './source-flow'
 import { collectSourceLibraries } from './source-libraries'
-import { appSource } from './source-page'
+import { appSource, standalonePageRuntimeSource } from './source-page'
 import { assertPortableNode } from './source-portability'
 import {
   canonicalProjectPackage,
@@ -26,6 +28,7 @@ import {
 import { createStandaloneValidationRuntimeSource } from './source-validation'
 
 export { createStandaloneFlowRuntimeSource, createStandaloneValidationRuntimeSource }
+export { SourceActionBindingError } from './source-action-bindings'
 
 /** Generate a complete standalone Vue project from one indivisible compilation. */
 export function createCanonicalProjectSourceExport(
@@ -39,6 +42,10 @@ export function createCanonicalProjectSourceExport(
   ) {
     throw new Error('Standalone Source resolver does not match the ProjectCompilation Registry identity.')
   }
+  const actionBindings = collectSourceActionBindings(
+    compilation.ir.pageOrder.map(pageId => compilation.ir.pagesById[pageId] as CanonicalPageIR),
+    resolver,
+  )
 
   const pages = compilation.ir.pageOrder.map((pageId) => {
     const page = compilation.ir.pagesById[pageId]
@@ -56,6 +63,16 @@ export function createCanonicalProjectSourceExport(
   const pageDirectories = uniquePageDirectories(project)
   const libraries = new Map<string, CanonicalSourceLibraryBinding>()
   const files: Record<ProjectPath, WorkspaceFile> = {}
+  for (const [path, content] of Object.entries(getConfigFormRuntimeSources())) {
+    const language = path.endsWith('.vue')
+      ? 'vue'
+      : path.endsWith('.scss') ? 'scss' : 'typescript'
+    files[normalizeProjectPath(`src/runtime/${path}`)] = textFile(content, language)
+  }
+  files[normalizeProjectPath('src/runtime/source-page.ts')] = textFile(standalonePageRuntimeSource(), 'typescript')
+  files[normalizeProjectPath('src/actions/index.ts')] = textFile(actionBindings.module, 'typescript')
+  for (const [path, content] of Object.entries(actionBindings.files))
+    files[normalizeProjectPath(path)] = textFile(content, 'typescript')
 
   pages.forEach((page) => {
     page.root.forEach(node => assertPortableNode(node, registry))
@@ -77,7 +94,7 @@ export function createCanonicalProjectSourceExport(
 
   const entry = normalizeProjectPath('src/main.ts')
   files[normalizeProjectPath('index.html')] = textFile(standaloneHtml(project.name), 'html')
-  files[normalizeProjectPath('package.json')] = textFile(canonicalProjectPackage(project.name, libraries), 'json')
+  files[normalizeProjectPath('package.json')] = textFile(canonicalProjectPackage(project.name, libraries, actionBindings.dependencies), 'json')
   files[normalizeProjectPath('src/App.vue')] = textFile(projectAppSource(), 'vue')
   files[normalizeProjectPath('src/router.ts')] = textFile(projectRouterSource(project, pageDirectories), 'typescript')
   files[entry] = textFile(mainSource(libraries, true), 'typescript')

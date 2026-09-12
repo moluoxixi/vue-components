@@ -1,12 +1,3 @@
-import type { ConfigFormFlow, ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
-import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { FlowEventTarget } from '../../../../../flow'
+import type { FlowEditorProps } from '../../../types'
 
-export interface FlowWorkspaceProps {
-  eventTargets?: FlowEventTarget[]
-  flows: ConfigFormFlow[]
-  initialTrigger: ConfigFormFlowTrigger
-  locale?: DesignerLocaleOptions
-  pageId: string
-  readonly?: boolean
-}
+export type FlowWorkspaceProps = FlowEditorProps

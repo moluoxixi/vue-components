@@ -59,6 +59,7 @@ function canonicalSourceNode(
     flowEvents: [...(node.flowEvents ?? [])],
     bindings: structuredClone(node.bindings),
     placement: structuredClone(node.placement.props),
+    ...(node.extensions === undefined ? {} : { extensions: structuredClone(node.extensions) }),
     ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
     ...(node.reactions === undefined ? {} : { reactions: structuredClone(node.reactions) }),
   }
@@ -69,6 +70,7 @@ function canonicalSourceNode(
       field: node.field,
       ...(node.label === undefined ? {} : { label: node.label }),
       ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
+      ...(node.optionSource === undefined ? {} : { optionSource: structuredClone(node.optionSource) }),
       ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
       validateOn: [...node.validateOn],
     }
@@ -79,6 +81,7 @@ function canonicalSourceNode(
   return {
     ...common,
     kind: 'layout',
+    ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
     slots: Object.fromEntries(Object.entries(node.slots).map(([name, childIds]) => [
       name,
       childIds.map(childId => canonicalSourceNode(page, childId, nextAncestors)),
@@ -87,6 +90,11 @@ function canonicalSourceNode(
 }
 
 export function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage {
+  const optionBindings = Object.values(page.nodesById)
+    .flatMap(node => node.kind === 'field' && node.optionSource
+      ? [{ nodeId: node.id, source: structuredClone(node.optionSource) }]
+      : [])
+    .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
   return {
     id: page.id,
     name: page.name,
@@ -94,5 +102,9 @@ export function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage
     form: structuredClone(page.form),
     root: page.rootIds.map(nodeId => canonicalSourceNode(page, nodeId, new Set())),
     flowPlans: page.flows.map(flow => structuredClone(flow.plan)),
+    runtime: structuredClone(page.runtime ?? { dataSources: [], variables: [] }),
+    scopedFields: structuredClone(page.scopedFields),
+    valueScopes: structuredClone(page.valueScopes),
+    optionBindings,
   }
 }

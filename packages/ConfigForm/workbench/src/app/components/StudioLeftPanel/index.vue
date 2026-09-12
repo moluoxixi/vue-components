@@ -8,7 +8,7 @@ import type {
   StudioLeftView,
   StudioLayerAction,
 } from '../../../studio'
-import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
+import { Blocks, Check, ChevronDown, ChevronUp, Database, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2, Variable } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import './style/index.scss'
@@ -27,6 +27,7 @@ const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers') },
   { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Pages') },
+  { icon: Database, id: 'data' as const, label: locale.value.t('designer.view.data', 'Data') },
   { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History') },
 ])
 const historyPositions = computed(() => {
@@ -375,6 +376,35 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
       <ElButton native-type="button" class="manage-pages-button" @click="emit('managePages')">
         <Settings2 :size="14" aria-hidden="true" />
         {{ locale.t('pages.manage', 'Manage pages') }}
+      </ElButton>
+    </div>
+
+    <div v-else-if="activeView === 'data'" class="designer-data-panel">
+      <div class="designer-data-header">
+        <strong>{{ locale.t('data.title', 'Page data') }}</strong>
+        <small>{{ (project.pagesById[currentPageId]?.runtime?.variables.length ?? 0) + (project.pagesById[currentPageId]?.runtime?.dataSources.length ?? 0) }}</small>
+      </div>
+      <ElScrollbar>
+        <div class="designer-data-summary">
+          <section>
+            <h3><Variable :size="14" aria-hidden="true" />{{ locale.t('data.variables', 'Variables') }}</h3>
+            <ul v-if="project.pagesById[currentPageId]?.runtime?.variables.length">
+              <li v-for="variable in project.pagesById[currentPageId]?.runtime?.variables" :key="variable.id">{{ variable.name }}</li>
+            </ul>
+            <p v-else>{{ locale.t('data.emptyVariables', 'No variables') }}</p>
+          </section>
+          <section>
+            <h3><Database :size="14" aria-hidden="true" />{{ locale.t('data.sources', 'Data sources') }}</h3>
+            <ul v-if="project.pagesById[currentPageId]?.runtime?.dataSources.length">
+              <li v-for="source in project.pagesById[currentPageId]?.runtime?.dataSources" :key="source.id">{{ source.name }}</li>
+            </ul>
+            <p v-else>{{ locale.t('data.emptySources', 'No data sources') }}</p>
+          </section>
+        </div>
+      </ElScrollbar>
+      <ElButton native-type="button" class="manage-data-button" @click="emit('openData')">
+        <Settings2 :size="14" aria-hidden="true" />
+        {{ locale.t('data.manage', 'Edit page data') }}
       </ElButton>
     </div>
 

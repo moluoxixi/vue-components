@@ -1,7 +1,7 @@
 import type { CanonicalProjectSourceExport, WorkspaceFile } from '../index'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
@@ -26,17 +26,22 @@ const pnpmPrefix = pnpmCli ? [pnpmCli] : []
 const temporaryRoots: string[] = []
 let rulesTarball: string
 
-async function runPnpm(args: string[], cwd: string): Promise<void> {
-  await new Promise<void>((resolvePromise, rejectPromise) => {
+async function runPnpm(args: string[], cwd: string): Promise<string> {
+  return new Promise<string>((resolvePromise, rejectPromise) => {
+    let output = ''
     const child = spawn(pnpmCommand, [...pnpmPrefix, ...args], {
       cwd,
       shell: false,
-      stdio: 'inherit',
+      stdio: ['ignore', 'pipe', 'inherit'],
+    })
+    child.stdout.on('data', (chunk) => {
+      output += chunk.toString()
+      process.stdout.write(chunk)
     })
     child.on('error', rejectPromise)
     child.on('close', (code, signal) => {
       if (code === 0)
-        resolvePromise()
+        resolvePromise(output.trim())
       else
         rejectPromise(new Error(`pnpm ${args.join(' ')} failed${signal ? ` (${signal})` : ''}`))
     })
@@ -96,12 +101,24 @@ describe('canonical exported projects', () => {
       temporaryRoots.push(root)
       await writeFiles(exported.files, root)
 
+      const responsiveStyles = await readFile(resolve(root, 'src/runtime/vue/styles/responsive.scss'), 'utf8')
+      expect(responsiveStyles).toContain('@media (max-width: 1024px)')
+      expect(responsiveStyles).toContain('@media (max-width: 720px)')
+      expect(responsiveStyles).not.toContain('grid-template-columns: 1fr !important')
+      const main = await readFile(resolve(root, 'src/main.ts'), 'utf8')
+      expect(main).toContain('import \'./runtime/vue/styles/index.scss\'')
+
       // Exercise this checkout's published package files, without registry state deciding which implementation is tested.
       const packagePath = resolve(root, 'package.json')
       const manifest = JSON.parse(await readFile(packagePath, 'utf8'))
       expect(manifest.dependencies['@moluoxixi/zod3-to-rule']).toBe('^0.1.2')
+      const workspaceManifest = JSON.parse(await readFile(new URL('../../../../../../package.json', import.meta.url), 'utf8'))
+      expect(manifest.packageManager).toBe(workspaceManifest.packageManager)
       manifest.pnpm = { overrides: { '@moluoxixi/zod3-to-rule': `file:${rulesTarball.replaceAll('\\', '/')}` } }
       await writeFile(packagePath, JSON.stringify(manifest, null, 2))
+      const version = await runPnpm(['--version'], root)
+      expect(`pnpm@${version}`).toBe(workspaceManifest.packageManager)
+      process.stdout.write(`Standalone toolchain: ${pnpmCli ?? pnpmCommand}, pnpm ${version}, ${root}\n`)
       await runPnpm(['install', '--ignore-scripts', '--no-lockfile'], root)
       await runPnpm(['run', 'typecheck'], root)
       await runPnpm(['run', 'build'], root)
@@ -109,6 +126,14 @@ describe('canonical exported projects', () => {
       const appSource = await readFile(resolve(root, 'src/App.vue'), 'utf8')
       expect(appSource).not.toMatch(/ConfigForm|config-form|form\.config/)
       expect(existsSync(resolve(root, 'dist/index.html'))).toBe(true)
+      const assets = resolve(root, 'dist/assets')
+      const cssFiles = (await readdir(assets)).filter(path => path.endsWith('.css'))
+      expect(cssFiles.length).toBeGreaterThan(0)
+      const css = (await Promise.all(cssFiles.map(path => readFile(resolve(assets, path), 'utf8')))).join('\n')
+      expect(css).toContain('[data-config-form-responsive-root]')
+      expect(css).toContain('--mx-config-form-active-columns')
+      expect(css).toMatch(/@media\s*\(max-width:\s*1024px\)/)
+      expect(css).toMatch(/@media\s*\(max-width:\s*720px\)/)
     },
     120_000,
   )

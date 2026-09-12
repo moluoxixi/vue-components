@@ -6,7 +6,7 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { NodeId, PageGraph, PageId, RegistryContractComponentSnapshot } from '@moluoxixi/config-form-model'
 import type { CanonicalFlowIR, SemanticCompilerDiagnostic } from '../../../types'
-import { analyzeConfigFormFlow, getConfigFormFlowSemanticHash, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
+import { analyzeConfigFormFlow, CONFIG_FORM_FLOW_VERSION, getConfigFormFlowSemanticHash, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { withoutFlowPositions } from '../../../utils'
 
 export function compileFlows(
@@ -34,7 +34,7 @@ export function compileFlows(
       path: ['flows'],
     })
   }
-  return flows.flatMap((flow) => {
+  return [...flows, ...compileNodeEventFlows(graph)].flatMap((flow) => {
     const semanticFlow = withoutFlowPositions(flow)
     const result = analyzeConfigFormFlow(semanticFlow)
     if (!result.success) {
@@ -80,6 +80,35 @@ export function compileFlows(
       plan: result.plan,
     }]
   })
+}
+
+function compileNodeEventFlows(graph: PageGraph): ConfigFormFlow[] {
+  return Object.values(graph.nodesById).flatMap(node => Object.entries(node.events).flatMap(([event, actions]) => {
+    if (actions.length === 0)
+      return []
+    const id = `event:${node.id}:${event}`
+    const steps = actions.map((action, index) => ({
+      id: `${id}:action:${index}`,
+      type: 'action' as const,
+      ref: action.action,
+      config: { input: Object.hasOwn(action, 'input') ? action.input : { $event: 'args.0' } },
+    }))
+    const nodes: ConfigFormFlow['nodes'] = [
+      { id: `${id}:trigger`, type: 'trigger' },
+      ...steps,
+      { id: `${id}:end`, type: 'end' },
+    ]
+    return [{
+      version: CONFIG_FORM_FLOW_VERSION,
+      id,
+      name: `${node.id} ${event}`,
+      trigger: { kind: 'component.event', nodeId: node.id, event },
+      concurrency: 'queue',
+      errorPolicy: { onError: 'failure', timeoutMs: 10000 },
+      nodes,
+      edges: nodes.slice(1).map((target, index) => ({ id: `${id}:edge:${index}`, source: nodes[index]!.id, target: target.id, condition: 'next' })),
+    }]
+  }))
 }
 
 export function collectFlowEvents(flows: readonly CanonicalFlowIR[]): ReadonlyMap<NodeId, readonly string[]> {

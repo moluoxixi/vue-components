@@ -32,6 +32,7 @@ export function collectFlowEventTargets(
       targets.push({
         nodeId: node.id,
         nodeLabel,
+        ...(node.kind === 'field' ? { field: node.field } : {}),
         component: node.component,
         event: event.name,
         eventLabel: eventTitles.get(event.name) ?? (bindingEvent ? labels.valueChange : event.name),

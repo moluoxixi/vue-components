@@ -207,6 +207,103 @@
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+.designer-data-panel {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.designer-data-panel > .el-scrollbar {
+  min-height: 0;
+}
+
+.designer-data-header {
+  display: flex;
+  min-height: 36px;
+  padding: 0 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--wb-text-strong);
+  border-bottom: 1px solid var(--wb-separator);
+  font-size: 11px;
+}
+
+.designer-data-header small,
+.designer-data-summary p {
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.designer-data-summary {
+  display: grid;
+  padding: 4px 10px 10px;
+  gap: 2px;
+}
+
+.designer-data-summary section {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.designer-data-summary h3 {
+  display: flex;
+  margin: 0 0 5px;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-text-strong);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.designer-data-summary ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  list-style: none;
+}
+
+.designer-data-summary li,
+.designer-data-summary p {
+  min-width: 0;
+  margin: 0;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-data-summary li {
+  color: var(--wb-text);
+  border-radius: 4px;
+  background: var(--wb-control-bg);
+  font-size: 11px;
+}
+
+.manage-data-button {
+  display: inline-flex;
+  min-height: 34px;
+  margin: 0 6px 6px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 4px;
+  background: var(--wb-surface);
+  white-space: nowrap;
+}
+
+.manage-data-button:hover {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
+}
+
 .designer-history-panel {
   display: grid;
   min-height: 0;
@@ -527,6 +624,7 @@
 
 @media (max-width: 720px) and (pointer: coarse) {
   .designer-left-tabs button,
+.manage-data-button,
 .manage-pages-button,
 .designer-layers button,
 .designer-pages button {

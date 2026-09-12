@@ -46,6 +46,7 @@ export interface ComponentNodeConfigCore<TComponent, TValues extends object = Fo
   span?: number
   visible?: FieldCondition<TValues>
   slots?: Record<string, SlotContent>
+  valueScope?: ComponentNodeConfig['valueScope']
 }
 
 export type FormNodeInput = FieldConfig | ComponentNodeConfig

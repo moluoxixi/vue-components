@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormField,
   ConfigFormNode,
@@ -66,6 +67,8 @@ export interface ConfigFormRuntimeNodeMetadata<
   component: Component | string
   node: ConfigFormRendererNode<TValues>
   mode: ConfigFormRenderMode
+  /** Array row identity chain for this rendered instance. */
+  scope?: ConfigFormScopePath
   /** Optional transient state supplied by an editor bridge. */
   state?: unknown
 }
@@ -77,11 +80,13 @@ export interface ConfigFormRuntimeEventContext<
   metadata: ConfigFormRuntimeNodeMetadata<TValues>
   event: string
   args: unknown[]
+  /** JSON-safe row identity captured with the event. */
+  scope?: ConfigFormScopePath
 }
 
 /** Event emitted by the Preview Runtime for Flow component.event triggers. */
-export type ConfigFormRuntimeEventPayload<TValues extends ConfigFormValues = ConfigFormValues>
-  = ConfigFormRuntimeEventContext<TValues>
+export interface ConfigFormRuntimeEventPayload<TValues extends ConfigFormValues = ConfigFormValues>
+  extends ConfigFormRuntimeEventContext<TValues> {}
 
 /**
  * Optional bridge used by Design Canvas integrations. Registration is invoked

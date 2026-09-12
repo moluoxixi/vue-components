@@ -26,6 +26,10 @@ const registry = createDesignerRegistry({ materials: [{
 function studioProject(): ProjectDocument {
   const base = createProjectDocumentFixture({ id: 'app' })
   const pageA = duplicateProjectPage(base.pagesById[base.homePageId]!, 'page-a', 'Page A', '/a')
+  pageA.runtime = {
+    variables: [{ id: 'customer-variable', name: 'Customer', initialValue: null }],
+    dataSources: [{ id: 'customer-source', name: 'Customers', request: { url: '/api/customers' } }],
+  }
   const pageB = duplicateProjectPage(pageA, 'page-b', 'Page B', '/b')
   return createProjectDocumentFixture({
     id: 'app',
@@ -122,13 +126,20 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('selectPage')).toEqual([['page-b']])
     expect(wrapper.emitted('managePages')).toHaveLength(1)
 
+    await wrapper.get('[data-designer-left-tab="data"]').trigger('click')
+    expect(wrapper.get('.designer-data-summary').text()).toContain('Customer')
+    expect(wrapper.get('.designer-data-summary').text()).toContain('Customers')
+    expect(wrapper.get('.designer-data-summary').text()).not.toContain('customer-variable')
+    await wrapper.get('.manage-data-button').trigger('click')
+    expect(wrapper.emitted('openData')).toHaveLength(1)
+
     await wrapper.get('[data-designer-left-tab="history"]').trigger('click')
     expect(wrapper.get('.designer-history-list').text()).toContain('Rename field')
     await wrapper.findAll('.designer-history-list button')[1]!.trigger('click')
     expect(wrapper.emitted('jumpHistory')).toEqual([[0]])
   })
 
-  it('implements roving keyboard focus for the four views', async () => {
+  it('implements roving keyboard focus for the five views', async () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
@@ -148,7 +159,7 @@ describe('studio left panel', () => {
       'aria-label': 'Components',
       'title': 'Components',
     })
-    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(4)
+    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(5)
     componentTab.focus()
     await componentTab.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'ArrowRight', key: 'ArrowRight' }))
     await nextTick()

@@ -1,10 +1,26 @@
-import type { ConfigFormFlow, ConfigFormFlowConcurrency } from '@moluoxixi/config-form-core'
-import { analyzeConfigFormFlow, ConfigFormFlowInterpreter } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormFlowActionRegistry, ConfigFormFlowConcurrency, ConfigFormFlowDispatchInput, ConfigFormFlowExecutionPlan } from '@moluoxixi/config-form-core'
+import { analyzeConfigFormFlow, applyConfigFormFlowValuePatch as applyPreviewFlowValuePatch, createConfigFormEventRuntime } from '@moluoxixi/config-form-core'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  applyPreviewFlowValuePatch,
-  PreviewFlowCoordinator,
-} from '..'
+
+function createTestRuntime(actions: ConfigFormFlowActionRegistry) {
+  let values: Record<string, unknown> = {}
+  let initialized = false
+  const runtime = createConfigFormEventRuntime({
+    actions,
+    readValues: () => values,
+    writeValues: (next) => { values = next },
+  })
+  return {
+    dispatch(input: ConfigFormFlowDispatchInput & { plans: readonly ConfigFormFlowExecutionPlan[], values: Record<string, unknown> }) {
+      values = input.values
+      if (!initialized) {
+        runtime.sync(input.plans)
+        initialized = true
+      }
+      return runtime.dispatch(input)
+    },
+  }
+}
 
 function actionFlow(
   concurrency: ConfigFormFlowConcurrency,
@@ -76,7 +92,7 @@ describe('preview flow coordinator', () => {
       calls.push(input)
       releases.push(resolve)
     }))
-    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
+    const coordinator = createTestRuntime({ get: () => ({ execute }) })
     const flow = actionFlow('queue')
     const first = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'first' }, revision: 1 })
     await vi.waitFor(() => expect(calls).toEqual(['first']))
@@ -84,9 +100,9 @@ describe('preview flow coordinator', () => {
     const third = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'third' }, revision: 1 })
 
     releases.shift()!('first-result')
-    await vi.waitFor(() => expect(calls).toEqual(['first', 'second']))
+    await vi.waitFor(() => expect(calls).toEqual(['first', 'third']))
     releases.shift()!('second-result')
-    await vi.waitFor(() => expect(calls).toEqual(['first', 'second', 'third']))
+    await vi.waitFor(() => expect(calls).toEqual(['first', 'third', 'third']))
     releases.shift()!('third-result')
 
     await expect(first).resolves.toMatchObject({ status: 'committed', valuePatch: { set: { result: 'first-result' } } })
@@ -99,7 +115,7 @@ describe('preview flow coordinator', () => {
     const execute = vi.fn(() => new Promise((resolve) => {
       release = resolve
     }))
-    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
+    const coordinator = createTestRuntime({ get: () => ({ execute }) })
     const flow = actionFlow('ignore', { projection: true })
     const active = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'active' }, revision: 1 })
     await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1))
@@ -126,11 +142,11 @@ describe('preview flow coordinator', () => {
   it('returns no state when the page revision becomes stale during execution', async () => {
     let release!: (value: unknown) => void
     let current = true
-    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({
+    const coordinator = createTestRuntime({
       get: () => ({ execute: () => new Promise((resolve) => {
         release = resolve
       }) }),
-    }))
+    })
     const flow = actionFlow('latest')
     const dispatch = coordinator.dispatch({
       plans: [executionPlan(flow)],
@@ -153,14 +169,14 @@ describe('preview flow coordinator', () => {
 
   it('passes values through matching flows in model order', async () => {
     const calls: unknown[] = []
-    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({
+    const coordinator = createTestRuntime({
       get: () => ({
         execute: async (input: unknown) => {
           calls.push(input)
           return `${String(input)}:${calls.length}`
         },
       }),
-    }))
+    })
     const flows = [
       actionFlow('latest', { id: 'first', outputField: 'intermediate' }),
       actionFlow('latest', { id: 'second', inputField: 'intermediate', outputField: 'result' }),
@@ -180,7 +196,7 @@ describe('preview flow coordinator', () => {
 
   it('matches component event triggers by node id and event name', async () => {
     const execute = vi.fn(async (input: unknown) => input)
-    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
+    const coordinator = createTestRuntime({ get: () => ({ execute }) })
     const flow = actionFlow('latest', { id: 'component-event' })
     flow.trigger = { kind: 'component.event', nodeId: 'submit-button', event: 'click' }
 

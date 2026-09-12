@@ -13,6 +13,7 @@ export function applyOperation(document: ProjectDocument, operation: ProjectOper
     case 'page.remove':
     case 'page.rename':
     case 'page.route':
+    case 'page.runtime':
     case 'project.home':
     case 'project.settings':
       return applyProjectPageOperation(document, operation)

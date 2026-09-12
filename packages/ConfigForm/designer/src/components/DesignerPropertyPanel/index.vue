@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
+import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { ChevronRight, Trash2, Workflow } from '@lucide/vue'
+import { CONFIG_FORM_FLOW_TRIGGER_KINDS, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { computed } from 'vue'
-import { getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { useDesignerLocale } from '../../locale'
 import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
@@ -12,21 +12,25 @@ const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
 const locale = useDesignerLocale()
 
-const formFlowEvents = computed(() => [
-  {
-    label: locale.t('flow.trigger.mount', 'Form load'),
-    code: 'page.mount',
-    trigger: { kind: 'page.mount' } as ConfigFormFlowTrigger,
-  },
-  {
-    label: locale.t('flow.trigger.submit', 'Form submit'),
-    code: 'form.submit',
-    trigger: { kind: 'form.submit' } as ConfigFormFlowTrigger,
-  },
-].map(event => ({
-  ...event,
-  flows: (props.flows ?? []).filter(flow => getConfigFormFlowTriggerKey(flow.trigger) === getConfigFormFlowTriggerKey(event.trigger)),
-})))
+const formEventLabels: Record<Exclude<ConfigFormFlowTrigger['kind'], 'component.event'>, string> = {
+  'form.initialize': 'Form initialization',
+  'page.mount': 'Page mounted',
+  'page.unmount': 'Page unmounted',
+  'form.valuesChange': 'Form values changed',
+  'form.beforeSubmit': 'Before submit',
+  'form.validationSuccess': 'Validation succeeded',
+  'form.validationFailure': 'Validation failed',
+  'form.reset': 'Form reset',
+  'form.submit': 'Form submit',
+}
+const formFlowEvents = computed(() => CONFIG_FORM_FLOW_TRIGGER_KINDS
+  .filter(kind => kind !== 'component.event')
+  .map(kind => ({
+    label: locale.t(`flow.trigger.${kind}`, formEventLabels[kind]),
+    code: kind,
+    trigger: { kind },
+    flows: (props.flows ?? []).filter(flow => flow.trigger.kind === kind),
+  })))
 
 function flowState(trigger: ConfigFormFlowTrigger): { count: number, nodes: number, duplicate: boolean } {
   const flows = (props.flows ?? []).filter(flow => getConfigFormFlowTriggerKey(flow.trigger) === getConfigFormFlowTriggerKey(trigger))
@@ -35,12 +39,6 @@ function flowState(trigger: ConfigFormFlowTrigger): { count: number, nodes: numb
     nodes: flows[0]?.nodes.length ?? 0,
     duplicate: flows.length > 1,
   }
-}
-
-function eventLabel(eventName: string): string {
-  const binding = projection.value.commonBindings.find(candidate => candidate.trigger === eventName)
-    ?? props.componentDefinition?.bindings.find(candidate => candidate.trigger === eventName)
-  return binding ? locale.t('flow.trigger.valueChange', 'Value change') : resolveMaterialEventTitle(eventName)
 }
 
 const {
@@ -72,6 +70,12 @@ const {
   onUpdatePath: (nodeId, path, value) => emit('updatePath', nodeId, path, value),
   onUpdatePaths: (nodeIds, path, value) => emit('updatePaths', nodeIds, path, value),
 })
+
+function eventLabel(eventName: string): string {
+  const binding = projection.value.commonBindings.find(candidate => candidate.trigger === eventName)
+    ?? props.componentDefinition?.bindings.find(candidate => candidate.trigger === eventName)
+  return binding ? locale.t('flow.trigger.valueChange', 'Value change') : resolveMaterialEventTitle(eventName)
+}
 
 const {
   activeTab,
@@ -231,6 +235,7 @@ const {
             v-for="event in formFlowEvents"
             :key="event.code"
             type="button"
+            :data-form-event="event.code"
             :disabled="readonly"
             :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: event.label })"
             @click="emit('configureFlow', event.trigger)"

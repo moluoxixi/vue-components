@@ -1,11 +1,14 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormAttrs,
   ConfigFormController,
   ConfigFormErrors,
+  ConfigFormFieldAddress,
   ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component, ComputedRef, Ref, ShallowRef, VNodeChild } from 'vue'
+import type { ConfigFormPageRuntimeOptionState } from '../../runtime'
 import type {
   ConfigFormComponentRegistration,
   ConfigFormControlBinding,
@@ -32,6 +35,14 @@ export interface RendererControllerState<TValues extends ConfigFormValues>
   resolveReactionState: (
     field: string,
   ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
+  resolveInstanceReactionProps: (
+    address: Parameters<ConfigFormController<TValues>['getInstanceReactionProps']>[0],
+    field: string,
+  ) => ConfigFormAttrs
+  resolveInstanceReactionState: (
+    address: Parameters<ConfigFormController<TValues>['getInstanceReactionState']>[0],
+    field: string,
+  ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
 }
 
 export interface RendererLayoutState {
@@ -44,6 +55,7 @@ export interface RuntimeEditorBridgeState<TValues extends ConfigFormValues> {
   createNodeMetadata: (
     node: ConfigFormRendererNode<TValues>,
     path: string,
+    scope: ConfigFormScopePath,
     slot?: string,
   ) => ConfigFormRuntimeNodeMetadata<TValues>
   nodeMetadataAttrs: (metadata: ConfigFormRuntimeNodeMetadata<TValues>) => Record<string, unknown>
@@ -68,7 +80,7 @@ export interface RuntimeFlowEventService<TValues extends ConfigFormValues> {
   addListener: (
     target: Record<string, unknown>,
     event: string,
-    listener: (...args: unknown[]) => void,
+    listener: (...args: unknown[]) => unknown,
     metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
     runtimeEvent?: string,
   ) => void
@@ -90,12 +102,14 @@ export interface RuntimeFlowEventService<TValues extends ConfigFormValues> {
 export interface RendererPipelineContext<TValues extends ConfigFormValues> {
   activePresentationLayout: ComputedRef<ConfigFormResolvedLayout | undefined>
   bem: (element: string, modifier?: string) => string
+  cancelScope: (scope: ConfigFormScopePath) => void
   binding: RendererBindingService<TValues>
   controller: RendererControllerState<TValues>
   designGuard: DesignInteractionGuard
   editorBridge: RuntimeEditorBridgeState<TValues>
   flowEvents: RuntimeFlowEventService<TValues>
   formId: string
+  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormPageRuntimeOptionState | undefined
   props: Readonly<ConfigFormRendererProps<TValues>>
   responsiveLabelWidths: ComputedRef<Record<ConfigFormBreakpoint, string>>
   responsiveLayouts: ComputedRef<Record<ConfigFormBreakpoint, ConfigFormResolvedLayout>>
@@ -106,7 +120,7 @@ export type RenderNode<TValues extends ConfigFormValues> = (
   wrapCell: boolean,
   path: string,
   ancestors: ReadonlySet<object>,
+  scope: ConfigFormScopePath,
   slot?: string,
 ) => VNodeChild
-
 export type RendererSlots = Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined

@@ -12,8 +12,13 @@ protocol.setGeometryPort({ reset: geometry.reset, sync: geometry.sync })
 
 const {
   active,
+  dataSourceHost,
   design,
   fieldChange,
+  flowActions,
+  flowError,
+  flowResult,
+  flowTrace,
   modelValue,
   namespace,
   postRuntimeState,
@@ -36,6 +41,7 @@ const {
   stageStyle,
 } = geometry
 </script>
+
 <template>
   <main
     class="runtime-host-root"
@@ -64,8 +70,14 @@ const {
         :aria-hidden="runtimeMode === 'design' ? 'true' : undefined"
         :inert="runtimeMode === 'design' ? true : undefined"
         :namespace="namespace"
+        :flow-actions="runtimeMode === 'preview' ? flowActions : undefined"
+        :data-source-host="runtimeMode === 'preview' ? dataSourceHost : undefined"
+        :flow-revision="runtimeSessionKey"
         :reaction-projection="reactionProjection"
-        v-bind="active.artifact.plan.renderer"
+        v-bind="active.artifact.renderer"
+        @flow-error="flowError"
+        @flow-result="flowResult"
+        @flow-trace="flowTrace"
         @submit="submitValues"
         @field-change="fieldChange"
         @errors-change="postRuntimeState"

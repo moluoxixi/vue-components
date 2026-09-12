@@ -10,7 +10,7 @@ import type {
   ReadonlyProjectDocument,
 } from '@moluoxixi/config-form-model'
 
-export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages'
+export type StudioLeftView = 'components' | 'data' | 'history' | 'layers' | 'pages'
 export type StudioLayerAction = 'indent' | 'moveAfter' | 'moveBefore' | 'outdent'
 
 export interface StudioLayerEntry {
@@ -42,6 +42,7 @@ export interface StudioLeftPanelEmits {
   'addMaterial': [materialKey: string]
   'arrangeLayer': [action: StudioLayerAction, nodeId: string]
   'jumpHistory': [position: number]
+  'openData': []
   'managePages': []
   'moveLayer': [nodeId: string, referenceId: string, position: 'after' | 'before']
   'selectLayer': [nodeId: string, mode: DesignerSelectionMode]

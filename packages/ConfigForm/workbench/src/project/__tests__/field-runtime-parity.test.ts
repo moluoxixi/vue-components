@@ -1,19 +1,17 @@
 import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 // @vitest-environment happy-dom
 import type { ComponentContract, ProjectDocument } from '@moluoxixi/config-form-model'
-import { runInThisContext } from 'node:vm'
+import type * as Rules from '@moluoxixi/zod3-to-rule'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { createComponentContractRegistry, createProjectSnapshot, createRegistryContractSnapshot } from '@moluoxixi/config-form-model'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
-import * as Rules from '@moluoxixi/zod3-to-rule'
-import { compileScript, parse } from '@vue/compiler-sfc'
 import { flushPromises, mount } from '@vue/test-utils'
-import { transformWithEsbuild } from 'vite'
 import { describe, expect, it } from 'vitest'
 import * as Vue from 'vue'
 import { createCanonicalProjectSourceExport } from '../export'
+import { createGeneratedModuleLoader } from './generated-runtime-module'
 
 const Control = Vue.defineComponent({
   inheritAttrs: false,
@@ -26,19 +24,6 @@ const Control = Vue.defineComponent({
     onBlur: () => emit('blur'),
   }),
 })
-
-async function evaluateModule(source: string, name: string, modules: Record<string, unknown>) {
-  const { code } = await transformWithEsbuild(source, name, { loader: 'ts', format: 'cjs', target: 'es2022' })
-  const module = { exports: {} as Record<string, unknown> }
-  const requireModule = (key: string) => {
-    if (!(key in modules))
-      throw new Error(`Unexpected generated import: ${key}`)
-    return modules[key]
-  }
-  // Execute only the trusted generator output to compare its actual state machine.
-  runInThisContext(`(function(require, module, exports) {\n${code}\n})`, { filename: name })(requireModule, module, module.exports)
-  return module.exports
-}
 
 async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator, stateOnBlur?: 'disabled' | 'readonly' | 'visible') {
   const contract: ComponentContract = {
@@ -155,7 +140,7 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator,
   if (!runtime.success)
     throw new Error(JSON.stringify(runtime.diagnostics))
   const values = Vue.shallowRef<Record<string, unknown>>({})
-  const preview = mount(ConfigFormRenderer, { props: { ...runtime.artifact.plan.renderer, model: createConfigFormModel(values) } })
+  const preview = mount(ConfigFormRenderer, { props: { ...runtime.artifact.renderer, model: createConfigFormModel(values) } })
   const exported = createCanonicalProjectSourceExport(compiled.compilation, {
     adapter: compiled.compilation.registry.adapter,
     adapterVersion: compiled.compilation.registry.adapterVersion,
@@ -171,19 +156,13 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator,
       trigger: 'commit',
     }),
   })
-  function content(path: string): string {
-    const file = Object.entries(exported.files).find(([name]) => name === path)?.[1]
-    if (file?.kind !== 'text')
-      throw new Error(`Missing generated file ${path}`)
-    return file.content
-  }
-  const flows = await evaluateModule(content('src/pages/home/flows.ts'), 'flows.ts', {})
-  const validation = await evaluateModule(content('src/pages/home/validation.ts'), 'validation.ts', { '@moluoxixi/zod3-to-rule': Rules })
+  const load = await createGeneratedModuleLoader(Object.fromEntries(Object.entries(exported.files)
+    .filter(([, file]) => file.kind === 'text')
+    .map(([path, file]) => [path, file.content as string])))
+  const validation = load('src/pages/home/validation.ts')
   if (validator)
-    (validation.registerFieldValidator as (key: string, handler: Rules.RuleCustomValidator) => void)('remote', validator)
-  const { descriptor } = parse(content('src/pages/home/Page.vue'))
-  const script = compileScript(descriptor, { id: 'parity', inlineTemplate: true })
-  const page = await evaluateModule(script.content, 'Page.ts', { 'vue': Vue, './flows': flows, './validation': validation })
+    validation.registerFieldValidator('remote', validator)
+  const page = load('src/pages/home/Page.vue')
   const source = mount(page.default as Vue.Component, { global: { components: { Control } } })
   await flushPromises()
   return [preview, source]
@@ -202,7 +181,8 @@ describe('compiled Preview and executed generated Page parity', () => {
         expect(api.getErrors()).toEqual({})
         await wrapper.get('input[data-key="name"]').trigger('blur')
         await flushPromises()
-        expect(api.getErrors()).toEqual({ name: ['Name required'] })
+        expect(api.getErrors()).toEqual({ [api.getInstanceKey({ nodeId: 'name', scope: [] })]: ['Name required'] })
+        expect(api.getInstanceErrors({ nodeId: 'name', scope: [] })).toEqual(['Name required'])
         await wrapper.get('input[data-key="mode"]').setValue('disabled')
         await flushPromises()
         expect(wrapper.get('input[data-key="name"]').attributes('disabled')).toBeDefined()
@@ -238,7 +218,7 @@ describe('compiled Preview and executed generated Page parity', () => {
         await wrapper.get('input[data-key="mode"]').setValue('required')
         await wrapper.get('input[data-key="optional"]').trigger('blur')
         await flushPromises()
-        expect(api.getErrors().optional).toHaveLength(1)
+        expect(api.getInstanceErrors({ nodeId: 'optional', scope: [] })).toHaveLength(1)
         await wrapper.get('input[data-key="optional"]').setValue('Complete')
         await wrapper.get('input[data-key="optional"]').trigger('blur')
         await flushPromises()
@@ -283,7 +263,7 @@ describe('compiled Preview and executed generated Page parity', () => {
       await flushPromises()
       pending[0]!(undefined)
       await submit
-      expect(api.getErrors()).toEqual({ name: ['Current error'] })
+      expect(api.getErrors()).toEqual({ [api.getInstanceKey({ nodeId: 'name', scope: [] })]: ['Current error'] })
     }
     finally { wrappers.forEach(wrapper => wrapper.unmount()) }
   })
@@ -293,12 +273,16 @@ describe('compiled Preview and executed generated Page parity', () => {
     const wrappers = await surfaces(false, () => new Promise<string>(resolve => pending.push(resolve)))
     const source = wrappers[1]!
     const api = source.vm as unknown as ConfigFormRendererExpose
+    const renderer = source.findComponent({ name: 'ConfigFormRenderer' })
+    const retainedApi = renderer.vm.$.exposed as unknown as ConfigFormRendererExpose
     const submit = api.submit()
     await flushPromises()
     expect(pending).toHaveLength(1)
     wrappers.forEach(wrapper => wrapper.unmount())
     pending[0]!('Disposed error')
-    await submit
-    expect(api.getErrors()).toEqual({})
+    await expect(submit).resolves.toBe(false)
+    expect(retainedApi.getErrors()).toEqual({})
+    expect(renderer.emitted('submit')).toBeUndefined()
+    expect(() => api.getErrors()).toThrow('ConfigFormRenderer is not mounted.')
   })
 })

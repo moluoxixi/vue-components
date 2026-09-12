@@ -20,6 +20,7 @@ const NODE_PATCH_KEYS = new Set<ProjectNodePatchKey>([
   'reactions',
   'validateOn',
   'validation',
+  'valueScope',
 ])
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
 

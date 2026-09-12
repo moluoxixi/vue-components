@@ -42,6 +42,9 @@ const expectedKeys = [
   'antd.collapse-item',
   'antd.flex',
   'antd.grid',
+  'antd.object-group',
+  'antd.array-subform',
+  'antd.detail-table',
 ]
 
 function graphForRootMaterials(): PageGraph {

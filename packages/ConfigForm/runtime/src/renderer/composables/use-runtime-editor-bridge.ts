@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererNode,
@@ -54,6 +55,7 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
   function createNodeMetadata(
     node: ConfigFormRendererNode<TValues>,
     path: string,
+    scope: ConfigFormScopePath,
     slot?: string,
   ): ConfigFormRuntimeNodeMetadata<TValues> {
     const metadata = createRuntimeNodeMetadata(
@@ -61,6 +63,7 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
       path,
       isConfigFormField(node) ? 'field' : 'component',
       props.mode ?? 'preview',
+      scope,
       slot,
     )
     const state = ensureEditorBridge()?.readState?.(metadata)
@@ -123,6 +126,7 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
       args,
       event,
       metadata,
+      scope: metadata.scope,
     }
     const decision = ensureEditorBridge()?.interceptEvent?.(context)
     return decision !== false

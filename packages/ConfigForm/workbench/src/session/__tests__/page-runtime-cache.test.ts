@@ -52,7 +52,15 @@ function success(pageId: string): VueRuntimeCompileResult {
     artifact: {
       compilationKey: pageKey(pageId),
       pageId,
-      plan: { renderer: { fields: [] } },
+      renderer: {
+        fields: [],
+        plan: {
+          flows: [],
+          valueSchema: { valueScopes: [], scopedFields: [] },
+          runtime: { variables: [], dataSources: [] },
+          optionBindings: [],
+        },
+      },
     },
     diagnostics: [],
   }

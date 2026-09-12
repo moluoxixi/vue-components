@@ -1,9 +1,11 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormFlow,
   ConfigFormFlowActionRegistry,
-  ConfigFormFlowExecutionPlan,
-  ConfigFormFlowTrigger,
+  ConfigFormFlowDiagnostic,
+  ConfigFormFlowDispatchResult,
+  ConfigFormFlowRunResult,
+  ConfigFormFlowTraceEvent,
+  ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
 import type { ModelJsonValue, PageGraph } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
@@ -11,14 +13,12 @@ import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
-import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { PAGE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createPreviewSession,
   createWorkbenchPreviewSession,
 } from '..'
-import { createPageFlowEngine } from '../../flow'
 
 interface FieldFixture {
   component?: string
@@ -46,75 +46,10 @@ function graph(...fields: FieldFixture[]): PageGraph {
   }
 }
 
-function executionPlan(flow: ConfigFormFlow): ConfigFormFlowExecutionPlan {
-  const result = analyzeConfigFormFlow(flow)
-  if (!result.success)
-    throw new Error(result.diagnostics[0]?.message ?? 'Invalid Preview Session test flow.')
-  return result.plan
-}
-
-function actionFlow(options: {
-  actionInput?: ModelJsonValue
-  input: string
-  projection?: boolean
-  trigger: ConfigFormFlowTrigger
-}): ConfigFormFlowExecutionPlan {
-  const nodes: ConfigFormFlow['nodes'] = [
-    { id: 'trigger', type: 'trigger' },
-    {
-      id: 'work',
-      type: 'action',
-      ref: 'notify',
-      config: {
-        input: options.actionInput ?? options.input,
-        output: { result: { $output: 'work' } },
-      },
-    },
-  ]
-  const edges: ConfigFormFlow['edges'] = [
-    { id: 'trigger-work', source: 'trigger', target: 'work', condition: 'next' },
-  ]
-  if (options.projection) {
-    nodes.push({
-      id: 'project',
-      type: 'reaction',
-      config: {
-        reactions: [{
-          id: 'show-result',
-          when: { kind: 'literal', value: true },
-          then: [{
-            kind: 'setProps',
-            target: 'result',
-            props: { placeholder: { kind: 'literal', value: 'Completed' } },
-          }],
-        }],
-      },
-    })
-    edges.push({ id: 'work-project', source: 'work', target: 'project', condition: 'next' })
-  }
-  nodes.push({ id: 'success', type: 'success' })
-  edges.push({
-    id: 'finish',
-    source: options.projection ? 'project' : 'work',
-    target: 'success',
-    condition: 'next',
-  })
-  return executionPlan({
-    version: 1,
-    id: `flow-${options.input}`,
-    name: `Flow ${options.input}`,
-    trigger: options.trigger,
-    concurrency: 'latest',
-    nodes,
-    edges,
-  })
-}
-
 function compilation(options: {
   componentFingerprint?: string
   editVersion?: number
   pageId?: string
-  plans?: readonly ConfigFormFlowExecutionPlan[]
   projectId?: string
 } = {}): PageCompilation {
   const editVersion = options.editVersion ?? 0
@@ -152,10 +87,9 @@ function compilation(options: {
       form: {},
       rootIds: [],
       nodesById: {},
-      flows: (options.plans ?? []).map(plan => ({
-        semanticHash: `fnv1a:${plan.flowId}`,
-        plan,
-      })),
+      flows: [],
+      valueScopes: [],
+      scopedFields: [],
     },
   }
 }
@@ -166,7 +100,15 @@ function success(value: PageCompilation): VueRuntimeCompileResult {
     artifact: {
       compilationKey: value.key,
       pageId: value.page.id,
-      plan: { renderer: { fields: [] } },
+      renderer: {
+        fields: [],
+        plan: {
+          flows: [],
+          valueSchema: { valueScopes: [], scopedFields: [] },
+          runtime: { variables: [], dataSources: [] },
+          optionBindings: [],
+        },
+      },
     },
     diagnostics: [],
   }
@@ -216,6 +158,63 @@ function runtimeIdentity(
   }
 }
 
+function projection(values: Record<string, unknown> = {}): ConfigFormReactionProjection<Record<string, unknown>> {
+  return { values, props: {}, states: {}, validate: [] }
+}
+
+function traceEvent(index: number, runId = 'run'): ConfigFormFlowTraceEvent {
+  return {
+    type: 'enter',
+    flowId: 'flow',
+    runId,
+    revision: 1,
+    nodeId: `node-${index}`,
+    timestamp: index,
+  }
+}
+
+function diagnostic(index: number): ConfigFormFlowDiagnostic {
+  return {
+    code: `TEST_${index}`,
+    message: `Diagnostic ${index}`,
+    path: `nodes.${index}`,
+    nodeId: `node-${index}`,
+  }
+}
+
+function runResult(options: {
+  diagnostics?: ConfigFormFlowDiagnostic[]
+  flowProjection?: ConfigFormReactionProjection<Record<string, unknown>>
+  runId?: string
+  trace?: ConfigFormFlowTraceEvent[]
+  values?: Record<string, unknown>
+} = {}): ConfigFormFlowRunResult {
+  return {
+    status: 'success',
+    flowId: 'flow',
+    runId: options.runId ?? 'run',
+    revision: 1,
+    values: options.values ?? {},
+    outputs: {},
+    projection: options.flowProjection ?? projection(),
+    trace: options.trace ?? [],
+    diagnostics: options.diagnostics ?? [],
+  }
+}
+
+function dispatchResult(
+  results: ConfigFormFlowRunResult[],
+  diagnostics: ConfigFormFlowDiagnostic[] = [],
+): ConfigFormFlowDispatchResult {
+  return {
+    status: 'committed',
+    results,
+    valuePatch: { remove: [], set: {} },
+    projectionUpdates: {},
+    diagnostics,
+  }
+}
+
 describe('preview session', () => {
   it('preserves values only while the field identity and component contract stay compatible', () => {
     const session = createWorkbenchPreviewSession()
@@ -259,7 +258,7 @@ describe('preview session', () => {
     session.dispose()
   })
 
-  it('reconciles touched and validation with compatible field contracts and rejects stale hosts', () => {
+  it('reconciles field state and accepts mirrors only from the current revision and mounted host', () => {
     const session = createWorkbenchPreviewSession()
     const first = accept(session, {
       graph: graph(
@@ -271,11 +270,7 @@ describe('preview session', () => {
     session.handleRuntimeMounted(firstHost)
     session.handleRuntimeState({
       ...firstHost,
-      state: {
-        values: { name: 'Edited', age: 42 },
-        touched: ['name', 'age'],
-        validation: { name: ['Required'], age: ['Too young'] },
-      },
+      state: { fields: flatFields('name', 'age'), values: { name: 'Edited', age: 42 }, touched: ['name', 'age'], validation: { name: ['Required'], age: ['Too young'] } },
     })
     session.handleRuntimeReady(firstHost)
 
@@ -286,263 +281,298 @@ describe('preview session', () => {
         { id: 'age', field: 'age', component: 'element.date', defaultValue: '2026-08-31' },
       ),
     })!
+    const sameHost = runtimeIdentity(next, 'host-a')
 
-    expect(session.runtimeState.value).toEqual({
-      values: { name: 'Edited', age: '2026-08-31' },
-      touched: ['name'],
-      validation: { name: ['Required'] },
-    })
+    expect(session.runtimeState.value).toEqual({ fields: flatFields('name'), values: { name: 'Edited', age: '2026-08-31' }, touched: ['name'], validation: { name: ['Required'] } })
 
     session.handleRuntimeState({
       ...firstHost,
-      state: { values: { name: 'Stale' }, touched: [], validation: {} },
+      state: { fields: flatFields('name'), values: { name: 'Stale revision' }, touched: [], validation: {} },
     })
-    expect(session.runtimeState.value.values.name).toBe('Edited')
-
-    const nextHost = runtimeIdentity(next, 'host-b')
-    session.handleRuntimeMounted(nextHost)
     session.handleRuntimeState({
-      ...nextHost,
-      state: {
-        values: { name: 'Reopened', age: '2026-08-31' },
-        touched: ['name'],
-        validation: { name: ['Still required'] },
-      },
+      ...sameHost,
+      state: { fields: flatFields('name'), values: { name: 'Current host' }, touched: ['name'], validation: {} },
     })
-    expect(session.runtimeState.value).toEqual({
-      values: { name: 'Reopened', age: '2026-08-31' },
-      touched: ['name'],
-      validation: { name: ['Still required'] },
+    expect(session.runtimeState.value.values.name).toBe('Current host')
+
+    const replacementHost = runtimeIdentity(next, 'host-b')
+    session.handleRuntimeMounted(replacementHost)
+    session.handleRuntimeState({
+      ...sameHost,
+      state: { fields: flatFields('name'), values: { name: 'Old host' }, touched: [], validation: {} },
     })
+    session.handleRuntimeState({
+      ...replacementHost,
+      state: { fields: flatFields('name'), values: { name: 'Replacement host' }, touched: [], validation: {} },
+    })
+    expect(session.runtimeState.value.values.name).toBe('Replacement host')
+    session.handleRuntimeMounted(sameHost)
+    session.handleRuntimeState({
+      ...sameHost,
+      state: { fields: flatFields('name'), values: { name: 'Retired host reclaim' }, touched: [], validation: {} },
+    })
+    expect(session.runtimeState.value.values.name).toBe('Replacement host')
     session.dispose()
   })
 
-  it('captures revision-bound submit results without letting stale results or clearing reset runtime values', () => {
+  it('requires and consumes a real current-host submit marker for every success result', () => {
     const session = createWorkbenchPreviewSession()
-    const first = accept(session, {
-      graph: graph({ id: 'name', field: 'name', defaultValue: 'Initial' }),
-    })!
-    const firstHost = runtimeIdentity(first, 'host-a')
-    session.handleRuntimeMounted(firstHost)
-    session.handleSubmitResult({
-      ...firstHost,
-      result: {
-        status: 'invalid',
-        values: { name: '' },
-        touched: ['name'],
-        validation: { name: ['Required'] },
-      },
-    })
+    const current = accept(session)!
+    const host = runtimeIdentity(current, 'host-a')
+    session.handleRuntimeMounted(host)
 
-    expect(session.lastSubmission.value).toMatchObject({
-      status: 'invalid',
-      values: { name: '' },
-      touched: ['name'],
-      validation: { name: ['Required'] },
-      revisionKey: first.current.revisionKey,
-    })
-    expect(session.runtimeState.value).toEqual({
-      values: { name: '' },
-      touched: ['name'],
-      validation: { name: ['Required'] },
-    })
-
-    const next = accept(session, { editVersion: 1 })!
-    expect(session.lastSubmission.value).toBeUndefined()
+    session.handleSubmit({ ...host, phase: 'request', requestId: 'unmarked' })
     session.handleSubmitResult({
-      ...firstHost,
-      result: {
-        status: 'success',
-        values: { name: 'stale' },
-        touched: ['name'],
-        validation: {},
-      },
+      ...host,
+      result: { requestId: 'unmarked', fields: flatFields('name'), status: 'success', values: { name: 'Unmarked' }, touched: [], validation: {} },
     })
-    expect(session.lastSubmission.value).toBeUndefined()
+    expect(session.lastSubmission.value?.status).toBe('failure')
 
-    const nextHost = runtimeIdentity(next, 'host-b')
-    session.handleRuntimeMounted(nextHost)
+    session.handleSubmit({ ...host, phase: 'request', requestId: 'current' })
+    session.handleSubmit({ ...host, phase: 'success', requestId: 'current', values: { name: 'Submitted' } })
     session.handleSubmitResult({
-      ...nextHost,
-      result: {
-        status: 'success',
-        values: { name: 'Submitted' },
-        touched: ['name'],
-        validation: {},
-      },
+      ...host,
+      result: { requestId: 'current', fields: flatFields('name'), status: 'success', values: { name: 'Submitted' }, touched: ['name'], validation: {} },
     })
     expect(session.lastSubmission.value).toMatchObject({
       status: 'success',
       values: { name: 'Submitted' },
-      revisionKey: next.current.revisionKey,
+      revisionKey: current.current.revisionKey,
     })
+
+    session.handleSubmitResult({
+      ...host,
+      result: { requestId: 'current', fields: flatFields('name'), status: 'success', values: { name: 'Replayed' }, touched: [], validation: {} },
+    })
+    expect(session.lastSubmission.value).toMatchObject({ status: 'success', values: { name: 'Submitted' } })
+
     session.clearSubmission()
     expect(session.lastSubmission.value).toBeUndefined()
     expect(session.getRuntimeModel()).toEqual({ name: 'Submitted' })
     session.dispose()
   })
 
-  it('owns a bounded Flow trace and forwards trace events to diagnostics consumers', async () => {
+  it('owns bounded, de-duplicated Flow trace and diagnostic mirrors', () => {
     const onTrace = vi.fn()
-    const session = createWorkbenchPreviewSession({ onTrace })
-    const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
-    accept(session, {
-      compilation: compilation({ plans: [actionFlow({ input: 'trace', trigger })] }),
+    const onDiagnostic = vi.fn()
+    const session = createWorkbenchPreviewSession({ onDiagnostic, onTrace })
+    const current = accept(session)!
+    const host = runtimeIdentity(current, 'host-a')
+    session.handleRuntimeMounted(host)
+    const firstTrace = traceEvent(0)
+    const firstDiagnostic = diagnostic(0)
+
+    session.handleFlowTrace({ ...host, trace: firstTrace })
+    session.handleFlowTrace({ ...host, trace: structuredClone(firstTrace) })
+    session.handleFlowError({ ...host, diagnostic: firstDiagnostic })
+    session.handleFlowError({ ...host, diagnostic: structuredClone(firstDiagnostic) })
+    session.handleFlowResult({
+      ...host,
+      result: dispatchResult([
+        runResult({ trace: [firstTrace], diagnostics: [firstDiagnostic] }),
+      ], [firstDiagnostic]),
     })
 
-    await session.dispatch(trigger)
+    expect(session.trace.value).toEqual([firstTrace])
+    expect(session.flowDiagnostics.value).toEqual([firstDiagnostic])
+    expect(onTrace).toHaveBeenCalledTimes(1)
+    expect(onDiagnostic).toHaveBeenCalledTimes(1)
 
-    expect(session.trace.value.length).toBeGreaterThan(0)
-    expect(session.trace.value.length).toBeLessThanOrEqual(200)
-    expect(onTrace).toHaveBeenCalledTimes(session.trace.value.length)
+    for (let index = 1; index <= 205; index += 1) {
+      session.handleFlowTrace({ ...host, trace: traceEvent(index) })
+      session.handleFlowError({ ...host, diagnostic: diagnostic(index) })
+    }
+
+    expect(session.trace.value).toHaveLength(200)
+    expect(session.flowDiagnostics.value).toHaveLength(200)
+    expect(session.trace.value[0]?.nodeId).toBe('node-6')
+    expect(session.trace.value.at(-1)?.nodeId).toBe('node-205')
+    expect(session.flowDiagnostics.value[0]?.code).toBe('TEST_6')
+    expect(session.flowDiagnostics.value.at(-1)?.code).toBe('TEST_205')
+    expect(onTrace).toHaveBeenCalledTimes(206)
+    expect(onDiagnostic).toHaveBeenCalledTimes(206)
     session.dispose()
   })
 
-  it('updates Preview values before resolving a field-change Flow input', async () => {
-    const execute = vi.fn((input: unknown) => input)
-    const actions: ConfigFormFlowActionRegistry = {
-      get: () => ({ execute }),
-    }
-    const session = createPreviewSession({
-      createFlowEngine: ports => createPageFlowEngine({ ...ports, actions }),
-    })
-    const fieldChange = actionFlow({
-      actionInput: { $field: 'name' },
-      input: 'field-change',
-      trigger: { kind: 'component.event', nodeId: 'name', event: 'update:modelValue' },
-    })
-    accept(session, {
-      compilation: compilation({ plans: [fieldChange] }),
-    })
+  it('mirrors field and runtime event values without executing the action registry in the parent', () => {
+    const get = vi.fn()
+    const actions: ConfigFormFlowActionRegistry = { get }
+    const session = createPreviewSession({ actions })
+    const host = runtimeIdentity(accept(session)!, 'host-a')
+    session.handleRuntimeMounted(host)
 
-    await session.handleFieldChange({
-      field: 'name',
-      values: { name: 'Latest value' },
-    })
-    await expect(session.handleRuntimeEvent({
+    session.handleFieldChange({ ...host, ...flatFields('name')[0]!, field: 'name', values: { name: 'Field change' } })
+    session.handleRuntimeEvent({
+      ...host,
+      scope: [],
       nodeId: 'name',
       event: 'update:modelValue',
-    })).resolves.toMatchObject({ status: 'committed' })
-
-    expect(execute.mock.calls[0]?.[0]).toBe('Latest value')
-    expect(session.getRuntimeModel()).toEqual({
-      name: 'Latest value',
-      result: 'Latest value',
+      args: ['Runtime event'],
+      values: { name: 'Runtime event' },
     })
+
+    expect(session.actions).toBe(actions)
+    expect(get).not.toHaveBeenCalled()
+    expect(session.getRuntimeModel()).toEqual({ name: 'Runtime event' })
+    session.handleFieldChange({ ...host, revision: 'old', ...flatFields('name')[0]!, field: 'name', values: { name: 'Stale change' } })
+    session.handleRuntimeEvent({ ...host, hostId: 'old-host', nodeId: 'name', scope: [], event: 'change', args: [], values: { name: 'Stale event' } })
+    expect(session.getRuntimeModel()).toEqual({ name: 'Runtime event' })
     session.dispose()
   })
 
-  it('keeps fallback compilation, values, and Flow plans on the same ready revision only', async () => {
-    const actions: ConfigFormFlowActionRegistry = {
-      get: () => ({ execute: input => input }),
-    }
-    const session = createPreviewSession({
-      createFlowEngine: ports => createPageFlowEngine({ ...ports, actions }),
-    })
-    const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
-    const oldCompilation = compilation({ plans: [actionFlow({ input: 'old', projection: true, trigger })] })
+  it('keeps fallback compilation and runtime state from the last ready revision in the same scope', () => {
+    const session = createPreviewSession()
+    const oldCompilation = compilation()
     const first = accept(session, { compilation: oldCompilation })!
-    session.handleRuntimeMounted(runtimeIdentity(first, 'host-a'))
-    session.handleRuntimeReady(runtimeIdentity(first, 'host-a'))
-    session.updateRuntimeModel({ name: 'Latest input' })
-
-    const newCompilation = compilation({
-      editVersion: 1,
-      plans: [actionFlow({ input: 'new', projection: true, trigger })],
+    const host = runtimeIdentity(first, 'host-a')
+    session.handleRuntimeMounted(host)
+    session.handleRuntimeState({
+      ...host,
+      state: { fields: flatFields('name'), values: { name: 'Latest input' }, touched: ['name'], validation: {} },
     })
-    accept(session, { compilation: newCompilation, editVersion: 1, runtime: failure })
+    session.handleRuntimeReady(host)
+
+    const failed = accept(session, {
+      compilation: compilation({ editVersion: 1 }),
+      editVersion: 1,
+      graph: graph({ id: 'broken-name', field: 'broken', defaultValue: 'Broken graph value' }),
+      runtime: failure,
+    })!
+    const fallbackHost = runtimeIdentity(failed, 'host-a')
 
     expect(session.getCompilation()).toBe(oldCompilation)
-    expect(session.getRuntimeModel()).toEqual({ name: 'Latest input' })
-    await expect(session.dispatch(trigger)).resolves.toMatchObject({ status: 'committed' })
-    expect(session.getRuntimeModel()).toEqual({ name: 'Latest input', result: 'old' })
-    expect(session.flowProjection.value.props).toEqual({ result: { placeholder: 'Completed' } })
+    expect(session.runtimeState.value).toEqual({ fields: flatFields('name'), values: { name: 'Latest input' }, touched: ['name'], validation: {} })
+
+    session.handleRuntimeState({
+      ...fallbackHost,
+      state: { fields: flatFields('name'), values: { name: 'Edited fallback' }, touched: [], validation: {} },
+    })
+    expect(session.getCompilation()).toBe(oldCompilation)
+    expect(session.getRuntimeModel()).toEqual({ name: 'Edited fallback' })
 
     accept(session, {
-      compilation: compilation({ editVersion: 2, pageId: 'other' }),
+      compilation: compilation({ editVersion: 2 }),
       editVersion: 2,
+      runtime: failure,
+    })
+    expect(session.getCompilation()).toBe(oldCompilation)
+    expect(session.getRuntimeModel()).toEqual({ name: 'Edited fallback' })
+
+    accept(session, {
+      compilation: compilation({ editVersion: 3, pageId: 'other' }),
+      editVersion: 3,
       graph: graph({ id: 'other-name', field: 'name', defaultValue: 'Other page' }),
       pageId: 'other',
       runtime: failure,
     })
     expect(session.getCompilation()).toBeUndefined()
     expect(session.getRuntimeModel()).toEqual({ name: 'Other page' })
-    expect(session.flowProjection.value.props).toEqual({})
     session.dispose()
   })
 
-  it('mounts once per RuntimeHost page session and remounts after reopen or page change', async () => {
-    const notify = vi.fn()
-    const session = createWorkbenchPreviewSession({ onNotify: notify })
-    const mountPlan = actionFlow({ input: 'mounted', trigger: { kind: 'page.mount' } })
-    const firstCompilation = compilation({ plans: [mountPlan] })
-    const first = accept(session, { compilation: firstCompilation })!
-
-    await session.handleRuntimeMounted(runtimeIdentity(first, 'host-a'))
-    const secondCompilation = compilation({ editVersion: 1, plans: [mountPlan] })
-    const second = accept(session, { compilation: secondCompilation, editVersion: 1 })!
-    expect(session.handleRuntimeMounted(runtimeIdentity(second, 'host-a'))).toBeUndefined()
-    expect(notify).toHaveBeenCalledTimes(1)
-
-    await session.handleRuntimeMounted(runtimeIdentity(second, 'host-b'))
-    const otherCompilation = compilation({ editVersion: 2, pageId: 'other', plans: [mountPlan] })
-    const other = accept(session, {
-      compilation: otherCompilation,
-      editVersion: 2,
-      pageId: 'other',
-    })!
-    await session.handleRuntimeMounted(runtimeIdentity(other, 'host-b'))
-    expect(notify).toHaveBeenCalledTimes(3)
-    session.dispose()
-  })
-
-  it('invalidates stale async Flow work and all future events when disposed', async () => {
-    let release!: (value: unknown) => void
-    const actions: ConfigFormFlowActionRegistry = {
-      get: () => ({ execute: () => new Promise(resolve => release = resolve) }),
-    }
-    const session = createPreviewSession({
-      createFlowEngine: ports => createPageFlowEngine({ ...ports, actions }),
+  it('does not let a late Flow result overwrite newer RuntimeHost values', () => {
+    const session = createPreviewSession()
+    const current = accept(session)!
+    const host = runtimeIdentity(current, 'host-a')
+    session.handleRuntimeMounted(host)
+    session.handleRuntimeState({
+      ...host,
+      state: { fields: flatFields('name'), values: { name: 'Newer value' }, touched: [], validation: {} },
     })
-    const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
-    const currentCompilation = compilation({ plans: [actionFlow({ input: 'late', trigger })] })
-    accept(session, { compilation: currentCompilation })
-    const pending = session.dispatch(trigger)!
-    await vi.waitFor(() => expect(release).toBeTypeOf('function'))
+    const projected = {
+      values: { name: 'Older value' },
+      props: { name: { placeholder: 'Flow projection' } },
+      states: {},
+      validate: [],
+    }
 
+    session.handleFlowResult({
+      ...host,
+      result: dispatchResult([
+        runResult({
+          flowProjection: projected,
+          trace: [traceEvent(1, 'first-run')],
+          values: { name: 'Older value' },
+        }),
+        runResult({ trace: [traceEvent(2, 'second-run')], values: { name: 'Old final value' } }),
+      ]),
+    })
+
+    expect(session.getRuntimeModel()).toEqual({ name: 'Newer value' })
+    expect(session.trace.value.map(item => item.runId)).toEqual(['first-run', 'second-run'])
+    expect(session.flowProjection.value).toEqual(projection())
+
+    session.handleFlowProjection({ ...host, projection: projected })
+    expect(session.flowProjection.value).toEqual(projected)
     session.dispose()
-    release('too late')
+  })
 
-    await expect(pending).resolves.toMatchObject({ status: 'stale' })
+  it('does not establish a ready fallback from an unmounted or stale host', () => {
+    const session = createPreviewSession()
+    const current = accept(session)!
+    const host = runtimeIdentity(current, 'host-a')
+    session.handleRuntimeReady(host)
+
+    accept(session, {
+      compilation: compilation({ editVersion: 1 }),
+      editVersion: 1,
+      runtime: failure,
+    })
+
+    expect(session.getCompilation()).toBeUndefined()
+    session.dispose()
+  })
+
+  it('clears mirror ownership and ignores all future RuntimeHost events when disposed', () => {
+    const session = createPreviewSession()
+    const current = accept(session)!
+    const host = runtimeIdentity(current, 'host-a')
+    session.handleRuntimeMounted(host)
+    session.dispose()
+
+    session.handleRuntimeState({
+      ...host,
+      state: { fields: flatFields('name'), values: { name: 'Ignored' }, touched: ['name'], validation: { name: ['Ignored'] } },
+    })
+    session.handleFlowTrace({ ...host, trace: traceEvent(1) })
+    session.handleFlowError({ ...host, diagnostic: diagnostic(1) })
+    session.handleSubmit({ ...host, phase: 'success', requestId: 'ignored', values: { name: 'Ignored' } })
+    session.handleSubmitResult({
+      ...host,
+      result: { requestId: 'ignored', fields: flatFields('name'), status: 'success', values: { name: 'Ignored' }, touched: [], validation: {} },
+    })
+    session.updateRuntimeModel({ name: 'Ignored' })
+
     expect(session.projection.value).toBeUndefined()
     expect(session.getRuntimeModel()).toEqual({})
-    expect(session.dispatch(trigger)).toBeUndefined()
-    expect(session.handleFieldChange({ field: 'name', values: { name: 'Ignored' } })).toBeUndefined()
-    expect(session.handleSubmit({ name: 'Ignored' })).toBeUndefined()
-    session.updateRuntimeModel({ name: 'Ignored' })
-    expect(session.getRuntimeModel()).toEqual({})
+    expect(session.trace.value).toEqual([])
+    expect(session.flowDiagnostics.value).toEqual([])
+    expect(session.lastSubmission.value).toBeUndefined()
   })
-
-  it('invalidates pending Flow work when the same page advances revision', async () => {
-    let release!: (value: unknown) => void
-    const actions: ConfigFormFlowActionRegistry = {
-      get: () => ({ execute: () => new Promise(resolve => release = resolve) }),
-    }
-    const session = createPreviewSession({
-      createFlowEngine: ports => createPageFlowEngine({ ...ports, actions }),
-    })
-    const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
-    const firstCompilation = compilation({ plans: [actionFlow({ input: 'late', trigger })] })
-    accept(session, { compilation: firstCompilation })
-    const pending = session.dispatch(trigger)!
-    await vi.waitFor(() => expect(release).toBeTypeOf('function'))
-
-    const nextCompilation = compilation({ editVersion: 1 })
-    accept(session, { compilation: nextCompilation, editVersion: 1 })
-    release('too late')
-
-    await expect(pending).resolves.toMatchObject({ status: 'stale' })
-    expect(session.getRuntimeModel()).toEqual({ name: 'Default' })
+  it('rejects unrequested, superseded same-revision, old-host and old-revision submit identities without changing the mirror', () => {
+    const session = createPreviewSession()
+    const host = runtimeIdentity(accept(session)!, 'host-a')
+    session.handleRuntimeMounted(host)
+    const result = { requestId: 'old', fields: flatFields('name'), status: 'invalid' as const, values: { name: 'stale' }, touched: ['name'], validation: { name: ['stale'] } }
+    session.handleSubmitResult({ ...host, result })
+    expect(session.lastSubmission.value).toBeUndefined()
+    session.handleSubmit({ ...host, phase: 'request', requestId: 'old' })
+    session.handleSubmit({ ...host, phase: 'request', requestId: 'new' })
+    session.handleSubmit({ ...host, phase: 'success', requestId: 'old', values: result.values })
+    session.handleSubmitResult({ ...host, result })
+    session.handleSubmitResult({ ...host, hostId: 'old-host', result: { ...result, requestId: 'new' } })
+    session.handleSubmitResult({ ...host, revision: 'old-revision', result: { ...result, requestId: 'new' } })
+    expect(session.lastSubmission.value).toBeUndefined()
+    expect(session.runtimeState.value.values).toEqual({ name: 'Default' })
+    expect(session.runtimeState.value.touched).toEqual([])
+    session.handleSubmitResult({ ...host, result: { ...result, requestId: 'new', values: { name: 'current' } } })
+    expect(session.lastSubmission.value).toMatchObject({ requestId: 'new', status: 'invalid', values: { name: 'current' } })
+    session.handleSubmitResult({ ...host, result: { ...result, requestId: 'new' } })
+    expect(session.runtimeState.value.values).toEqual({ name: 'current' })
     session.dispose()
   })
 })
+
+function flatFields(...names: string[]) {
+  return names.map(nodeId => ({ nodeId, scope: [], instanceKey: nodeId, valuePath: [nodeId] }))
+}

@@ -62,7 +62,7 @@ test.beforeEach(async ({ page }) => {
 
 test('round-trips an Element Plus Project JSON export through paste and isolated preview', async ({ page }) => {
   await createProject(page, 'element')
-  await setAppearance(page, 'dark', 'rose-pine')
+  await setAppearance(page, 'dark', 'ink')
   await expect(page.locator('.workbench-topbar .revision-state')).toContainText(/v0 · /)
   const source = await exportJson(page, 'project')
   const exportedProject = JSON.parse(source)

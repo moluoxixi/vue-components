@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue'
 import type {
   PageGraph,
   ProjectDocument,
@@ -5,6 +6,7 @@ import type {
   ProjectSummary,
 } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
+import type { FlowReferenceField, FlowSourceCatalog } from '../../features/flow'
 import type {
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
@@ -12,6 +14,7 @@ import type {
 } from '../../project'
 import type { StudioLayerEntry } from '../../studio'
 import type {
+  WorkbenchController,
   WorkbenchControllerProps,
   WorkbenchRecoveryDraftSummary,
   WorkbenchRecoveryNotice,
@@ -22,6 +25,7 @@ import {
   findDesignNode,
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
+import { ElMessageBox } from 'element-plus'
 import { computed, ref, shallowRef } from 'vue'
 import { collectFlowEventTargets } from '../../flow'
 import {
@@ -38,11 +42,13 @@ import { createWorkbenchCreationCommands } from './controller-creation'
 import { createWorkbenchPageCommands } from './controller-page-commands'
 import { createWorkbenchPersistenceCommands } from './controller-persistence'
 import { createWorkbenchProjectBinding } from './controller-project-binding'
+import { createWorkbenchDataSourceRequest } from './data-source-request'
+import { createWorkbenchDataTestContext } from './data-test-context'
 
 export function createWorkbenchController(
   props: Readonly<WorkbenchControllerProps>,
   ui: WorkbenchUiStore,
-) {
+): WorkbenchController {
   const repository = shallowRef<ProjectRepository>()
   const currentAdapter = shallowRef<WorkbenchAdapter>()
   const projects = ref<ProjectSummary[]>([])
@@ -55,8 +61,32 @@ export function createWorkbenchController(
   const busy = ref(false)
   const initialized = ref(false)
   let disposed = false
+  const onRequest: typeof globalThis.fetch = (input, init) => window.fetch(input, init)
+  const requestDataSource = createWorkbenchDataSourceRequest(
+    onRequest,
+    () => window.location.href,
+  )
+  const dataSourceHost = { request: requestDataSource }
   const previewSession = createWorkbenchPreviewSession({
     onNotify: ui.notify,
+    onRequest,
+    onOpenUrl: (url, target) => { window.open(url, target, 'noopener') },
+    onConfirm: async (input) => {
+      try {
+        await ElMessageBox.confirm(input.message, input.title ?? workbenchLocale.value.t('action.confirm', 'Confirm'), {
+          appendTo: '#workbench-overlays',
+          confirmButtonText: input.confirmText,
+          cancelButtonText: input.cancelText,
+          distinguishCancelAndClose: true,
+        })
+        return true
+      }
+      catch (cause) {
+        if (cause === 'cancel' || cause === 'close')
+          return false
+        throw cause
+      }
+    },
     onDiagnostic: diagnostic => ui.notify(diagnostic.message),
   })
   const previewProjection = previewSession.projection
@@ -77,14 +107,14 @@ export function createWorkbenchController(
     props.locale,
   ))
   const workbenchLocale = computed(() => createDesignerLocale(localeOptions.value))
-  const currentProject = computed(() => projectSessionSnapshot.value?.document)
+  const currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined> = computed(() => projectSessionSnapshot.value?.document)
   // The session document is an immutable (deep-frozen) Immer snapshot and
   // every consumer is read-only, so the page is exposed without the previous
   // defensive structuredClone; the cast only relaxes the DeepReadonly view.
-  const currentPage = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value] as ProjectDocument['pagesById'][string] | undefined)
+  const currentPage: ComputedRef<ProjectDocument['pagesById'][string] | undefined> = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value] as ProjectDocument['pagesById'][string] | undefined)
   const currentGraph = computed<PageGraph | undefined>(() => currentPage.value?.graph)
-  const componentRegistry = computed(() => currentAdapter.value!.componentRegistry)
-  const registry = computed(() => currentAdapter.value!.designerRegistry)
+  const componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']> = computed(() => currentAdapter.value!.componentRegistry)
+  const registry: ComputedRef<WorkbenchAdapter['designerRegistry']> = computed(() => currentAdapter.value!.designerRegistry)
   const modelRevision = computed(() => projectSessionSnapshot.value?.editVersion ?? 0)
   const repositoryRevision = computed(() => projectSessionSnapshot.value?.repositoryRevision ?? 0)
   const dirty = computed(() => projectSessionSnapshot.value?.dirty ?? false)
@@ -156,6 +186,21 @@ export function createWorkbenchController(
     currentAdapter.value?.designerRegistry,
     { valueChange: workbenchLocale.value.t('flow.trigger.valueChange', 'Value change') },
   ))
+  const flowReferenceFields = computed<FlowReferenceField[]>(() => {
+    const fields: FlowReferenceField[] = []
+    if (currentGraph.value) {
+      walkDesignGraph(currentGraph.value, ({ node }) => {
+        if (node.kind === 'field')
+          fields.push({ nodeId: node.id, field: node.field, label: node.label?.trim() || node.field })
+      })
+    }
+    return fields
+  })
+  const flowSourceCatalog = computed<FlowSourceCatalog>(() => ({
+    variables: currentPage.value?.runtime?.variables.map(variable => ({ value: variable.id, label: variable.name })) ?? [],
+    dataSources: currentPage.value?.runtime?.dataSources.map(source => ({ value: source.id, label: source.name })) ?? [],
+  }))
+  const dataTestContext = computed(() => createWorkbenchDataTestContext(currentGraph.value, previewSession.values.value))
 
   function getCurrentAdapterId(): WorkbenchAdapterId {
     const adapter = currentAdapter.value?.registrySnapshot.adapter
@@ -318,9 +363,15 @@ export function createWorkbenchController(
     currentGraph,
     currentPage,
     currentPageId,
+    dataTestContext,
+    dataSourceHost,
+    modelRevision,
+    requestDataSource,
     discardRecoveryDraft: persistenceCommands.discardRecoveryDraft,
     designerFieldNames,
     flowEventTargets,
+    flowReferenceFields,
+    flowSourceCatalog,
     designerLayers,
     dirty,
     executeFlowCommand: projectBinding.executeProjectCommand,

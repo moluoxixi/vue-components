@@ -1,12 +1,14 @@
 import type { LayoutNode, NodeId, NodeSubgraph, NodeTarget, PageId, PageNode, ProjectDocument, ProjectNodeChange, ProjectOperation } from '../../../types'
 import type { OperationResult } from '../types'
-import { modelJsonObjectSchema, pageGraphSchema } from '../../../schemas'
+import { isDraft, original } from 'immer'
+import { modelJsonObjectSchema, nodeSubgraphSchema } from '../../../schemas'
+import { ProjectReferenceRewriteError, rewritePageFieldReferences } from '../../reference-integrity'
 import { invalid } from '../errors'
 import { parseNodeCandidate, requireParsedValue } from '../validation'
 import { changed, cloneModelValue, nodeRelation, semanticallyEqual, unchanged } from './changes'
 import {
-  assertInsertedFieldNamesUnique,
   assertInsertIndex,
+  assertPageValueKeysUnique,
   assertSafeRecordKey,
   collectInsertedNodeChanges,
   collectRemovedNodeChanges,
@@ -78,12 +80,7 @@ export function applyNodeOperation(document: ProjectDocument, operation: NodeOpe
       if (semanticallyEqual(previous, placement))
         return unchanged()
       location.item.placement = placement
-      return changed([{
-        type: 'node.placement',
-        pageId: operation.pageId,
-        nodeId: operation.nodeId,
-        placement: previous,
-      }], [operation.pageId], [operation.nodeId])
+      return changed([{ type: 'node.placement', pageId: operation.pageId, nodeId: operation.nodeId, placement: previous }], [operation.pageId], [operation.nodeId])
     }
     case 'node.settings':
       return updateNodeSettings(document, operation)
@@ -101,85 +98,65 @@ function removeNodeConfig(
 
   if (operation.property === 'events' || operation.property === 'bindings' || operation.property === 'conditions') {
     const key = operation.key
-    if (!key?.trim()) {
-      invalid(
-        'PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED',
-        `Stored ${operation.property} removal requires a non-empty key.`,
-        page.id,
-        node.id,
-      )
-    }
+    if (!key?.trim())
+      invalid('PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED', `Stored ${operation.property} removal requires a non-empty key.`, page.id, node.id)
     assertSafeRecordKey(key, 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID')
     const current = operation.property === 'conditions' ? node.conditions : node[operation.property]
     if (!current || !Object.hasOwn(current, key))
       return unchanged()
-
     if (operation.property === 'events') {
       const previous = cloneModelValue(node.events)
       const events = cloneModelValue(node.events)
       delete events[key]
       page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, events }, page.id, node.id)
-      return changed([{
-        type: 'node.events',
-        pageId: page.id,
-        nodeId: node.id,
-        events: previous,
-      }], [page.id], [node.id])
+      return changed([{ type: 'node.events', pageId: page.id, nodeId: node.id, events: previous }], [page.id], [node.id])
     }
     if (operation.property === 'bindings') {
       const previous = cloneModelValue(node.bindings)
       const bindings = cloneModelValue(node.bindings)
       delete bindings[key]
       page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, bindings }, page.id, node.id)
-      return changed([{
-        type: 'node.bindings',
-        pageId: page.id,
-        nodeId: node.id,
-        bindings: previous,
-      }], [page.id], [node.id])
+      return changed([{ type: 'node.bindings', pageId: page.id, nodeId: node.id, bindings: previous }], [page.id], [node.id])
     }
-
     const previous = settingsForNode(node)
     const conditions = cloneModelValue(node.conditions ?? {})
     delete conditions[key as keyof typeof conditions]
     page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, conditions }, page.id, node.id)
-    return changed([{
-      type: 'node.settings',
-      pageId: page.id,
-      nodeId: node.id,
-      settings: previous,
-    }], [page.id], [node.id])
+    return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [node.id])
   }
-
-  if (operation.key !== undefined) {
-    invalid(
-      'PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED',
-      `Stored ${operation.property} removal does not accept a nested key.`,
-      page.id,
-      node.id,
-    )
+  if (operation.key !== undefined)
+    invalid('PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED', `Stored ${operation.property} removal does not accept a nested key.`, page.id, node.id)
+  if (operation.property === 'valueScope') {
+    if (node.kind !== 'layout')
+      invalid('PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID', 'Field nodes do not contain valueScope.', page.id, node.id)
+    if (node.valueScope === undefined)
+      return unchanged()
+    const previous = settingsForNode(node)
+    const candidate = { ...node }
+    delete candidate.valueScope
+    page.graph.nodesById[node.id] = parseNodeCandidate(candidate, page.id, node.id)
+    return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [node.id])
   }
-  if (node.kind !== 'field') {
-    invalid(
-      'PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID',
-      `Layout nodes do not contain ${operation.property}.`,
-      page.id,
-      node.id,
-    )
+  if (operation.property === 'optionSource') {
+    if (node.kind !== 'field')
+      invalid('PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID', 'Layout nodes do not contain optionSource.', page.id, node.id)
+    if (node.optionSource === undefined)
+      return unchanged()
+    const previous = settingsForNode(node)
+    const candidate = { ...node }
+    delete candidate.optionSource
+    page.graph.nodesById[node.id] = parseNodeCandidate(candidate, page.id, node.id)
+    return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [node.id])
   }
+  if (node.kind !== 'field')
+    invalid('PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID', `Layout nodes do not contain ${operation.property}.`, page.id, node.id)
   if (node[operation.property] === undefined)
     return unchanged()
-
   const previous = settingsForNode(node)
   const candidate = { ...node }
   delete candidate[operation.property]
   page.graph.nodesById[node.id] = parseNodeCandidate(candidate, page.id, node.id)
-  return changed([{
-    type: 'node.settings',
-    pageId: page.id,
-    nodeId: node.id,
-    settings: previous,
-  }], [page.id], [node.id])
+  return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [node.id])
 }
 
 function insertSubgraph(
@@ -191,7 +168,7 @@ function insertSubgraph(
   if (subgraph.root.length === 0 && Object.keys(subgraph.nodesById).length === 0)
     return unchanged()
   const page = requirePage(document, pageId)
-  const validation = pageGraphSchema.safeParse({
+  const validation = nodeSubgraphSchema.safeParse({
     version: page.graph.version,
     props: {},
     form: {},
@@ -200,15 +177,10 @@ function insertSubgraph(
   })
   if (!validation.success)
     invalid('PROJECT_NODE_SUBGRAPH_INVALID', validation.error.issues[0]?.message ?? 'Inserted subgraph is invalid.', pageId)
-  const normalizedSubgraph: NodeSubgraph = {
-    root: validation.data.root,
-    nodesById: validation.data.nodesById,
-  }
+  const normalizedSubgraph: NodeSubgraph = { root: validation.data.root, nodesById: validation.data.nodesById }
   const conflict = Object.keys(normalizedSubgraph.nodesById).find(nodeId => Object.hasOwn(page.graph.nodesById, nodeId))
   if (conflict)
     invalid('PROJECT_NODE_ID_DUPLICATE', `Node already exists: ${conflict}`, pageId, conflict)
-  assertInsertedFieldNamesUnique(page.graph, normalizedSubgraph, pageId)
-
   const sequence = resolveTargetSequence(page.graph, target)
   const index = target.index ?? sequence.length
   assertInsertIndex(index, sequence.length, 'PROJECT_NODE_INDEX_INVALID')
@@ -216,6 +188,7 @@ function insertSubgraph(
     page.graph.nodesById[nodeId] = node
   })
   sequence.splice(index, 0, ...normalizedSubgraph.root)
+  assertPageValueKeysUnique(page.graph, pageId)
   const roots = normalizedSubgraph.root.map(item => item.nodeId)
   const nodeChanges = collectInsertedNodeChanges(pageId, normalizedSubgraph, target)
   if (target.parentId)
@@ -226,16 +199,13 @@ function insertSubgraph(
     Object.keys(normalizedSubgraph.nodesById),
     false,
     nodeChanges,
+    pageHasValueScopes(page.graph) || subgraphRequiresPageContentValidation(normalizedSubgraph),
   )
 }
 
-function moveNode(
-  document: ProjectDocument,
-  pageId: PageId,
-  nodeId: NodeId,
-  target: NodeTarget,
-): OperationResult {
+function moveNode(document: ProjectDocument, pageId: PageId, nodeId: NodeId, target: NodeTarget): OperationResult {
   const page = requirePage(document, pageId)
+  const validatePageContent = pageHasValueScopes(page.graph)
   const location = requireNodeLocation(page.graph, nodeId, pageId)
   if (target.parentId && collectSubtreeIds(page.graph, nodeId).has(target.parentId))
     invalid('PROJECT_NODE_MOVE_CYCLE', 'A node cannot be moved into its own subtree.', pageId, nodeId)
@@ -254,6 +224,8 @@ function moveNode(
   const index = target.index ?? destination.length
   assertInsertIndex(index, destination.length, 'PROJECT_NODE_INDEX_INVALID')
   destination.splice(index, 0, location.item)
+  if (validatePageContent)
+    assertPageValueKeysUnique(page.graph, pageId)
   const nodeChanges: ProjectNodeChange[] = [{
     kind: 'move',
     pageId,
@@ -271,6 +243,7 @@ function moveNode(
     [nodeId],
     false,
     nodeChanges,
+    validatePageContent,
   )
 }
 
@@ -296,18 +269,37 @@ function updateNodeSettings(
     ...(operation.settings.reactions ? { reactions: cloneModelValue(operation.settings.reactions) } : {}),
   }
   const nextNode = operation.settings.kind === 'layout'
-    ? { ...common, kind: 'layout', slots: (node as LayoutNode).slots }
+    ? {
+        ...common,
+        kind: 'layout' as const,
+        slots: (node as LayoutNode).slots,
+        ...(operation.settings.valueScope ? { valueScope: cloneModelValue(operation.settings.valueScope) } : {}),
+      }
     : {
         ...common,
-        kind: 'field',
+        kind: 'field' as const,
         field: operation.settings.field,
         ...(operation.settings.label !== undefined ? { label: operation.settings.label } : {}),
         ...(operation.settings.defaultValue !== undefined ? { defaultValue: cloneModelValue(operation.settings.defaultValue) } : {}),
         ...(operation.settings.validation !== undefined ? { validation: cloneModelValue(operation.settings.validation) } : {}),
         ...(operation.settings.validateOn !== undefined ? { validateOn: cloneModelValue(operation.settings.validateOn) } : {}),
+        ...(operation.settings.optionSource !== undefined ? { optionSource: cloneModelValue(operation.settings.optionSource) } : {}),
       }
-  page.graph.nodesById[node.id] = parseNodeCandidate(nextNode, page.id, node.id)
-  return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [node.id])
+  const parsedNode = parseNodeCandidate(nextNode, page.id, node.id)
+  const changedNodeIds = new Set<NodeId>([node.id])
+  if (node.kind === 'field' && parsedNode.kind === 'field' && node.field !== parsedNode.field) {
+    try {
+      rewritePageFieldReferences(page, node.id, node.field, parsedNode.field, parsedNode)
+        .forEach(id => changedNodeIds.add(id))
+    }
+    catch (error) {
+      if (error instanceof ProjectReferenceRewriteError)
+        invalid(error.code, error.message, page.id, node.id)
+      throw error
+    }
+  }
+  page.graph.nodesById[node.id] = parsedNode
+  return changed([{ type: 'node.settings', pageId: page.id, nodeId: node.id, settings: previous }], [page.id], [...changedNodeIds])
 }
 
 function removeNode(document: ProjectDocument, pageId: PageId, nodeId: NodeId): OperationResult {
@@ -344,7 +336,11 @@ function settingsForNode(node: PageNode): Extract<ProjectOperation, { type: 'nod
     ...(node.reactions ? { reactions: cloneModelValue(node.reactions) } : {}),
   }
   return node.kind === 'layout'
-    ? { ...common, kind: 'layout' }
+    ? {
+        ...common,
+        kind: 'layout',
+        ...(node.valueScope ? { valueScope: cloneModelValue(node.valueScope) } : {}),
+      }
     : {
         ...common,
         kind: 'field',
@@ -353,5 +349,29 @@ function settingsForNode(node: PageNode): Extract<ProjectOperation, { type: 'nod
         ...(node.defaultValue !== undefined ? { defaultValue: cloneModelValue(node.defaultValue) } : {}),
         ...(node.validation !== undefined ? { validation: cloneModelValue(node.validation) } : {}),
         ...(node.validateOn !== undefined ? { validateOn: cloneModelValue(node.validateOn) } : {}),
+        ...(node.optionSource !== undefined ? { optionSource: cloneModelValue(node.optionSource) } : {}),
       }
+}
+
+function pageHasValueScopes(graph: ProjectDocument['pagesById'][string]['graph']): boolean {
+  const source = isDraft(graph) ? (original(graph) ?? graph) : graph
+  return Object.values(source.nodesById).some(node => node.kind === 'layout' && node.valueScope !== undefined)
+}
+
+function subgraphRequiresPageContentValidation(subgraph: NodeSubgraph): boolean {
+  return Object.values(subgraph.nodesById).some((node) => {
+    const hasReferenceInput = Object.values(node.events)
+      .some(actions => actions.some(action => Object.hasOwn(action, 'input')))
+    if (node.kind === 'layout') {
+      return node.valueScope !== undefined
+        || node.conditions !== undefined
+        || node.reactions !== undefined
+        || hasReferenceInput
+    }
+    return node.optionSource !== undefined
+      || node.validation !== undefined
+      || node.conditions !== undefined
+      || node.reactions !== undefined
+      || hasReferenceInput
+  })
 }

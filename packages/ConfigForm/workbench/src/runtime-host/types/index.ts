@@ -1,3 +1,5 @@
+export type * from './action-rpc'
+export type * from './data-rpc'
 export type * from './design-frame'
 export type * from './expose'
 export type * from './preview-frame'

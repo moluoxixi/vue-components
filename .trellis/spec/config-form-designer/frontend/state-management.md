@@ -320,8 +320,9 @@ interface SlotItem {
   runtime session and does not emit `page.mount` again.
 - Each RuntimeHost realm loads provider CSS and owns its Teleport targets.
   Workbench theme CSS must not enter the iframe. Component events crossing the
-  bridge are reduced to registered `{ nodeId, event }`; Runtime component
-  instances and event args remain inside the realm.
+  bridge carry registered `{ nodeId, event, args, field?, values }` with bounded
+  JSON argument snapshots. Runtime component instances and live DOM events stay
+  inside the realm; Preview installs values before dispatching the captured args.
 - In the Workbench, the selected node's Registry events are authored through a
   single Inspector-to-Flow path. The Inspector emits the exact stable
   `{ nodeId, event }` target, the Flow dialog selects an existing matching Flow
@@ -696,7 +697,7 @@ an iframe reload, adapter load, project/page switch, or Design revision.
 ```ts
 interface RuntimeHostMessageBase {
   channel: 'mx-config-form-runtime-host'
-  version: 3
+  version: 4
   hostId: string
   projectId: string
   pageId: string
@@ -778,7 +779,7 @@ interface PreviewRuntimeIdentity {
 
 ### 10.6 Tests Required
 
-- Protocol unit tests validate the complete v3 identity, runtime-state and
+- Protocol unit tests validate the complete v4 identity, runtime-state and
   submit-result payloads,
   stale revision, replay, source, and origin.
 - RuntimeHost component tests control adapter resolution and assert a state that

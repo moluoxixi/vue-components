@@ -48,6 +48,8 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const flowWorkspaceOpen = ref(false)
   const flowDialogLoaded = ref(false)
   const flowInitialTrigger = shallowRef<ConfigFormFlowTrigger>()
+  const dataWorkspaceOpen = ref(false)
+  const dataDialogLoaded = ref(false)
   const appearanceDrawerOpen = ref(false)
   const themePreference = ref<WorkbenchThemePreference>(appearance.themePreference)
   const paletteFamily = ref<WorkbenchPaletteFamily>(appearance.paletteFamily)
@@ -121,6 +123,15 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     flowInitialTrigger.value = trigger
     flowDialogLoaded.value = true
     flowWorkspaceOpen.value = true
+  }
+
+  function closeDataWorkspace(): void {
+    dataWorkspaceOpen.value = false
+  }
+
+  function openDataWorkspace(): void {
+    dataDialogLoaded.value = true
+    dataWorkspaceOpen.value = true
   }
 
   function closePageManager(): void {
@@ -217,6 +228,9 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     clearNotice,
     closeExportPreview,
     closeFlowWorkspace,
+    closeDataWorkspace,
+    dataDialogLoaded,
+    dataWorkspaceOpen,
     closePageManager,
     exportDialogLoaded,
     exportPreviewMode,
@@ -231,6 +245,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     openAppearanceDrawer,
     openExportPreview,
     openFlowWorkspace,
+    openDataWorkspace,
     openPageManager,
     pageManagerLoaded,
     pageManagerOpen,

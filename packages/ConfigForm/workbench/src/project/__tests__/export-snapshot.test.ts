@@ -6,7 +6,7 @@ import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { buildExportSnapshot, createExportFileSet, createExportSession, createWorkspaceArchive, isExportSnapshotStale, resolveExportSnapshotPath } from '../export'
+import { buildExportSnapshot, CONFIG_FORM_EXPORT_GENERATOR_VERSION, createExportFileSet, createExportSession, createWorkspaceArchive, isExportSnapshotStale, resolveExportSnapshotPath } from '../export'
 import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
@@ -30,7 +30,7 @@ describe('export snapshot', () => {
     const snapshot = buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
-    expect(snapshot.generatorVersion).toBe('1.0.0')
+    expect(snapshot.generatorVersion).toBe(CONFIG_FORM_EXPORT_GENERATOR_VERSION)
     expect(snapshot.source.entry).toBe(normalizeProjectPath('src/main.ts'))
     expect(snapshot.config.entry).toBe(normalizeProjectPath('project.config.ts'))
     expect(Object.isFrozen(snapshot)).toBe(true)
@@ -64,13 +64,13 @@ describe('export snapshot', () => {
       origin: { baseEditVersion: 8, draftId: 'draft-b', kind: 'draft' as const },
     } as ProjectCompilation
     const draftSnapshot = buildExportSnapshot({ ...input, compilation: draft })
-    const nextGeneratorSnapshot = buildExportSnapshot({ ...input, generatorVersion: '2.0.0' })
+    const nextGeneratorSnapshot = buildExportSnapshot({ ...input, generatorVersion: '999.0.0' })
 
     expect(isExportSnapshotStale(snapshot, revised)).toBe(true)
     expect(isExportSnapshotStale(draftSnapshot, draft)).toBe(false)
     expect(isExportSnapshotStale(draftSnapshot, otherDraft)).toBe(true)
     expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation)).toBe(true)
-    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '2.0.0')).toBe(false)
+    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '999.0.0')).toBe(false)
   })
 
   it('does not expose mutable retained binary bytes', async () => {
@@ -153,7 +153,7 @@ describe('export snapshot', () => {
 
   it('marks a pinned session stale when its generator changes', async () => {
     const input = await fixture()
-    let generatorVersion = '1.0.0'
+    let generatorVersion: string = CONFIG_FORM_EXPORT_GENERATOR_VERSION
     const session = createExportSession({
       capture: () => input,
       currentCompilation: () => input.compilation,
@@ -162,7 +162,7 @@ describe('export snapshot', () => {
 
     expect((await session.refresh()).success).toBe(true)
     expect(session.state.stale).toBe(false)
-    generatorVersion = '1.1.0'
+    generatorVersion = '999.0.0'
     expect(session.sync().stale).toBe(true)
   })
 })

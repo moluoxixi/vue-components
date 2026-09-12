@@ -8,6 +8,7 @@ import type {
   ConfigFormReactionOperand,
   ConfigFormReactionStateKey,
 } from '@moluoxixi/config-form-core'
+import { Plus, Trash2 } from '@lucide/vue'
 import {
   appendConfigFormReactionEffect,
   changeConfigFormReactionOperandSource,
@@ -25,7 +26,6 @@ import {
   updateConfigFormReactionProp,
   updateConfigFormReactionState,
 } from '@moluoxixi/config-form-core'
-import { Plus, Trash2 } from '@lucide/vue'
 import { computed } from 'vue'
 import { useDesignerLocale } from '../../../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
@@ -306,23 +306,29 @@ function inputValue(event: Event): string {
             <select :value="effect.value.kind" :aria-label="locale.t('reaction.valueSource', 'Value source')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, changeOperandSource(effect.value, inputValue($event) as 'field' | 'literal'))">
               <option value="literal">{{ locale.t('reaction.literal', 'Literal') }}</option>
               <option value="field">{{ locale.t('reaction.fieldValue', 'Field value') }}</option>
+              <option v-if="effect.value.kind === 'expression'" value="expression" disabled>
+                {{ locale.t('reaction.expression', 'Expression') }}
+              </option>
             </select>
             <select v-if="effect.value.kind === 'field'" :value="effect.value.field" :aria-label="locale.t('reaction.sourceField', 'Source field')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, inputValue($event)))">
               <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
             </select>
-            <template v-else-if="literalKind(effect.value) !== 'complex'">
-              <select :value="literalKind(effect.value)" :aria-label="locale.t('reaction.literalType', 'Literal type')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, changeLiteralKind(inputValue($event) as LiteralKind))">
-                <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-                <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-                <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-              </select>
-              <select v-if="literalKind(effect.value) === 'boolean'" :value="String(effect.value.value)" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, inputValue($event) === 'true'))">
-                <option value="true">{{ locale.t('value.true', 'True') }}</option>
-                <option value="false">{{ locale.t('value.false', 'False') }}</option>
-              </select>
-              <input v-else :value="effect.value.value" :type="literalKind(effect.value) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, literalKind(effect.value) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+            <template v-else-if="effect.value.kind === 'literal'">
+              <template v-if="literalKind(effect.value) !== 'complex'">
+                <select :value="literalKind(effect.value)" :aria-label="locale.t('reaction.literalType', 'Literal type')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, changeLiteralKind(inputValue($event) as LiteralKind))">
+                  <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
+                  <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
+                  <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
+                </select>
+                <select v-if="literalKind(effect.value) === 'boolean'" :value="String(effect.value.value)" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, inputValue($event) === 'true'))">
+                  <option value="true">{{ locale.t('value.true', 'True') }}</option>
+                  <option value="false">{{ locale.t('value.false', 'False') }}</option>
+                </select>
+                <input v-else :value="effect.value.value" :type="literalKind(effect.value) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, literalKind(effect.value) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+              </template>
+              <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
             </template>
-            <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
+            <output v-else class="mx-config-form-designer__reaction-expression" :title="effect.value.expression">{{ effect.value.expression }}</output>
           </div>
 
           <div v-else-if="effect.kind === 'setState'" class="mx-config-form-designer__reaction-states">
@@ -342,23 +348,29 @@ function inputValue(event: Event): string {
               <select :value="operand.kind" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, changeOperandSource(operand, inputValue($event) as 'field' | 'literal'))">
                 <option value="literal">{{ locale.t('reaction.literal', 'Literal') }}</option>
                 <option value="field">{{ locale.t('reaction.fieldValue', 'Field value') }}</option>
+                <option v-if="operand.kind === 'expression'" value="expression" disabled>
+                  {{ locale.t('reaction.expression', 'Expression') }}
+                </option>
               </select>
               <select v-if="operand.kind === 'field'" :value="operand.field" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, inputValue($event)))">
                 <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
               </select>
-              <template v-else-if="literalKind(operand) !== 'complex'">
-                <select :value="literalKind(operand)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, changeLiteralKind(inputValue($event) as LiteralKind))">
-                  <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-                  <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-                  <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-                </select>
-                <select v-if="literalKind(operand) === 'boolean'" :value="String(operand.value)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, inputValue($event) === 'true'))">
-                  <option value="true">{{ locale.t('value.true', 'True') }}</option>
-                  <option value="false">{{ locale.t('value.false', 'False') }}</option>
-                </select>
-                <input v-else :value="operand.value" :type="literalKind(operand) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, literalKind(operand) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+              <template v-else-if="operand.kind === 'literal'">
+                <template v-if="literalKind(operand) !== 'complex'">
+                  <select :value="literalKind(operand)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, changeLiteralKind(inputValue($event) as LiteralKind))">
+                    <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
+                    <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
+                    <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
+                  </select>
+                  <select v-if="literalKind(operand) === 'boolean'" :value="String(operand.value)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, inputValue($event) === 'true'))">
+                    <option value="true">{{ locale.t('value.true', 'True') }}</option>
+                    <option value="false">{{ locale.t('value.false', 'False') }}</option>
+                  </select>
+                  <input v-else :value="operand.value" :type="literalKind(operand) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, literalKind(operand) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+                </template>
+                <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
               </template>
-              <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
+              <output v-else class="mx-config-form-designer__reaction-expression" :title="operand.expression">{{ operand.expression }}</output>
               <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('reaction.removeProp', 'Remove prop')" :disabled="disabled" @click="updatePropOperand(reactionIndex, branch, effectIndex, key, undefined)">
                 <Trash2 :size="12" aria-hidden="true" />
               </button>

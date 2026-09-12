@@ -1,6 +1,7 @@
 import type {
   ApplyProjectDraftTransactionOptions,
   ModelDiagnostic,
+  NodeId,
   NodePlacement,
   PageNode,
   PageNodeSettings,
@@ -14,6 +15,8 @@ import type {
   ProjectOperation,
   ProjectTransaction,
 } from '../types'
+import { ProjectReferenceRewriteError, rewriteDuplicatedNodeReferences } from './reference-integrity'
+
 import {
   applyProjectCommandDraftTransaction,
   applyProjectDraftTransaction,
@@ -75,8 +78,13 @@ function settingsForNode(node: PageNode): PageNodeSettings {
     ...(node.conditions ? { conditions: clone(node.conditions) } : {}),
     ...(node.reactions ? { reactions: clone(node.reactions) } : {}),
   }
-  if (node.kind === 'layout')
-    return { ...common, kind: 'layout' }
+  if (node.kind === 'layout') {
+    return {
+      ...common,
+      kind: 'layout',
+      ...(node.valueScope === undefined ? {} : { valueScope: clone(node.valueScope) }),
+    }
+  }
   return {
     ...common,
     kind: 'field',
@@ -85,6 +93,7 @@ function settingsForNode(node: PageNode): PageNodeSettings {
     ...(node.defaultValue !== undefined ? { defaultValue: clone(node.defaultValue) } : {}),
     ...(node.validation !== undefined ? { validation: clone(node.validation) } : {}),
     ...(node.validateOn !== undefined ? { validateOn: clone(node.validateOn) } : {}),
+    ...(node.optionSource === undefined ? {} : { optionSource: clone(node.optionSource) }),
   }
 }
 
@@ -94,15 +103,18 @@ const PROJECT_NODE_PATCH_KEYS = new Set<ProjectNodePatchKey>([
   'extensions',
   'field',
   'label',
+  'optionSource',
   'reactions',
   'validateOn',
   'validation',
+  'valueScope',
 ])
 
 const PROJECT_FIELD_NODE_PATCH_KEYS = new Set<ProjectNodePatchKey>([
   'defaultValue',
   'field',
   'label',
+  'optionSource',
   'validateOn',
   'validation',
 ])
@@ -173,6 +185,14 @@ function patchNodeSettings(node: PageNode, patch: ProjectNodePatch): PageNodeSet
       node.id,
     )
   }
+  if (node.kind === 'field' && changedKeys.includes('valueScope')) {
+    invalid(
+      'PROJECT_NODE_PATCH_KIND_INVALID',
+      `Field node cannot accept layout settings: ${node.id}`,
+      undefined,
+      node.id,
+    )
+  }
 
   const settings = settingsForNode(node)
   const target = settings as unknown as Record<string, unknown>
@@ -233,11 +253,28 @@ function duplicateNodeOperation(
     )
   }
 
+  const nextIds = new Set<NodeId>()
+  const idMap = new Map<NodeId, NodeId>()
+  sourceIds.forEach((sourceId) => {
+    const nextId = action.idMap[sourceId]!
+    if (nextIds.has(nextId)) {
+      invalid(
+        'PROJECT_DUPLICATE_MAPPING_CONFLICT',
+        `Duplicate command maps multiple nodes to the same id: ${nextId}`,
+        action.pageId,
+        nextId,
+      )
+    }
+    nextIds.add(nextId)
+    idMap.set(sourceId, nextId)
+  })
+  const fieldMap = new Map(Object.entries(action.fieldMap ?? {}))
+  const duplicatedNodes = new Map<NodeId, PageNode>()
   const nodesById: Record<string, PageNode> = Object.create(null)
   sourceIds.forEach((sourceId) => {
     const source = page.graph.nodesById[sourceId]!
     const duplicated = clone(source)
-    const nextId = action.idMap[sourceId]!
+    const nextId = idMap.get(sourceId)!
     duplicated.id = nextId
     if (duplicated.kind === 'layout') {
       duplicated.slots = Object.fromEntries(Object.entries(duplicated.slots).map(([slot, children]) => [
@@ -252,17 +289,16 @@ function duplicateNodeOperation(
             )
           }
           return {
-            nodeId: action.idMap[item.nodeId]!,
+            nodeId: idMap.get(item.nodeId)!,
             placement: clone(item.placement),
           }
         }),
       ]))
     }
-    else if (source.kind === 'field' && action.fieldMap?.[source.field]) {
-      duplicated.field = action.fieldMap[source.field]!
-    }
+    duplicatedNodes.set(sourceId, duplicated)
     nodesById[nextId] = duplicated
   })
+  rewriteDuplicatedNodeReferences(page, sourceSet, idMap, fieldMap, duplicatedNodes)
 
   return {
     type: 'node.insert',
@@ -432,6 +468,8 @@ export function resolveProjectCommand(
   catch (error) {
     if (error instanceof ProjectCommandError)
       return { success: false, diagnostics: [error.diagnostic] }
+    if (error instanceof ProjectReferenceRewriteError)
+      return { success: false, diagnostics: [{ code: error.code, message: error.message }] }
     throw error
   }
 

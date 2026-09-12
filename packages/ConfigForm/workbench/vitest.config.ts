@@ -4,11 +4,18 @@ import Vue from '@vitejs/plugin-vue'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vitest/config'
+import { configFormSourceAliases } from './scripts/workspace-source-aliases'
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url))
 const elementPlusTheme = resolve(currentDirectory, 'src/styles/element-plus/theme.scss').replaceAll('\\', '/')
 
 export default defineConfig({
+  resolve: {
+    alias: configFormSourceAliases,
+  },
+  ssr: {
+    noExternal: [/^@moluoxixi\/config-form/],
+  },
   css: {
     preprocessorOptions: {
       scss: {

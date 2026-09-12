@@ -58,6 +58,7 @@
     "zod": "^3.23.0"
   },
   "dependencies": {
+    "@lucide/vue": "catalog:ui",
     "@moluoxixi/config-form-core": "workspace:*"
   },
   "devDependencies": {
@@ -69,6 +70,12 @@
     "happy-dom": "catalog:dev",
     "sass": "catalog:dev",
     "unplugin-dts": "catalog:dev",
+    "@moluoxixi/config-form-compiler": "workspace:*",
+    "@moluoxixi/config-form-designer": "workspace:*",
+    "@moluoxixi/config-form-designer-antd-vue": "workspace:*",
+    "@moluoxixi/config-form-designer-element-plus": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*",
+    "@moluoxixi/config-form-vue-backend": "workspace:*",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",

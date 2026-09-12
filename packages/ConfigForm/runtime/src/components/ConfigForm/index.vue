@@ -36,6 +36,11 @@ defineExpose(createConfigFormRendererExpose(renderer))
     @field-change="emit('fieldChange', $event)"
     @meta-change="emit('metaChange', $event)"
     @runtime-event="emit('runtimeEvent', $event)"
+    @flow-result="emit('flowResult', $event)"
+    @flow-error="emit('flowError', $event)"
+    @flow-trace="emit('flowTrace', $event)"
+    @variables-change="emit('variablesChange', $event)"
+    @data-source-state-change="emit('dataSourceStateChange', $event)"
     @submit="emit('submit', $event)"
   >
     <template #default="scope"><slot v-bind="scope" /></template>

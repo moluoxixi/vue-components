@@ -21,7 +21,7 @@ describe('compiler architecture boundary', () => {
     }
 
     expect(files).toEqual([])
-    expect(directories).toEqual(['constants', 'defaults', 'schemas', 'services', 'types', 'utils'])
+    expect(directories).toEqual(['constants', 'defaults', 'runtime-source', 'schemas', 'services', 'types', 'utils'])
     directories.forEach((directory) => {
       expect(existsSync(resolve(sourceRoot, directory, 'index.ts'))).toBe(true)
     })

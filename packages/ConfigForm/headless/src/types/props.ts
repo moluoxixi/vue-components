@@ -2,6 +2,7 @@ import type { ConfigFormReaction, ConfigFormValidateTrigger } from '@moluoxixi/c
 import type { Component, VNodeChild } from 'vue'
 import type { ZodTypeAny } from 'zod'
 import type { ConfigFormFieldMeta, ConfigFormMeta } from './meta'
+import type { ConfigFormFieldAddress, ConfigFormNodeValueScope } from './scope'
 
 export type ConfigFormValues = Record<string, any>
 export type ConfigFormFieldKey<TValues extends ConfigFormValues = ConfigFormValues> = Extract<keyof TValues, string>
@@ -37,6 +38,11 @@ export type ConfigFormComponentRegistry<TComponent = Component> = Record<
 export type ConfigFormExtensions = Record<string, unknown>
 export type { ConfigFormValidateTrigger } from '@moluoxixi/config-form-core'
 export type ConfigFormFieldValidatorResult = string | string[] | void | null | undefined
+export interface ConfigFormFieldValidatorContext {
+  address?: ConfigFormFieldAddress
+  signal: AbortSignal
+  valuePath?: readonly (number | string)[]
+}
 
 export interface ConfigFormErrors {
   [field: string]: string[]
@@ -48,6 +54,7 @@ export type ConfigFormFieldValidator<
 > = (
   value: TValue,
   values: TValues,
+  context: ConfigFormFieldValidatorContext,
 ) => ConfigFormFieldValidatorResult | Promise<ConfigFormFieldValidatorResult>
 
 export interface ConfigFormComponentSlotContext<
@@ -185,6 +192,8 @@ export interface ConfigFormNodeBase<
 > {
   /** Stable identity shared by Headless, Runtime, Designer, and Flow. */
   id: string
+  /** Component events explicitly forwarded to the host event runtime. */
+  eventNames?: readonly string[]
   /** 真实渲染的 UI 组件、业务组件或原生标签。 */
   component: TComponent
   /** 透传给真实字段组件的 props。 */
@@ -209,6 +218,8 @@ export interface ConfigFormComponentNode<
   TFieldAttrs = ConfigFormAttrs,
   TCellAttrs = ConfigFormAttrs,
 > extends ConfigFormNodeBase<TValues, TComponent, TCellAttrs> {
+  /** Natural JSON object/array ownership for all configured descendants. */
+  valueScope?: ConfigFormNodeValueScope
   /** 容器节点的子级 slots；不绑定表单值，也不生成字段壳。 */
   slots?: ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
 }

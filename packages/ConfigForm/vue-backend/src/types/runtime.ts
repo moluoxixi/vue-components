@@ -1,5 +1,7 @@
 import type {
   ConfigFormComponentRegistry,
+  ConfigFormPageRuntimeOptionBinding,
+  ConfigFormPageRuntimePlan,
   ConfigFormRendererNode,
   ConfigFormResponsiveLayout,
 } from '@moluoxixi/config-form'
@@ -9,14 +11,45 @@ import type {
   PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
+import type {
+  ConfigFormPageRuntimeConfiguration,
+  ConfigFormScopedFieldDefinition,
+  ConfigFormValueScopeDefinition,
+} from '@moluoxixi/config-form-core'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 
 /** Public contracts for projecting Canonical IR into the Vue renderer. */
 
-export type CanonicalRuntimePage = PageCompilation['page']
-export type CanonicalRuntimeNode = CanonicalRuntimePage['nodesById'][string]
-export type CanonicalRuntimeFieldNode = Extract<CanonicalRuntimeNode, { readonly kind: 'field' }>
+type RuntimeMutable<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer Item)[]
+    ? RuntimeMutable<Item>[]
+    : T extends object
+      ? { -readonly [Key in keyof T]: RuntimeMutable<T[Key]> }
+      : T
+
+type CompilerCanonicalRuntimePageSource = PageCompilation['page']
+type CompilerCanonicalRuntimePage = RuntimeMutable<CompilerCanonicalRuntimePageSource>
+type CompilerCanonicalRuntimeFlow = CompilerCanonicalRuntimePageSource['flows'][number]
+type CompilerCanonicalRuntimeNode = CompilerCanonicalRuntimePage['nodesById'][string]
+
+export type CanonicalRuntimeFieldNode
+  = Extract<CompilerCanonicalRuntimeNode, { kind: 'field' }>
+    & { optionSource?: ConfigFormPageRuntimeOptionBinding['source'] }
+
+export type CanonicalRuntimeLayoutNode
+  = Extract<CompilerCanonicalRuntimeNode, { kind: 'layout' }>
+    & { valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'> }
+
+export type CanonicalRuntimeNode = CanonicalRuntimeFieldNode | CanonicalRuntimeLayoutNode
+export type CanonicalRuntimePage = Omit<CompilerCanonicalRuntimePage, 'flows' | 'nodesById'> & {
+  flows: CompilerCanonicalRuntimeFlow[]
+  nodesById: Record<string, CanonicalRuntimeNode>
+  runtime?: ConfigFormPageRuntimeConfiguration
+  scopedFields: ConfigFormScopedFieldDefinition[]
+  valueScopes: ConfigFormValueScopeDefinition[]
+}
 
 export interface VueRuntimeReadonlyRenderContext {
   componentProps: Record<string, unknown>
@@ -46,6 +79,8 @@ export interface VueRuntimeBindingResolver {
 export interface VueRuntimeRendererConfig {
   components?: ConfigFormComponentRegistry
   fields: ConfigFormRendererNode[]
+  /** The sole compiled execution-data input consumed by ConfigFormRenderer. */
+  plan: ConfigFormPageRuntimePlan
   readonly?: boolean
   inline?: boolean
   columns?: number
@@ -56,10 +91,6 @@ export interface VueRuntimeRendererConfig {
   responsive?: ConfigFormResponsiveLayout
 }
 
-export interface VueRuntimeRenderPlan {
-  renderer: VueRuntimeRendererConfig
-}
-
 /**
  * Immutable identity envelope for one page runtime derived from a complete
  * ProjectCompilation. Runtime consumers retain this envelope instead of
@@ -68,7 +99,7 @@ export interface VueRuntimeRenderPlan {
 export interface VueRuntimeArtifact {
   readonly compilationKey: Readonly<CanonicalPageIdentity | CanonicalProjectIdentity>
   readonly pageId: string
-  readonly plan: Readonly<VueRuntimeRenderPlan>
+  readonly renderer: Readonly<VueRuntimeRendererConfig>
 }
 
 export type CompileCanonicalPageRuntimeInput

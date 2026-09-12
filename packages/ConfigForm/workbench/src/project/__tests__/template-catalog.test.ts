@@ -110,17 +110,28 @@ describe('template catalog', () => {
     const unsupported = structuredClone({ manifest: source.manifest, page: source.page })
     unsupported.page.flows = [{
       version: 1,
-      id: 'unsupported-condition-config',
-      name: 'Unsupported condition config',
+      id: 'unsupported-action-identity',
+      name: 'Unsupported action identity',
       trigger: { kind: 'page.mount' },
       nodes: [
         { id: 'trigger', type: 'trigger' },
-        { id: 'condition', type: 'condition', config: {} },
+        {
+          id: 'condition',
+          type: 'condition',
+          config: { condition: { kind: 'literal', value: true } },
+        },
+        {
+          id: 'action',
+          type: 'action',
+          ref: 'notify',
+          config: { input: { $ref: { kind: 'field', nodeId: 'profile-name' } } },
+        },
         { id: 'end', type: 'end' },
       ],
       edges: [
         { id: 'start', source: 'trigger', target: 'condition', condition: 'next' },
-        { id: 'true-end', source: 'condition', target: 'end', condition: 'true' },
+        { id: 'true-action', source: 'condition', target: 'action', condition: 'true' },
+        { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
         { id: 'false-end', source: 'condition', target: 'end', condition: 'false' },
       ],
     }]

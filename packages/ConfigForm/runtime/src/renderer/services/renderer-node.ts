@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormComponentNode, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { Component, StyleValue, VNodeChild } from 'vue'
 import type {
@@ -18,6 +19,7 @@ type RenderBoundNode<TValues extends ConfigFormValues> = (
   ancestors: ReadonlySet<object>,
   metadata: ConfigFormRuntimeNodeMetadata<TValues>,
   registerElement: boolean,
+  scope: ConfigFormScopePath,
 ) => VNodeChild
 
 type RenderComponentNode<TValues extends ConfigFormValues> = (
@@ -31,6 +33,7 @@ type RenderComponentNode<TValues extends ConfigFormValues> = (
   ancestors: ReadonlySet<object>,
   metadata: ConfigFormRuntimeNodeMetadata<TValues>,
   registerElement: boolean,
+  scope: ConfigFormScopePath,
 ) => VNodeChild
 
 export function createNodeRenderer<TValues extends ConfigFormValues>(
@@ -38,19 +41,21 @@ export function createNodeRenderer<TValues extends ConfigFormValues>(
   renderBoundNode: RenderBoundNode<TValues>,
   renderComponentNode: RenderComponentNode<TValues>,
 ): RenderNode<TValues> {
-  return (node, wrapCell, path, ancestors, slot) => {
+  return (node, wrapCell, path, ancestors, scope, slot) => {
     const { activePresentationLayout, bem, controller, editorBridge, props, responsiveLayouts } = context
     assertAcyclicNode(node, ancestors)
     const nextAncestors = new Set(ancestors).add(node)
-    const reactionState = isConfigFormField(node) ? controller.resolveReactionState(node.field) : undefined
+    const reactionState = isConfigFormField(node)
+      ? controller.getInstanceReactionState({ nodeId: node.id, scope })
+      : undefined
     const visible = reactionState?.visible ?? isConfigFormNodeVisible(node, controller.model.value)
     if (!visible)
       return null
 
-    const metadata = editorBridge.createNodeMetadata(node, path, slot)
+    const metadata = editorBridge.createNodeMetadata(node, path, scope, slot)
     const body = isConfigFormField(node)
-      ? renderBoundNode(node, path, nextAncestors, metadata, !wrapCell)
-      : renderComponentNode(node, path, nextAncestors, metadata, !wrapCell)
+      ? renderBoundNode(node, path, nextAncestors, metadata, !wrapCell, scope)
+      : renderComponentNode(node, path, nextAncestors, metadata, !wrapCell, scope)
     if (!wrapCell)
       return body
 

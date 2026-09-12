@@ -587,7 +587,7 @@ describe('designer property panel adaptive Inspector', () => {
     expect(wrapper.get('.mx-config-form-designer__setter-hint.is-value').text()).toBe('12 / 24 · 1/2')
   })
 
-  it('exposes locked form load and submit flow entry points with status', async () => {
+  it('exposes every lifecycle entry without mutating the form and preserves configuration status', async () => {
     const flow: ConfigFormFlow = {
       version: 1,
       id: 'form-submit',
@@ -608,14 +608,37 @@ describe('designer property panel adaptive Inspector', () => {
       },
     })
 
+    const kinds = [
+      'form.initialize',
+      'page.mount',
+      'page.unmount',
+      'form.valuesChange',
+      'form.beforeSubmit',
+      'form.validationSuccess',
+      'form.validationFailure',
+      'form.reset',
+      'form.submit',
+    ]
     const events = wrapper.findAll('.mx-config-form-designer__form-events > button')
-    expect(events).toHaveLength(2)
-    expect(events[0]!.text()).toContain('Not orchestrated')
-    expect(events[1]!.text()).toContain('Configured')
-    expect(events[1]!.text()).toContain('2 nodes')
+    expect(events.map(event => event.attributes('data-form-event'))).toEqual(kinds)
+    expect(wrapper.emitted('configureFlow')).toBeUndefined()
+    expect(wrapper.get('[data-form-event="page.mount"]').text()).toContain('Not orchestrated')
+    const submit = wrapper.get('[data-form-event="form.submit"]')
+    expect(submit.text()).toContain('Configured')
+    expect(submit.text()).toContain('2 nodes')
 
-    await events[1]!.trigger('click')
-    expect(wrapper.emitted('configureFlow')).toEqual([[{ kind: 'form.submit' }]])
+    for (const event of events)
+      await event.trigger('click')
+    expect(wrapper.emitted('configureFlow')).toEqual(kinds.map(kind => [{ kind }]))
+    expect(wrapper.emitted('updateForm')).toBeUndefined()
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+
+    await wrapper.setProps({ readonly: true, flows: [flow, { ...flow, id: 'duplicate-submit' }] })
+    expect(submit.text()).toContain('Conflict')
+    expect(events.every(event => (event.element as HTMLButtonElement).disabled)).toBe(true)
+    await submit.trigger('click')
+    expect(wrapper.emitted('configureFlow')).toHaveLength(kinds.length)
+    wrapper.unmount()
   })
 
   it('edits canonical pixel gap and label width through numeric controls', async () => {

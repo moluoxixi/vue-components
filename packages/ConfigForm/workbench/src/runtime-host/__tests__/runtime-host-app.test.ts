@@ -28,6 +28,11 @@ const runtimeController = vi.hoisted(() => {
   let errors: Record<string, string[]> = {}
   const touched = new Set<string>()
   return {
+    getValues: vi.fn<() => Record<string, unknown>>(() => ({})),
+    listFieldInstances: vi.fn((nodeId?: string) => nodeId && nodeId !== 'name' ? [] : [{ address: { nodeId: 'name', scope: [] }, field: 'name', instanceKey: 'name', valuePath: ['name'] }]),
+    getInstanceMeta: vi.fn((address: { nodeId: string }) => ({ touched: touched.has(address.nodeId), dirty: false })),
+    getInstanceErrors: vi.fn((address: { nodeId: string }) => errors[address.nodeId] ?? []),
+    setInstanceTouched: vi.fn((address: { nodeId: string }, value: boolean) => value ? touched.add(address.nodeId) : touched.delete(address.nodeId)),
     getErrors: vi.fn(() => structuredClone(errors)),
     getMeta: vi.fn(() => ({
       fields: Object.fromEntries([...touched].map(field => [field, { touched: true }])),
@@ -57,7 +62,15 @@ vi.mock('@moluoxixi/config-form-vue-backend', () => ({
     artifact: {
       compilationKey: {},
       pageId: 'home',
-      plan: { renderer: { fields: [] } },
+      renderer: {
+        fields: [],
+        plan: {
+          flows: [],
+          valueSchema: { valueScopes: [], scopedFields: [] },
+          runtime: { variables: [], dataSources: [] },
+          optionBindings: [],
+        },
+      },
     },
     diagnostics: [],
   })),
@@ -75,6 +88,7 @@ vi.mock('@moluoxixi/config-form', async () => {
         },
       },
       setup(props, { expose }) {
+        runtimeController.getValues.mockImplementation(() => props.model.read())
         expose(runtimeController)
         return () => h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.model.read()))
       },
@@ -112,6 +126,8 @@ function compilation(pageId = 'home'): PageCompilation {
       rootIds: [],
       nodesById: {},
       flows: [],
+      valueScopes: [],
+      scopedFields: [{ nodeId: 'name', field: 'name' }],
     },
   }
 }
@@ -142,22 +158,14 @@ describe('runtime host app', () => {
       compilation: compilation(),
       mode: 'preview',
       locale: 'en-US',
-      runtimeState: {
-        values: { name: 'Initial' },
-        touched: [],
-        validation: {},
-      },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Initial' }, touched: [], validation: {} },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       runtimeSessionKey: 'project:element-plus:home',
     })
     dispatchParentMessage({
       type: 'state',
       sequence: 2,
-      runtimeState: {
-        values: { name: 'Latest' },
-        touched: ['name'],
-        validation: { name: ['Required'] },
-      },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Latest' }, touched: ['name'], validation: { name: ['Required'] } },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
     })
 
@@ -165,25 +173,22 @@ describe('runtime host app', () => {
 
     await vi.waitFor(() => {
       expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Latest"}')
-      expect(runtimeController.setTouched).toHaveBeenCalledWith(['name'], true)
+      expect(runtimeController.setInstanceTouched).toHaveBeenCalledWith(expect.objectContaining({ nodeId: 'name', scope: [] }), true)
       expect(runtimeController.setErrors).toHaveBeenCalledWith({ name: ['Required'] })
     })
 
     dispatchParentMessage({
       type: 'state',
       sequence: 3,
-      runtimeState: {
-        values: { name: 'Latest' },
-        touched: ['name'],
-        validation: { name: ['Required'] },
-      },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Latest' }, touched: ['name'], validation: { name: ['Required'] } },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
     })
     await nextTick()
     await nextTick()
 
     expect(runtimeController.setErrors).toHaveBeenCalledTimes(1)
-    expect(runtimeController.setTouched).toHaveBeenCalledTimes(2)
+    expect(runtimeController.setInstanceTouched).toHaveBeenCalledTimes(1)
+    expect(runtimeController.setTouched).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
@@ -202,26 +207,38 @@ describe('runtime host app', () => {
       compilation: compilation(),
       mode: 'preview',
       locale: 'en-US',
-      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Ada' }, touched: [], validation: {} },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       runtimeSessionKey: 'project:element-plus:home',
     })
     adapterControl.release()
     await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'ready')).toBe(true))
 
-    dispatchParentMessage({ type: 'submit', sequence: 2 })
+    dispatchParentMessage({ type: 'submit', requestId: 'invalid-request', sequence: 2 })
     await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => {
       const value = payload as { type?: string, payload?: { status?: string } }
       return value.type === 'submitResult' && value.payload?.status === 'invalid'
     })).toBe(true))
     expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'submit')).toBe(false)
 
-    dispatchParentMessage({ type: 'submit', sequence: 3 })
+    const renderer = wrapper.getComponent({ name: 'ConfigFormRendererStub' })
+    renderer.vm.$emit('submit', { name: 'Previous submit' })
+    dispatchParentMessage({ type: 'submit', requestId: 'valid-request', sequence: 3 })
+    renderer.vm.$emit('submit', { name: 'Current submit' })
     await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => {
       const value = payload as { type?: string, payload?: { status?: string } }
       return value.type === 'submitResult' && value.payload?.status === 'success'
     })).toBe(true))
-    expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'submit')).toBe(true)
+    expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { type?: string, values?: Record<string, unknown> }
+      return value.type === 'submit' && value.values?.name === 'Current submit'
+    })).toBe(true)
+    const notifications = postMessage.mock.calls.map(([payload]) => payload as { type: string, requestId?: string, payload?: { requestId?: string } })
+    expect(notifications.find(value => value.type === 'submit')?.requestId).toBe('valid-request')
+    expect(notifications.filter(value => value.type === 'submitResult').map(value => value.payload?.requestId)).toEqual(['invalid-request', 'valid-request'])
+    dispatchParentMessage({ type: 'submit', requestId: 'invalid-request', sequence: 4 })
+    await nextTick()
+    expect(runtimeController.submit).toHaveBeenCalledTimes(2)
 
     wrapper.unmount()
     postMessage.mockRestore()
@@ -237,7 +254,7 @@ describe('runtime host app', () => {
       compilation: compilation(),
       mode: 'preview',
       locale: 'en-US',
-      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Ada' }, touched: [], validation: {} },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       runtimeSessionKey: 'project:element-plus:home',
     })
@@ -247,18 +264,18 @@ describe('runtime host app', () => {
     const values = { name: 'Grace' }
 
     renderer.vm.$emit('fieldChange', { field: 'name', values })
-    renderer.vm.$emit('runtimeEvent', { event: 'click', metadata: { nodeId: 'submit' } })
+    renderer.vm.$emit('runtimeEvent', { event: 'click', args: [{ value: 1 }], metadata: { nodeId: 'submit' } })
     values.name = 'Changed after emit'
     await nextTick()
 
     expect(postMessage.mock.calls.map(([payload]) => payload)).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: 'fieldChange',
-        payload: { field: 'name', values: { name: 'Grace' } },
+        payload: { ...flatFields('name')[0], field: 'name', values: { name: 'Grace' } },
       }),
       expect.objectContaining({
         type: 'runtimeEvent',
-        payload: { event: 'click', nodeId: 'submit' },
+        payload: { event: 'click', nodeId: 'submit', scope: [], args: [{ value: 1 }], values: { name: 'Ada' } },
       }),
     ]))
     wrapper.unmount()
@@ -281,14 +298,14 @@ describe('runtime host app', () => {
       compilation: compilation(),
       mode: 'preview',
       locale: 'en-US',
-      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Ada' }, touched: [], validation: {} },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       runtimeSessionKey: 'project:element-plus:home',
     })
     adapterControl.release()
     await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'ready')).toBe(true))
 
-    dispatchParentMessage({ type: 'submit', sequence: 2 })
+    dispatchParentMessage({ type: 'submit', requestId: 'old-request', sequence: 2 })
     await vi.waitFor(() => expect(runtimeController.submit).toHaveBeenCalledTimes(1))
     dispatchParentMessage({
       type: 'sync',
@@ -297,7 +314,7 @@ describe('runtime host app', () => {
       compilation: compilation('settings'),
       mode: 'preview',
       locale: 'en-US',
-      runtimeState: { values: { name: 'Grace' }, touched: [], validation: {} },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Grace' }, touched: [], validation: {} },
       reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       pageId: 'settings',
       revision: 'project:settings:2',
@@ -315,4 +332,70 @@ describe('runtime host app', () => {
     wrapper.unmount()
     postMessage.mockRestore()
   })
+
+  it('does not let pre-sync or stale-identity sequences poison the active host', async () => {
+    const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const wrapper = mount(RuntimeHostApp)
+
+    dispatchParentMessage({ type: 'submit', requestId: 'old-request', sequence: 999, hostId: 'old-host' })
+    dispatchParentMessage({
+      type: 'sync',
+      sequence: 1,
+      adapter: 'element-plus',
+      compilation: compilation(),
+      mode: 'preview',
+      locale: 'en-US',
+      runtimeState: { fields: flatFields('name'), values: { name: 'Initial' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+      runtimeSessionKey: 'project:element-plus:home',
+    })
+
+    dispatchParentMessage({
+      type: 'state',
+      sequence: 1_000,
+      revision: 'stale-revision',
+      runtimeState: { fields: flatFields('name'), values: { name: 'Stale revision' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+    })
+    dispatchParentMessage({
+      type: 'state',
+      sequence: 1_001,
+      hostId: 'old-host',
+      runtimeState: { fields: flatFields('name'), values: { name: 'Old host' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+    })
+    dispatchParentMessage({
+      type: 'state',
+      sequence: 2,
+      runtimeState: { fields: flatFields('name'), values: { name: 'Current' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+    })
+    adapterControl.release()
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { hostId?: string, type?: string }
+      return value.type === 'ready' && value.hostId === 'preview-host'
+    })).toBe(true))
+
+    await vi.waitFor(() => expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Current"}'))
+
+    dispatchParentMessage({
+      type: 'state',
+      sequence: 3,
+      runtimeState: { fields: flatFields('name'), values: { name: 'Parent echo' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+    })
+    await nextTick()
+    await nextTick()
+    expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Current"}')
+    expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { code?: string, type?: string }
+      return value.type === 'error' && value.code === 'RUNTIME_HOST_NOT_READY'
+    })).toBe(false)
+    wrapper.unmount()
+    postMessage.mockRestore()
+  })
 })
+
+function flatFields(...names: string[]) {
+  return names.map(nodeId => ({ nodeId, scope: [], instanceKey: nodeId, valuePath: [nodeId] }))
+}

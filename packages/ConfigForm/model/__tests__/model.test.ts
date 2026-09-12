@@ -16,9 +16,11 @@ import {
   createComponentContractRegistry,
   createProjectDomainEngine,
   createProjectDraftSnapshot,
+  createProjectDraftSnapshotFromTransaction,
   createProjectHistory,
   createProjectSnapshot,
   createRegistryContractSnapshot,
+  getProjectDocumentContentHash,
   parseProjectCompilationSnapshot,
   parseProjectDocument,
   parseProjectDraftSnapshot,
@@ -423,6 +425,128 @@ describe('projectSnapshot envelope', () => {
     expect(changed.contentHash).not.toBe(initial.contentHash)
   })
 
+  it('keeps structural-sharing draft hashes wire-compatible without caching mutable documents', () => {
+    const snapshot = createProjectSnapshot(projectDocument(), 1)
+    const applied = applyProjectTransaction(snapshot.document as ProjectDocument, {
+      id: 'move-draft-node',
+      label: 'Move draft node',
+      operations: [{
+        type: 'node.move',
+        pageId: 'home',
+        nodeId: 'name',
+        target: { parentId: null, index: 1 },
+      }],
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success || !applied.changed)
+      return
+
+    const draft = createProjectDraftSnapshotFromTransaction(snapshot, applied, 'move-candidate')
+    expect(draft.draftHash).toBe(getProjectDocumentContentHash(draft.document))
+    expect(draft.document).toBe(applied.document)
+    expect(draft.document.pagesById.home!.graph.nodesById.name).toBe(snapshot.document.pagesById.home!.graph.nodesById.name)
+    expect(parseProjectDraftSnapshot(draft)).toMatchObject({ success: true, data: draft })
+
+    const shallowFrozen = Object.freeze(structuredClone(draft.document) as ProjectDocument)
+    const before = getProjectDocumentContentHash(shallowFrozen)
+    shallowFrozen.pagesById.home!.name = 'Changed after shallow freeze'
+    expect(getProjectDocumentContentHash(shallowFrozen)).not.toBe(before)
+  })
+
+  it.each([applyProjectTransaction, applyProjectDraftTransaction])('freezes authenticated results and all change metadata before draft publication (%#)', (apply) => {
+    const snapshot = createProjectSnapshot(projectDocument(), 3)
+    const applied = apply(snapshot.document as ProjectDocument, {
+      id: 'immutable-result',
+      label: 'Edit node',
+      operations: [{ type: 'node.props', pageId: 'home', nodeId: 'name', props: { placeholder: 'Changed' } }],
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success)
+      return
+
+    expect(Object.isFrozen(applied)).toBe(true)
+    expect(Reflect.set(applied, 'document', projectDocument())).toBe(false)
+    expect(Reflect.set(applied.document, 'homePageId', 'missing')).toBe(false)
+    expect(Reflect.set(applied.document.pagesById.home!.graph.root[0]!, 'nodeId', 'missing')).toBe(false)
+    expect(Reflect.set(applied.document.pagesById.home!.graph.nodesById.name!.props, 'placeholder', 'Tampered')).toBe(false)
+    expect(Reflect.set(applied.changedNodeChanges[0]!, 'kind', 'move')).toBe(false)
+    expect(Reflect.set(applied.changedNodeChanges, 'length', 0)).toBe(false)
+    expect(Reflect.set(applied.changedPageIds, 'length', 0)).toBe(false)
+    expect(Reflect.set(applied.inverse.operations, 'length', 0)).toBe(false)
+    const draft = createProjectDraftSnapshotFromTransaction(snapshot, applied, 'immutable-draft')
+    expect(draft.document).toBe(applied.document)
+    expect(draft.draftHash).toBe(getProjectDocumentContentHash(applied.document))
+    expect(draft.document.pagesById.home!.graph.nodesById.name!.props.placeholder).toBe('Changed')
+    expect(applied.changedNodeChanges).toEqual([{ kind: 'content', pageId: 'home', nodeId: 'name' }])
+  })
+
+  it.each(['homePageId', 'reference'] as const)('rejects copied, forged and shallow-frozen transaction results with invalid %s', (property) => {
+    const snapshot = createProjectSnapshot(projectDocument(), 3)
+    const applied = applyProjectTransaction(snapshot.document as ProjectDocument, {
+      id: 'valid-result',
+      label: 'Rename page',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    })
+    expect(applied.success).toBe(true)
+    if (!applied.success)
+      return
+
+    const copied = structuredClone(applied)
+    if (property === 'homePageId')
+      copied.document.homePageId = 'missing'
+    else
+      copied.document.pagesById.home!.graph.root[0]!.nodeId = 'missing'
+    expect(parseProjectDocument(copied.document).success).toBe(false)
+    const forged = { ...copied, changedPageIds: [], changedNodeIds: [], changedNodeChanges: [] }
+    const shallowFrozen = Object.freeze({ ...copied, document: Object.freeze(structuredClone(copied.document)) })
+    for (const untrusted of [copied, forged, shallowFrozen, { ...applied }, Object.create(applied)]) {
+      expect(() => createProjectDraftSnapshotFromTransaction(snapshot, untrusted, 'forged'))
+        .toThrow('authenticated transaction result')
+    }
+    shallowFrozen.document.pagesById.home!.name = 'Still mutable below the frozen root'
+    expect(() => createProjectDraftSnapshotFromTransaction(snapshot, shallowFrozen, 'forged-again'))
+      .toThrow('authenticated transaction result')
+    expect(createProjectDraftSnapshotFromTransaction(snapshot, applied, 'valid').draftHash)
+      .toBe(getProjectDocumentContentHash(applied.document))
+  })
+
+  it('does not authenticate command intermediates, unvalidated sources or a different base with the same project id', () => {
+    const snapshot = createProjectSnapshot(projectDocument(), 3)
+    const transaction = {
+      id: 'rename',
+      label: 'Rename page',
+      operations: [{ type: 'page.rename' as const, pageId: 'home', name: 'Landing' }],
+    }
+    const intermediate = applyProjectCommandDraftTransaction(snapshot.document as ProjectDocument, transaction)
+    expect(intermediate.success).toBe(true)
+    if (intermediate.success) {
+      expect(() => createProjectDraftSnapshotFromTransaction(snapshot, intermediate, 'intermediate'))
+        .toThrow('authenticated transaction result')
+    }
+    const unvalidated = Object.freeze(projectDocument())
+    unvalidated.pagesById.home!.graph.root[0]!.nodeId = 'missing'
+    const result = applyProjectTransaction(unvalidated, transaction)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(() => createProjectDraftSnapshotFromTransaction({
+        document: unvalidated,
+        editVersion: 3,
+        contentHash: getProjectDocumentContentHash(unvalidated),
+      }, result, 'invalid-source')).toThrow('validated base document')
+    }
+    const applied = applyProjectTransaction(snapshot.document as ProjectDocument, transaction)
+    expect(applied.success).toBe(true)
+    if (!applied.success)
+      return
+    expect(() => createProjectDraftSnapshotFromTransaction(createProjectSnapshot(projectDocument(), 3), applied, 'different-base'))
+      .toThrow('validated base document')
+    expect(() => createProjectDraftSnapshotFromTransaction({ ...snapshot, contentHash: 'fnv1a:00000000' }, applied, 'stale-hash'))
+      .toThrow('valid base snapshot identity')
+    expect(() => createProjectDraftSnapshotFromTransaction({ ...snapshot, editVersion: -1 }, applied, 'invalid-version'))
+      .toThrow('valid base snapshot identity')
+    expect(createProjectDraftSnapshotFromTransaction({ ...snapshot }, applied, 'valid-envelope').document).toBe(applied.document)
+  })
+
   it('round-trips valid envelopes and rejects stale content hashes', () => {
     const snapshot = createProjectSnapshot(projectDocument(), 4)
     const parsed = parseProjectSnapshot(JSON.parse(JSON.stringify(snapshot)))
@@ -625,6 +749,76 @@ describe('projectTransaction', () => {
     }, { registry })
     expect(unknown).toMatchObject({
       success: false,
+      diagnostics: [{ code: 'PROJECT_COMPONENT_UNKNOWN' }],
+    })
+  })
+
+  it.each(['toString', 'hasOwnProperty', 'unknown-component'])('rejects an unknown legal component identifier %s with the complete registry', (component) => {
+    const registry = componentRegistry()
+    const document = projectDocument(registry.lock)
+    document.pagesById.home!.graph.nodesById.name!.component = component
+    expect(parseProjectDocument(document).success).toBe(true)
+    expect(applyProjectTransaction(document, {
+      id: 'unknown-component',
+      label: 'Rename page',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    }, { registry })).toMatchObject({
+      success: false,
+      document,
+      diagnostics: [{ code: 'PROJECT_COMPONENT_UNKNOWN' }],
+    })
+  })
+
+  it('rejects constructor in the schema and requires an actual registry contract for own lock keys', () => {
+    const registry = componentRegistry()
+    const invalid = projectDocument(registry.lock)
+    invalid.pagesById.home!.graph.nodesById.name!.component = 'constructor'
+    expect(parseProjectDocument(invalid)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ path: ['pagesById', 'home', 'graph', 'nodesById', 'name', 'component'] })],
+    })
+    expect(() => createComponentContractRegistry([{ ...inputContract, key: 'toString' }], {
+      adapter: 'element-plus',
+      version: '2.9.1',
+    })).toThrow('Invalid component contract toString')
+    const registered = createComponentContractRegistry([inputContract, sectionContract, { ...inputContract, key: 'element.valid' }], {
+      adapter: 'element-plus',
+      version: '2.9.1',
+    })
+    const document = projectDocument(registered.lock)
+    document.pagesById.home!.graph.nodesById.name!.component = 'element.valid'
+    const transaction = {
+      id: 'registered-prototype-name',
+      label: 'Rename page',
+      operations: [{ type: 'page.rename' as const, pageId: 'home', name: 'Landing' }],
+    }
+    expect(applyProjectTransaction(document, transaction, { registry: registered }).success).toBe(true)
+    expect(applyProjectTransaction(document, transaction, {
+      registry: { ...registered, get: key => key === 'element.valid' ? undefined : registered.get(key) },
+    })).toMatchObject({ success: false, diagnostics: [{ code: 'PROJECT_COMPONENT_UNKNOWN' }] })
+  })
+
+  it.each([
+    undefined,
+    {},
+    { contractVersion: '1' },
+    { contractVersion: '', fingerprint: 'test' },
+    { contractVersion: '1', fingerprint: '' },
+    Object.create({ contractVersion: '1', fingerprint: 'test' }),
+  ])('rejects malformed or inherited component lock records (%#)', (record) => {
+    const registry = componentRegistry()
+    const lock = {
+      ...registry.lock,
+      components: { ...registry.lock.components, 'element.input': record } as RegistryLock['components'],
+    }
+    const document = projectDocument(lock)
+    expect(applyProjectTransaction(document, {
+      id: 'invalid-component-lock',
+      label: 'Rename page',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    }, { registry: { ...registry, lock } })).toMatchObject({
+      success: false,
+      document,
       diagnostics: [{ code: 'PROJECT_COMPONENT_UNKNOWN' }],
     })
   })
@@ -1092,7 +1286,7 @@ describe('projectTransaction', () => {
       return
     expect(result.changedNodeChanges).toEqual([
       {
-        kind: 'move',
+        kind: 'content',
         pageId: 'home',
         nodeId: 'name',
         before: { parentId: 'section', slot: 'default' },
@@ -1106,6 +1300,161 @@ describe('projectTransaction', () => {
     expect(undone.success).toBe(true)
     if (undone.success)
       expect(undone.document).toEqual(initial)
+  })
+
+  it.each([
+    { parentId: null, nodeId: 'root-first', editFirst: true },
+    { parentId: null, nodeId: 'root-first', editFirst: false },
+    { parentId: 'outer', nodeId: 'outer-field', editFirst: true },
+    { parentId: 'outer', nodeId: 'outer-field', editFirst: false },
+  ])('retains content changes during same-slot moves ($nodeId, editFirst=$editFirst)', ({ parentId, nodeId, editFirst }) => {
+    const registry = componentRegistry()
+    const initial = dragSortDocument(registry.lock)
+    const edit: ProjectOperation = { type: 'node.props', pageId: 'home', nodeId, props: { placeholder: 'Changed' } }
+    const move: ProjectOperation = { type: 'node.move', pageId: 'home', nodeId, target: { parentId, index: 1 } }
+    const result = applyProjectTransaction(initial, {
+      id: 'edit-and-reorder',
+      label: 'Edit and reorder',
+      operations: editFirst ? [edit, move] : [move, edit],
+    }, { registry })
+    expect(result.success && result.changed).toBe(true)
+    if (!result.success)
+      return
+    const relation = { parentId, slot: parentId === null ? null : 'default' }
+    expect(result.changedNodeChanges).toContainEqual({ kind: 'content', pageId: 'home', nodeId, before: relation, after: relation })
+    expect(result.document.pagesById.home!.graph.nodesById[nodeId]!.props.placeholder).toBe('Changed')
+    const undone = applyProjectTransaction(result.document, result.inverse, { registry })
+    expect(undone.success).toBe(true)
+    expect(undone.document).toEqual(initial)
+  })
+
+  it.each(['name', 'section'])('validates only surviving placements after moving a node and removing %s', (removedId) => {
+    const registry = componentRegistry()
+    const document = projectDocument(registry.lock)
+    const section = document.pagesById.home!.graph.nodesById.section!
+    if (section.kind !== 'layout')
+      throw new TypeError('Expected section layout fixture.')
+    document.pagesById.home!.graph.nodesById.other = fieldNode('other')
+    section.slots.default!.push({ nodeId: 'other', placement: {} })
+    const initial = createProjectSnapshot(document, 1)
+    const original = structuredClone(initial.document)
+    const result = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'move-and-remove',
+      label: 'Move and remove',
+      operations: [
+        { type: 'node.move', pageId: 'home', nodeId: 'name', target: { parentId: 'section', index: 1 } },
+        { type: 'node.remove', pageId: 'home', nodeId: removedId },
+      ],
+    }, { registry })
+    expect(result.diagnostics).toEqual([])
+    expect(result.success && result.changed).toBe(true)
+    if (!result.success)
+      return
+    expect(parseProjectDocument(result.document).success).toBe(true)
+    expect(result.document.pagesById.home!.graph.nodesById).not.toHaveProperty(removedId)
+    expect(result.changedNodeChanges).toContainEqual(expect.objectContaining({ kind: 'remove', pageId: 'home', nodeId: 'name' }))
+    const undone = applyProjectTransaction(result.document, result.inverse, { registry })
+    expect(undone.success).toBe(true)
+    expect(undone.document).toEqual(initial.document)
+    expect(initial.document).toEqual(original)
+    expect(Reflect.set(result.changedNodeChanges[0]!, 'kind', 'move')).toBe(false)
+  })
+
+  it('still validates the final placement when a moved node is removed and reinserted', () => {
+    const registry = createComponentContractRegistry([
+      { ...inputContract, allowedParents: [{ component: 'element.section', slot: 'default' }] },
+      sectionContract,
+    ], { adapter: 'element-plus', version: '2.9.1' })
+    const initial = projectDocument(registry.lock)
+    const result = applyProjectTransaction(initial, {
+      id: 'move-remove-invalid-reinsert',
+      label: 'Move, remove and reinsert at invalid root',
+      operations: [
+        { type: 'node.move', pageId: 'home', nodeId: 'name', target: { parentId: null, index: 1 } },
+        { type: 'node.remove', pageId: 'home', nodeId: 'name' },
+        { type: 'node.insert', pageId: 'home', subgraph: { root: [{ nodeId: 'name', placement: {} }], nodesById: { name: fieldNode('name') } }, target: { parentId: null } },
+      ],
+    }, { registry })
+    expect(result.success).toBe(false)
+    expect(result.document).toBe(initial)
+    expect(result.diagnostics[0]?.code).toBe('PROJECT_COMPONENT_PARENT_INVALID')
+  })
+
+  it.each([false, true])('keeps distinct NUL-qualified changes and their first-seen order (reverse=%s)', (reverse) => {
+    const registry = componentRegistry()
+    const document = projectDocument(registry.lock)
+    const targets = [{ pageId: 'a', nodeId: 'b\u0000c' }, { pageId: 'a\u0000b', nodeId: 'c' }]
+    targets.forEach(({ pageId, nodeId }, index) => {
+      document.pageOrder.push(pageId)
+      document.pagesById[pageId] = {
+        id: pageId,
+        name: `Page ${index}`,
+        route: `/nul-${index}`,
+        graph: { version: 2, props: {}, form: {}, root: [{ nodeId, placement: {} }], nodesById: { [nodeId]: fieldNode(nodeId) } },
+      }
+    })
+    expect(parseProjectDocument(document).success).toBe(true)
+    const initial = createProjectSnapshot(document, 1)
+    const original = structuredClone(initial.document)
+    const ordered = reverse ? [...targets].reverse() : targets
+    const operations: ProjectOperation[] = [...ordered, ordered[0]!].map(({ pageId, nodeId }, index) => ({
+      type: 'node.props',
+      pageId,
+      nodeId,
+      props: { placeholder: `Edit ${index}` },
+    }))
+    const result = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'nul-changes',
+      label: 'NUL changes',
+      operations,
+    }, { registry })
+    expect(result.success && result.changed).toBe(true)
+    if (!result.success)
+      return
+    expect(result.changedNodeChanges).toEqual(ordered.map(target => ({ kind: 'content', ...target })))
+    expect(result.changedPageIds).toEqual(ordered.map(target => target.pageId))
+    expect(result.changedNodeIds).toEqual(ordered.map(target => target.nodeId))
+    expect(result.document.pagesById.home).toBe(initial.document.pagesById.home)
+    const undone = applyProjectTransaction(result.document, result.inverse, { registry })
+    expect(undone.success).toBe(true)
+    expect(undone.document).toEqual(initial.document)
+    expect(initial.document).toEqual(original)
+    expect(Reflect.set(result.changedNodeChanges[0]!, 'nodeId', 'changed')).toBe(false)
+  })
+
+  it('publishes complete node changes when a page is removed and replaced', () => {
+    const registry = componentRegistry()
+    const document = projectDocument(registry.lock)
+    document.pageOrder.push('billing')
+    document.pagesById.billing = { ...structuredClone(document.pagesById.home!), id: 'billing', route: '/billing' }
+    const initial = createProjectSnapshot(document, 1)
+    const replacement = structuredClone(document.pagesById.home!)
+    replacement.graph.nodesById = { section: layoutNode('section', ['other']), other: fieldNode('other') }
+    const result = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'replace-page',
+      label: 'Replace page',
+      operations: [
+        { type: 'page.remove', pageId: 'home' },
+        { type: 'page.add', page: replacement, index: 0 },
+        { type: 'project.home', pageId: 'home' },
+      ],
+    }, { registry })
+    expect(result.success && result.changed).toBe(true)
+    if (!result.success)
+      return
+    expect(result.changedNodeChanges).toEqual([
+      { kind: 'content', pageId: 'home', nodeId: 'section', before: { parentId: null, slot: null }, after: { parentId: null, slot: null } },
+      { kind: 'remove', pageId: 'home', nodeId: 'name', before: { parentId: 'section', slot: 'default' } },
+      { kind: 'insert', pageId: 'home', nodeId: 'other', after: { parentId: 'section', slot: 'default' } },
+    ])
+    expect(result.changedNodeIds).toEqual(['section', 'name', 'other'])
+    expect(result.changedPageIds).toEqual(['home'])
+    expect(result.document.pagesById.billing).toBe(initial.document.pagesById.billing)
+    replacement.graph.nodesById.other!.props.placeholder = 'Mutated input'
+    expect(result.document.pagesById.home!.graph.nodesById.other!.props).toEqual({})
+    const undone = applyProjectTransaction(result.document, result.inverse, { registry })
+    expect(undone.success).toBe(true)
+    expect(undone.document).toEqual(initial.document)
   })
 
   it('does not commit a multi-operation transaction whose final state is unchanged', () => {

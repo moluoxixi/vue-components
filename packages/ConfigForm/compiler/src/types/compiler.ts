@@ -1,9 +1,11 @@
 import type { ConfigFormFlowExecutionPlan } from '@moluoxixi/config-form-core'
 import type {
   ComponentKey,
+  ConfigFormFieldOptionSource,
   DeepReadonly,
   FieldNode,
   FormSettings,
+  LayoutNode,
   ModelJsonObject,
   ModelJsonValue,
   NodeId,
@@ -12,6 +14,8 @@ import type {
   ProjectChangeSet,
   ProjectCompilationSnapshot,
   ProjectDraftSnapshot,
+  ProjectPageRuntimeConfiguration,
+  ProjectPageValueSchema,
   ProjectResourceReference,
   ProjectSnapshot,
   RegisteredBinding,
@@ -86,6 +90,7 @@ export interface CanonicalFieldDescriptor {
   defaultValue?: ModelJsonValue
   validation?: FieldNode['validation']
   validateOn: ValidateTrigger[]
+  optionSource?: ConfigFormFieldOptionSource
 }
 
 export interface CanonicalFieldNodeIR extends CanonicalNodeBase, CanonicalFieldDescriptor {
@@ -95,6 +100,7 @@ export interface CanonicalFieldNodeIR extends CanonicalNodeBase, CanonicalFieldD
 export interface CanonicalLayoutNodeIR extends CanonicalNodeBase {
   kind: 'layout'
   slots: Record<SlotName, NodeId[]>
+  valueScope?: LayoutNode['valueScope']
 }
 
 export type CanonicalNodeIR = CanonicalFieldNodeIR | CanonicalLayoutNodeIR
@@ -104,7 +110,7 @@ export interface CanonicalFlowIR {
   plan: ConfigFormFlowExecutionPlan
 }
 
-export interface CanonicalPageIR {
+export interface CanonicalPageIR extends ProjectPageValueSchema {
   id: PageId
   name: string
   route: string
@@ -113,6 +119,7 @@ export interface CanonicalPageIR {
   rootIds: NodeId[]
   nodesById: Record<NodeId, CanonicalNodeIR>
   flows: CanonicalFlowIR[]
+  runtime?: ProjectPageRuntimeConfiguration
 }
 
 export interface CanonicalProjectIRDocument {

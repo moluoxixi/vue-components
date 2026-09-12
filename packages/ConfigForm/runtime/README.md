@@ -39,7 +39,29 @@ const runtime = { plugins: [createElementPlusPlugin()] }
 
 所有节点必须有稳定 `id`。组件与 slot 函数使用 Vue/Headless 当前合同；slot 上下文包含 `model`、`meta`、`slotProps`，字段 slot 另有 `field`、`value`、`setValue`。不再提供旧 FormLayout、RecursiveField、FormContext 或 useForm 模板链路。
 
-## 插件
+## 事件
+
+`ConfigForm` 与 `ConfigFormRenderer` 均支持 `flows` 和 `flowActions`。流程使用 Core 的 `ConfigFormFlow`，动作注册器使用 `createConfigFormFlowActionRegistry`。组件事件按稳定节点 `id` 匹配；无需工作台即可运行。
+
+```ts
+import { createConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
+
+const flowActions = createConfigFormFlowActionRegistry({
+  fillSummary: {
+    execute(input, { event, form, signal }) {
+      signal.throwIfAborted()
+      form.setValue('summary', event.args[0])
+      return input
+    },
+  },
+})
+```
+
+流程动作通过 `{ $event: 'args.0' }` 读取事件参数。字段绑定和校验状态先更新，再调用配置监听器与事件流程。同一 Vue 事件只分发一次。`flowResult` 返回运行结果，`flowError` 报告配置、参数、动作或监听器错误；`runtimeEvent` 保留原生参数供当前 realm 的宿主消费。需要只向宿主转发事件时，在节点上声明 `eventNames`。
+
+Design 模式拦截业务事件。卸载或流程配置替换会取消旧任务，旧结果不能写值，也不会在卸载后发布通知。
+
+## 插件配置
 
 `runtime` 接受 `FormRuntimeOptions`，可配置 `components`、`plugins` 与 `readonlyAdapters`。`getDefaultField`、`transformField` 只处理字段配置，不拥有表单值、校验队列或提交行为。字段显式配置优先于注册默认值；未知组件 key、重复插件名及冲突注册会抛出带 code/context 的 `ConfigFormError`。
 

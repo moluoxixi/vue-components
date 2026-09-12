@@ -628,17 +628,27 @@ describe('workbench production architecture boundary', () => {
     expect(uiStore).not.toContain('templatePickerOpen')
   })
 
-  it('delegates event-flow execution to the page Flow Engine', () => {
+  it('keeps preview Flow transaction ownership inside the iframe renderer', () => {
     const previewSession = readFileSync(new URL('../../session/services/preview.ts', import.meta.url), 'utf8')
-    const engine = readFileSync(new URL('../../flow/services/page-flow-engine.ts', import.meta.url), 'utf8')
+    const previewFrame = readFileSync(new URL('../components/PreviewRuntimeHostFrame/index.vue', import.meta.url), 'utf8')
+    const runtimeHost = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
+    const runtimeProtocol = readFileSync(new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url), 'utf8')
+    const parentOwnership = `${previewSession}\n${previewFrame}`
 
-    expect(previewSession).toContain('createWorkbenchPageFlowEngine')
-    expect(previewSession).toContain('flowEngine.dispatch')
-    expect(previewSession).not.toContain('new ConfigFormFlowInterpreter')
-    expect(previewSession).not.toContain('new PreviewFlowCoordinator')
-    expect(engine).toContain('new ConfigFormFlowInterpreter')
-    expect(engine).toContain('new PreviewFlowCoordinator')
-    expect(engine).toContain('createWorkbenchFlowActionRegistry')
+    for (const token of ['createWorkbenchPageFlowEngine', 'createConfigFormEventRuntime', 'flowEngine.dispatch'])
+      expect(parentOwnership).not.toContain(token)
+    expect(previewSession).toContain('flowProjectionMirror')
+    expect(previewSession).toContain('handleRuntimeState')
+    expect(previewSession).toContain('handleFlowResult')
+    expect(runtimeHost.match(/<ConfigFormRenderer\b/g)).toHaveLength(1)
+    expect(runtimeHost).toContain(':model="model"')
+    expect(runtimeHost).toContain(':flow-actions="runtimeMode === \'preview\' ? flowActions : undefined"')
+    expect(runtimeProtocol).toContain('createRuntimeHostActionProxy')
+    expect(runtimeProtocol).toContain('flowActions.value = actionProxy.registry')
+    expect(runtimeProtocol).not.toContain('createWorkbenchPageFlowEngine')
+    expect(runtimeProtocol).not.toContain('createConfigFormEventRuntime')
+    expect(previewFrame).toContain('createRuntimeHostActionExecutor')
+    expect(previewFrame).toContain('getRegistry: () => props.flowActions')
   })
 
   it('uses Flow as the only normal Workbench editor for registered component events', () => {

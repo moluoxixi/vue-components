@@ -1,7 +1,8 @@
 import type {
+  ConfigFormFlowActionDescriptor,
   ConfigFormFlowActionRegistry,
 } from '@moluoxixi/config-form-core'
-import type { WorkbenchFlowActionHooks } from '../types'
+import * as ConfigFormRuntime from '@moluoxixi/config-form'
 import {
   createConfigFormBuiltinFlowActions,
   createConfigFormFlowActionRegistry,
@@ -16,20 +17,15 @@ import {
 export function createWorkbenchFlowActionRegistry(
   hooks: WorkbenchFlowActionHooks = {},
 ): ConfigFormFlowActionRegistry {
-  const { onConfirm, onNotify } = hooks
+  const { onConfirm, onNotify, onOpenUrl, onRequest } = hooks
   return createConfigFormFlowActionRegistry(
     createConfigFormBuiltinFlowActions({
       ...(onConfirm ? { confirm: onConfirm } : {}),
       // The workbench toast channel carries plain text; the message tone is
       // kept in the flow config for hosts with richer notification UIs.
       ...(onNotify ? { message: input => onNotify(input.message) } : {}),
-      ...(typeof window === 'undefined'
-        ? {}
-        : {
-            openUrl: (url, target) => {
-              window.open(url, target, 'noopener')
-            },
-          }),
+      ...(onOpenUrl ? { openUrl: onOpenUrl } : {}),
+      ...(onRequest ? { fetch: onRequest } : {}),
     }),
     {
       notify: {
@@ -44,4 +40,30 @@ export function createWorkbenchFlowActionRegistry(
       },
     },
   )
+}
+
+const rendererBuiltinDescriptors = (): ConfigFormFlowActionDescriptor[] => {
+  const provider = (ConfigFormRuntime as unknown as {
+    listConfigFormRendererBuiltinActionDescriptors?: () => ConfigFormFlowActionDescriptor[]
+  }).listConfigFormRendererBuiltinActionDescriptors
+  return provider ? provider() : [
+    { ref: 'builtin.field.set', title: 'Set field', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.variable.set', title: 'Set variable', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.field.state', title: 'Set field state', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.form.validate', title: 'Validate form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.form.submit', title: 'Submit form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.form.reset', title: 'Reset form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+    { ref: 'builtin.dataSource.load', title: 'Load data source', category: 'data', parameters: [], outputs: [], capabilities: ['dataSourceHost.request'] },
+  ]
+}
+
+export function listWorkbenchRendererBuiltinActionDescriptors(): ConfigFormFlowActionDescriptor[] {
+  return rendererBuiltinDescriptors().map(descriptor => structuredClone(descriptor))
+}
+/** Catalog metadata includes renderer-local actions without exposing parent implementations. */
+export function listWorkbenchFlowActionDescriptors(registry: ConfigFormFlowActionRegistry): ConfigFormFlowActionDescriptor[] {
+  return [...new Map([
+    ...(registry.list?.() ?? []),
+    ...listWorkbenchRendererBuiltinActionDescriptors(),
+  ].map(descriptor => [descriptor.ref, descriptor])).values()]
 }

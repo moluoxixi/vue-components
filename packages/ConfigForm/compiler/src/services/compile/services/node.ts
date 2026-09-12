@@ -92,7 +92,12 @@ export function compileNodeShallow(
       return []
     })
   }
-  const semanticNode = { ...common, kind: 'layout', slots }
+  const semanticNode = {
+    ...common,
+    kind: 'layout',
+    slots,
+    ...(node.valueScope === undefined ? {} : { valueScope: clone(node.valueScope) }),
+  }
   return {
     ...semanticNode,
     subtreeHash: semanticHash({ node: semanticNode, children: childHashes }),
@@ -160,7 +165,12 @@ export function compileNode(
       return child ? [child.subtreeHash] : []
     })
   })
-  const semanticNode = { ...common, kind: 'layout', slots }
+  const semanticNode = {
+    ...common,
+    kind: 'layout',
+    slots,
+    ...(node.valueScope === undefined ? {} : { valueScope: clone(node.valueScope) }),
+  }
   const compiled = {
     ...semanticNode,
     subtreeHash: semanticHash({ node: semanticNode, children: childHashes }),
@@ -181,6 +191,7 @@ function compileFieldSemanticNode(
     ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
     ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
     validateOn: normalizeConfigFormValidateOn(node.validateOn),
+    ...(node.optionSource === undefined ? {} : { optionSource: clone(node.optionSource) }),
   }
 }
 

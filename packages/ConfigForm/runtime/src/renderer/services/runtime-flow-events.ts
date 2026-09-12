@@ -1,3 +1,4 @@
+import type { ConfigFormFlowDiagnostic } from '@moluoxixi/config-form-core'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererNode,
@@ -7,44 +8,99 @@ import type {
 } from '../types'
 import type { RuntimeFlowEventService } from '../types/internal'
 import { camelize, toHandlerKey } from 'vue'
-import { isObjectValue } from './metadata'
 
 interface CreateRuntimeFlowEventServiceOptions<TValues extends ConfigFormValues> {
   emitRuntimeEvent: (payload: ConfigFormRuntimeEventPayload<TValues>) => void
+  eventNames?: (nodeId: string) => readonly string[]
   mode: () => ConfigFormRenderMode
-  shouldIntercept: (
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    event: string,
-    args: unknown[],
-  ) => boolean
+  onError?: (diagnostic: ConfigFormFlowDiagnostic) => void
+  shouldIntercept: (metadata: ConfigFormRuntimeNodeMetadata<TValues>, event: string, args: unknown[]) => boolean
 }
+
+type Listener = (...args: unknown[]) => unknown
 
 export function createRuntimeFlowEventService<TValues extends ConfigFormValues>(
   options: CreateRuntimeFlowEventServiceOptions<TValues>,
 ): RuntimeFlowEventService<TValues> {
-  function emitRuntimeEvent(
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  interface Channel {
+    event: string
+    metadata?: ConfigFormRuntimeNodeMetadata<TValues>
+    runtimeEvent?: string
+    internal: Listener[]
+    external: Listener[]
+  }
+  const channels = new WeakMap<object, Map<string, Channel>>()
+
+  function ensure(
+    target: Record<string, unknown>,
     event: string,
-    args: unknown[],
-  ): void {
-    if (options.mode() !== 'preview')
-      return
-    options.emitRuntimeEvent({ args, event, metadata })
+    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
+    runtimeEvent?: string,
+  ): Channel {
+    const key = toHandlerKey(camelize(event))
+    let entries = channels.get(target)
+    if (!entries) {
+      entries = new Map()
+      channels.set(target, entries)
+    }
+    const existing = entries.get(key)
+    if (existing) {
+      existing.metadata = metadata ?? existing.metadata
+      existing.runtimeEvent = runtimeEvent ?? existing.runtimeEvent
+      return existing
+    }
+    const configured = target[key]
+    const channel: Channel = {
+      event,
+      metadata,
+      runtimeEvent,
+      internal: [],
+      external: (Array.isArray(configured) ? configured : [configured])
+        .filter((listener): listener is Listener => typeof listener === 'function'),
+    }
+    entries.set(key, channel)
+    target[key] = (...args: unknown[]) => {
+      const { metadata: current, runtimeEvent: subscribed } = channel
+      if (current && options.shouldIntercept(current, channel.event, args))
+        return
+      const report = (cause: unknown): void => options.onError?.({
+        code: 'FLOW_COMPONENT_LISTENER_ERROR',
+        message: cause instanceof Error ? cause.message : String(cause),
+        ...(current ? { nodeId: current.nodeId } : {}),
+      })
+      // Binding and validation bookkeeping complete before application callbacks.
+      for (const listener of channel.internal)
+        listener(...args)
+      for (const listener of channel.external) {
+        try {
+          const result = listener(...args)
+          if (result && typeof (result as PromiseLike<unknown>).then === 'function')
+            void Promise.resolve(result).catch(report)
+        }
+        catch (cause) { report(cause) }
+      }
+      if (current && subscribed && options.mode() === 'preview') {
+        options.emitRuntimeEvent({
+          metadata: current,
+          event: subscribed,
+          args,
+          ...(current.scope === undefined
+            ? {}
+            : { scope: current.scope.map(entry => ({ ...entry })) }),
+        })
+      }
+    }
+    return channel
   }
 
-  function editorEventListener(
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  function addListener(
+    target: Record<string, unknown>,
     event: string,
-    listener: (...args: unknown[]) => void,
+    listener: Listener,
+    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
     runtimeEvent?: string,
-  ): (...args: unknown[]) => void {
-    return (...args: unknown[]) => {
-      if (options.shouldIntercept(metadata, event, args))
-        return
-      listener(...args)
-      if (runtimeEvent)
-        emitRuntimeEvent(metadata, runtimeEvent, args)
-    }
+  ): void {
+    ensure(target, event, metadata, runtimeEvent).internal.push(listener)
   }
 
   function wrapComponentListeners(
@@ -53,50 +109,11 @@ export function createRuntimeFlowEventService<TValues extends ConfigFormValues>(
     skipKeys: ReadonlySet<string> = new Set(),
     runtimeEvents: ReadonlyMap<string, string> = new Map(),
   ): void {
-    if (options.mode() !== 'design' && options.mode() !== 'preview')
-      return
-
     for (const key of Object.keys(target)) {
       if (!/^on[A-Z]/.test(key) || skipKeys.has(key))
         continue
-      const value = target[key]
-      const runtimeEvent = runtimeEvents.get(key)
-      if (options.mode() === 'preview' && !runtimeEvent)
-        continue
-      const event = runtimeEvent ?? eventNameFromHandlerKey(key)
-      if (typeof value === 'function') {
-        target[key] = editorEventListener(metadata, event, value as (...args: unknown[]) => void, runtimeEvent)
-      }
-      else if (Array.isArray(value)) {
-        const listeners = value.filter((listener): listener is (...args: unknown[]) => void => typeof listener === 'function')
-        target[key] = editorEventListener(metadata, event, (...args: unknown[]) => {
-          for (const listener of listeners)
-            listener(...args)
-        }, runtimeEvent)
-      }
-    }
-  }
-
-  function addListener(
-    target: Record<string, unknown>,
-    event: string,
-    listener: (...args: unknown[]) => void,
-    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
-    runtimeEvent?: string,
-  ): void {
-    const key = toHandlerKey(camelize(event))
-    const existing = target[key]
-    const existingListeners = Array.isArray(existing)
-      ? existing.filter((value): value is (...args: unknown[]) => unknown => typeof value === 'function')
-      : typeof existing === 'function' ? [existing] : []
-    target[key] = (...args: unknown[]) => {
-      if (metadata && options.shouldIntercept(metadata, event, args))
-        return
-      for (const existingListener of existingListeners)
-        existingListener(...args)
-      listener(...args)
-      if (metadata && runtimeEvent)
-        emitRuntimeEvent(metadata, runtimeEvent, args)
+      const event = runtimeEvents.get(key) ?? key.charAt(2).toLowerCase() + key.slice(3)
+      ensure(target, event, metadata, runtimeEvents.get(key))
     }
   }
 
@@ -104,42 +121,18 @@ export function createRuntimeFlowEventService<TValues extends ConfigFormValues>(
     target: Record<string, unknown>,
     metadata: ConfigFormRuntimeNodeMetadata<TValues>,
     runtimeEvents: ReadonlyMap<string, string>,
-    managedListenerKeys: Set<string>,
+    managed: Set<string>,
   ): void {
     for (const [key, event] of runtimeEvents) {
-      if (!managedListenerKeys.has(key))
-        addListener(target, event, () => {}, metadata, event)
-      managedListenerKeys.add(key)
+      ensure(target, event, metadata, event)
+      managed.add(key)
     }
   }
 
   function runtimeFlowEventMap(node: ConfigFormRendererNode<TValues>): ReadonlyMap<string, string> {
-    return new Map(runtimeFlowEvents(node).map(event => [toHandlerKey(camelize(event)), event] as const))
+    const events = [...(node.eventNames ?? []), ...(options.eventNames?.(node.id) ?? [])]
+    return new Map(events.map(event => [toHandlerKey(camelize(event)), event]))
   }
 
-  return {
-    addListener,
-    addRuntimeFlowEventListeners,
-    runtimeFlowEventMap,
-    wrapComponentListeners,
-  }
-}
-
-function runtimeFlowEvents<TValues extends ConfigFormValues>(node: ConfigFormRendererNode<TValues>): string[] {
-  const lowCode = node.extensions?.['mx.low-code']
-  if (!isObjectValue(lowCode))
-    return []
-  const events = (lowCode as Record<string, unknown>).flowEvents
-  if (!Array.isArray(events))
-    return []
-  return [...new Set(events.filter(isNonEmptyString))]
-}
-
-function eventNameFromHandlerKey(key: string): string {
-  const event = key.slice(2)
-  return event.charAt(0).toLowerCase() + event.slice(1)
-}
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0
+  return { addListener, addRuntimeFlowEventListeners, runtimeFlowEventMap, wrapComponentListeners }
 }

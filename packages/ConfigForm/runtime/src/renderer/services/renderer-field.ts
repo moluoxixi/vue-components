@@ -1,4 +1,5 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormJsonValue, ConfigFormScopePath } from '@moluoxixi/config-form-core'
+import type { ConfigFormFieldAddress, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { VNodeChild } from 'vue'
 import type {
   ConfigFormComponentRegistration,
@@ -27,6 +28,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     field: ConfigFormRendererField<TValues>,
     path: string,
     ancestors: ReadonlySet<object>,
+    scope: ConfigFormScopePath,
   ) => RendererSlots,
 ) {
   function renderBoundNode(
@@ -35,24 +37,26 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     ancestors: ReadonlySet<object>,
     metadata: ConfigFormRuntimeNodeMetadata<TValues>,
     registerElement: boolean,
+    scope: ConfigFormScopePath,
   ): VNodeChild {
     const { bem, binding, controller, editorBridge, formId, props } = context
+    const address = fieldAddress(field, scope)
     const registration = binding.resolveRegistration(field.component)
     const staticProps = {
       ...registration?.props,
       ...field.props,
-      ...controller.resolveReactionProps(field.field),
+      ...controller.resolveInstanceReactionProps(address, field.field),
     }
     const configuredId = staticProps.id
     const controlId = typeof configuredId === 'string' && configuredId
       ? configuredId
       : `${formId}-${toDomId(path)}-control`
     const errorId = `${formId}-${toDomId(path)}-error`
-    const reactionState = controller.resolveReactionState(field.field)
+    const reactionState = controller.resolveInstanceReactionState(address, field.field)
     const readonly = resolveConfigFormCondition(props.readonly, controller.model.value, false)
       || (reactionState.readonly ?? isConfigFormFieldReadonly(field, controller.model.value, false))
-    const fieldErrors = readonly ? [] : (controller.errors.value[field.field] ?? [])
-    const fieldMeta = controller.meta.value.fields[field.field] ?? controller.getFieldMeta(field.field)
+    const fieldErrors = readonly ? [] : controller.getInstanceErrors(address)
+    const fieldMeta = controller.getInstanceMeta(address)
     const fieldAttrs = field.fieldAttrs
     const hasLabel = typeof field.label === 'string'
     const labelPosition = props.labelPosition ?? 'left'
@@ -72,9 +76,11 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       'class': [bem('field'), bem('field', `label-${labelPosition}`), fieldAttrs?.class, metadataAttrs.class],
       'data-dirty': fieldMeta.dirty,
       'data-field': field.field,
+      'data-instance-key': controller.getInstanceKey(address),
       'data-label-position': labelPosition,
       'data-required': reactionState.required ?? resolveConfigFormCondition(field.required, controller.model.value, false),
       'data-touched': fieldMeta.touched,
+      'data-validating': controller.isInstanceValidating(address),
       'key': getNodeKey(field, path),
       ...(registerElement ? { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) } : {}),
       'style': [layout.field, fieldAttrs?.style],
@@ -84,7 +90,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
         'class': bem('control'),
         'data-config-form-control': '',
         'style': layout.control,
-      }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, metadata)]),
+      }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, metadata, address, fieldErrors)]),
       ...fieldErrors.map((message, index) => h('p', {
         'class': bem('error'),
         'data-config-form-error': '',
@@ -98,23 +104,34 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
   function renderControl(
     field: ConfigFormRendererField<TValues>,
     path: string,
-    controlId?: string,
-    errorId?: string,
-    readonly = false,
-    ancestors: ReadonlySet<object> = new Set(),
-    registration?: ConfigFormComponentRegistration,
-    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
+    controlId: string | undefined,
+    errorId: string | undefined,
+    readonly: boolean,
+    ancestors: ReadonlySet<object>,
+    registration: ConfigFormComponentRegistration | undefined,
+    metadata: ConfigFormRuntimeNodeMetadata<TValues> | undefined,
+    address: ConfigFormFieldAddress,
+    fieldErrors: readonly string[],
   ): VNodeChild {
     const { bem, binding, controller, designGuard, flowEvents, props } = context
+    const optionState = context.getOptionState(address)
+    const optionProps = optionState === undefined
+      ? {}
+      : {
+          options: optionState.options,
+          loading: optionState.status === 'loading',
+          optionState,
+        }
     if (readonly) {
       const readonlyRender = resolveConfigFormReadonlyRender(field, props.readonlyRender)
-      const value = controller.model.value[field.field]
+      const value = controller.getInstanceValue(address)
       const content = readonlyRender
         ? readonlyRender({
             componentProps: {
               ...registration?.props,
               ...field.props,
-              ...controller.resolveReactionProps(field.field),
+              ...controller.resolveInstanceReactionProps(address, field.field),
+              ...optionProps,
             },
             field,
             model: controller.model.value,
@@ -135,10 +152,11 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     const componentProps: Record<string, unknown> = {
       ...registration?.props,
       ...field.props,
-      ...controller.resolveReactionProps(field.field),
-      [controlBinding.valueProp]: controller.model.value[field.field],
+      ...controller.resolveInstanceReactionProps(address, field.field),
+      ...optionProps,
+      [controlBinding.valueProp]: controller.getInstanceValue(address),
     }
-    const reactionState = controller.resolveReactionState(field.field)
+    const reactionState = controller.resolveInstanceReactionState(address, field.field)
     designGuard.applyDesignInteractionGuard(componentProps)
 
     if (controlId && !isNonEmptyString(componentProps.id))
@@ -147,7 +165,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       componentProps.disabled = true
     if (reactionState.required ?? resolveConfigFormCondition(field.required, controller.model.value, false))
       componentProps['aria-required'] = true
-    if ((controller.errors.value[field.field]?.length ?? 0) > 0) {
+    if (fieldErrors.length > 0) {
       componentProps['aria-invalid'] = true
       if (errorId)
         componentProps['aria-describedby'] = mergeAriaTokens(componentProps['aria-describedby'], errorId)
@@ -156,20 +174,20 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     const runtimeEvents = flowEvents.runtimeFlowEventMap(field)
     const bindingEventKey = toHandlerKey(camelize(controlBinding.trigger))
     flowEvents.addListener(componentProps, controlBinding.trigger, (...args: unknown[]) => {
-      controller.applyFieldChange({
-        field: field.field,
-        value: field.getValueFromEvent
+      controller.applyFieldInstanceChange({
+        address,
+        value: (field.getValueFromEvent
           ? field.getValueFromEvent(...args)
           : registration?.getValueFromEvent
             ? registration.getValueFromEvent(...args)
-            : args[0],
+            : args[0]) as ConfigFormJsonValue,
       })
     }, metadata, runtimeEvents.get(bindingEventKey))
     const blurEvent = field.blurTrigger ?? registration?.blurTrigger ?? 'blur'
     const blurEventKey = toHandlerKey(camelize(blurEvent))
     flowEvents.addListener(componentProps, blurEvent, () => {
-      controller.setTouched(field.field)
-      void controller.validateField(field.field, 'blur')
+      controller.setInstanceTouched(address)
+      void controller.validateInstance(address, 'blur')
     }, metadata, runtimeEvents.get(blurEventKey))
     if (metadata) {
       const managedListeners = new Set([bindingEventKey, blurEventKey])
@@ -180,8 +198,18 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     return h(binding.resolveComponent(registration?.component ?? field.component), {
       ...componentProps,
       key: getNodeKey(field, `${path}.control`),
-    }, createNodeSlots(field, path, ancestors))
+    }, createNodeSlots(field, path, ancestors, address.scope))
   }
 
   return renderBoundNode
+}
+
+function fieldAddress<TValues extends ConfigFormValues>(
+  field: ConfigFormRendererField<TValues>,
+  scope: ConfigFormScopePath,
+): ConfigFormFieldAddress {
+  return {
+    nodeId: field.id,
+    scope: scope.map(entry => ({ ...entry })),
+  }
 }

@@ -5,10 +5,12 @@ import type {
   ConfigFormRendererExpose,
   ConfigFormRendererProps,
 } from './types'
+import type { RendererControllerState } from './types/internal'
 import { computed, defineComponent, useAttrs, useId, useTemplateRef } from 'vue'
 import {
   useDesignInteractionGuard,
   useRendererController,
+  useRendererEvents,
   useRendererLayout,
   useRuntimeEditorBridge,
 } from './composables'
@@ -41,7 +43,17 @@ const attrs = useAttrs()
 const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 
-const controller = useRendererController({ emit, props })
+let controller: RendererControllerState<TValues>
+const events = useRendererEvents({ props, emit, controller: () => controller })
+controller = useRendererController({
+  emit,
+  props,
+  onDiagnostic: events.controllerDiagnostic,
+  onScopeInvalidated: events.cancelScope,
+  onLifecycle: events.lifecycle,
+  reactionProjection: events.projection,
+  shouldRunLifecycle: events.hasLifecycle,
+})
 const { meta, model, resetFields, submit } = controller
 const editorBridge = useRuntimeEditorBridge({ props })
 const designGuard = useDesignInteractionGuard({
@@ -49,7 +61,9 @@ const designGuard = useDesignInteractionGuard({
   mode: () => props.mode,
 })
 const flowEvents = createRuntimeFlowEventService({
-  emitRuntimeEvent: payload => emit('runtimeEvent', payload),
+  emitRuntimeEvent: events.componentEvent,
+  eventNames: events.eventNames,
+  onError: diagnostic => emit('flowError', diagnostic),
   mode: () => props.mode,
   shouldIntercept: editorBridge.shouldInterceptEditorEvent,
 })
@@ -64,11 +78,13 @@ const renderLayout = createRendererPipeline({
   activePresentationLayout,
   bem,
   binding,
+  cancelScope: events.cancelScope,
   controller,
   designGuard,
   editorBridge,
   flowEvents,
   formId,
+  getOptionState: events.data.getOptionState,
   props,
   responsiveLabelWidths,
   responsiveLayouts,
@@ -91,22 +107,44 @@ function scrollToField(field: keyof TValues & string | string): void {
 }
 
 defineExpose<ConfigFormRendererExpose<TValues>>({
+  appendRow: controller.appendRow,
+  applyFieldInstanceChange: controller.applyFieldInstanceChange,
+  clearInstanceValidate: controller.clearInstanceValidate,
   clearValidate: controller.clearValidate,
-  getFieldMeta: controller.getFieldMeta,
+  duplicateRow: controller.duplicateRow,
+  getDataSourceState: events.data.getDataSourceState,
   getErrors: controller.getErrors,
+  getFieldMeta: controller.getFieldMeta,
+  getInstanceErrors: controller.getInstanceErrors,
+  getInstanceKey: controller.getInstanceKey,
+  getInstanceMeta: controller.getInstanceMeta,
+  getInstanceValue: controller.getInstanceValue,
+  getIssues: controller.getIssues,
   getMeta: controller.getMeta,
+  getOptionState: events.data.getOptionState,
   getValidating: controller.getValidating,
   getValue: controller.getValue,
   getValues: controller.getValues,
+  getVariables: events.data.getVariables,
+  insertRow: controller.insertRow,
+  isInstanceValidating: controller.isInstanceValidating,
+  listFieldInstances: controller.listFieldInstances,
+  listRows: controller.listRows,
+  loadDataSource: (sourceId, options) => events.data.loadDataSource(sourceId, options),
+  moveRow: controller.moveRow,
+  removeRow: controller.removeRow,
   resetFields: controller.resetFields,
   scrollToField,
   setErrors: controller.setErrors,
+  setInstanceTouched: controller.setInstanceTouched,
+  setInstanceValue: controller.setInstanceValue,
+  setTouched: controller.setTouched,
   setValue: controller.setValue,
   setValues: controller.setValues,
-  setTouched: controller.setTouched,
   submit: controller.submit,
   validate: controller.validate,
   validateField: controller.validateField,
+  validateInstance: controller.validateInstance,
 })
 </script>
 

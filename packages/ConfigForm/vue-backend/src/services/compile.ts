@@ -1,4 +1,6 @@
 import type {
+  ConfigFormPageRuntimeOptionBinding,
+  ConfigFormPageRuntimePlan,
   ConfigFormRendererField,
   ConfigFormRendererNode,
   ConfigFormResponsiveLayout,
@@ -129,12 +131,10 @@ function diagnoseDefaultRules(
 
 function cloneNodeMetadata(
   node: CanonicalRuntimeNode,
-  runtimeFlowEvents: readonly string[] = [],
 ): Record<string, unknown> | undefined {
   const lowCodeMetadata = {
     ...(Object.keys(node.events).length > 0 ? { events: structuredClone(node.events) } : {}),
     ...(Object.keys(node.bindings).length > 0 ? { bindings: structuredClone(node.bindings) } : {}),
-    ...(runtimeFlowEvents.length > 0 ? { flowEvents: [...runtimeFlowEvents] } : {}),
   }
   const extensions = {
     ...(node.extensions ? structuredClone(node.extensions) : {}),
@@ -149,9 +149,10 @@ function compileNodeBase(
   runtimeFlowEvents?: readonly string[],
 ) {
   const span = node.placement.props.span
-  const extensions = cloneNodeMetadata(node, runtimeFlowEvents)
+  const extensions = cloneNodeMetadata(node)
   return {
     id: node.id,
+    ...(runtimeFlowEvents?.length ? { eventNames: [...runtimeFlowEvents] } : {}),
     component: binding.component,
     props: structuredClone(node.props) as Record<string, unknown>,
     ...(extensions ? { extensions } : {}),
@@ -319,6 +320,7 @@ function compileNode(
   ]))
   const compiled = {
     ...compileNodeBase(node, binding, nodeFlowEvents),
+    ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
     slots,
   }
   if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
@@ -331,6 +333,23 @@ function compileNode(
   return compiled
 }
 
+function pageRuntimePlan(page: CanonicalRuntimePage): ConfigFormPageRuntimePlan {
+  const optionBindings: ConfigFormPageRuntimeOptionBinding[] = Object.values(page.nodesById)
+    .flatMap(node => node.kind === 'field' && node.optionSource
+      ? [{ nodeId: node.id, source: structuredClone(node.optionSource) as ConfigFormPageRuntimeOptionBinding['source'] }]
+      : [])
+    .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
+  return Object.freeze({
+    flows: Object.freeze(page.flows.map(flow => flow.plan)),
+    optionBindings: Object.freeze(optionBindings),
+    runtime: Object.freeze(structuredClone(page.runtime ?? { dataSources: [], variables: [] })),
+    valueSchema: Object.freeze({
+      scopedFields: Object.freeze(structuredClone(page.scopedFields)),
+      valueScopes: Object.freeze(structuredClone(page.valueScopes)),
+    }),
+  })
+}
+
 function rendererConfig(
   page: CanonicalRuntimePage,
   fields: ConfigFormRendererNode[],
@@ -340,6 +359,7 @@ function rendererConfig(
   return {
     ...(resolver.components ? { components: resolver.components } : {}),
     fields,
+    plan: pageRuntimePlan(page),
     ...(form.readonly === undefined ? {} : { readonly: form.readonly }),
     ...(form.inline === undefined ? {} : { inline: form.inline }),
     ...(form.columns === undefined ? {} : { columns: form.columns }),
@@ -371,7 +391,7 @@ export function compileCanonicalPageRuntime(
       )],
     }
   }
-  const page = pageScoped ? compilation.page : compilation.ir.pagesById[pageId]
+  const page = (pageScoped ? compilation.page : compilation.ir.pagesById[pageId]) as CanonicalRuntimePage | undefined
   if (!page) {
     return {
       success: false,
@@ -395,12 +415,10 @@ export function compileCanonicalPageRuntime(
     return { success: false, diagnostics }
 
   const compilationKey = Object.freeze({ ...compilation.key })
-  const plan = Object.freeze({
-    renderer: rendererConfig(page, fields, resolver),
-  })
+  const renderer = Object.freeze(rendererConfig(page, fields, resolver))
   return {
     success: true,
-    artifact: Object.freeze({ compilationKey, pageId: page.id, plan }),
+    artifact: Object.freeze({ compilationKey, pageId: page.id, renderer }),
     diagnostics,
   }
 }

@@ -8,32 +8,19 @@ export function sourceStyles(): string {
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button, input, select, textarea { font: inherit; }
-.source-page { container: source-page / inline-size; width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
+.source-page { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
 .source-header { margin-bottom: 28px; }
 .source-kicker { margin: 0 0 8px; color: #2563eb; font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .source-header h1 { margin: 0; font-size: 32px; }
 .source-header p:last-child { color: #586574; }
-.source-form { padding: 24px; border: 1px solid #d5dce5; border-radius: 8px; background: #fff; }
-.source-grid { --source-active-columns: var(--source-columns-desktop); --source-active-label-width: var(--source-label-width-desktop, max-content); display: grid; grid-template-columns: repeat(var(--source-active-columns), minmax(0, 1fr)); }
-.source-field, .source-layout { --source-active-span: var(--source-span-desktop); grid-column: span var(--source-active-span) / span var(--source-active-span); }
-.source-field { min-width: 0; }
-.source-field-label { display: block; margin-bottom: 6px; color: #3d4b59; font-size: 13px; }
-.source-grid[data-label-position="left"] .source-field.has-label { display: grid; align-items: start; column-gap: 12px; row-gap: 6px; grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr); }
-.source-grid[data-label-position="left"] .source-field.has-label > .source-field-label { margin-bottom: 0; }
-.source-grid[data-label-position="left"] .source-field.has-label > .source-control,
-.source-grid[data-label-position="left"] .source-field.has-label > .source-field-error { grid-column: 2; }
-.source-control { width: 100%; }
-.source-field-error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
-.source-layout { min-width: 0; padding: 14px; border: 1px solid #d5dce5; border-radius: 7px; background: #f8fafc; }
-.source-layout-layout-flex, .source-layout-layout-grid { padding: 0; border: 0; background: transparent; }
-.source-slot { display: grid; gap: 12px; min-width: 0; }
+.source-page > [data-config-form-responsive-root] { padding: 24px; border: 1px solid #d5dce5; border-radius: 8px; background: #fff; }
 .source-submit { min-height: 38px; margin-top: 20px; padding: 0 16px; color: #fff; border: 0; border-radius: 5px; background: #1d4ed8; cursor: pointer; }
-.source-validation { margin: 14px 0 0; padding: 10px 12px; color: #92400e; border: 1px solid #fbbf24; border-radius: 5px; background: #fffbeb; }
+.source-field-error { margin: 12px 0 0; color: #b42318; font-size: 13px; }
 .source-result { margin-top: 20px; padding: 16px; overflow: auto; color: #d7f9e4; border-radius: 5px; background: #17212b; }
-@media (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); --source-active-label-width: var(--source-label-width-tablet, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
-@media (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); --source-active-label-width: var(--source-label-width-mobile, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } .source-page { width: min(100% - 20px, 920px); padding-top: 24px; } .source-form { padding: 16px; } .source-header h1 { font-size: 26px; } }
-@container source-page (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); --source-active-label-width: var(--source-label-width-tablet, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
-@container source-page (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); --source-active-label-width: var(--source-label-width-mobile, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } }
+[data-config-form-array] { display: grid; gap: 12px; }
+[data-config-form-row] { display: grid; gap: 8px; padding: 12px; border: 1px solid #d5dce5; border-radius: 6px; }
+[data-config-form-row-actions], [data-config-form-array-actions] { display: flex; gap: 6px; justify-content: flex-end; }
+@media (max-width: 720px) { .source-page { width: min(100% - 20px, 920px); padding-top: 24px; } .source-page > [data-config-form-responsive-root] { padding: 16px; } .source-header h1 { font-size: 26px; } }
 `
 }
 
@@ -59,12 +46,15 @@ function sourcePackage(
     private: true,
     type: 'module',
     version: '0.0.0',
+    packageManager: 'pnpm@10.29.3',
+    engines: { node: '>=22.6.0' },
     scripts: {
       build: 'vue-tsc -p tsconfig.json --noEmit && vite build',
       dev: 'vite',
       typecheck: 'vue-tsc -p tsconfig.json --noEmit',
     },
     dependencies: {
+      '@lucide/vue': '^1.28.0',
       '@moluoxixi/zod3-to-rule': '^0.1.2',
       'zod': '^3.24.2',
       'vue': portableDependencyVersion('vue', { vue: dependencies.vue ?? '3.5.33' }),
@@ -75,6 +65,7 @@ function sourcePackage(
       'typescript': '5.8.2',
       'vite': '6.2.0',
       'vue-tsc': '2.2.8',
+      'sass': '1.103.1',
     },
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
@@ -83,6 +74,7 @@ function sourcePackage(
 export function canonicalProjectPackage(
   name: string,
   libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
+  actionDependencies: Readonly<Record<string, string>> = {},
 ): string {
   const declaredDependencies = Object.fromEntries([...libraries.values()].map(library => [
     library.packageName,
@@ -92,6 +84,12 @@ export function canonicalProjectPackage(
   manifest.dependencies = {
     ...manifest.dependencies,
     'vue-router': '4.5.1',
+  }
+  for (const [packageName, version] of Object.entries(actionDependencies)) {
+    const currentVersion = manifest.dependencies?.[packageName]
+    if (currentVersion !== undefined && currentVersion !== version)
+      throw new Error(`Action dependency "${packageName}" conflicts with the standalone runtime version.`)
+    manifest.dependencies![packageName] = portableDependencyVersion(packageName, { [packageName]: version })
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
@@ -111,7 +109,8 @@ export function mainSource(
   ].map(plugin => `.use(${plugin})`).join('')
   return `import { createApp } from 'vue'
 import App from './App.vue'
-${withRouter ? `import { router } from './router'\n` : ''}${imports.join('\n')}${imports.length ? '\n' : ''}import './styles.css'
+${withRouter ? `import { router } from './router'\n` : ''}${imports.join('\n')}${imports.length ? '\n' : ''}import './runtime/vue/styles/index.scss'
+import './styles.css'
 
 createApp(App)${appUses}.mount('#app')
 `

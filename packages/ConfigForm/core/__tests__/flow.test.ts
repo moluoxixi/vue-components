@@ -225,7 +225,12 @@ describe('config form flow core', () => {
           id: 'load',
           type: 'action',
           ref: 'load-profile',
-          config: { output: { profile: { $output: 'load' } } },
+          config: {
+            output: {
+              profile: { $output: 'load' },
+              profileId: { $ref: { kind: 'output', stepId: 'load', path: ['id'] } },
+            },
+          },
         },
         { id: 'success', type: 'success' },
       ],
@@ -242,6 +247,8 @@ describe('config form flow core', () => {
 
     expect(result.values.profile).toEqual({ id: 7 })
     expect(result.projection.values.profile).toEqual({ id: 7 })
+    expect(result.values.profileId).toBe(7)
+    expect(result.projection.values.profileId).toBe(7)
   })
 
   it('routes action failures through error edges and isolates aborted latest runs', async () => {
@@ -347,5 +354,146 @@ describe('config form flow core', () => {
     expect(result.status).toBe('end')
     expect(result.error?.code).toBe('FLOW_NODE_ERROR')
     expect(result.trace.at(-1)).toMatchObject({ type: 'finish', status: 'end' })
+  })
+
+  it('resolves stable field, variable, event, output, path, expression, and literal references in one run', async () => {
+    const consume = vi.fn((input: unknown) => input)
+    const referenceFlow = flow({
+      nodes: [
+        { id: 'trigger', type: 'trigger' },
+        { id: 'prepare', type: 'action', ref: 'prepare', config: {} },
+        {
+          id: 'project',
+          type: 'reaction',
+          config: {
+            reactions: [{
+              id: 'project-stable-context',
+              when: { kind: 'expression', expression: '$fields["field-name"] == "after" && $variables["route"] == "yes"' },
+              then: [{
+                kind: 'setValue',
+                target: 'reactionResult',
+                value: { kind: 'expression', expression: 'CONCAT($fields["field-name"], ":", $variables["suffix"])' },
+              }],
+            }],
+          },
+        },
+        {
+          id: 'check',
+          type: 'condition',
+          config: { condition: { kind: 'expression', expression: '$fields["field-name"] == "after" && $variables["route"] == "yes"' } },
+        },
+        {
+          id: 'consume',
+          type: 'action',
+          ref: 'consume',
+          config: {
+            input: {
+              event: { $ref: { kind: 'event', path: ['args', '0', 'label'] } },
+              expression: {
+                $ref: {
+                  kind: 'expression',
+                  source: 'CONCAT($fields["field-name"], ":", $variables["suffix"], ":", $outputs["prepare"].payload.id, ":", $event.args[0].label)',
+                },
+              },
+              field: { $ref: { kind: 'field', nodeId: 'field-name' } },
+              literal: { $ref: { kind: 'literal', value: { $field: 'business' } } },
+              output: { $ref: { kind: 'output', stepId: 'prepare', path: ['payload', 'id'] } },
+              variable: { $ref: { kind: 'variable', variableId: 'suffix' } },
+            },
+          },
+        },
+        { id: 'success', type: 'success' },
+        { id: 'failure', type: 'failure' },
+      ],
+      edges: [
+        { id: 'trigger-prepare', source: 'trigger', target: 'prepare' },
+        { id: 'prepare-project', source: 'prepare', target: 'project' },
+        { id: 'project-check', source: 'project', target: 'check' },
+        { id: 'check-consume', source: 'check', target: 'consume', condition: 'true' },
+        { id: 'check-failure', source: 'check', target: 'failure', condition: 'false' },
+        { id: 'consume-success', source: 'consume', target: 'success' },
+      ],
+    })
+    const analyzed = analyzeConfigFormFlow(referenceFlow)
+    expect(analyzed.success, JSON.stringify(analyzed.diagnostics)).toBe(true)
+    const interpreter = new ConfigFormFlowInterpreter({
+      get: ref => ref === 'prepare'
+        ? { execute: (_input, context) => {
+            context.form.setValue('business', 'after')
+            return { payload: { id: 7 } }
+          } }
+        : { execute: consume },
+    })
+    const trigger = referenceFlow.trigger
+
+    const result = await interpreter.run(referenceFlow, {
+      event: { trigger, args: [{ label: 'event' }] },
+      readValueContext: values => ({
+        event: { stale: true },
+        outputs: { stale: true },
+        resolveField: (nodeId, scope) => nodeId === 'field-name' && scope === 'current'
+          ? { found: true, value: values.business }
+          : { found: false },
+        variables: { route: 'yes', suffix: 'shared' },
+      }),
+      values: { business: 'before' },
+    })
+
+    expect(result).toMatchObject({ status: 'success', values: { business: 'after', reactionResult: 'after:shared' } })
+    expect(consume).toHaveBeenCalledWith({
+      event: 'event',
+      expression: 'after:shared:7:event',
+      field: 'after',
+      literal: { $field: 'business' },
+      output: 7,
+      variable: 'shared',
+    }, expect.any(Object))
+  })
+
+  it('validates stable reference shapes and reports unavailable identities with precise paths', async () => {
+    const malformed = flow({
+      nodes: [
+        { id: 'trigger', type: 'trigger' },
+        { id: 'save', type: 'action', ref: 'save-profile', config: { input: { $ref: { kind: 'field', nodeId: '' } } } },
+        { id: 'end', type: 'end' },
+      ],
+      edges: [
+        { id: 'trigger-save', source: 'trigger', target: 'save' },
+        { id: 'save-end', source: 'save', target: 'end' },
+      ],
+    })
+    expect(analyzeConfigFormFlow(malformed).diagnostics).toContainEqual(expect.objectContaining({
+      code: 'CONFIG_FORM_VALUE_REFERENCE_INVALID',
+      nodeId: 'save',
+      path: 'nodes.1.config.input.$ref.nodeId',
+    }))
+
+    const downstream = structuredClone(malformed)
+    downstream.nodes[1]!.config = { input: { $ref: { kind: 'output', stepId: 'later', path: ['id'] } } }
+    downstream.nodes.splice(2, 0, { id: 'later', type: 'action', ref: 'save-profile', config: {} })
+    downstream.edges = [
+      { id: 'trigger-save', source: 'trigger', target: 'save' },
+      { id: 'save-later', source: 'save', target: 'later' },
+      { id: 'later-end', source: 'later', target: 'end' },
+    ]
+    expect(analyzeConfigFormFlow(downstream).diagnostics).toContainEqual(expect.objectContaining({
+      code: 'FLOW_OUTPUT_UNAVAILABLE',
+      nodeId: 'save',
+      path: 'nodes.1.config.input',
+    }))
+
+    const missing = structuredClone(malformed)
+    missing.nodes[1]!.config = { input: { $ref: { kind: 'field', nodeId: 'stable-name' } } }
+    const result = await new ConfigFormFlowInterpreter({ get: () => ({ execute: vi.fn() }) }).run(missing, {
+      values: { 'stable-name': 'must-not-fallback-by-name' },
+    })
+    expect(result).toMatchObject({
+      status: 'failure',
+      error: {
+        code: 'CONFIG_FORM_VALUE_REFERENCE_MISSING',
+        nodeId: 'save',
+        path: 'config.input',
+      },
+    })
   })
 })

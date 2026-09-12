@@ -17,8 +17,8 @@ const graph: PageGraph = {
 } as never
 
 const geometry: DesignerRuntimeNodeGeometry[] = [
-  { nodeId: 'input-1', rect: { left: 100, top: 100, width: 400, height: 60, right: 500, bottom: 160 } },
-  { nodeId: 'sec-1', rect: { left: 100, top: 180, width: 400, height: 36, right: 500, bottom: 216 } },
+  { depth: 2, nodeId: 'input-1', order: 0, path: 'root.0', rect: { left: 100, top: 100, width: 400, height: 60, right: 500, bottom: 160 } },
+  { depth: 2, nodeId: 'sec-1', order: 1, path: 'root.1', rect: { left: 100, top: 180, width: 400, height: 36, right: 500, bottom: 216 } },
 ]
 
 const registry = {

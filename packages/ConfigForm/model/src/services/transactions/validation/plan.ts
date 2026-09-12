@@ -12,7 +12,6 @@ export function createValidationPlan(): ValidationPlan {
     registryPlacementIdsByPage: new Map(),
   }
 }
-
 export function collectValidationPlan(
   plan: ValidationPlan,
   operation: ProjectOperation,
@@ -20,11 +19,13 @@ export function collectValidationPlan(
 ): void {
   if (!result.changedProject && result.changedPageIds.length === 0 && result.changedNodeIds.length === 0)
     return
-
   switch (operation.type) {
     case 'project.settings':
     case 'page.props':
     case 'page.form':
+      return
+    case 'page.runtime':
+      plan.pageIds.add(operation.pageId)
       return
     case 'node.props':
     case 'node.events':
@@ -33,6 +34,8 @@ export function collectValidationPlan(
       const registryNodeIds = plan.registryNodeIdsByPage.get(operation.pageId) ?? new Set<NodeId>()
       registryNodeIds.add(operation.nodeId)
       plan.registryNodeIdsByPage.set(operation.pageId, registryNodeIds)
+      if (operation.type === 'node.events')
+        plan.pageIds.add(operation.pageId)
       if (operation.type === 'node.placement')
         addValidationNode(plan.registryPlacementIdsByPage, operation.pageId, operation.nodeId)
       return
@@ -49,6 +52,8 @@ export function collectValidationPlan(
       addValidationNode(plan.registryPlacementIdsByPage, operation.pageId, operation.nodeId)
       return
     case 'node.insert':
+      if (result.validatePageContent)
+        plan.pageIds.add(operation.pageId)
       result.changedNodeIds.forEach(nodeId => addValidationNode(plan.registryNodeIdsByPage, operation.pageId, nodeId))
       result.inverse.forEach((inverse) => {
         if (inverse.type === 'node.remove')
@@ -65,8 +70,11 @@ export function collectValidationPlan(
       plan.registryPageIds.add(operation.pageId)
       break
     case 'node.move':
+      if (result.validatePageContent)
+        plan.pageIds.add(operation.pageId)
       addValidationNode(plan.registryPlacementIdsByPage, operation.pageId, operation.nodeId)
       break
+
     case 'page.remove':
     case 'page.move':
     case 'page.rename':
@@ -116,7 +124,9 @@ function schemaDiagnostics(
   nodeId?: NodeId,
 ): ModelDiagnostic[] {
   return issues.map(issue => ({
-    code: 'PROJECT_DOCUMENT_INVALID',
+    code: issue.message.startsWith('Field name must be unique:') || issue.message.startsWith('Duplicate value key in the same scope:')
+      ? 'PROJECT_FIELD_DUPLICATE'
+      : 'PROJECT_DOCUMENT_INVALID',
     message: issue.message,
     path: [...pathPrefix, ...issue.path],
     ...(pageId ? { pageId } : {}),

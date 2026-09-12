@@ -5,21 +5,17 @@ import type {
   ConfigFormFlowTrigger,
   ConfigFormJsonObject,
 } from '@moluoxixi/config-form-core'
-import { Buffer } from 'node:buffer'
 import {
   analyzeConfigFormFlow,
+  applyConfigFormFlowValuePatch,
   CONFIG_FORM_FLOW_RUNTIME_VERSION,
   CONFIG_FORM_FLOW_VERSION,
-  ConfigFormFlowInterpreter,
+  createConfigFormEventRuntime,
+  createConfigFormFlowValuePatch,
 } from '@moluoxixi/config-form-core'
-import { transformWithEsbuild } from 'vite'
 import { describe, expect, it } from 'vitest'
-import {
-  applyPreviewFlowValuePatch,
-  createPreviewFlowValuePatch,
-  PreviewFlowCoordinator,
-} from '../../flow'
 import { createStandaloneFlowRuntimeSource } from '../export'
+import { evaluateGeneratedRuntimeModule } from './generated-runtime-module'
 
 type FlowValues = Record<string, unknown>
 type PortableAction = (
@@ -39,15 +35,6 @@ interface PortableFlowHarness {
   run: (trigger: ConfigFormFlowTrigger, values?: FlowValues, signal?: AbortSignal) => Promise<PortableFlowResult>
   runtimeVersion: number
 }
-
-interface GeneratedFlowModule {
-  FLOW_RUNTIME_VERSION: number
-  applyFlowValuePatch: (target: FlowValues, before: FlowValues, after: FlowValues) => void
-  registerFlowAction: (ref: string, action: PortableAction) => void
-  runFlows: (trigger: ConfigFormFlowTrigger, values?: FlowValues, signal?: AbortSignal) => Promise<PortableFlowResult>
-}
-
-let generatedModuleSequence = 0
 
 function plan(flow: ConfigFormFlow): ConfigFormFlowExecutionPlan {
   const result = analyzeConfigFormFlow(flow)
@@ -94,30 +81,38 @@ function actionFlow(options: {
         target: terminalId,
         condition: options.errorTerminal ? 'error' : 'next',
       },
+      ...(options.errorTerminal ? [{ id: `${options.id}-normal`, source: actionId, target: terminalId, condition: 'next' as const }] : []),
     ],
   })
 }
 
-function createCoreHarness(plans: readonly ConfigFormFlowExecutionPlan[]): PortableFlowHarness {
+function createCoreHarness(
+  plans: readonly ConfigFormFlowExecutionPlan[],
+  core = { createConfigFormEventRuntime, applyConfigFormFlowValuePatch, createConfigFormFlowValuePatch, CONFIG_FORM_FLOW_RUNTIME_VERSION },
+): PortableFlowHarness {
   const actions = new Map<string, PortableAction>()
-  const interpreter = new ConfigFormFlowInterpreter({
-    get: ref => actions.has(ref)
+  let current: FlowValues = {}
+  const runtime = core.createConfigFormEventRuntime({
+    readValues: () => current,
+    writeValues: (values) => { current = values },
+    actions: { get: ref => actions.has(ref)
       ? { execute: (input, context) => actions.get(ref)!(input, context) }
-      : undefined,
+      : undefined },
   })
-  const coordinator = new PreviewFlowCoordinator(interpreter)
+  runtime.sync(plans)
   return {
-    runtimeVersion: interpreter.runtimeVersion,
+    runtimeVersion: core.CONFIG_FORM_FLOW_RUNTIME_VERSION,
     register: (ref, action) => actions.set(ref, action),
-    applyPatch: (current, before, after) => applyPreviewFlowValuePatch(
+    applyPatch: (current, before, after) => core.applyConfigFormFlowValuePatch(
       current,
-      createPreviewFlowValuePatch(before, after),
+      core.createConfigFormFlowValuePatch(before, after),
     ),
     async run(trigger, values = {}, signal) {
-      const result = await coordinator.dispatch({ plans, trigger, values, revision: 1, signal })
+      current = values
+      const result = await runtime.dispatch({ trigger, revision: 1, signal })
       return {
         status: result.status,
-        values: applyPreviewFlowValuePatch(values, result.valuePatch),
+        values: current,
         ...(result.error ? { error: result.error.message } : {}),
       }
     },
@@ -126,23 +121,10 @@ function createCoreHarness(plans: readonly ConfigFormFlowExecutionPlan[]): Porta
 
 async function createGeneratedHarness(plans: readonly ConfigFormFlowExecutionPlan[]): Promise<PortableFlowHarness> {
   const source = createStandaloneFlowRuntimeSource(plans)
-  const transformed = await transformWithEsbuild(source, 'flows.ts', {
-    format: 'esm',
-    loader: 'ts',
-    target: 'es2022',
-  })
-  const encoded = Buffer.from(transformed.code).toString('base64')
-  const module = await import(`data:text/javascript;base64,${encoded}#${++generatedModuleSequence}`) as GeneratedFlowModule
-  return {
-    runtimeVersion: module.FLOW_RUNTIME_VERSION,
-    register: module.registerFlowAction,
-    applyPatch(current, before, after) {
-      const next = { ...current }
-      module.applyFlowValuePatch(next, before, after)
-      return next
-    },
-    run: module.runFlows,
-  }
+  const module = await evaluateGeneratedRuntimeModule(source)
+  expect(module.flowPlans).toEqual(plans)
+  expect(module.FLOW_RUNTIME_VERSION).toBe(module.CONFIG_FORM_FLOW_RUNTIME_VERSION)
+  return createCoreHarness(module.flowPlans, module as Parameters<typeof createCoreHarness>[1])
 }
 
 async function harnesses(plans: readonly ConfigFormFlowExecutionPlan[]): Promise<PortableFlowHarness[]> {

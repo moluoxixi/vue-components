@@ -1,473 +1,394 @@
-import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type {
-  StandaloneSourceFieldNode,
-  StandaloneSourceLayoutNode,
   StandaloneSourceNode,
   StandaloneSourcePage,
   StandaloneSourceRegistry,
-  StandaloneSourceResolvedLayouts,
 } from '../types/source'
-import {
-  resolveSourceLayouts,
-  resolveSourceNodeSpan,
-  sourceContainerStyle,
-  sourceFormStyle,
-  sourceNodeStyle,
-} from './source-layout'
-import { resolveSourceComponentDefinition as componentDefinition } from './source-registry'
-import { escapeHtml, quote, scriptJson } from './source-serialization'
+import { resolveSourceComponentDefinition } from './source-registry'
+import { scriptJson } from './source-serialization'
 
-function fieldOptions(node: StandaloneSourceNode): Array<{ label: string, value: unknown }> {
-  const options = node.props.options
-  if (!Array.isArray(options))
-    return []
-  return options.flatMap((option) => {
-    if (!option || typeof option !== 'object' || Array.isArray(option))
-      return []
-    const record = option as Record<string, unknown>
-    return typeof record.label === 'string' && Object.hasOwn(record, 'value')
-      ? [{ label: record.label, value: record.value }]
-      : []
-  })
-}
-
-function sourceProps(node: StandaloneSourceNode, registry: StandaloneSourceRegistry): Record<string, unknown> {
-  const definition = componentDefinition(node, registry)
-  const props = {
-    ...(definition.binding.staticProps ?? {}),
-    ...node.props,
-  }
-  delete props.options
-  delete props.optionSource
-  return props
-}
-
-function collectInitialValues(
+function collectSourceBindings(
   nodes: StandaloneSourceNode[],
-  values: Record<string, unknown>,
   registry: StandaloneSourceRegistry,
-): void {
+  target = new Map<string, ReturnType<typeof resolveSourceComponentDefinition>['binding']>(),
+): Map<string, ReturnType<typeof resolveSourceComponentDefinition>['binding']> {
   for (const node of nodes) {
-    if (node.kind === 'field' && node.field) {
-      if (node.defaultValue !== undefined)
-        values[node.field] = structuredClone(node.defaultValue)
-    }
+    if (!target.has(node.component))
+      target.set(node.component, structuredClone(resolveSourceComponentDefinition(node, registry).binding))
     if (node.kind === 'layout')
-      Object.values(node.slots).forEach(children => collectInitialValues(children, values, registry))
+      Object.values(node.slots).forEach(children => collectSourceBindings(children, registry, target))
   }
-}
-
-function kebabCase(value: string): string {
-  return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
-}
-
-function sourceEventBindings(node: StandaloneSourceNode, excludedEvents: readonly string[] = []): string {
-  const nodeId = quote(node.id)
-  const eventNames = [...new Set([...node.flowEvents, ...Object.keys(node.events)])]
-  return eventNames
-    .filter(eventName => !excludedEvents.includes(kebabCase(eventName)))
-    .map(eventName => ` @${escapeHtml(kebabCase(eventName))}='runNodeEvent(${nodeId}, ${quote(eventName)}, $event)'`)
-    .join('')
-}
-
-function renderField(
-  node: StandaloneSourceFieldNode,
-  layouts: StandaloneSourceResolvedLayouts,
-  registry: StandaloneSourceRegistry,
-): string {
-  const definition = componentDefinition(node, registry)
-  const source = definition.binding
-  const field = quote(node.field)
-  const styleAttr = ` style="${sourceNodeStyle(node, layouts)}"`
-  const hiddenAttr = ` :hidden='fieldStates[${field}]?.visible === false'`
-  const safeId = escapeHtml(node.id)
-  const safeTag = escapeHtml(source.tag)
-  const nodeId = quote(node.id)
-  const valueProp = definition.binding.valueProp ?? 'modelValue'
-  const updateEvent = kebabCase(definition.binding.trigger ?? `update:${valueProp}`)
-  const label = node.label
-    ? `\n      <label class="source-field-label">${escapeHtml(node.label)}</label>`
-    : ''
-  const optionBinding = source.options?.mode === 'prop'
-    ? ` :options='fieldOptions[${field}]'`
-    : ''
-  const optionChildren = source.options?.mode === 'children' && source.options.optionTag
-    ? `\n        <${escapeHtml(source.options.optionTag)} v-for='option in fieldOptions[${field}]' :key="String(option.value)" :${escapeHtml(source.options.labelProp ?? 'label')}="option.label" :${escapeHtml(source.options.valueProp ?? 'value')}="option.value" />\n      `
-    : ''
-  const blurEvent = kebabCase(definition.binding.blurTrigger ?? 'blur')
-  const eventBindings = sourceEventBindings(node, [updateEvent, blurEvent])
-  const updateBinding = `@${updateEvent}='handleFieldUpdate(${nodeId}, ${field}, ${quote(definition.binding.trigger ?? `update:${valueProp}`)}, $event)'`
-  const blurBinding = `@${blurEvent}='handleFieldBlur(${nodeId}, ${field}, ${quote(definition.binding.blurTrigger ?? 'blur')}, $event)'`
-  const modelBinding = `:${kebabCase(valueProp)}='model[fieldModelKeys[${field}]]' v-if='!fieldStates[${field}]?.readonly'`
-  const control = optionChildren
-    ? `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding}>${optionChildren}</${safeTag}>`
-    : `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding} />`
-  return `    <div class="source-field${label ? ' has-label' : ''}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n      <span v-else aria-readonly="true">{{ model[fieldModelKeys[${field}]] }}</span>\n      <p v-if='!fieldStates[${field}]?.readonly && fieldErrors[${field}]?.length' class="source-field-error" role="alert">{{ fieldErrors[${field}].join(', ') }}</p>\n    </div>`
-}
-
-function renderContainer(
-  node: StandaloneSourceLayoutNode,
-  layouts: StandaloneSourceResolvedLayouts,
-  registry: StandaloneSourceRegistry,
-): string {
-  const definition = componentDefinition(node, registry)
-  const source = definition.binding
-  const safeId = escapeHtml(node.id)
-  const safeTag = escapeHtml(source.tag)
-  const nodeKey = quote(node.id)
-  const children = node.slots.default ?? []
-  const defaultMarkup = renderNodes(children, layouts, registry)
-  const namedSlots = Object.entries(node.slots)
-    .filter(([name]) => name !== 'default')
-    .map(([name, slotChildren]) => `      <template #${escapeHtml(name)}>\n${renderNodes(slotChildren, layouts, registry)}\n      </template>`)
-    .join('\n')
-  const content = [defaultMarkup, namedSlots].filter(Boolean).join('\n')
-  const common = `class="source-layout source-layout-${source.render}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}" v-bind='nodeProps[${nodeKey}]' :style='nodeStyles[${nodeKey}]' :hidden='nodeHidden[${nodeKey}]'${sourceEventBindings(node)}`
-  if (source.render === 'section') {
-    const title = typeof node.props.title === 'string'
-      ? node.props.title
-      : typeof node.props.header === 'string' ? node.props.header : undefined
-    return `    <section ${common}>${title ? `\n      <h2>${escapeHtml(title)}</h2>` : ''}\n${content}\n    </section>`
-  }
-  return `    <${safeTag} ${common}>\n${content}\n    </${safeTag}>`
-}
-
-function renderNodes(
-  nodes: StandaloneSourceNode[],
-  layouts: StandaloneSourceResolvedLayouts,
-  registry: StandaloneSourceRegistry,
-): string {
-  return nodes.map(node => node.kind === 'field'
-    ? renderField(node, layouts, registry)
-    : renderContainer(node, layouts, registry)).join('\n')
+  return target
 }
 
 export function appSource(
   page: StandaloneSourcePage,
   registry: StandaloneSourceRegistry,
-  flowImport = './flows',
 ): string {
-  const initialValues: Record<string, unknown> = {}
-  collectInitialValues(page.root, initialValues, registry)
-  const props: Record<string, Record<string, unknown>> = {}
-  const options: Record<string, Array<{ label: string, value: unknown }>> = {}
-  const nodeProps: Record<string, Record<string, unknown>> = {}
-  const nodeStyles: Record<string, Record<string, string>> = {}
-  const fieldModelKeys: Record<string, string> = {}
-  const fieldRequiredMessages: Record<string, string> = {}
-  const fieldConditions: Record<string, StandaloneSourceNode['conditions']> = {}
-  const nodeConditions: Record<string, StandaloneSourceNode['conditions']> = {}
-  const nodeEvents: Record<string, StandaloneSourceNode['events']> = {}
-  const fieldAncestors: Record<string, string[]> = {}
-  const runtimeReactions: ConfigFormReaction[] = []
-  const layouts = resolveSourceLayouts(page.form)
-  const collectProps = (nodes: StandaloneSourceNode[], ancestors: string[] = []): void => {
-    nodes.forEach((node) => {
-      nodeEvents[node.id] = node.events
-      if (node.reactions)
-        runtimeReactions.push(...node.reactions)
-      if (node.kind === 'field') {
-        // Reaction targets use the headless field key (not the designer node
-        // id), so keep generated projection maps keyed by the same contract.
-        const target = node.field
-        props[target] = sourceProps(node, registry)
-        options[target] = fieldOptions(node)
-        fieldModelKeys[target] = target
-        fieldAncestors[target] = ancestors
-        fieldConditions[target] = node.conditions
-        const requiredRule = node.validation?.rules.find(rule => rule.kind === 'required')
-        fieldRequiredMessages[target] = requiredRule?.message ?? 'Required'
-      }
-      else {
-        nodeProps[node.id] = sourceProps(node, registry)
-        nodeStyles[node.id] = {
-          ...sourceContainerStyle(node, registry),
-          '--source-span-desktop': String(resolveSourceNodeSpan(node, layouts.desktop)),
-          '--source-span-tablet': String(resolveSourceNodeSpan(node, layouts.tablet)),
-          '--source-span-mobile': String(resolveSourceNodeSpan(node, layouts.mobile)),
-        }
-        nodeConditions[node.id] = node.conditions
-      }
-      if (node.kind === 'layout')
-        Object.values(node.slots).forEach(children => collectProps(children, [...ancestors, node.id]))
-    })
-  }
-  collectProps(page.root)
+  const { flowPlans: _flowPlans, ...pageConfiguration } = page
+  const bindings = Object.fromEntries([...collectSourceBindings(page.root, registry)]
+    .sort(([left], [right]) => left.localeCompare(right)))
   return `<script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { applyFlowValuePatch, evaluateRuntimeCondition, getFlowProjection, invokeRegisteredAction, projectRuntimeReactions, registerFlowAction, runFlows, type FlowTrigger } from '${flowImport}'
-import { fieldValidation, validateFieldForTrigger, validateFields, type GeneratedValidationTrigger } from './validation'
+import type { ConfigFormRendererExpose } from '../../runtime/vue/renderer'
+import { createSourceDataSourceRequest, createSourceFlowActions } from '../../actions'
+import { createConfigFormModel } from '../../runtime/headless'
+import { createSourceRendererConfig } from '../../runtime/source-page'
+import { ConfigFormRenderer, createConfigFormRendererExpose } from '../../runtime/vue/renderer'
+import { resolveComponent, shallowRef, useTemplateRef } from 'vue'
+import { flowPlans } from './flows'
+import { resolveFieldValidation } from './validation'
 
-const model = reactive<Record<string, unknown>>(${scriptJson(initialValues, 2)})
-const baseFieldProps = ${scriptJson(props, 2)} as Record<string, Record<string, unknown>>
-const fieldProps = reactive<Record<string, Record<string, unknown>>>({ ...baseFieldProps })
-const fieldOptions = ${scriptJson(options, 2)} as Record<string, Array<{ label: string, value: unknown }>>
-const fieldModelKeys = ${scriptJson(fieldModelKeys, 2)} as Record<string, string>
-const fieldRequiredMessages = ${scriptJson(fieldRequiredMessages, 2)} as Record<string, string>
-const fieldConditions = ${scriptJson(fieldConditions, 2)} as Record<string, Record<string, unknown> | undefined>
-const fieldAncestors = ${scriptJson(fieldAncestors, 2)} as Record<string, string[]>
-const nodeProps = ${scriptJson(nodeProps, 2)} as Record<string, Record<string, unknown>>
-const nodeStyles = ${scriptJson(nodeStyles, 2)} as Record<string, Record<string, string>>
-const nodeConditions = ${scriptJson(nodeConditions, 2)} as Record<string, Record<string, unknown> | undefined>
-const formReadonly = ref(${page.form.readonly === true})
-const nodeEvents = ${scriptJson(nodeEvents, 2)} as Record<string, Record<string, Array<{ action: string, [key: string]: unknown }>>>
-const runtimeReactions = ${scriptJson(runtimeReactions, 2)} as Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>
-const fieldStates = reactive<Record<string, Record<string, boolean>>>({})
-const nodeHidden = reactive<Record<string, boolean>>({})
-const flowValidation = ref<string[]>([])
-const fieldErrors = reactive<Record<string, string[]>>({})
-const submitted = ref('')
-const flowLifecycle = new AbortController()
-const validationGeneration: Record<string, number> = Object.create(null)
-let validationRevision = 0
-
-registerFlowAction('notify', async (input, context) => {
-  if (context.signal.aborted)
-    throw context.signal.reason
-  const message = typeof input === 'string' ? input : JSON.stringify(input)
-  submitted.value = message ?? String(input)
-  return { notified: submitted.value }
+const pageName = ${scriptJson(page.name)}
+const submitted = shallowRef('')
+const eventError = shallowRef('')
+const values = shallowRef<Record<string, unknown>>({})
+const model = createConfigFormModel(values)
+const rendererRef = useTemplateRef<ConfigFormRendererExpose>('renderer')
+const rendererConfig = createSourceRendererConfig({
+  bindings: ${scriptJson(bindings, 2)},
+  flowPlans,
+  page: ${scriptJson(pageConfiguration, 2)},
+  resolveComponent,
+  resolveFieldValidation,
+})
+const onRequest: typeof globalThis.fetch = (...args) => globalThis.fetch(...args)
+const dataSourceHost = { request: createSourceDataSourceRequest(onRequest, () => document.baseURI) }
+const flowActions = createSourceFlowActions({
+  fetch: onRequest,
+  openUrl: (url, target) => { globalThis.open(url, target) },
+  message: ({ message }) => { submitted.value = message },
+  confirm: ({ message }) => globalThis.confirm(message),
+  notify: (message) => { submitted.value = message },
 })
 
-function applyRuntimeProjection(): void {
-  validationRevision += 1
-  const before = { ...model }
-  const reactionValues = { ...model }
-  const reactionProjection = projectRuntimeReactions(runtimeReactions, reactionValues)
-  applyFlowValuePatch(model, before, reactionValues)
-  const flowProjection = getFlowProjection()
-  const projections = [reactionProjection, flowProjection]
-  flowValidation.value = [...new Set(projections.flatMap(projection => projection.validate))]
-
-  for (const key of Object.keys(fieldProps))
-    delete fieldProps[key]
-  for (const [key, value] of Object.entries(baseFieldProps))
-    fieldProps[key] = { ...value }
-  for (const key of Object.keys(fieldStates))
-    delete fieldStates[key]
-
-  for (const [field, conditions] of Object.entries(fieldConditions)) {
-    const state: Record<string, boolean> = {}
-    if (formReadonly.value)
-      state.readonly = true
-    if (!conditions) {
-      fieldStates[field] = state
-      continue
-    }
-    if (conditions.visible !== undefined)
-      state.visible = evaluateRuntimeCondition(conditions.visible, model)
-    if (conditions.hidden !== undefined)
-      state.visible = state.visible !== false && !evaluateRuntimeCondition(conditions.hidden, model)
-    for (const key of ['disabled', 'readonly', 'required'] as const) {
-      if (conditions[key] !== undefined)
-        state[key] = evaluateRuntimeCondition(conditions[key], model)
-    }
-    fieldStates[field] = state
-  }
-
-  for (const [nodeId, conditions] of Object.entries(nodeConditions)) {
-    const visible = conditions?.visible === undefined || evaluateRuntimeCondition(conditions.visible, model)
-    const hidden = conditions?.hidden !== undefined && evaluateRuntimeCondition(conditions.hidden, model)
-    nodeHidden[nodeId] = !visible || hidden
-  }
-
-  for (const projection of projections) {
-    for (const [target, nextProps] of Object.entries(projection.props))
-      fieldProps[target] = { ...(fieldProps[target] ?? {}), ...nextProps }
-    for (const [target, nextState] of Object.entries(projection.states))
-      fieldStates[target] = { ...(fieldStates[target] ?? {}), ...nextState }
-  }
-
-  for (const field of Object.keys(fieldModelKeys)) {
-    const state = fieldStates[field] ?? (fieldStates[field] = {})
-    state.visible = state.visible !== false && !(fieldAncestors[field] ?? []).some(id => nodeHidden[id])
-    state.readonly = formReadonly.value || state.readonly === true
-    if (state.visible === false || state.readonly || state.disabled)
-      delete fieldErrors[field]
-    const nextProps = fieldProps[field] ?? (fieldProps[field] = {})
-    if (state.disabled !== undefined)
-      nextProps.disabled = state.disabled
-    if (state.readonly !== undefined)
-      nextProps.readonly = state.readonly
-    if (state.required !== undefined)
-      nextProps.required = state.required
-  }
-  if (flowValidation.value.length)
-    void validateRequestedFields(flowValidation.value)
+function handleSubmit(next: Record<string, unknown>): void {
+  submitted.value = JSON.stringify(next, null, 2)
 }
 
-function currentValidationValues(): Record<string, unknown> {
-  const values = { ...model }
-  for (const [field, modelKey] of Object.entries(fieldModelKeys))
-    values[field] = model[modelKey]
-  return values
+function handleFlowError(diagnostic: { message: string }): void {
+  eventError.value = diagnostic.message
 }
 
-function valueMissing(value: unknown): boolean {
-  return value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0) || (Array.isArray(value) && value.length === 0)
-}
-
-function fieldActive(field: string): boolean {
-  const state = fieldStates[field]
-  return state?.visible !== false && state?.readonly !== true && state?.disabled !== true
-}
-
-function setFieldErrors(field: string, errors: string[]): void {
-  if (errors.length)
-    fieldErrors[field] = errors
-  else
-    delete fieldErrors[field]
-}
-
-function withRequiredError(field: string, errors: string[], values: Record<string, unknown>): string[] {
-  return fieldStates[field]?.required === true && valueMissing(values[field]) && errors.length === 0
-    ? [fieldRequiredMessages[field] ?? 'Required']
-    : errors
-}
-
-async function validateOn(field: string, trigger: GeneratedValidationTrigger): Promise<boolean> {
-  const revision = validationRevision
-  const generation = (validationGeneration[field] ?? 0) + 1
-  validationGeneration[field] = generation
-  if (!fieldActive(field)) {
-    delete fieldErrors[field]
-    return true
-  }
-  const values = currentValidationValues()
-  const snapshot = JSON.stringify(values)
-  const result = await validateFieldForTrigger(field, trigger, values)
-  if (flowLifecycle.signal.aborted || validationRevision !== revision || validationGeneration[field] !== generation
-    || snapshot !== JSON.stringify(currentValidationValues()) || !fieldActive(field))
-    return false
-  if (result === undefined)
-    return true
-  const errors = withRequiredError(field, result, values)
-  setFieldErrors(field, errors)
-  return errors.length === 0
-}
-
-async function validateRequestedFields(fields: readonly string[]): Promise<boolean> {
-  const revision = validationRevision
-  const targets = [...new Set(fields)].filter(fieldActive)
-  const generations = Object.fromEntries(targets.map((field) => {
-    const generation = (validationGeneration[field] ?? 0) + 1
-    validationGeneration[field] = generation
-    return [field, generation]
-  }))
-  for (const field of fields) {
-    if (!fieldActive(field))
-      delete fieldErrors[field]
-  }
-  const values = currentValidationValues()
-  const snapshot = JSON.stringify(values)
-  const result = await validateFields(targets, values)
-  if (flowLifecycle.signal.aborted || validationRevision !== revision
-    || snapshot !== JSON.stringify(currentValidationValues())
-    || targets.some(field => validationGeneration[field] !== generations[field] || !fieldActive(field)))
-    return false
-  for (const field of targets)
-    setFieldErrors(field, withRequiredError(field, result[field] ?? [], values))
-  return targets.every(field => !fieldErrors[field]?.length)
-}
-
-async function runTrigger(trigger: FlowTrigger): Promise<void> {
-  const snapshot = { ...model }
-  try {
-    const result = await runFlows(trigger, snapshot, flowLifecycle.signal)
-    if (result.status === 'aborted' || result.status === 'ignored' || result.status === 'noop')
-      return
-    if (result.status === 'failure' || result.status === 'timeout') {
-      submitted.value = result.error ?? 'Flow execution failed.'
-      return
-    }
-    applyFlowValuePatch(model, snapshot, result.values)
-    applyRuntimeProjection()
-    if (result.error)
-      submitted.value = result.error
-  }
-  catch (error) {
-    submitted.value = error instanceof Error ? error.message : String(error)
-  }
-}
-
-function runFieldChange(field: string): void {
-  applyRuntimeProjection()
-  void validateOn(field, 'change')
-}
-
-async function runNodeEvent(nodeId: string, eventName: string, payload: unknown): Promise<void> {
-  const actions = nodeEvents[nodeId]?.[eventName] ?? []
-  for (const action of actions) {
-    try {
-      const input = Object.hasOwn(action, 'input') ? action.input : payload
-      await invokeRegisteredAction(action.action, input, {
-        eventName,
-        nodeId,
-        signal: flowLifecycle.signal,
-        values: { ...model },
-      })
-    }
-    catch (error) {
-      submitted.value = error instanceof Error ? error.message : String(error)
-      return
-    }
-  }
-  await runTrigger({ kind: 'component.event', nodeId, event: eventName })
-}
-
-function handleFieldUpdate(nodeId: string, field: string, eventName: string, payload: unknown): void {
-  model[fieldModelKeys[field]] = payload
-  delete fieldErrors[field]
-  validationGeneration[field] = (validationGeneration[field] ?? 0) + 1
-  runFieldChange(field)
-  void runNodeEvent(nodeId, eventName, payload)
-}
-
-function handleFieldBlur(nodeId: string, field: string, eventName: string, payload: unknown): void {
-  void validateOn(field, 'blur')
-  void runNodeEvent(nodeId, eventName, payload)
-}
-
-async function handleSubmit(): Promise<void> {
-  submitted.value = ''
-  applyRuntimeProjection()
-  const fields = [...new Set([...Object.keys(fieldValidation), ...flowValidation.value])]
-  if (!await validateRequestedFields(fields))
-    return
-  submitted.value = JSON.stringify(Object.fromEntries(Object.keys(fieldModelKeys)
-    .filter(field => fieldStates[field]?.visible !== false && !fieldStates[field]?.disabled)
-    .map(field => [field, model[fieldModelKeys[field]]])), null, 2)
-  void runTrigger({ kind: 'form.submit' })
-}
-
-onMounted(() => {
-  applyRuntimeProjection()
-  void runTrigger({ kind: 'page.mount' })
-})
-onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
-defineExpose({
-  getValues: () => ({ ...model }),
-  getErrors: () => ({ ...fieldErrors }),
-  submit: handleSubmit,
-})
+defineExpose(createConfigFormRendererExpose(rendererRef))
 </script>
 
 <template>
   <main class="source-page">
     <header class="source-header">
       <p class="source-kicker">Generated Vue page</p>
-      <h1>${escapeHtml(page.name)}</h1>
+      <h1>{{ pageName }}</h1>
       <p>Standalone source generated from the committed design model.</p>
     </header>
-    <form class="source-form" @submit.prevent="handleSubmit">
-      <div class="source-grid" data-label-position="${page.form.labelPosition ?? 'left'}" style="${sourceFormStyle(layouts, page.form)}">
-${renderNodes(page.root, layouts, registry)}
-      </div>
+    <ConfigFormRenderer
+      ref="renderer"
+      v-bind="rendererConfig"
+      :model="model"
+      :flow-actions="flowActions"
+      :data-source-host="dataSourceHost"
+      @flow-error="handleFlowError"
+      @submit="handleSubmit"
+    >
       <button class="source-submit" type="submit">Save</button>
-    </form>
-      <p v-if="flowValidation.length" class="source-validation" role="status">Validation requested for: {{ flowValidation.join(', ') }}</p>
-      <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
+    </ConfigFormRenderer>
+    <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
+    <p v-if="eventError" class="source-field-error" role="alert">{{ eventError }}</p>
   </main>
 </template>
+`
+}
+
+/** Generic projection only; field state, lifecycle, validation and Flow execution stay in the shared renderer. */
+export function standalonePageRuntimeSource(): string {
+  return `import type {
+  ConfigFormFlowExecutionPlan,
+  ConfigFormPageRuntimeConfiguration,
+  ConfigFormReaction,
+  ConfigFormReactionCondition,
+  ConfigFormScopedFieldDefinition,
+  ConfigFormValueScopeDefinition,
+} from './core'
+import type { ConfigFormFieldValidator, ConfigFormValues } from './headless'
+import type {
+  ConfigFormComponentRegistration,
+  ConfigFormComponentRegistry,
+  ConfigFormRendererNode,
+  ConfigFormRendererProps,
+} from './vue/renderer'
+import type { ConfigFormPageRuntimePlan } from './vue/runtime'
+import type { Component } from 'vue'
+import { evaluateConfigFormReactionCondition } from './reaction'
+import { defineComponent, h } from 'vue'
+
+interface SourceComponentBinding {
+  component: string
+  contractFingerprint: string
+  contractVersion: string
+  configComponent: string
+  defaultValue?: unknown
+  tag: string
+  render: 'component' | 'layout-flex' | 'layout-grid' | 'section'
+  library?: { packageName: string, plugin: string, version: string, stylesheet?: string }
+  options?: { mode: 'prop' | 'children', optionTag?: string, labelProp?: string, valueProp?: string }
+  staticProps?: Record<string, unknown>
+  blurTrigger?: string
+  trigger?: string
+  valueProp?: string
+}
+
+interface SourceNodeBase {
+  id: string
+  component: string
+  props: Record<string, unknown>
+  events: Record<string, unknown[]>
+  flowEvents: string[]
+  extensions?: Record<string, unknown>
+  bindings: Record<string, unknown>
+  placement: Record<string, unknown>
+  conditions?: Partial<Record<'disabled' | 'hidden' | 'readonly' | 'required' | 'visible', ConfigFormReactionCondition>>
+  reactions?: ConfigFormReaction[]
+}
+
+interface SourceFieldNode extends SourceNodeBase {
+  kind: 'field'
+  field: string
+  label?: string
+  defaultValue?: unknown
+  validation?: unknown
+  optionSource?: ConfigFormPageRuntimePlan['optionBindings'][number]['source']
+  validateOn: Array<'blur' | 'change' | 'submit'>
+}
+
+interface SourceLayoutNode extends SourceNodeBase {
+  kind: 'layout'
+  slots: Record<string, SourceNode[]>
+  valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
+}
+
+type SourceNode = SourceFieldNode | SourceLayoutNode
+
+interface SourcePageConfiguration {
+  id: string
+  name: string
+  route: string
+  form: {
+    readonly?: boolean
+    inline?: boolean
+    columns?: number
+    gap?: string
+    fieldSpan?: number
+    labelPosition?: 'left' | 'top'
+    labelWidth?: number
+    responsive?: ConfigFormRendererProps['responsive']
+  }
+  root: SourceNode[]
+  runtime: ConfigFormPageRuntimeConfiguration
+  scopedFields: ConfigFormScopedFieldDefinition[]
+  valueScopes: ConfigFormValueScopeDefinition[]
+  optionBindings: ConfigFormPageRuntimePlan['optionBindings']
+}
+
+interface SourceFieldRuntimeValidation {
+  validateOn: Array<'blur' | 'change' | 'submit'>
+  required?: boolean
+  requiredMessage?: string
+  schema?: unknown
+  validator?: ConfigFormFieldValidator
+}
+
+interface CreateSourceRendererConfigInput {
+  bindings: Record<string, SourceComponentBinding>
+  flowPlans: readonly ConfigFormFlowExecutionPlan[]
+  page: SourcePageConfiguration
+  resolveComponent: (name: string) => Component | string
+  resolveFieldValidation: (nodeId: string) => SourceFieldRuntimeValidation
+}
+
+function resolveSourceComponent(
+  binding: SourceComponentBinding,
+  resolveComponent: CreateSourceRendererConfigInput['resolveComponent'],
+): Component {
+  const native = !binding.library && /^[a-z][a-z0-9]*$/.test(binding.tag)
+  const component = native ? binding.tag : resolveComponent(binding.tag)
+  const childOptions = binding.options?.mode === 'children' && binding.options.optionTag
+  if (typeof component !== 'string' && !childOptions && binding.render !== 'section')
+    return component
+  const optionComponent = childOptions ? resolveComponent(binding.options!.optionTag!) : undefined
+  return defineComponent({
+    name: 'StandaloneSourceComponent',
+    inheritAttrs: false,
+    setup(_props, { attrs, slots }) {
+      return () => {
+        const componentProps = { ...attrs }
+        const options = Array.isArray(componentProps.options) ? componentProps.options : []
+        if (childOptions)
+          delete componentProps.options
+        const title = typeof componentProps.title === 'string'
+          ? componentProps.title
+          : typeof componentProps.header === 'string' ? componentProps.header : undefined
+        if (binding.render === 'section') {
+          delete componentProps.title
+          delete componentProps.header
+        }
+        const generatedOptions = childOptions && optionComponent
+          ? options.flatMap((option, index) => {
+              if (!option || typeof option !== 'object' || Array.isArray(option))
+                return []
+              const record = option as Record<string, unknown>
+              if (typeof record.label !== 'string' || !Object.hasOwn(record, 'value'))
+                return []
+              return [h(optionComponent, {
+                key: String(record.value) + '-' + index,
+                [binding.options!.labelProp ?? 'label']: record.label,
+                [binding.options!.valueProp ?? 'value']: record.value,
+              })]
+            })
+          : []
+        const content = [
+          ...(title ? [h('h2', title)] : []),
+          ...generatedOptions,
+          ...(slots.default?.() ?? []),
+        ]
+        return h(component, componentProps, childOptions || binding.render === 'section'
+          ? { ...slots, default: () => content }
+          : slots)
+      }
+    },
+  })
+}
+
+function layoutStyle(node: SourceLayoutNode, render: SourceComponentBinding['render']): Record<string, string> {
+  const numericGap = typeof node.props.gap === 'number' && Number.isFinite(node.props.gap)
+    ? Math.max(0, node.props.gap)
+    : 0
+  if (render === 'layout-flex') {
+    return {
+      alignItems: ['flex-start', 'center', 'flex-end', 'stretch'].includes(String(node.props.align)) ? String(node.props.align) : 'stretch',
+      display: 'flex',
+      flexDirection: node.props.direction === 'column' ? 'column' : 'row',
+      flexWrap: node.props.wrap === false ? 'nowrap' : 'wrap',
+      gap: String(numericGap) + 'px',
+      justifyContent: ['flex-start', 'center', 'flex-end', 'space-between'].includes(String(node.props.justify)) ? String(node.props.justify) : 'flex-start',
+    }
+  }
+  if (render === 'layout-grid') {
+    const columns = typeof node.props.columns === 'number' && Number.isInteger(node.props.columns)
+      ? Math.min(12, Math.max(1, node.props.columns))
+      : 1
+    return {
+      display: 'grid',
+      gap: String(numericGap) + 'px',
+      gridTemplateColumns: 'repeat(' + columns + ', minmax(0, 1fr))',
+    }
+  }
+  return {}
+}
+
+function condition(source: ConfigFormReactionCondition | undefined) {
+  return source === undefined
+    ? undefined
+    : (values: ConfigFormValues) => evaluateConfigFormReactionCondition(source, values)
+}
+
+function extensions(node: SourceNode): Record<string, unknown> | undefined {
+  const lowCode = {
+    ...(Object.keys(node.events).length ? { events: structuredClone(node.events) } : {}),
+    ...(Object.keys(node.bindings).length ? { bindings: structuredClone(node.bindings) } : {}),
+  }
+  const result = {
+    ...(node.extensions ? structuredClone(node.extensions) : {}),
+    ...(Object.keys(lowCode).length ? { 'mx.low-code': lowCode } : {}),
+  }
+  return Object.keys(result).length ? result : undefined
+}
+
+function rendererNode(
+  node: SourceNode,
+  bindings: Record<string, SourceComponentBinding>,
+  resolveFieldValidation: CreateSourceRendererConfigInput['resolveFieldValidation'],
+): ConfigFormRendererNode {
+  const binding = bindings[node.component]
+  if (!binding)
+    throw new Error('Missing generated component binding: ' + node.component)
+  const metadata = extensions(node)
+  const common = {
+    id: node.id,
+    component: node.component,
+    props: {
+      ...structuredClone(node.props),
+      ...(node.kind === 'layout' ? { style: [node.props.style, layoutStyle(node, binding.render)] } : {}),
+    },
+    ...(metadata ? { extensions: metadata } : {}),
+    ...(node.flowEvents.length ? { eventNames: [...node.flowEvents] } : {}),
+    ...(node.reactions ? { reactions: structuredClone(node.reactions) } : {}),
+    ...(typeof node.placement.span === 'number' ? { span: node.placement.span } : {}),
+    ...(node.conditions?.visible ? { visible: condition(node.conditions.visible) } : {}),
+    ...(node.conditions?.hidden ? { hidden: condition(node.conditions.hidden) } : {}),
+  }
+  if (node.kind === 'layout') {
+    return {
+      ...common,
+      ...(node.valueScope ? { valueScope: structuredClone(node.valueScope) } : {}),
+      slots: Object.fromEntries(Object.entries(node.slots).map(([name, children]) => [
+        name,
+        children.map(child => rendererNode(child, bindings, resolveFieldValidation)),
+      ])),
+    } as ConfigFormRendererNode
+  }
+  const validation = resolveFieldValidation(node.id)
+  return {
+    ...common,
+    field: node.field,
+    ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
+    validateOn: [...validation.validateOn],
+    ...(node.conditions?.required
+      ? { required: condition(node.conditions.required) }
+      : validation.required === undefined ? {} : { required: validation.required }),
+    ...(validation.requiredMessage === undefined ? {} : { requiredMessage: validation.requiredMessage }),
+    ...(validation.schema === undefined ? {} : { schema: validation.schema }),
+    ...(validation.validator === undefined ? {} : { validator: validation.validator }),
+    ...(node.conditions?.disabled ? { disabled: condition(node.conditions.disabled) } : {}),
+    ...(node.conditions?.readonly ? { readonly: condition(node.conditions.readonly) } : {}),
+    ...(binding.valueProp ? { valueProp: binding.valueProp } : {}),
+    ...(binding.trigger ? { trigger: binding.trigger } : {}),
+    ...(binding.blurTrigger ? { blurTrigger: binding.blurTrigger } : {}),
+  } as ConfigFormRendererNode
+}
+
+export function createSourceRendererConfig(
+  input: CreateSourceRendererConfigInput,
+): Omit<ConfigFormRendererProps, 'model' | 'flowActions'> {
+  const components: ConfigFormComponentRegistry = Object.fromEntries(Object.entries(input.bindings).map(([key, binding]) => {
+    const registration: ConfigFormComponentRegistration = {
+      component: resolveSourceComponent(binding, input.resolveComponent),
+      ...(binding.staticProps ? { props: structuredClone(binding.staticProps) } : {}),
+      ...(binding.valueProp ? { valueProp: binding.valueProp } : {}),
+      ...(binding.trigger ? { trigger: binding.trigger } : {}),
+      ...(binding.blurTrigger ? { blurTrigger: binding.blurTrigger } : {}),
+    }
+    return [key, registration]
+  }))
+  const plan: ConfigFormPageRuntimePlan = Object.freeze({
+    flows: Object.freeze([...input.flowPlans]),
+    optionBindings: Object.freeze(structuredClone(input.page.optionBindings)),
+    runtime: Object.freeze(structuredClone(input.page.runtime)),
+    valueSchema: Object.freeze({
+      scopedFields: Object.freeze(structuredClone(input.page.scopedFields)),
+      valueScopes: Object.freeze(structuredClone(input.page.valueScopes)),
+    }),
+  })
+  return {
+    components,
+    fields: input.page.root.map(node => rendererNode(node, input.bindings, input.resolveFieldValidation)),
+    plan,
+    ...(input.page.form.readonly === undefined ? {} : { readonly: input.page.form.readonly }),
+    ...(input.page.form.inline === undefined ? {} : { inline: input.page.form.inline }),
+    ...(input.page.form.columns === undefined ? {} : { columns: input.page.form.columns }),
+    ...(input.page.form.gap === undefined ? {} : { gap: input.page.form.gap }),
+    ...(input.page.form.fieldSpan === undefined ? {} : { fieldSpan: input.page.form.fieldSpan }),
+    ...(input.page.form.labelPosition === undefined ? {} : { labelPosition: input.page.form.labelPosition }),
+    ...(input.page.form.labelWidth === undefined ? {} : { labelWidth: input.page.form.labelWidth }),
+    ...(input.page.form.responsive === undefined ? {} : { responsive: structuredClone(input.page.form.responsive) }),
+  }
+}
 `
 }

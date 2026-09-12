@@ -22,6 +22,7 @@ import {
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { listWorkbenchFlowActionDescriptors } from '../flow'
 import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
@@ -35,6 +36,7 @@ defineProps<WorkbenchShellProps>()
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
 const FlowDialog = defineAsyncComponent(() => import('../features/flow').then(module => module.FlowDialog))
+const DataDialog = defineAsyncComponent(() => import('../features/data').then(module => module.DataDialog))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.PageManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
 
@@ -54,7 +56,13 @@ const {
   currentGraph,
   currentPage,
   currentPageId,
+  dataTestContext,
+  dataSourceHost,
+  modelRevision,
+  requestDataSource,
   flowEventTargets,
+  flowReferenceFields,
+  flowSourceCatalog,
   designerLayers,
   dirty,
   executeFlowCommand,
@@ -83,6 +91,13 @@ const {
   selectedIds: selectedDesignerIds,
 } = designSession
 const {
+  actions: previewFlowActions,
+  flowDiagnostics: previewFlowDiagnostics,
+  handleFlowError: handlePreviewFlowError,
+  handleFlowProjection: handlePreviewFlowProjection,
+  handleFlowResult: handlePreviewFlowResult,
+  handleFlowTrace: handlePreviewFlowTrace,
+  trace: previewFlowTrace,
   flowProjection: previewFlowProjection,
   getCompilation: getPreviewCompilation,
   handleFieldChange: handlePreviewFieldChange,
@@ -97,6 +112,7 @@ const {
   projection: previewProjection,
   runtimeState: previewRuntimeState,
 } = previewSession
+const flowActionDescriptors = computed(() => listWorkbenchFlowActionDescriptors(previewFlowActions))
 const {
   capture: captureExportSnapshotInput,
   getCompilation: getCurrentExportCompilation,
@@ -105,6 +121,9 @@ const {
   clearNotice,
   closeExportPreview,
   closeFlowWorkspace,
+  closeDataWorkspace,
+  dataDialogLoaded,
+  dataWorkspaceOpen,
   closePageManager,
   exportDialogLoaded,
   exportPreviewMode,
@@ -118,6 +137,7 @@ const {
   openExportPreview,
   openAppearanceDrawer,
   openFlowWorkspace,
+  openDataWorkspace,
   openPageManager,
   pageManagerLoaded,
   pageManagerOpen,
@@ -392,6 +412,7 @@ watch(recoveryDrafts, (drafts) => {
                 @move-layer="(nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)"
                 @jump-history="jumpDesignerHistory"
                 @manage-pages="showPageManager"
+                @open-data="openDataWorkspace"
                 @select-layer="selectDesignerLayer"
                 @select-page="selectPageFromDesigner"
               />
@@ -451,6 +472,11 @@ watch(recoveryDrafts, (drafts) => {
         :adapter="getCurrentAdapterId()"
         :compilation="getPreviewCompilation()"
         :config-error="configError"
+        :data-source-host="dataSourceHost"
+        :flow-actions="previewFlowActions"
+        :flow-diagnostics="previewFlowDiagnostics"
+        :flow-trace="previewFlowTrace"
+        :flows="currentPage?.flows ?? []"
         :locale="localeOptions"
         :runtime-state="previewRuntimeState"
         :last-submission="previewLastSubmission"
@@ -462,6 +488,10 @@ watch(recoveryDrafts, (drafts) => {
         @close="togglePreview"
         @error="message = $event instanceof Error ? $event.message : String($event)"
         @field-change="handlePreviewFieldChange"
+        @flow-error="handlePreviewFlowError"
+        @flow-projection="handlePreviewFlowProjection"
+        @flow-result="handlePreviewFlowResult"
+        @flow-trace="handlePreviewFlowTrace"
         @runtime-event="handlePreviewRuntimeEvent"
         @runtime-mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
@@ -506,17 +536,36 @@ watch(recoveryDrafts, (drafts) => {
       @return-focus-restored="emit('creationFocusRestored')"
     />
 
+    <DataDialog
+      v-if="dataDialogLoaded && dataWorkspaceOpen && currentPage"
+      :key="`${currentProject?.id}:${currentPageId}`"
+      :execute="executeFlowCommand"
+      :locale="localeOptions"
+      :on-request="requestDataSource"
+      :open="dataWorkspaceOpen"
+      :page-id="currentPageId"
+      :readonly="busy"
+      :reference-fields="flowReferenceFields"
+      :runtime="currentPage.runtime"
+      :runtime-revision="modelRevision"
+      :test-context="dataTestContext"
+      @close="closeDataWorkspace"
+    />
+
     <FlowDialog
       v-if="flowDialogLoaded && flowWorkspaceOpen && flowInitialTrigger"
+      :action-descriptors="flowActionDescriptors"
       :event-targets="flowEventTargets"
+      :execute="executeFlowCommand"
       :flows="currentPage?.flows ?? []"
       :initial-trigger="flowInitialTrigger"
       :locale="localeOptions"
       :open="flowWorkspaceOpen"
       :page-id="currentPageId"
       :readonly="busy"
+      :reference-fields="flowReferenceFields"
+      :source-catalog="flowSourceCatalog"
       @close="closeFlowWorkspace"
-      @command="executeFlowCommand"
     />
 
     <ExportDialog

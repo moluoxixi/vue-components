@@ -14,6 +14,7 @@ export interface OperationResult {
   changedPageIds: PageId[]
   changedNodeIds: NodeId[]
   changedNodeChanges: ProjectNodeChange[]
+  validatePageContent: boolean
 }
 
 export interface ValidationPlan {

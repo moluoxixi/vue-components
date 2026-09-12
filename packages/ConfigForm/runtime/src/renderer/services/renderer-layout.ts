@@ -46,6 +46,6 @@ export function createLayoutRenderer<TValues extends ConfigFormValues>(
       'class': [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutAttrs.class],
       'data-config-form-responsive-layout': inline ? undefined : '',
       style,
-    }, context.props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set())))
+    }, context.props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set(), [])))
   }
 }

@@ -1,11 +1,16 @@
 import type {
+  ConfigFormDataSourceDefinition,
   ConfigFormFlow,
   ConfigFormFlowEdge,
   ConfigFormFlowNode,
   ConfigFormJsonObject,
   ConfigFormJsonValue,
+  ConfigFormPageRuntimeConfiguration,
   ConfigFormReaction,
   ConfigFormReactionCondition,
+  ConfigFormScopedFieldDefinition,
+  ConfigFormValueInput,
+  ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import type {
@@ -153,6 +158,13 @@ export interface SlotItem {
   nodeId: NodeId
   placement: NodePlacement
 }
+export interface ConfigFormFieldDataSourceOptionSource {
+  kind: 'dataSource'
+  dataSourceId: string
+  params?: Record<string, ConfigFormValueInput>
+}
+
+export type ConfigFormFieldOptionSource = ConfigFormFieldDataSourceOptionSource
 
 export interface FieldNode extends PageNodeBase {
   kind: 'field'
@@ -161,11 +173,13 @@ export interface FieldNode extends PageNodeBase {
   defaultValue?: ModelJsonValue
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
+  optionSource?: ConfigFormFieldOptionSource
 }
 
 export interface LayoutNode extends PageNodeBase {
   kind: 'layout'
   slots: Record<SlotName, SlotItem[]>
+  valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
 
 export type PageNode = FieldNode | LayoutNode
@@ -184,6 +198,7 @@ export interface ProjectPage {
   route: string
   graph: PageGraph
   flows?: ConfigFormFlow[]
+  runtime?: ConfigFormPageRuntimeConfiguration
 }
 
 export interface ProjectResourceReference {
@@ -270,12 +285,13 @@ export interface FieldNodeSettings extends CommonNodeSettings {
   defaultValue?: ModelJsonValue
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
+  optionSource?: ConfigFormFieldOptionSource
 }
 
 export interface LayoutNodeSettings extends CommonNodeSettings {
   kind: 'layout'
+  valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
-
 export type PageNodeSettings = FieldNodeSettings | LayoutNodeSettings
 
 export type ProjectOperation
@@ -288,6 +304,7 @@ export type ProjectOperation
     | { type: 'project.settings', settings: ModelJsonObject }
     | { type: 'page.props', pageId: PageId, props: ModelJsonObject }
     | { type: 'page.form', pageId: PageId, form: FormSettings }
+    | { type: 'page.runtime', pageId: PageId, runtime?: ConfigFormPageRuntimeConfiguration }
     | { type: 'node.insert', pageId: PageId, subgraph: NodeSubgraph, target: NodeTarget }
     | { type: 'node.move', pageId: PageId, nodeId: NodeId, target: NodeTarget }
     | { type: 'node.props', pageId: PageId, nodeId: NodeId, props: ModelJsonObject }
@@ -297,7 +314,7 @@ export type ProjectOperation
       type: 'node.config.remove'
       pageId: PageId
       nodeId: NodeId
-      property: 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn'
+      property: 'bindings' | 'conditions' | 'events' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
       key?: string
     }
     | { type: 'node.placement', pageId: PageId, nodeId: NodeId, placement: NodePlacement }
@@ -313,11 +330,12 @@ export interface ProjectNodePatchValues {
   extensions: ModelJsonObject
   field: string
   label: string
+  optionSource: ConfigFormFieldOptionSource
   reactions: ConfigFormReaction[]
   validateOn: ValidateTrigger | ValidateTrigger[]
   validation: RuleSet
+  valueScope: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
-
 export type ProjectNodePatchKey = keyof ProjectNodePatchValues
 
 /**
@@ -390,6 +408,7 @@ export interface ModelDiagnostic {
   nodeId?: NodeId
 }
 
+/** Validated changed results are deeply frozen; clone before editing them. */
 export interface ProjectTransactionSuccess {
   success: true
   changed: boolean
@@ -449,7 +468,17 @@ export interface ProjectNodeRelation {
 export interface ProjectNodeChange {
   pageId: PageId
   nodeId: NodeId
+  /** A move has no content changes; mixed edits use content with before/after. */
   kind: 'content' | 'insert' | 'move' | 'remove'
   before?: ProjectNodeRelation
   after?: ProjectNodeRelation
 }
+
+export interface ProjectPageValueSchema {
+  valueScopes: ConfigFormValueScopeDefinition[]
+  scopedFields: ConfigFormScopedFieldDefinition[]
+}
+
+export type ProjectPageRuntimeConfiguration = ConfigFormPageRuntimeConfiguration
+export type ProjectVariableDefinition = ConfigFormPageRuntimeConfiguration['variables'][number]
+export type ProjectDataSourceDefinition = ConfigFormDataSourceDefinition

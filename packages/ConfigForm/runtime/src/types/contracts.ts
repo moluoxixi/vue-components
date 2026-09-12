@@ -1,3 +1,4 @@
+import type { ConfigFormNodeValueScope } from '@moluoxixi/config-form-headless'
 import type { Component, VNodeChild } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
 
@@ -90,6 +91,8 @@ export interface ComponentNodeConfig {
   props?: Record<string, unknown>
   /** 不参与渲染的扩展元数据；由 designer/adapter/plugin 按命名空间消费。 */
   extensions?: Record<string, unknown>
+  /** Natural object/array value ownership for this container subtree. */
+  valueScope?: ConfigFormNodeValueScope
   /** 子级 slots；其中的表单节点配置或 render 函数可以来自 defineField(...) 或普通 config。 */
   slots?: Record<string, SlotContent>
 }

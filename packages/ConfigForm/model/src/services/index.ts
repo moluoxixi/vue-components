@@ -5,3 +5,9 @@ export * from './hit-testing'
 export * from './registry'
 export * from './repository'
 export * from './transactions'
+export {
+  analyzeProjectPageValueScopes,
+  deriveProjectPageValueSchema,
+  isProjectPageFieldReferenceInScope,
+  resolveProjectPageNamedField,
+} from './value-scope'

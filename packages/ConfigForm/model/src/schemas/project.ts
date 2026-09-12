@@ -1,15 +1,20 @@
 import type {
+  ConfigFormDataSourceDefinition,
   ConfigFormFlow,
   ConfigFormFlowEdge,
   ConfigFormFlowNode,
   ConfigFormJsonObject,
   ConfigFormJsonValue,
+  ConfigFormPageRuntimeConfiguration,
   ConfigFormReaction,
   ConfigFormReactionCondition,
   ConfigFormReactionEffect,
   ConfigFormReactionOperand,
+  ConfigFormValueInput,
+  ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type {
+  ConfigFormFieldOptionSource,
   DeepReadonly,
   FieldNode,
   FormSettings,
@@ -29,6 +34,8 @@ import type {
 } from '../types'
 import {
   analyzeConfigFormFlow,
+  collectConfigFormValueReferences,
+  CONFIG_FORM_FLOW_TRIGGER_KINDS,
   CONFIG_FORM_FLOW_VERSION,
   getConfigFormFlowTriggerKey,
   getConfigFormJsonSemanticHash,
@@ -41,9 +48,16 @@ import {
   PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '../constants'
+import { collectConfigFormExpressionFieldNames } from '../services/reference-integrity'
+import { getProjectTransactionSource } from '../services/transactions/services/publication'
+import { analyzeProjectPageValueScopes, isProjectPageFieldReferenceInScope, resolveProjectPageNamedField } from '../services/value-scope'
 
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 const safeObjectKeySchema = z.string().refine(key => !FORBIDDEN_OBJECT_KEYS.has(key), 'Object key is not allowed')
+const deeplyFrozenValues = new WeakSet<object>()
+const validatedProjectDocuments = new WeakSet<object>()
+const immutableJsonSerializationCache = new WeakMap<object, string>()
+const immutableProjectDocumentHashCache = new WeakMap<object, string>()
 const identifierSchema = z.string().trim().min(1).max(128).refine(key => !FORBIDDEN_OBJECT_KEYS.has(key), 'Identifier is not allowed')
 
 export const modelJsonValueSchema: z.ZodType<ConfigFormJsonValue> = z.lazy(() => z.union([
@@ -56,6 +70,83 @@ export const modelJsonValueSchema: z.ZodType<ConfigFormJsonValue> = z.lazy(() =>
 ]))
 
 export const modelJsonObjectSchema: z.ZodType<ConfigFormJsonObject> = z.record(safeObjectKeySchema, modelJsonValueSchema)
+
+export const configFormValueInputSchema: z.ZodType<ConfigFormValueInput> = z
+  .custom<ConfigFormValueInput>(() => true)
+  .superRefine((input, context) => {
+    try {
+      collectConfigFormValueReferences(input)
+    }
+    catch (error) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: readValueReferenceErrorMessage(error),
+        path: readValueReferenceErrorPath(error),
+      })
+    }
+  })
+
+export const configFormVariableDefinitionSchema = z.object({
+  id: identifierSchema,
+  name: z.string().trim().min(1).max(160),
+  initialValue: configFormValueInputSchema,
+}).strict()
+
+const configFormDataSourceRequestDefinitionSchema = z.object({
+  url: configFormValueInputSchema,
+  method: configFormValueInputSchema.optional(),
+  headers: configFormValueInputSchema.optional(),
+  query: configFormValueInputSchema.optional(),
+  body: configFormValueInputSchema.optional(),
+  responseType: configFormValueInputSchema.optional(),
+}).strict()
+
+export const configFormDataSourceDefinitionSchema: z.ZodType<ConfigFormDataSourceDefinition> = z.object({
+  id: identifierSchema,
+  name: z.string().trim().min(1).max(160),
+  request: configFormDataSourceRequestDefinitionSchema,
+  mapping: configFormValueInputSchema.optional(),
+  dependencies: z.array(configFormValueInputSchema).optional(),
+  auto: z.boolean().optional(),
+  timeoutMs: z.number().int().nonnegative().optional(),
+  cacheTtlMs: z.number().int().nonnegative().optional(),
+}).strict()
+
+export const configFormPageRuntimeConfigurationSchema: z.ZodType<ConfigFormPageRuntimeConfiguration> = z.object({
+  variables: z.array(configFormVariableDefinitionSchema),
+  dataSources: z.array(configFormDataSourceDefinitionSchema),
+}).strict().superRefine((runtime, context) => {
+  reportDuplicateIdentity(runtime.variables, 'variable', context, ['variables'])
+  reportDuplicateIdentity(runtime.dataSources, 'data source', context, ['dataSources'])
+})
+
+export const configFormValueScopeSchema = z.union([
+  z.object({
+    kind: z.literal('object'),
+    field: identifierSchema,
+  }).strict(),
+  z.object({
+    kind: z.literal('array'),
+    field: identifierSchema,
+    itemKey: identifierSchema.optional(),
+    minItems: z.number().int().min(0).max(10_000).optional(),
+    maxItems: z.number().int().min(0).max(10_000).optional(),
+  }).strict(),
+]).superRefine((scope, context) => {
+  if (scope.kind === 'array' && scope.minItems !== undefined && scope.maxItems !== undefined && scope.minItems > scope.maxItems) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value scope minItems cannot exceed maxItems.',
+      path: ['minItems'],
+    })
+  }
+}) as z.ZodType<Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>>
+
+export const configFormFieldOptionSourceSchema: z.ZodType<ConfigFormFieldOptionSource> = z.object({
+  kind: z.literal('dataSource'),
+  dataSourceId: identifierSchema,
+  params: z.record(safeObjectKeySchema, configFormValueInputSchema).optional(),
+}).strict()
 
 const formGapSchema = z.string()
   .regex(/^(?:0|[1-9]\d*)px$/, 'Form gap must be a non-negative integer followed by px')
@@ -110,10 +201,16 @@ const reactionSchema: z.ZodType<ConfigFormReaction> = z.object({
 
 const flowNodeSchema: z.ZodType<ConfigFormFlowNode> = z.object({
   id: identifierSchema,
-  type: z.enum(['trigger', 'condition', 'reaction', 'action', 'success', 'failure', 'end']),
+  type: z.enum(['trigger', 'condition', 'reaction', 'action', 'success', 'failure', 'end', 'blocked']),
   ref: identifierSchema.optional(),
   config: modelJsonObjectSchema.optional(),
   position: z.object({ x: z.number().finite(), y: z.number().finite() }).strict().optional(),
+  policy: z.object({
+    when: reactionConditionSchema.optional(),
+    stopWhen: reactionConditionSchema.optional(),
+    onError: z.enum(['continue', 'failure']).optional(),
+    timeoutMs: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
 }).strict()
 
 const flowEdgeSchema: z.ZodType<ConfigFormFlowEdge> = z.object({
@@ -128,14 +225,14 @@ export const flowSchema: z.ZodType<ConfigFormFlow> = z.object({
   id: identifierSchema,
   name: z.string().trim().min(1).max(160),
   trigger: z.object({
-    kind: z.enum(['page.mount', 'form.submit', 'component.event']),
+    kind: z.enum(CONFIG_FORM_FLOW_TRIGGER_KINDS),
     nodeId: identifierSchema.optional(),
     event: identifierSchema.optional(),
   }).strict(),
   concurrency: z.enum(['latest', 'queue', 'ignore']).optional(),
   errorPolicy: z.object({
     onError: z.enum(['failure', 'end']),
-    timeoutMs: z.number().int().positive().optional(),
+    timeoutMs: z.number().int().nonnegative().optional(),
   }).strict().optional(),
   nodes: z.array(flowNodeSchema),
   edges: z.array(flowEdgeSchema),
@@ -194,6 +291,7 @@ const fieldNodeSchema = z.object({
     z.enum(['submit', 'blur', 'change']),
     z.array(z.enum(['submit', 'blur', 'change'])).min(1),
   ]).optional(),
+  optionSource: configFormFieldOptionSourceSchema.optional(),
 }).strict() satisfies z.ZodType<FieldNode>
 
 export const slotItemSchema: z.ZodType<SlotItem> = z.object({
@@ -205,6 +303,7 @@ const layoutNodeSchema = z.object({
   ...nodeBaseShape,
   kind: z.literal('layout'),
   slots: z.record(safeObjectKeySchema, z.array(slotItemSchema)),
+  valueScope: configFormValueScopeSchema.optional(),
 }).strict() satisfies z.ZodType<LayoutNode>
 
 export const pageNodeSchema = z.discriminatedUnion('kind', [fieldNodeSchema, layoutNodeSchema])
@@ -218,13 +317,17 @@ const pageGraphBaseSchema = z.object({
 }).strict() satisfies z.ZodType<PageGraph>
 
 export const pageGraphSchema: z.ZodType<PageGraph> = pageGraphBaseSchema.superRefine(validatePageGraph)
+export const nodeSubgraphSchema: z.ZodType<PageGraph> = pageGraphBaseSchema.superRefine((graph, context) => {
+  validatePageGraph(graph, context, false)
+})
 
 const projectPageContentShape = {
   graph: pageGraphSchema,
   flows: z.array(flowSchema).optional(),
+  runtime: configFormPageRuntimeConfigurationSchema.optional(),
 }
 
-export const projectPageContentSchema: z.ZodType<Pick<ProjectPage, 'graph' | 'flows'>> = z.object({
+export const projectPageContentSchema: z.ZodType<Pick<ProjectPage, 'graph' | 'flows' | 'runtime'>> = z.object({
   ...projectPageContentShape,
 }).strict().superRefine(validateProjectPageContent)
 
@@ -381,26 +484,32 @@ export function createProjectDraftSnapshot(
 }
 
 /**
- * Fast path for a document already validated by the Project Transaction
- * Engine. It preserves structural sharing and avoids reparsing the complete
- * project on every drag-candidate update.
+ * Accepts only an immutable, validated engine result derived from the exact
+ * validated base document. The private provenance check preserves structural
+ * sharing without trusting copied results or caller-supplied frozen objects.
  */
 export function createProjectDraftSnapshotFromTransaction(
   base: ProjectSnapshot,
   result: ProjectTransactionSuccess,
   draftId: string,
 ): ProjectDraftSnapshot {
-  const id = draftId.trim()
-  if (!id)
-    throw new TypeError('Project draft snapshots require a non-empty draft id.')
+  const id = identifierSchema.parse(draftId)
+  const source = getProjectTransactionSource(result)
+  if (!source)
+    throw new TypeError('Project draft snapshots require an authenticated transaction result.')
   if (!result.changed)
     throw new TypeError('Project draft snapshots require a changed transaction result.')
-  if (result.document.id !== base.document.id)
+  const { document, editVersion, contentHash } = base
+  if (source !== document || !validatedProjectDocuments.has(source))
+    throw new TypeError('Project draft snapshots require a transaction from the validated base document.')
+  if (!Number.isInteger(editVersion) || editVersion < 0 || contentHash !== getFrozenProjectDocumentContentHash(document))
+    throw new TypeError('Project draft snapshots require a valid base snapshot identity.')
+  if (result.document.id !== document.id)
     throw new TypeError('Project draft snapshots cannot change project identity.')
   return freezeProjectDraftSnapshot({
-    projectId: base.document.id,
-    editVersion: base.editVersion,
-    contentHash: base.contentHash,
+    projectId: document.id,
+    editVersion,
+    contentHash,
   }, result.document, id)
 }
 
@@ -481,10 +590,11 @@ function freezeProjectSnapshot(
   editVersion: number,
 ): ProjectSnapshot {
   const immutableDocument = deepFreeze(document)
+  validatedProjectDocuments.add(immutableDocument)
   return Object.freeze({
     document: immutableDocument,
     editVersion,
-    contentHash: getProjectDocumentContentHash(immutableDocument),
+    contentHash: getFrozenProjectDocumentContentHash(immutableDocument),
   })
 }
 
@@ -494,27 +604,88 @@ function freezeProjectDraftSnapshot(
   draftId: string,
 ): ProjectDraftSnapshot {
   const immutableDocument = deepFreeze(document)
+  validatedProjectDocuments.add(immutableDocument)
   return Object.freeze({
     kind: 'draft',
     draftId,
     document: immutableDocument,
     base: Object.freeze({ ...base }),
-    draftHash: getProjectDocumentContentHash(immutableDocument),
+    draftHash: getFrozenProjectDocumentContentHash(immutableDocument),
   })
 }
 
-function deepFreeze<T>(value: T): DeepReadonly<T> {
-  if (typeof value !== 'object' || value === null || Object.isFrozen(value))
-    return value as DeepReadonly<T>
-  Object.values(value).forEach(child => deepFreeze(child))
-  return Object.freeze(value) as DeepReadonly<T>
+function getFrozenProjectDocumentContentHash(
+  document: ProjectDocument | ReadonlyProjectDocument,
+): string {
+  const cached = immutableProjectDocumentHashCache.get(document)
+  if (cached !== undefined)
+    return cached
+
+  // These containers change for nearly every edit; cache their shared children instead.
+  const transient = new Set<object>([document, document.pagesById])
+  Object.values(document.pagesById).forEach((page) => {
+    transient.add(page)
+    transient.add(page.graph)
+    transient.add(page.graph.root)
+  })
+  const serialized = stableImmutableJsonStringify(document, transient)
+  let hash = 0x811C9DC5
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= serialized.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  const result = `fnv1a:${(hash >>> 0).toString(16).padStart(8, '0')}`
+  immutableProjectDocumentHashCache.set(document, result)
+  return result
 }
 
-function validatePageGraph(graph: PageGraph, context: z.RefinementCtx): void {
+function stableImmutableJsonStringify(value: unknown, transient: ReadonlySet<object>): string {
+  if (value && typeof value === 'object' && deeplyFrozenValues.has(value) && !transient.has(value)) {
+    const cached = immutableJsonSerializationCache.get(value)
+    if (cached !== undefined)
+      return cached
+  }
+
+  let serialized: string
+  if (Array.isArray(value)) {
+    serialized = `[${value.map(item => stableImmutableJsonStringify(item, transient)).join(',')}]`
+  }
+  else if (value && typeof value === 'object') {
+    const object = value as Readonly<Record<string, unknown>>
+    serialized = `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${stableImmutableJsonStringify(object[key], transient)}`).join(',')}}`
+  }
+  else {
+    serialized = JSON.stringify(value) as string
+  }
+
+  if (value && typeof value === 'object' && deeplyFrozenValues.has(value) && !transient.has(value))
+    immutableJsonSerializationCache.set(value, serialized)
+  return serialized
+}
+
+function deepFreeze<T>(value: T): DeepReadonly<T> {
+  if (typeof value !== 'object' || value === null || deeplyFrozenValues.has(value))
+    return value as DeepReadonly<T>
+  Object.values(value).forEach(child => deepFreeze(child))
+  const immutable = Object.isFrozen(value) ? value : Object.freeze(value)
+  deeplyFrozenValues.add(immutable)
+  return immutable as DeepReadonly<T>
+}
+
+function validatePageGraph(
+  graph: PageGraph,
+  context: z.RefinementCtx,
+  validateNamedReferences = true,
+): void {
   const references = new Map<string, Array<Array<string | number>>>()
-  const fields = new Map<string, Array<string | number>>()
-  const fieldReferences: Array<{ field: string, path: Array<string | number> }> = []
+  const fieldReferences: NamedFieldReference[] = []
   const reactionIds = new Map<string, Array<string | number>>()
+  const scopeAnalysis = analyzeProjectPageValueScopes(graph)
+  scopeAnalysis.issues.forEach(issue => context.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: issue.message,
+    path: issue.path,
+  }))
   const addReference = (nodeId: string, path: Array<string | number>) => {
     references.set(nodeId, [...(references.get(nodeId) ?? []), path])
   }
@@ -534,31 +705,26 @@ function validatePageGraph(graph: PageGraph, context: z.RefinementCtx): void {
       })
     }
     else {
-      const fieldPath = ['nodesById', key, 'field']
-      const previous = fields.get(node.field)
-      if (previous) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Field name must be unique: ${node.field}`,
-          path: fieldPath,
-        })
-      }
-      else {
-        fields.set(node.field, fieldPath)
-      }
       node.validation?.rules.forEach((rule, index) => {
         if (rule.kind === 'compare') {
           fieldReferences.push({
             field: rule.field,
             path: ['nodesById', key, 'validation', 'rules', index, 'field'],
+            sourceNodeId: node.id,
           })
         }
       })
     }
 
     Object.entries(node.conditions ?? {}).forEach(([target, condition]) => {
-      if (condition)
-        collectConditionFieldReferences(condition, ['nodesById', key, 'conditions', target], fieldReferences)
+      if (condition) {
+        collectConditionFieldReferences(
+          condition,
+          ['nodesById', key, 'conditions', target],
+          fieldReferences,
+          node.id,
+        )
+      }
     })
     node.reactions?.forEach((reaction, index) => {
       const reactionPath = ['nodesById', key, 'reactions', index]
@@ -573,21 +739,23 @@ function validatePageGraph(graph: PageGraph, context: z.RefinementCtx): void {
       else {
         reactionIds.set(reaction.id, [...reactionPath, 'id'])
       }
-      collectConditionFieldReferences(reaction.when, [...reactionPath, 'when'], fieldReferences)
-      collectReactionEffectFieldReferences(reaction.then, [...reactionPath, 'then'], fieldReferences)
-      collectReactionEffectFieldReferences(reaction.else ?? [], [...reactionPath, 'else'], fieldReferences)
+      collectConditionFieldReferences(reaction.when, [...reactionPath, 'when'], fieldReferences, node.id)
+      collectReactionEffectFieldReferences(reaction.then, [...reactionPath, 'then'], fieldReferences, node.id)
+      collectReactionEffectFieldReferences(reaction.else ?? [], [...reactionPath, 'else'], fieldReferences, node.id)
     })
   })
 
-  fieldReferences.forEach((reference) => {
-    if (!fields.has(reference.field)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Unknown field reference: ${reference.field}`,
-        path: reference.path,
-      })
-    }
-  })
+  if (validateNamedReferences) {
+    fieldReferences.forEach((reference) => {
+      if (!resolveProjectPageNamedField(scopeAnalysis, reference.sourceNodeId, reference.field)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Unknown field reference: ${reference.field}`,
+          path: reference.path,
+        })
+      }
+    })
+  }
 
   references.forEach((paths, nodeId) => {
     if (!graph.nodesById[nodeId]) {
@@ -638,12 +806,94 @@ function validatePageGraph(graph: PageGraph, context: z.RefinementCtx): void {
   Object.keys(graph.nodesById).forEach(nodeId => visit(nodeId, ['nodesById', nodeId]))
 }
 
+interface NamedFieldReference {
+  field: string
+  path: Array<string | number>
+  sourceNodeId?: string
+}
+
 function validateProjectPageContent(
-  page: Pick<ProjectPage, 'graph' | 'flows'>,
+  page: Pick<ProjectPage, 'graph' | 'flows' | 'runtime'>,
   context: z.RefinementCtx,
 ): void {
   const flowIds = new Set<string>()
   const flowTriggers = new Map<string, string[]>()
+  const scopeAnalysis = analyzeProjectPageValueScopes(page.graph)
+  const variableIds = new Set(page.runtime?.variables.map(variable => variable.id) ?? [])
+  const dataSourceIds = new Set(page.runtime?.dataSources.map(source => source.id) ?? [])
+
+  validateRuntimeValueReferences(page, scopeAnalysis, variableIds, context)
+  Object.entries(page.graph.nodesById).forEach(([nodeId, node]) => {
+    if (node.kind === 'field' && node.optionSource) {
+      if (!dataSourceIds.has(node.optionSource.dataSourceId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Option source references an unknown data source: ${node.optionSource.dataSourceId}`,
+          path: ['graph', 'nodesById', nodeId, 'optionSource', 'dataSourceId'],
+        })
+      }
+      Object.entries(node.optionSource.params ?? {}).forEach(([key, input]) => validateStableValueReferences(
+        input,
+        ['graph', 'nodesById', nodeId, 'optionSource', 'params', key],
+        page,
+        scopeAnalysis,
+        variableIds,
+        context,
+        node.id,
+      ))
+    }
+    Object.entries(node.conditions ?? {}).forEach(([target, condition]) => {
+      if (condition) {
+        validateConditionValueReferences(
+          condition,
+          ['graph', 'nodesById', nodeId, 'conditions', target],
+          page,
+          scopeAnalysis,
+          variableIds,
+          context,
+          node.id,
+        )
+      }
+    })
+    node.reactions?.forEach((reaction, reactionIndex) => validateReactionValueReferences(
+      reaction,
+      ['graph', 'nodesById', nodeId, 'reactions', reactionIndex],
+      page,
+      scopeAnalysis,
+      variableIds,
+      context,
+      node.id,
+    ))
+    Object.entries(node.events).forEach(([event, actions]) => {
+      actions.forEach((action, index) => {
+        if (!Object.hasOwn(action, 'input'))
+          return
+        const path = ['graph', 'nodesById', nodeId, 'events', event, index, 'input']
+        const parsed = configFormValueInputSchema.safeParse(action.input)
+        if (!parsed.success) {
+          parsed.error.issues.forEach(issue => context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: issue.message,
+            path: [...path, ...issue.path],
+          }))
+          return
+        }
+        validateStableValueReferences(
+          parsed.data,
+          path,
+          page,
+          scopeAnalysis,
+          variableIds,
+          context,
+          node.id,
+        )
+        const namedReferences: NamedFieldReference[] = []
+        collectFlowInputFieldReferences(parsed.data, path, namedReferences, node.id)
+        validateNamedFieldReferences(namedReferences, scopeAnalysis, context, 'Node event')
+      })
+    })
+  })
+
   page.flows?.forEach((flow, index) => {
     if (flowIds.has(flow.id)) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate flow id: ${flow.id}`, path: ['flows', index, 'id'] })
@@ -654,12 +904,13 @@ function validateProjectPageContent(
     const triggerFlows = flowTriggers.get(triggerKey) ?? []
     triggerFlows.push(flow.id)
     flowTriggers.set(triggerKey, triggerFlows)
+    const sourceNodeId = flow.trigger.kind === 'component.event' ? flow.trigger.nodeId : undefined
     if (flow.trigger.kind === 'component.event') {
-      const target = flow.trigger.nodeId ? page.graph.nodesById[flow.trigger.nodeId] : undefined
+      const target = sourceNodeId ? page.graph.nodesById[sourceNodeId] : undefined
       if (!target) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Flow component.event trigger references an unknown node: ${flow.trigger.nodeId ?? '<missing>'}`,
+          message: `Flow component.event trigger references an unknown node: ${sourceNodeId ?? '<missing>'}`,
           path: ['flows', index, 'trigger', 'nodeId'],
         })
       }
@@ -671,36 +922,397 @@ function validateProjectPageContent(
         })
       }
     }
-    const analysis = analyzeConfigFormFlow(flow)
-    analysis.diagnostics.forEach(diagnostic => context.addIssue({
+    const flowAnalysis = analyzeConfigFormFlow(flow)
+    flowAnalysis.diagnostics.forEach(diagnostic => context.addIssue({
       code: z.ZodIssueCode.custom,
       message: diagnostic.message,
-      path: ['flows', index, ...(diagnostic.path ? [diagnostic.path] : [])],
+      path: ['flows', index, ...(diagnostic.path?.split('.').map(part => /^(?:0|[1-9]\d*)$/.test(part) ? Number(part) : part) ?? [])],
     }))
+    const references: NamedFieldReference[] = []
+    const availableOutputs = availableFlowOutputs(flow)
+    flow.nodes.forEach((node, nodeIndex) => {
+      const outputIds = availableOutputs.get(node.id) ?? new Set<string>()
+      const path = ['flows', index, 'nodes', nodeIndex]
+      if (node.policy?.when) {
+        collectConditionFieldReferences(node.policy.when, [...path, 'policy', 'when'], references, sourceNodeId)
+        validateConditionValueReferences(node.policy.when, [...path, 'policy', 'when'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+      }
+      if (node.policy?.stopWhen) {
+        collectConditionFieldReferences(node.policy.stopWhen, [...path, 'policy', 'stopWhen'], references, sourceNodeId)
+        validateConditionValueReferences(node.policy.stopWhen, [...path, 'policy', 'stopWhen'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+      }
+      if (node.type === 'condition') {
+        const condition = reactionConditionSchema.safeParse(node.config?.condition)
+        if (condition.success) {
+          collectConditionFieldReferences(condition.data, [...path, 'config', 'condition'], references, sourceNodeId)
+          validateConditionValueReferences(condition.data, [...path, 'config', 'condition'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+        }
+      }
+      if (node.type === 'reaction') {
+        const reactions = z.array(reactionSchema).safeParse(node.config?.reactions)
+        if (reactions.success) {
+          reactions.data.forEach((reaction, reactionIndex) => {
+            const reactionPath = [...path, 'config', 'reactions', reactionIndex]
+            collectConditionFieldReferences(reaction.when, [...reactionPath, 'when'], references, sourceNodeId)
+            collectReactionEffectFieldReferences(reaction.then, [...reactionPath, 'then'], references, sourceNodeId)
+            collectReactionEffectFieldReferences(reaction.else ?? [], [...reactionPath, 'else'], references, sourceNodeId)
+            validateReactionValueReferences(reaction, reactionPath, page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+          })
+        }
+      }
+      if (node.type === 'action') {
+        const inputPath = [...path, 'config', 'input']
+        const outputPath = [...path, 'config', 'output']
+        collectFlowInputFieldReferences(node.config?.input, inputPath, references, sourceNodeId)
+        collectFlowInputFieldReferences(node.config?.output, outputPath, references, sourceNodeId)
+        if (node.config && Object.hasOwn(node.config, 'input')) {
+          validateStableValueReferences(
+            node.config.input as ConfigFormValueInput,
+            inputPath,
+            page,
+            scopeAnalysis,
+            variableIds,
+            context,
+            sourceNodeId,
+            outputIds,
+          )
+        }
+        if (node.config && Object.hasOwn(node.config, 'output')) {
+          validateStableValueReferences(
+            node.config.output as ConfigFormValueInput,
+            outputPath,
+            page,
+            scopeAnalysis,
+            variableIds,
+            context,
+            sourceNodeId,
+            outputIds,
+          )
+        }
+      }
+    })
+    validateNamedFieldReferences(references, scopeAnalysis, context, 'Flow')
   })
-  flowTriggers.forEach((flowIdsForTrigger, triggerKey) => {
-    if (flowIdsForTrigger.length < 2)
+  flowTriggers.forEach((ids, triggerKey) => {
+    if (ids.length < 2)
       return
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Duplicate flow trigger ${triggerKey} is not allowed: ${flowIdsForTrigger.join(', ')}.`,
+      message: `Duplicate flow trigger ${triggerKey} is not allowed: ${ids.join(', ')}.`,
       path: ['flows'],
     })
   })
 }
 
+function validateRuntimeValueReferences(
+  page: Pick<ProjectPage, 'graph' | 'runtime'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+): void {
+  const dependencyEdges = new Map<string, Array<{ id: string, path: Array<string | number> }>>()
+  page.runtime?.variables.forEach((variable, index) => {
+    const path = ['runtime', 'variables', index, 'initialValue']
+    validateStableValueReferences(variable.initialValue, path, page, scopeAnalysis, variableIds, context)
+    const dependencies = collectConfigFormValueReferences(variable.initialValue)
+      .filter(reference => reference.kind === 'variable')
+      .map(reference => ({
+        id: reference.id,
+        path: [...path, ...valueReferenceEntryPath(variable.initialValue, reference.path, reference.kind)],
+      }))
+    dependencyEdges.set(variable.id, dependencies)
+  })
+  page.runtime?.dataSources.forEach((source, index) => {
+    const base = ['runtime', 'dataSources', index]
+    const inputs: Array<[Array<string | number>, ConfigFormValueInput | undefined]> = [
+      [[...base, 'request', 'url'], source.request.url],
+      [[...base, 'request', 'method'], source.request.method],
+      [[...base, 'request', 'headers'], source.request.headers],
+      [[...base, 'request', 'query'], source.request.query],
+      [[...base, 'request', 'body'], source.request.body],
+      [[...base, 'request', 'responseType'], source.request.responseType],
+      [[...base, 'mapping'], source.mapping],
+    ]
+    source.dependencies?.forEach((input, dependencyIndex) => inputs.push([
+      [...base, 'dependencies', dependencyIndex],
+      input,
+    ]))
+    inputs.forEach(([path, input]) => {
+      if (input !== undefined)
+        validateStableValueReferences(input, path, page, scopeAnalysis, variableIds, context)
+    })
+  })
+  reportVariableCycles(dependencyEdges, variableIds, context)
+}
+
+function validateStableValueReferences(
+  input: ConfigFormValueInput,
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  let references: ReturnType<typeof collectConfigFormValueReferences>
+  try {
+    references = collectConfigFormValueReferences(input)
+  }
+  catch {
+    return
+  }
+  references.forEach((reference) => {
+    const referencePath = [...path, ...valueReferenceEntryPath(input, reference.path, reference.kind)]
+    if (reference.kind === 'field') {
+      const target = page.graph.nodesById[reference.id]
+      if (!target || target.kind !== 'field') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Value reference requires an existing field node: ${reference.id}`,
+          path: referencePath,
+        })
+      }
+      else if (sourceNodeId && !isProjectPageFieldReferenceInScope(
+        scopeAnalysis,
+        sourceNodeId,
+        reference.id,
+        reference.scope,
+      )) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Field ${reference.id} is not available from the ${reference.scope} value scope.`,
+          path: referencePath,
+        })
+      }
+    }
+    else if (reference.kind === 'variable' && !variableIds.has(reference.id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Value reference requires an existing variable: ${reference.id}`,
+        path: referencePath,
+      })
+    }
+    else if (reference.kind === 'output' && !outputIds?.has(reference.id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Value reference requires an existing flow output: ${reference.id}`,
+        path: referencePath,
+      })
+    }
+  })
+}
+
+function validateConditionValueReferences(
+  condition: ConfigFormReactionCondition,
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  switch (condition.kind) {
+    case 'literal':
+      return
+    case 'compare':
+      validateOperandValueReferences(condition.left, [...path, 'left'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+      validateOperandValueReferences(condition.right, [...path, 'right'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+      return
+    case 'and':
+    case 'or':
+      condition.expressions.forEach((item, index) => validateConditionValueReferences(
+        item,
+        [...path, 'expressions', index],
+        page,
+        scopeAnalysis,
+        variableIds,
+        context,
+        sourceNodeId,
+        outputIds,
+      ))
+      return
+    case 'not':
+      validateConditionValueReferences(condition.expression, [...path, 'expression'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+      return
+    case 'expression':
+      validateExpressionValueReferences(condition.expression, [...path, 'expression'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+  }
+}
+
+function validateReactionValueReferences(
+  reaction: ConfigFormReaction,
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  validateConditionValueReferences(reaction.when, [...path, 'when'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+  validateEffectValueReferences(reaction.then, [...path, 'then'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+  validateEffectValueReferences(reaction.else ?? [], [...path, 'else'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+}
+
+function validateEffectValueReferences(
+  effects: ConfigFormReactionEffect[],
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  effects.forEach((effect, index) => {
+    if (effect.kind === 'setValue')
+      validateOperandValueReferences(effect.value, [...path, index, 'value'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+    if (effect.kind === 'setProps') {
+      Object.entries(effect.props).forEach(([key, operand]) => validateOperandValueReferences(
+        operand,
+        [...path, index, 'props', key],
+        page,
+        scopeAnalysis,
+        variableIds,
+        context,
+        sourceNodeId,
+        outputIds,
+      ))
+    }
+  })
+}
+
+function validateOperandValueReferences(
+  operand: ConfigFormReactionOperand,
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  if (operand.kind === 'expression')
+    validateExpressionValueReferences(operand.expression, [...path, 'expression'], page, scopeAnalysis, variableIds, context, sourceNodeId, outputIds)
+}
+
+function validateExpressionValueReferences(
+  source: string,
+  path: Array<string | number>,
+  page: Pick<ProjectPage, 'graph'>,
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+  sourceNodeId?: string,
+  outputIds?: ReadonlySet<string>,
+): void {
+  validateStableValueReferences(
+    { $ref: { kind: 'expression', source } },
+    path,
+    page,
+    scopeAnalysis,
+    variableIds,
+    context,
+    sourceNodeId,
+    outputIds,
+  )
+}
+
+function availableFlowOutputs(flow: ConfigFormFlow): ReadonlyMap<string, ReadonlySet<string>> {
+  const ids = new Set(flow.nodes.map(node => node.id))
+  const predecessors = new Map(flow.nodes.map(node => [node.id, [] as string[]]))
+  flow.edges.forEach((edge) => {
+    if (ids.has(edge.source) && ids.has(edge.target))
+      predecessors.get(edge.target)?.push(edge.source)
+  })
+  const dominators = new Map<string, Set<string>>()
+  flow.nodes.forEach((node) => {
+    dominators.set(node.id, (predecessors.get(node.id)?.length ?? 0) === 0
+      ? new Set([node.id])
+      : new Set(ids))
+  })
+  for (let iteration = 0; iteration < flow.nodes.length; iteration += 1) {
+    let changed = false
+    flow.nodes.forEach((node) => {
+      const parents = predecessors.get(node.id) ?? []
+      if (parents.length === 0)
+        return
+      const next = new Set(dominators.get(parents[0]!) ?? [])
+      parents.slice(1).forEach((parent) => {
+        const parentDominators = dominators.get(parent) ?? new Set<string>()
+        next.forEach((id) => {
+          if (!parentDominators.has(id))
+            next.delete(id)
+        })
+      })
+      next.add(node.id)
+      const current = dominators.get(node.id)!
+      if (current.size !== next.size || [...current].some(id => !next.has(id))) {
+        dominators.set(node.id, next)
+        changed = true
+      }
+    })
+    if (!changed)
+      break
+  }
+  return new Map([...dominators].map(([nodeId, values]) => {
+    const available = new Set(values)
+    available.delete(nodeId)
+    return [nodeId, available] as const
+  }))
+}
+
+function validateNamedFieldReferences(
+  references: NamedFieldReference[],
+  scopeAnalysis: ReturnType<typeof analyzeProjectPageValueScopes>,
+  context: z.RefinementCtx,
+  owner: string,
+): void {
+  references.forEach((reference) => {
+    if (!resolveProjectPageNamedField(scopeAnalysis, reference.sourceNodeId, reference.field)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${owner} references an unknown field: ${reference.field}`,
+        path: reference.path,
+      })
+    }
+  })
+}
+
+function collectFlowInputFieldReferences(
+  input: unknown,
+  path: Array<string | number>,
+  target: NamedFieldReference[],
+  sourceNodeId?: string,
+): void {
+  if (Array.isArray(input)) {
+    input.forEach((value, index) => collectFlowInputFieldReferences(value, [...path, index], target, sourceNodeId))
+    return
+  }
+  if (!input || typeof input !== 'object')
+    return
+  if (Object.keys(input).length === 1 && Object.hasOwn(input, '$ref'))
+    return
+  if (Object.keys(input).length === 1 && typeof (input as ConfigFormJsonObject).$field === 'string') {
+    target.push({ field: (input as ConfigFormJsonObject).$field as string, path: [...path, '$field'], sourceNodeId })
+    return
+  }
+  Object.entries(input).forEach(([key, value]) => collectFlowInputFieldReferences(value, [...path, key], target, sourceNodeId))
+}
+
 function collectConditionFieldReferences(
   condition: ConfigFormReactionCondition,
   path: Array<string | number>,
-  target: Array<{ field: string, path: Array<string | number> }>,
+  target: NamedFieldReference[],
+  sourceNodeId?: string,
 ): void {
   switch (condition.kind) {
     case 'literal': return
     case 'compare':
-      if (condition.left.kind === 'field')
-        target.push({ field: condition.left.field, path: [...path, 'left', 'field'] })
-      if (condition.right.kind === 'field')
-        target.push({ field: condition.right.field, path: [...path, 'right', 'field'] })
+      collectOperandFieldReferences(condition.left, [...path, 'left'], target, sourceNodeId)
+      collectOperandFieldReferences(condition.right, [...path, 'right'], target, sourceNodeId)
       return
     case 'and':
     case 'or':
@@ -708,31 +1320,132 @@ function collectConditionFieldReferences(
         expression,
         [...path, 'expressions', index],
         target,
+        sourceNodeId,
       ))
       return
     case 'not':
-      collectConditionFieldReferences(condition.expression, [...path, 'expression'], target)
+      collectConditionFieldReferences(condition.expression, [...path, 'expression'], target, sourceNodeId)
+      return
+    case 'expression':
+      collectConfigFormExpressionFieldNames(condition.expression).forEach(field => target.push({
+        field,
+        path: [...path, 'expression'],
+        sourceNodeId,
+      }))
+  }
+}
+
+function collectOperandFieldReferences(
+  operand: ConfigFormReactionOperand,
+  path: Array<string | number>,
+  target: NamedFieldReference[],
+  sourceNodeId?: string,
+): void {
+  if (operand.kind === 'field')
+    target.push({ field: operand.field, path: [...path, 'field'], sourceNodeId })
+  if (operand.kind === 'expression') {
+    collectConfigFormExpressionFieldNames(operand.expression).forEach(field => target.push({
+      field,
+      path: [...path, 'expression'],
+      sourceNodeId,
+    }))
   }
 }
 
 function collectReactionEffectFieldReferences(
   effects: ConfigFormReactionEffect[],
   path: Array<string | number>,
-  target: Array<{ field: string, path: Array<string | number> }>,
+  target: NamedFieldReference[],
+  sourceNodeId?: string,
 ): void {
   effects.forEach((effect, index) => {
-    target.push({ field: effect.target, path: [...path, index, 'target'] })
-    if (effect.kind === 'setValue' && effect.value.kind === 'field')
-      target.push({ field: effect.value.field, path: [...path, index, 'value', 'field'] })
+    target.push({ field: effect.target, path: [...path, index, 'target'], sourceNodeId })
+    if (effect.kind === 'setValue')
+      collectOperandFieldReferences(effect.value, [...path, index, 'value'], target, sourceNodeId)
     if (effect.kind === 'setProps') {
       Object.entries(effect.props).forEach(([key, operand]) => {
-        if (operand.kind === 'field')
-          target.push({ field: operand.field, path: [...path, index, 'props', key, 'field'] })
+        collectOperandFieldReferences(operand, [...path, index, 'props', key], target, sourceNodeId)
       })
     }
   })
 }
 
+function reportDuplicateIdentity(
+  values: readonly { id: string, name: string }[],
+  kind: string,
+  context: z.RefinementCtx,
+  path: Array<string | number>,
+): void {
+  const ids = new Map<string, number>()
+  const names = new Map<string, number>()
+  values.forEach((value, index) => {
+    if (ids.has(value.id))
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate ${kind} id: ${value.id}`, path: [...path, index, 'id'] })
+    else
+      ids.set(value.id, index)
+    if (names.has(value.name))
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate ${kind} name: ${value.name}`, path: [...path, index, 'name'] })
+    else
+      names.set(value.name, index)
+  })
+}
+function reportVariableCycles(
+  edges: ReadonlyMap<string, readonly { id: string, path: Array<string | number> }[]>,
+  variableIds: ReadonlySet<string>,
+  context: z.RefinementCtx,
+): void {
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+  const visit = (id: string, path: Array<string | number>): void => {
+    if (visiting.has(id)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `Variable initialization contains a cycle at ${id}.`, path })
+      return
+    }
+    if (visited.has(id))
+      return
+    visiting.add(id)
+    for (const edge of edges.get(id) ?? []) {
+      if (variableIds.has(edge.id))
+        visit(edge.id, edge.path)
+    }
+    visiting.delete(id)
+    visited.add(id)
+  }
+  edges.forEach((_edges, id) => visit(id, ['runtime', 'variables']))
+}
+function valueReferenceEntryPath(
+  _input: ConfigFormValueInput,
+  entryPath: string,
+  kind: 'field' | 'variable' | 'output',
+): Array<string | number> {
+  const property = kind === 'field' ? 'nodeId' : kind === 'variable' ? 'variableId' : 'stepId'
+  return [...parseValuePath(entryPath), '$ref', property]
+}
+function parseValuePath(path: string): Array<string | number> {
+  if (path === '$')
+    return []
+  const result: Array<string | number> = []
+  const pattern = /\.([A-Z_$][\w$]*)|\[(\d+)\]|\["((?:\\.|[^"\\])*)"\]/gi
+  let match = pattern.exec(path)
+  while (match !== null) {
+    if (match[1] !== undefined)
+      result.push(match[1])
+    else if (match[2] !== undefined)
+      result.push(Number(match[2]))
+    else if (match[3] !== undefined)
+      result.push(match[3])
+    match = pattern.exec(path)
+  }
+  return result
+}
+function readValueReferenceErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Value input is invalid.'
+}
+function readValueReferenceErrorPath(error: unknown): Array<string | number> {
+  if (typeof error === 'object' && error !== null && 'path' in error && typeof error.path === 'string')
+    return parseValuePath(error.path)
+  return []
+}
 function validateSafeObjectKeys(
   object: Record<string, unknown>,
   context: z.RefinementCtx,

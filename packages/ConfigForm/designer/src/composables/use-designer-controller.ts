@@ -21,6 +21,7 @@ import type {
 import { computed, ref, shallowRef, watch } from 'vue'
 import {
   collectDesignSubtreeIds,
+  createDesignBusinessKeyAllocator,
   createDesignerCommandId,
   createDesignerNodeId,
   createInsertCommand,
@@ -41,22 +42,6 @@ const designerClipboard = shallowRef<NodeSubgraph>()
 /** Test hook: resets the shared designer clipboard buffer. */
 export function clearDesignerClipboard(): void {
   designerClipboard.value = undefined
-}
-
-function uniqueField(graph: PageGraph, component: string): string {
-  const used = new Set<string>()
-  walkDesignGraph(graph, ({ node }) => {
-    if (node.kind === 'field')
-      used.add(node.field)
-  })
-
-  const fallback = component.split('.').at(-1)?.replace(/\W/g, '_') || 'field'
-  if (!used.has(fallback))
-    return fallback
-  let suffix = 2
-  while (used.has(`${fallback}_${suffix}`))
-    suffix += 1
-  return `${fallback}_${suffix}`
 }
 
 function targetForLocation(location: DesignNodeLocation, index: number): DesignerDropTarget {
@@ -86,16 +71,6 @@ function toDesignerDiagnostics(diagnostics: readonly ModelDiagnostic[]): Designe
     ...(diagnostic.nodeId ? { nodeId: diagnostic.nodeId } : {}),
     ...(diagnostic.pageId ? { pageId: diagnostic.pageId } : {}),
   }))
-}
-
-function defaultCopyField(sourceField: string, usedFields: ReadonlySet<string>): string {
-  const base = `${sourceField}_copy`
-  if (!usedFields.has(base))
-    return base
-  let suffix = 2
-  while (usedFields.has(`${base}_${suffix}`))
-    suffix += 1
-  return `${base}_${suffix}`
 }
 
 export function useDesignerController(options: UseDesignerControllerOptions): DesignerController {
@@ -245,31 +220,24 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     actions: ProjectCommandAction[]
     copiedIds: Map<string, string>
   } {
-    const usedFields = new Set<string>()
-    walkDesignGraph(graph.value, ({ node }) => {
-      if (node.kind === 'field')
-        usedFields.add(node.field)
-    })
+    const businessKeys = createDesignBusinessKeyAllocator(graph.value)
     const copiedIds = new Map<string, string>()
     const actions = locations.map((location): ProjectCommandAction => {
       const idMap: Record<string, string> = {}
-      const fieldMap: Record<string, string> = {}
       collectDesignSubtreeIds(graph.value, location.node.id).forEach((sourceId) => {
         const source = graph.value.nodesById[sourceId]!
         const nextId = createDesignerNodeId(source.kind)
         idMap[sourceId] = nextId
-        if (source.kind === 'field') {
-          const nextField = defaultCopyField(source.field, usedFields)
-          fieldMap[source.field] = nextField
-          usedFields.add(nextField)
-        }
       })
       copiedIds.set(location.node.id, idMap[location.node.id]!)
+      const target = targetForLocation(location, location.index + 1)
+      const subgraph = extractDesignSubgraph(graph.value, [location.node.id])!
+      const fieldMap = businessKeys.duplicateMap(subgraph, target, idMap)
       return {
         type: 'node.duplicate',
         pageId: options.pageId(),
         nodeId: location.node.id,
-        target: targetForLocation(location, location.index + 1),
+        target,
         idMap,
         fieldMap,
       }
@@ -386,7 +354,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     try {
       subgraph = options.registry().createSubgraph(component, {
         id,
-        ...(material.kind === 'field' ? { field: uniqueField(graph.value, component) } : {}),
+        ...(material.kind === 'field' ? { field: component.split('.').at(-1)?.replace(/\W/g, '_') || 'field' } : {}),
       })
     }
     catch (error) {
@@ -400,10 +368,12 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     const node = root ? subgraph.nodesById[root.nodeId] : undefined
     if (!node)
       return false
+    const insertTarget = target ?? defaultTarget(node)
+    createDesignBusinessKeyAllocator(graph.value).assign(subgraph, insertTarget)
     const changed = dispatch(createInsertCommand(
       options.pageId(),
       subgraph,
-      target ?? defaultTarget(node),
+      insertTarget,
     ))
     if (changed)
       emitSelection([id], id)
@@ -433,13 +403,13 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     const buffered = designerClipboard.value
     if (!buffered)
       return false
-    const subgraph = remapDesignSubgraph(buffered, graph.value)
     // Paste lands after the reference node so repeated pastes stack in order;
     // without a reference it appends to the page root.
     const location = nodeId ? findDesignNode(graph.value, nodeId) : undefined
     const target = location
       ? targetForLocation(location, location.index + 1)
       : { parentId: null, index: graph.value.root.length } satisfies DesignerDropTarget
+    const subgraph = remapDesignSubgraph(buffered, graph.value, target)
     const changed = dispatch(createInsertCommand(options.pageId(), subgraph, target, { label: 'Paste component' }))
     if (changed) {
       const rootIds = subgraph.root.map(item => item.nodeId)

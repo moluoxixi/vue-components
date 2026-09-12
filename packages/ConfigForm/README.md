@@ -90,7 +90,7 @@ Component Registry
 
 Workbench 的规范业务状态是 Model 包的 `ProjectDocument -> ProjectSnapshot -> PageGraph`，画布 selection、诊断、option loading 和 reaction projection 都是派生状态。Drag candidate 使用显式 `ProjectDraftSnapshot`，拥有 draftHash 但不拥有正式 editVersion、Repository revision 或 history。Model 和 Workbench 只接受当前 schema，不在运行时识别、投影或自动转换过期 artifact。
 
-Design Canvas 和右侧 Preview 使用同一份 `PageCompilation` 和同一 Vue Runtime Backend 递归渲染真实注册组件，并分别运行在独立的同源 iframe RuntimeHost。每个 Host 自己加载 adapter resolver、组件库 CSS、Vue Runtime plan 和 Teleport；IDE 只在父 document 渲染 selection、drop、resize 等 editor overlay。Design Host 通过版本化 geometry/pointer bridge 上报稳定 `nodeId`、派生 path、slot 和矩形，业务 Runtime DOM 不包裹编辑器控件。父子 realm 只通过 RuntimeHost v3 的 `channel + version + hostId + projectId + pageId + revision + sequence` JSON-safe 协议传递 PageCompilation、原子 `{ values, touched, validation }` 运行快照、reaction projection、设计态几何/指针信息和稳定 `{ nodeId, event }`，不传 Vue Component、函数、DOM 或 RuntimePlan。结构 sync 与运行 state sync 分离；Host 在异步加载 adapter 期间保留最高 sequence 的运行快照，挂载后只恢复最新状态，相同快照不重复写入 Renderer，避免过期 sync 覆盖输入或使进行中的校验失效。拖拽期间 candidate 先应用到临时 Project draft；Canvas candidate 和跟随指针的 drag visual 分别由真实 Design RuntimeHost 渲染同一个稳定 candidate node，drop 后只提交一次 Project Command，因此 candidate、drag visual 与落地结果共享同一 Registry 默认值、slot 和布局规则。
+Design Canvas 和右侧 Preview 使用同一份 `PageCompilation` 和同一 Vue Runtime Backend 递归渲染真实注册组件，并分别运行在独立的同源 iframe RuntimeHost。每个 Host 自己加载 adapter resolver、组件库 CSS、Vue Runtime plan 和 Teleport；IDE 只在父 document 渲染 selection、drop、resize 等 editor overlay。Design Host 通过版本化 geometry/pointer bridge 上报稳定 `nodeId`、派生 path、slot 和矩形，业务 Runtime DOM 不包裹编辑器控件。父子 realm 只通过 RuntimeHost v4 的 `channel + version + hostId + projectId + pageId + revision + sequence` JSON-safe 协议传递 PageCompilation、原子 `{ values, touched, validation }` 运行快照、reaction projection、设计态几何/指针信息和事件 `{ nodeId, event, args, field?, values }`，不传 Vue Component、函数、DOM 或 RuntimePlan。结构 sync 与运行 state sync 分离；Host 在异步加载 adapter 期间保留最高 sequence 的运行快照，挂载后只恢复最新状态，相同快照不重复写入 Renderer，避免过期 sync 覆盖输入或使进行中的校验失效。拖拽期间 candidate 先应用到临时 Project draft；Canvas candidate 和跟随指针的 drag visual 分别由真实 Design RuntimeHost 渲染同一个稳定 candidate node，drop 后只提交一次 Project Command，因此 candidate、drag visual 与落地结果共享同一 Registry 默认值、slot 和布局规则。
 
 `DesignerPalette` 只呈现 Registry icon（未提供时显示文本标识）与本地化 display name，不渲染 Provider Runtime specimen；真实 Runtime 仅用于 Canvas candidate、drag visual、落地节点和 Preview。公共 `showSearch` prop 只控制 Palette 自带搜索框，允许 Workbench 等宿主提供唯一搜索入口，不改变 Registry、drag 或 command 合同。
 
@@ -176,15 +176,15 @@ tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底
 可见面板的唯一控制者，中屏抽屉状态不得覆盖它。由临时菜单打开 Flow、Page Manager
 或 Export 弹窗时，菜单会先把焦点交回稳定触发器，弹窗关闭后再恢复到该触发器。
 
-页面事件流程由当前 `ProjectPage.flows` 唯一持有，视觉 `PageGraph` 不保存流程。Core 只保存 JSON-safe 的
-`page.mount | form.submit | component.event -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
-`ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
-默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
-受控 action。Workbench 的页面级 `PageFlowEngine` 独立拥有 action registry、当前 execution plans、Flow projection、调度器、trace/error 边界和跨 page/revision stale generation；`PreviewSession` 先接收真实 Runtime 的最新 values，再把 `component.event`、`form.submit` 和 `page.mount` 转为稳定 trigger，通过同一 values 端口应用 Flow-owned patch。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
-瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；切页会清空 projection 并使旧异步结果失效，同页删除 Flow 会裁剪其 projection。未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
-ConfigForm DSL。Core interpreter 与生成的 `flows.ts` 共同固定 `CONFIG_FORM_FLOW_RUNTIME_VERSION`，并通过实际加载执行的并发、timeout、failure edge、model order 与 value patch 矩阵证明等价，而不是只比较模板字符串。Semantic Compiler 同时拒绝 Flow reaction 与同步 binding/reaction 对同一 value/state/prop/validate 能力的重复写入；纯同步联动应回归声明式 reaction，包含 condition/action 的分支与副作用 Flow 保持可用。
+页面事件流程以 `ProjectPage.flows` 保存 DAG 配置，节点 `events` 的直接动作列表也由 Compiler 编译为同一种 Canonical Flow plan。Core 的 `createConfigFormEventRuntime` 是唯一执行入口，负责事件上下文、按 Flow ID 的 `latest/queue/ignore` 调度、生命周期取消、运行事务、字段补丁、projection 和诊断。Workbench `PageFlowEngine` 只连接 Vue 状态及宿主 action；公开 `ConfigForm/ConfigFormRenderer` 通过 `flows/flowActions` 使用相同内核，不依赖工作台。动作上下文包含 `event { trigger, args, field? }`、值与前序输出快照、AbortSignal，以及运行事务内的 `form.getValue/getValues/setValue/setValues`。
 
-`component.event` 触发器只保存页面节点的稳定 `nodeId` 与 Registry 声明的 `event` 名称。Designer 物料通过 `events` 显式声明可编排的非 binding 事件，field 的值事件由同一份 Runtime `valueProp/trigger` 自动生成并按事件名去重。Workbench 的事件编辑入口只有一个：Inspector 列出当前节点的注册事件，点击后用精确 `{ nodeId, event }` 打开 Flow 弹窗；已有同目标流程时直接选中，否则从该事件源创建。Semantic Compiler 把当前页面 Flow 实际引用的 `nodeId + event` 投影为 Canonical node `flowEvents`；Vue backend、`ConfigFormRenderer` 和 standalone Source 只消费该投影，不扫描 DOM，也不会给未引用的 Registry 事件安装 listener。`ConfigFormRenderer` 在 Preview 中从真实 Vue 节点发出事件上下文，Design 模式仍由编辑器桥接拦截；binding listener 先更新 values，再以 Registry 原名分发 Flow，且同一 Vue handler key 只执行一次。简单的 `v-model`、显隐、disabled 和同步 reaction 不应被流程化，只有异步、分支、校验、请求和副作用才进入 Flow。
+字段事件先完成绑定和校验记账，再调用配置监听器，最后分发一次 canonical runtimeEvent。Designer 物料声明可编排事件，Compiler 以实际使用的 `nodeId + event` 生成 Canonical `flowEvents`，Vue backend 将其映射为公开 `node.eventNames`。Renderer 使用单一 handler channel 合并绑定、失焦与业务订阅，不读取私有扩展中的事件列表。iframe 传递受限 JSON 参数快照和同步 values，Preview 在 dispatch 前接收这份值快照；不传 DOM、组件实例或函数。
+
+运行结果在成功或显式 end 时作为补丁提交到当前值源；下一项排队任务在前项提交后读取最新值，事件参数仍来自触发快照。同一页面更新使旧工作失效并裁剪已删除流程的 projection；切页、关闭或销毁主动取消 active/queued work，晚到结果不能提交，也不在卸载后通知。每个页面实例拥有自己的注册器和调度器。
+
+Source 导出由 Compiler 打包 Core 的实际 `flow/expression/reaction/json` 源文件，写入 `src/runtime`；每页 `flows.ts` 只生成计划和 `createPageEventRuntime` 适配器。导出工程无需 ConfigForm 包依赖，也不再维护手写的第二套解释器。Core 和导出执行合同版本为 `2`，Compiler 版本为 `4.0.0`，导出 generator 版本为 `2.0.0`。真实源码加载测试和双 Provider 独立工程构建证明行为及相对导入闭包。
+
+事件编辑继续从 Inspector 的具体组件事件或 Form load/Form submit 进入；事件来源保持明确，所有修改经 Project Command 并支持统一撤销重做。动作输入提供文本、数字、布尔、字段、事件参数、前序输出、表达式及 JSON 控件；高级 JSON 草稿即时校验并保留未提交内容。新流程默认失败策略与 10000ms 超时。同一出口重复边、非法出口和终止节点出边在执行前拒绝。同步联动仍属于 reaction，流程用于异步、分支与副作用。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 

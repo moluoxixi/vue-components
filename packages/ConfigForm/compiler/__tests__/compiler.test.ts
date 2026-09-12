@@ -5,14 +5,17 @@ import type {
 import type {
   ComponentContract,
   ProjectDocument,
+  ProjectOperation,
 } from '@moluoxixi/config-form-model'
 import {
+  CONFIG_FORM_FLOW_TRIGGER_KINDS,
   CONFIG_FORM_FLOW_VERSION,
 } from '@moluoxixi/config-form-core'
 import {
   applyProjectTransaction,
   createComponentContractRegistry,
   createProjectDraftSnapshot,
+  createProjectDraftSnapshotFromTransaction,
   createProjectSnapshot,
   createRegistryContractSnapshot,
   PROJECT_DOCUMENT_VERSION,
@@ -632,6 +635,368 @@ describe('canonical project compiler', () => {
     expect(after.compilation.page.nodesById.section).toMatchObject({ slots: { default: [] } })
   })
 
+  it('reuses canonical nodes for a root reorder while invalidating page identity', () => {
+    const input = fixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    document.pagesById.home!.graph.nodesById.other = {
+      id: 'other',
+      component: 'element.input',
+      kind: 'field',
+      field: 'other',
+      props: {},
+      events: {},
+      bindings: {},
+    }
+    document.pagesById.home!.graph.root.push({ nodeId: 'other', placement: {} })
+    const initial = createProjectSnapshot(document, 1)
+    const coordinator = createCompileCoordinator({ registry: input.registry })
+    coordinator.acceptSnapshot(initial)
+    const before = coordinator.compilePage('home')
+    expect(before.success).toBe(true)
+    if (!before.success)
+      return
+
+    const applied = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'reorder-roots',
+      label: 'Reorder roots',
+      operations: [{
+        type: 'node.move',
+        pageId: 'home',
+        nodeId: 'section',
+        target: { parentId: null, index: 1 },
+      }],
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success || !applied.changed)
+      return
+    const next = createProjectSnapshot(applied.document, 2)
+    coordinator.acceptSnapshot(next, {
+      project: applied.changedProject,
+      pageIds: applied.changedPageIds,
+      nodeIds: applied.changedNodeIds,
+      nodeChanges: applied.changedNodeChanges,
+    })
+    const after = coordinator.compilePage('home')
+    expect(after.success).toBe(true)
+    if (!after.success)
+      return
+
+    expect(after.compilation.page.rootIds).toEqual(['other', 'section'])
+    expect(after.compilation.page.nodesById).toBe(before.compilation.page.nodesById)
+    expect(after.compilation.registryUsage).toBe(before.compilation.registryUsage)
+    expect(after.compilation.key.semanticHash).not.toBe(before.compilation.key.semanticHash)
+    const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
+    expect(full.success).toBe(true)
+    if (full.success)
+      expect(after.compilation.page).toEqual(full.compilation.page)
+  })
+
+  it.each([
+    { location: 'root', editFirst: true },
+    { location: 'root', editFirst: false },
+    { location: 'nested', editFirst: true },
+    { location: 'nested', editFirst: false },
+    { location: 'scoped', editFirst: true },
+    { location: 'scoped', editFirst: false },
+    { location: 'scoped-reorder', editFirst: true },
+    { location: 'scoped-reorder', editFirst: false },
+  ])('matches full compilation for combined content edits and moves ($location, editFirst=$editFirst)', ({ location, editFirst }) => {
+    const input = fixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    const graph = document.pagesById.home!.graph
+    const section = graph.nodesById.section!
+    if (section.kind !== 'layout')
+      throw new TypeError('Expected section layout fixture.')
+    graph.nodesById.other = {
+      id: 'other',
+      component: 'element.input',
+      kind: 'field',
+      field: 'other',
+      props: {},
+      events: {},
+      bindings: {},
+    }
+    if (location === 'root') {
+      section.slots.default = []
+      graph.root = ['name', 'other', 'section'].map(nodeId => ({ nodeId, placement: {} }))
+    }
+    else {
+      section.slots.default!.push({ nodeId: 'other', placement: {} })
+      if (location === 'scoped' || location === 'scoped-reorder')
+        section.valueScope = { kind: 'object', field: 'profile' }
+    }
+    const initial = createProjectSnapshot(document, 1)
+    const original = structuredClone(initial.document)
+    const coordinator = createCompileCoordinator({ registry: input.registry })
+    coordinator.acceptSnapshot(initial)
+    const before = coordinator.compilePage('home')
+    expect(before.success).toBe(true)
+    if (!before.success)
+      return
+    const edit: ProjectOperation = {
+      type: 'node.props',
+      pageId: 'home',
+      nodeId: 'name',
+      props: { placeholder: 'Changed and moved' },
+    }
+    const move: ProjectOperation = {
+      type: 'node.move',
+      pageId: 'home',
+      nodeId: 'name',
+      target: { parentId: location === 'nested' || location === 'scoped-reorder' ? 'section' : null, index: 1 },
+    }
+    const applied = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'edit-and-move',
+      label: 'Edit and move',
+      operations: editFirst ? [edit, move] : [move, edit],
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success)
+      return
+    expect(applied.changedNodeChanges).toContainEqual(expect.objectContaining({ nodeId: 'name', kind: 'content' }))
+    const changes = {
+      project: applied.changedProject,
+      pageIds: applied.changedPageIds,
+      nodeIds: applied.changedNodeIds,
+      nodeChanges: applied.changedNodeChanges,
+    }
+    const draft = createProjectDraftSnapshotFromTransaction(initial, applied, 'edit-and-move-draft')
+    const incrementalDraft = coordinator.compileDraftPage(draft, 'home', changes)
+    const fullDraft = compileCanonicalPage({ snapshot: draft, registry: input.registry, pageId: 'home' })
+    expect(incrementalDraft.success && fullDraft.success).toBe(true)
+    if (incrementalDraft.success && fullDraft.success)
+      expect(incrementalDraft.compilation).toEqual(fullDraft.compilation)
+    const next = createProjectSnapshot(applied.document, 2)
+    coordinator.acceptSnapshot(next, changes)
+    const after = coordinator.compilePage('home')
+    const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
+    expect(after.success && full.success).toBe(true)
+    if (!after.success || !full.success)
+      return
+    expect(after.compilation).toEqual(full.compilation)
+    expect(after.compilation.page.nodesById.name!.props.placeholder).toBe('Changed and moved')
+    expect(after.compilation.page.nodesById.name).not.toBe(before.compilation.page.nodesById.name)
+    expect(after.compilation.page.nodesById.other).toBe(before.compilation.page.nodesById.other)
+    expect(initial.document).toEqual(original)
+    expect(before.compilation.page.nodesById.name!.props.placeholder).toBe('Your name')
+    expect(Reflect.set(after.compilation.page.nodesById.name!.props, 'placeholder', 'Mutated')).toBe(false)
+    expect(Reflect.set(after.compilation.page.scopedFields, 'length', 0)).toBe(false)
+    if (location === 'nested' || location === 'scoped-reorder')
+      expect(after.compilation.page.nodesById.section).toMatchObject({ slots: { default: ['other', 'name'] } })
+    else
+      expect(after.compilation.page.rootIds).toEqual(location === 'root' ? ['other', 'name', 'section'] : ['section', 'name'])
+  })
+
+  it.each([
+    'replace',
+    'edit-move-replace',
+    'move-edit-replace',
+    'replace-edit-move',
+    'replace-move-edit',
+    'edit-replace-move',
+    'move-replace-edit',
+  ].flatMap(order => [false, true].map(scoped => ({ order, scoped }))))(
+    'matches full compilation for page replacement mixed with edits and moves ($order, scoped=$scoped)',
+    ({ order, scoped }) => {
+      const input = fixture()
+      const document = structuredClone(input.snapshot.document) as ProjectDocument
+      const graph = document.pagesById.home!.graph
+      const section = graph.nodesById.section!
+      if (section.kind !== 'layout')
+        throw new TypeError('Expected section layout fixture.')
+      if (scoped)
+        section.valueScope = { kind: 'object', field: 'profile' }
+      graph.nodesById.other = {
+        id: 'other',
+        component: 'element.input',
+        kind: 'field',
+        field: 'other',
+        props: {},
+        events: {},
+        bindings: {},
+      }
+      section.slots.default!.push({ nodeId: 'other', placement: {} })
+      addPage(document, 'home', 'billing')
+      const initial = createProjectSnapshot(document, 1)
+      const original = structuredClone(initial.document)
+      const coordinator = createCompileCoordinator({ registry: input.registry })
+      coordinator.acceptSnapshot(initial)
+      const before = coordinator.compilePage('home')
+      const billing = coordinator.compilePage('billing')
+      expect(before.success && billing.success).toBe(true)
+      if (!before.success || !billing.success)
+        return
+      const oldCompilation = structuredClone(before.compilation)
+      const replacement = structuredClone(document.pagesById.home!)
+      replacement.graph.nodesById.name!.props.placeholder = 'Replacement name'
+      replacement.graph.nodesById.other!.props.placeholder = 'Replacement other'
+      const actions: Record<string, ProjectOperation[]> = {
+        replace: [
+          { type: 'page.remove', pageId: 'home' },
+          { type: 'page.add', page: replacement, index: 0 },
+          { type: 'project.home', pageId: 'home' },
+        ],
+        edit: [{ type: 'node.props', pageId: 'home', nodeId: 'name', props: { placeholder: 'Edited name' } }],
+        move: [{ type: 'node.move', pageId: 'home', nodeId: 'name', target: { parentId: null, index: 1 } }],
+      }
+      const applied = applyProjectTransaction(initial.document as ProjectDocument, {
+        id: order,
+        label: order,
+        operations: order.split('-').flatMap(action => actions[action]!),
+      })
+      expect(applied.success && applied.changed).toBe(true)
+      if (!applied.success)
+        return
+      const changes = {
+        project: applied.changedProject,
+        pageIds: applied.changedPageIds,
+        nodeIds: applied.changedNodeIds,
+        nodeChanges: applied.changedNodeChanges,
+      }
+      const draft = createProjectDraftSnapshotFromTransaction(initial, applied, 'replacement-draft')
+      const incrementalDraft = coordinator.compileDraftPage(draft, 'home', changes)
+      const fullDraft = compileCanonicalPage({ snapshot: draft, registry: input.registry, pageId: 'home' })
+      expect(incrementalDraft).toEqual(fullDraft)
+      expect(incrementalDraft.success).toBe(true)
+      expect(coordinator.compilePage('home')).toEqual(before)
+      const next = createProjectSnapshot(applied.document, 2)
+      coordinator.acceptSnapshot(next, changes)
+      const incremental = coordinator.compilePage('home')
+      const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
+      expect(incremental).toEqual(full)
+      expect(incremental.success).toBe(true)
+      if (!incremental.success)
+        return
+      expect(incremental.compilation.page.nodesById.other!.props.placeholder).toBe('Replacement other')
+      expect(incremental.compilation.key.semanticHash).not.toBe(before.compilation.key.semanticHash)
+      expect(Reflect.set(incremental.compilation.page.nodesById.other!.props, 'placeholder', 'Mutated')).toBe(false)
+      expect(Reflect.set(applied.changedNodeChanges, 'length', 0)).toBe(false)
+      const reboundBilling = coordinator.compilePage('billing')
+      expect(reboundBilling.success).toBe(true)
+      if (reboundBilling.success) {
+        expect(reboundBilling.compilation.page).toBe(billing.compilation.page)
+        expect(reboundBilling.compilation.key).toBe(billing.compilation.key)
+      }
+      const undone = applyProjectTransaction(applied.document, applied.inverse)
+      expect(undone.success && undone.changed).toBe(true)
+      if (!undone.success)
+        return
+      expect(undone.document).toEqual(initial.document)
+      const restored = createProjectSnapshot(undone.document, 3)
+      coordinator.acceptSnapshot(restored, {
+        project: undone.changedProject,
+        pageIds: undone.changedPageIds,
+        nodeIds: undone.changedNodeIds,
+        nodeChanges: undone.changedNodeChanges,
+      })
+      const restoredCompilation = coordinator.compilePage('home')
+      expect(restoredCompilation).toEqual(compileCanonicalPage({ snapshot: restored, registry: input.registry, pageId: 'home' }))
+      expect(restoredCompilation.success).toBe(true)
+      if (restoredCompilation.success)
+        expect(restoredCompilation.compilation.key).toEqual(before.compilation.key)
+      expect(initial.document).toEqual(original)
+      expect(before.compilation).toEqual(oldCompilation)
+    },
+  )
+
+  it.each(['empty', 'replace-field', 'field-map-order'])('matches full compilation for page replacement with %s', (shape) => {
+    const input = fixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    const graph = document.pagesById.home!.graph
+    graph.nodesById.other = {
+      id: 'other',
+      component: 'element.input',
+      kind: 'field',
+      field: 'other',
+      props: {},
+      events: {},
+      bindings: {},
+    }
+    graph.root.push({ nodeId: 'other', placement: {} })
+    addPage(document, 'home', 'billing')
+    const initial = createProjectSnapshot(document, 1)
+    const coordinator = createCompileCoordinator({ registry: input.registry })
+    coordinator.acceptSnapshot(initial)
+    expect(coordinator.compilePage('home').success).toBe(true)
+    const replacement = structuredClone(document.pagesById.home!)
+    if (shape === 'empty') {
+      replacement.graph.root = []
+      replacement.graph.nodesById = {}
+    }
+    else if (shape === 'replace-field') {
+      const other = replacement.graph.nodesById.other!
+      replacement.graph.root = [{ nodeId: 'new', placement: {} }]
+      replacement.graph.nodesById = { new: { ...other, id: 'new' } }
+    }
+    else {
+      replacement.graph.nodesById = Object.fromEntries(Object.entries(replacement.graph.nodesById).reverse())
+      replacement.graph.nodesById.name!.props.placeholder = 'Changed'
+    }
+    const applied = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'replace-page-shape',
+      label: 'Replace page shape',
+      operations: [{ type: 'page.remove', pageId: 'home' }, { type: 'page.add', page: replacement, index: 0 }],
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success)
+      return
+    const next = createProjectSnapshot(applied.document, 2)
+    coordinator.acceptSnapshot(next, {
+      project: applied.changedProject,
+      pageIds: applied.changedPageIds,
+      nodeIds: applied.changedNodeIds,
+      nodeChanges: applied.changedNodeChanges,
+    })
+    const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
+    expect(full.success).toBe(true)
+    expect(coordinator.compilePage('home')).toEqual(full)
+  })
+
+  it.each([false, true])('compiles distinct page-qualified NUL identifiers (reverse=%s)', (reverse) => {
+    const input = fixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    const targets = [{ pageId: 'a', nodeId: 'b\u0000c' }, { pageId: 'a\u0000b', nodeId: 'c' }]
+    targets.forEach(({ pageId, nodeId }, index) => {
+      addPage(document, 'home', pageId)
+      const page = document.pagesById[pageId]!
+      page.route = `/nul-${index}`
+      page.graph.root = [{ nodeId, placement: {} }]
+      page.graph.nodesById = {
+        [nodeId]: { id: nodeId, component: 'element.input', kind: 'field', field: 'value', props: {}, events: {}, bindings: {} },
+      }
+    })
+    const initial = createProjectSnapshot(document, 1)
+    const coordinator = createCompileCoordinator({ registry: input.registry })
+    coordinator.acceptSnapshot(initial)
+    targets.forEach(({ pageId }) => expect(coordinator.compilePage(pageId).success).toBe(true))
+    const ordered = reverse ? [...targets].reverse() : targets
+    const applied = applyProjectTransaction(initial.document as ProjectDocument, {
+      id: 'nul-identifiers',
+      label: 'NUL identifiers',
+      operations: ordered.map(({ pageId, nodeId }) => ({
+        type: 'node.props',
+        pageId,
+        nodeId,
+        props: { placeholder: nodeId },
+      })),
+    })
+    expect(applied.success && applied.changed).toBe(true)
+    if (!applied.success)
+      return
+    const next = createProjectSnapshot(applied.document, 2)
+    coordinator.acceptSnapshot(next, {
+      project: applied.changedProject,
+      pageIds: applied.changedPageIds,
+      nodeIds: applied.changedNodeIds,
+      nodeChanges: applied.changedNodeChanges,
+    })
+    targets.forEach(({ pageId }) => {
+      const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId })
+      expect(full.success).toBe(true)
+      expect(coordinator.compilePage(pageId)).toEqual(full)
+    })
+  })
+
   it('invalidates the exact Runtime node when a Flow component event target changes', () => {
     const input = fixture()
     const coordinator = createCompileCoordinator({ registry: input.registry })
@@ -768,5 +1133,55 @@ describe('canonical project compiler', () => {
       success: false,
       diagnostics: [{ code: 'COMPILER_COMPONENT_UNKNOWN', nodeId: 'name' }],
     })
+  })
+})
+
+describe('event product compilation', () => {
+  it.each(CONFIG_FORM_FLOW_TRIGGER_KINDS)('preserves the %s lifecycle, node policy and blocked outcome', (kind) => {
+    const input = fixture()
+    const policy = {
+      when: { kind: 'literal' as const, value: true },
+      stopWhen: { kind: 'literal' as const, value: false },
+      onError: 'continue' as const,
+      timeoutMs: 0,
+    }
+    updateSnapshot(input, (document) => {
+      const candidate = synchronousFlow('policy', kind === 'component.event'
+        ? { kind, nodeId: 'name', event: 'change' }
+        : { kind })
+      candidate.nodes[1]!.policy = policy
+      candidate.nodes[2]!.type = 'blocked'
+      candidate.errorPolicy = { onError: 'failure', timeoutMs: 0 }
+      document.pagesById.home!.flows = [candidate]
+    })
+    const result = compileCanonicalProject(input)
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    const plan = result.compilation.ir.pagesById.home!.flows.find(item => item.plan.flowId === 'policy')!.plan
+    expect(plan.trigger.kind).toBe(kind)
+    expect(plan.errorPolicy?.timeoutMs).toBe(0)
+    expect(plan.nodes.find(node => node.id === 'reaction')?.policy).toEqual(policy)
+    expect(plan.nodes.find(node => node.id === 'end')?.type).toBe('blocked')
+    expect(JSON.parse(JSON.stringify(plan))).toEqual(plan)
+  })
+
+  it('invalidates runtime identity when execution policy changes', () => {
+    const input = fixture()
+    updateSnapshot(input, (document) => {
+      document.pagesById.home!.flows = [synchronousFlow('policy', { kind: 'form.beforeSubmit' })]
+    })
+    const before = compileCanonicalProject(input)
+    updateSnapshot(input, (document) => {
+      document.pagesById.home!.flows![0]!.nodes[1]!.policy = { timeoutMs: 0, stopWhen: { kind: 'literal', value: true } }
+    })
+    const after = compileCanonicalProject(input)
+    expect(before.success && after.success).toBe(true)
+    if (before.success && after.success) {
+      const original = before.compilation.ir.pagesById.home!.flows[0]!
+      const changed = after.compilation.ir.pagesById.home!.flows[0]!
+      expect(changed.semanticHash).not.toBe(original.semanticHash)
+      expect(changed.plan).not.toEqual(original.plan)
+    }
   })
 })

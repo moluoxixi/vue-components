@@ -1,13 +1,18 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
+  ConfigFormFlowActionRegistry,
+  ConfigFormFlowDiagnostic,
   ConfigFormFlowTraceEvent,
-  ConfigFormFlowTrigger,
+  ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
-import type { PageGraph } from '@moluoxixi/config-form-model'
 import type {
-  PageFlowEngine,
-} from '../../flow'
-import type {
+  PreviewRuntimeComponentEvent,
+  PreviewRuntimeFieldChangeEvent,
+  PreviewRuntimeFlowDiagnosticEvent,
+  PreviewRuntimeFlowProjectionEvent,
+  PreviewRuntimeFlowResultEvent,
+  PreviewRuntimeFlowTraceEvent,
+  RuntimeHostFieldInstance,
   RuntimeHostRuntimeStatePayload,
 } from '../../runtime-host'
 import type {
@@ -18,87 +23,28 @@ import type {
   PreviewFieldContracts,
   PreviewRuntimeIdentity,
   PreviewRuntimeStateEvent,
+  PreviewRuntimeSubmitEvent,
   PreviewRuntimeSubmitResultEvent,
   PreviewSession,
   PreviewSessionAcceptInput,
   PreviewSubmission,
   PreviewValidationState,
 } from '../types'
-import { createDesignPreviewModel, walkDesignGraph } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef } from 'vue'
-import {
-  createWorkbenchPageFlowEngine,
-} from '../../flow'
+import { createWorkbenchFlowActionRegistry } from '../../flow'
+import { isRuntimeHostFieldInstance, isRuntimeHostRuntimeState } from '../../runtime-host/schemas/protocol'
 import { cloneWorkbenchJson } from '../../utils'
 import { PREVIEW_TRACE_LIMIT } from '../constants'
+import { collectPreviewContracts, emptyPreviewContracts, filterPreviewState, matchesPreviewInstance, reconcilePreviewState } from './preview-instance-state'
 import { createPageProjectionCoordinator } from './projection-coordinator'
 
 function scopeKey(input: Pick<PreviewSessionAcceptInput, 'adapter' | 'pageId' | 'projectId'>): string {
   return `${input.projectId}:${input.adapter}:${input.pageId}`
 }
 
-function collectFieldContracts(
-  graph: PageGraph,
-  compilation?: PageCompilation,
-): PreviewFieldContracts {
-  const contracts: PreviewFieldContracts = Object.create(null)
-  const registryUsage = new Map(compilation?.registryUsage.map(component => [component.key, component]))
-  walkDesignGraph(graph, ({ node }) => {
-    if (node.kind !== 'field')
-      return
-    const component = registryUsage.get(node.component)
-    contracts[node.field] = JSON.stringify([
-      node.id,
-      node.component,
-      component?.contractVersion ?? '',
-      component?.fingerprint ?? '',
-    ])
-  })
-  return contracts
-}
-
-function reconcileValues(
-  graph: PageGraph,
-  compilation: PageCompilation | undefined,
-  previousValues: Record<string, unknown>,
-  previousContracts: PreviewFieldContracts,
-  reset: boolean,
-): { contracts: PreviewFieldContracts, values: Record<string, unknown> } {
-  const defaults = createDesignPreviewModel(graph)
-  const contracts = collectFieldContracts(graph, compilation)
-  const values: Record<string, unknown> = {}
-
-  for (const [field, contract] of Object.entries(contracts)) {
-    if (!reset && previousContracts[field] === contract && Object.hasOwn(previousValues, field))
-      values[field] = cloneWorkbenchJson(previousValues[field])
-    else if (Object.hasOwn(defaults, field))
-      values[field] = cloneWorkbenchJson(defaults[field])
-  }
-
-  return { contracts, values }
-}
-
-function reconcileRuntimeFieldState(
-  contracts: PreviewFieldContracts,
-  previousContracts: PreviewFieldContracts,
-  previousState: RuntimeHostRuntimeStatePayload,
-  reset: boolean,
-): Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'> {
-  if (reset)
-    return { touched: [], validation: {} }
-  const retainedContractFields = new Set(Object.entries(contracts)
-    .filter(([field, contract]) => previousContracts[field] === contract)
-    .map(([field]) => field))
-  return {
-    touched: previousState.touched.filter(field => retainedContractFields.has(field)),
-    validation: Object.fromEntries(Object.entries(previousState.validation)
-      .filter(([field]) => retainedContractFields.has(field))
-      .map(([field, errors]) => [field, [...errors]])),
-  }
-}
-
 function cloneRuntimeState(state: RuntimeHostRuntimeStatePayload): RuntimeHostRuntimeStatePayload {
   return {
+    fields: cloneWorkbenchJson(state.fields),
     values: cloneWorkbenchJson(state.values),
     touched: [...state.touched],
     validation: cloneWorkbenchJson(state.validation),
@@ -124,21 +70,52 @@ function sameRuntimeFieldState(
   })
 }
 
-export function createPreviewSession(options: CreatePreviewSessionOptions): PreviewSession {
+function emptyProjection(): ConfigFormReactionProjection<Record<string, unknown>> {
+  return { values: {}, props: {}, states: {}, validate: [] }
+}
+
+function identityKey(identity: PreviewRuntimeIdentity): string {
+  return `${identity.hostId}:${identity.projectId}:${identity.pageId}:${identity.revision}`
+}
+
+function traceKey(trace: ConfigFormFlowTraceEvent): string {
+  return [trace.flowId, trace.runId, trace.type, trace.nodeId ?? '', trace.timestamp ?? '', trace.status ?? ''].join(':')
+}
+
+function diagnosticKey(diagnostic: ConfigFormFlowDiagnostic): string {
+  return JSON.stringify([
+    diagnostic.code,
+    diagnostic.message,
+    diagnostic.path ?? '',
+    diagnostic.nodeId ?? '',
+    diagnostic.edgeId ?? '',
+    diagnostic.severity ?? '',
+  ])
+}
+
+export function createPreviewSession(options: CreatePreviewSessionOptions = {}): PreviewSession {
   const projectionCoordinator = createPageProjectionCoordinator()
   const values = ref<Record<string, unknown>>({})
+  const fields = shallowRef<RuntimeHostFieldInstance[]>([])
   const touched = shallowRef<readonly string[]>([])
   const validation = shallowRef<Readonly<PreviewValidationState>>({})
   const lastSubmission = shallowRef<PreviewSubmission>()
   const trace = shallowRef<readonly ConfigFormFlowTraceEvent[]>([])
+  const flowDiagnostics = shallowRef<readonly ConfigFormFlowDiagnostic[]>([])
+  const flowProjectionMirror = shallowRef<ConfigFormReactionProjection<Record<string, unknown>>>(emptyProjection())
   const projection = shallowRef<PagePreviewProjection>()
   const revisionKey = computed(() => projection.value?.current.revisionKey ?? '')
+  const flowProjection = computed(() => flowProjectionMirror.value)
+  const actions: ConfigFormFlowActionRegistry = options.actions ?? { get: () => undefined }
   let currentCompilation: PageCompilation | undefined
   let currentScopeKey = ''
-  let liveFieldContracts: PreviewFieldContracts = Object.create(null)
+  let liveFieldContracts = emptyPreviewContracts()
   const lastReadyPreview = shallowRef<LastReadyPreview>()
   let activeHostId = ''
+  const retiredHostIds = new Set<string>()
   let lastMountIdentity = ''
+  let pendingSubmit: { key: string, requestId: string, values?: Record<string, unknown> } | undefined
+  const usedSubmitRequests = new Set<string>()
   let disposed = false
 
   function fallbackForCurrentScope(): LastReadyPreview | undefined {
@@ -158,13 +135,15 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
   function getRuntimeState(): RuntimeHostRuntimeStatePayload {
     if (projection.value?.compileResult.success) {
       return {
-        values: values.value,
+        fields: cloneWorkbenchJson(fields.value),
+        values: cloneWorkbenchJson(values.value),
         touched: [...touched.value],
         validation: cloneWorkbenchJson(validation.value),
       }
     }
     return fallbackForCurrentScope()?.runtimeState ?? {
-      values: values.value,
+      fields: cloneWorkbenchJson(fields.value),
+      values: cloneWorkbenchJson(values.value),
       touched: [...touched.value],
       validation: cloneWorkbenchJson(validation.value),
     }
@@ -178,38 +157,68 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     return fallbackForCurrentScope()?.fieldContracts ?? liveFieldContracts
   }
 
-  function updateRuntimeModel(value: Record<string, unknown>): void {
-    if (disposed)
-      return
-    const next = cloneWorkbenchJson(value)
-    if (projection.value?.compileResult.success) {
-      values.value = next
-      const ready = fallbackForCurrentScope()
-      if (ready && ready.compilation === currentCompilation) {
-        lastReadyPreview.value = {
-          ...ready,
-          runtimeState: { ...ready.runtimeState, values: cloneWorkbenchJson(next) },
-        }
-      }
-      return
-    }
-    const fallback = fallbackForCurrentScope()
-    if (fallback) {
+  function updateReadyMirror(): void {
+    const ready = fallbackForCurrentScope()
+    const displayingReady = projection.value?.compileResult.success
+      ? ready?.compilation === currentCompilation
+      : !!ready
+    if (ready && displayingReady) {
       lastReadyPreview.value = {
-        ...fallback,
-        runtimeState: { ...fallback.runtimeState, values: next },
+        ...ready,
+        runtimeState: cloneRuntimeState({
+          fields: fields.value,
+          values: values.value,
+          touched: [...touched.value],
+          validation: cloneWorkbenchJson(validation.value),
+        }),
       }
     }
   }
 
-  const flowEngine = options.createFlowEngine({
-    readValues: getRuntimeModel,
-    writeValues: updateRuntimeModel,
-    onTrace: (event) => {
-      trace.value = [...trace.value, cloneWorkbenchJson(event)].slice(-PREVIEW_TRACE_LIMIT)
-      options.onTrace?.(event)
-    },
-  })
+  function updateRuntimeModel(value: Record<string, unknown>): void {
+    if (disposed)
+      return
+    values.value = cloneWorkbenchJson(value)
+    updateReadyMirror()
+  }
+
+  function appendTrace(event: ConfigFormFlowTraceEvent): void {
+    if (disposed)
+      return
+    const key = traceKey(event)
+    if (trace.value.some(existing => traceKey(existing) === key))
+      return
+    trace.value = [...trace.value, cloneWorkbenchJson(event)].slice(-PREVIEW_TRACE_LIMIT)
+    options.onTrace?.(event)
+  }
+
+  function appendDiagnostic(diagnostic: ConfigFormFlowDiagnostic): void {
+    if (disposed)
+      return
+    const key = diagnosticKey(diagnostic)
+    if (flowDiagnostics.value.some(existing => diagnosticKey(existing) === key))
+      return
+    flowDiagnostics.value = [
+      ...flowDiagnostics.value,
+      cloneWorkbenchJson(diagnostic),
+    ].slice(-PREVIEW_TRACE_LIMIT)
+    options.onDiagnostic?.(diagnostic)
+  }
+
+  function matchesCurrentRevision(event: PreviewRuntimeIdentity): boolean {
+    const current = projection.value?.current
+    return !!current
+      && event.projectId === current.projectId
+      && event.pageId === current.pageId
+      && event.revision === current.revisionKey
+      && projectionCoordinator.isCurrent(event.revision)
+  }
+
+  function isCurrentRuntimeIdentity(event: PreviewRuntimeIdentity): boolean {
+    return matchesCurrentRevision(event)
+      && activeHostId !== ''
+      && event.hostId === activeHostId
+  }
 
   function accept(input: PreviewSessionAcceptInput): PagePreviewProjection | undefined {
     if (disposed)
@@ -220,32 +229,36 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     const previousRevisionKey = projection.value?.current.revisionKey
     const nextScopeKey = scopeKey(input)
     const scopeChanged = currentScopeKey !== nextScopeKey
-    const reconciled = reconcileValues(
-      input.graph,
-      input.compilation,
-      getRuntimeModel(),
-      activeFieldContracts(),
-      scopeChanged,
-    )
-    const reconciledFieldState = reconcileRuntimeFieldState(
-      reconciled.contracts,
-      activeFieldContracts(),
-      getRuntimeState(),
-      scopeChanged,
-    )
+    const revisionChanged = previousRevisionKey !== undefined
+      && previousRevisionKey !== `${input.projectId}:${input.repositoryRevision}:${input.pageId}:${input.editVersion}`
+    const ready = lastReadyPreview.value?.scopeKey === nextScopeKey ? lastReadyPreview.value : undefined
+    const preserveReady = !scopeChanged && !input.runtime.success && ready !== undefined
+    const previousState = preserveReady ? ready.runtimeState : getRuntimeState()
+    const previousContracts = preserveReady ? ready.fieldContracts : activeFieldContracts()
+    const contracts = preserveReady ? ready.fieldContracts : collectPreviewContracts(input.graph, input.compilation)
+    const reconciled = reconcilePreviewState(contracts, previousContracts, previousState, scopeChanged)
 
     if (scopeChanged) {
       lastReadyPreview.value = undefined
       lastMountIdentity = ''
       activeHostId = ''
+      retiredHostIds.clear()
+      pendingSubmit = undefined
+      usedSubmitRequests.clear()
+    }
+    if (scopeChanged || revisionChanged) {
+      pendingSubmit = undefined
       trace.value = []
+      flowDiagnostics.value = []
+      flowProjectionMirror.value = emptyProjection()
     }
     currentScopeKey = nextScopeKey
     currentCompilation = input.compilation
-    liveFieldContracts = reconciled.contracts
+    liveFieldContracts = contracts
     values.value = reconciled.values
-    touched.value = reconciledFieldState.touched
-    validation.value = reconciledFieldState.validation
+    fields.value = reconciled.fields
+    touched.value = reconciled.touched
+    validation.value = reconciled.validation
     projection.value = projectionCoordinator.publish({
       adapter: input.adapter,
       editVersion: input.editVersion,
@@ -255,89 +268,48 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     }, () => input.runtime)
     if (scopeChanged || previousRevisionKey !== projection.value.current.revisionKey || !input.runtime.success)
       lastSubmission.value = undefined
-
-    const displayedCompilation = input.runtime.success
-      ? input.compilation
-      : fallbackForCurrentScope()?.compilation
-    flowEngine.sync({
-      pageKey: nextScopeKey,
-      plans: displayedCompilation?.page.flows.map(flow => flow.plan) ?? [],
-    })
     return projection.value
   }
 
-  function dispatch(
-    triggerOrKind: ConfigFormFlowTrigger['kind'] | ConfigFormFlowTrigger,
-    nextValues = getRuntimeModel(),
-  ): ReturnType<PageFlowEngine['dispatch']> | undefined {
-    const current = projection.value
-    if (disposed || !current)
-      return undefined
-    const capturedScopeKey = currentScopeKey
-    const capturedRevision = current.current.editVersion
-    const capturedRevisionKey = current.current.revisionKey
-    const signal = current.signal
-    const trigger: ConfigFormFlowTrigger = typeof triggerOrKind === 'string'
-      ? { kind: triggerOrKind }
-      : triggerOrKind
-
-    return flowEngine.dispatch({
-      trigger,
-      values: cloneWorkbenchJson(nextValues),
-      revision: capturedRevision,
-      signal,
-      isCurrent: () => currentScopeKey === capturedScopeKey
-        && projection.value?.current.editVersion === capturedRevision
-        && projectionCoordinator.isCurrent(capturedRevisionKey)
-        && !signal.aborted,
-    })
-  }
-
-  function isCurrentRuntimeIdentity(event: PreviewRuntimeIdentity): boolean {
-    const current = projection.value?.current
-    return !!current
-      && event.projectId === current.projectId
-      && event.pageId === current.pageId
-      && event.revision === current.revisionKey
-      && projectionCoordinator.isCurrent(event.revision)
-  }
-
-  function handleFieldChange(payload: {
-    field: string
-    values: Record<string, unknown>
-  }): ReturnType<PageFlowEngine['dispatch']> | undefined {
-    if (disposed || !projection.value)
-      return undefined
+  function handleFieldChange(payload: PreviewRuntimeFieldChangeEvent): void {
+    if (disposed || !isCurrentRuntimeIdentity(payload)
+      || !isRuntimeHostFieldInstance(payload)
+      || !matchesPreviewInstance(payload, activeFieldContracts(), payload.values)) {
+      return
+    }
     updateRuntimeModel(payload.values)
-    return undefined
   }
 
-  function handleRuntimeEvent(payload: {
-    event: string
-    nodeId: string
-  }): ReturnType<PageFlowEngine['dispatch']> | undefined {
-    return dispatch({
-      kind: 'component.event',
-      nodeId: payload.nodeId,
-      event: payload.event,
-    })
+  function handleRuntimeEvent(payload: PreviewRuntimeComponentEvent): void {
+    if (disposed || !isCurrentRuntimeIdentity(payload))
+      return
+    if (payload.field !== undefined && (!isRuntimeHostFieldInstance(payload)
+      || !matchesPreviewInstance(payload, activeFieldContracts(), payload.values))) {
+      return
+    }
+    updateRuntimeModel(payload.values)
   }
 
-  function handleSubmit(
-    submittedValues: Record<string, unknown>,
-  ): ReturnType<PageFlowEngine['dispatch']> | undefined {
-    if (disposed || !projection.value)
-      return undefined
-    updateRuntimeModel(submittedValues)
-    return dispatch('form.submit', submittedValues)
+  function handleRuntimeMounted(event: PreviewRuntimeIdentity): void {
+    if (disposed || !matchesCurrentRevision(event) || retiredHostIds.has(event.hostId))
+      return
+    if (activeHostId && activeHostId !== event.hostId) {
+      retiredHostIds.add(activeHostId)
+      if (retiredHostIds.size > PREVIEW_TRACE_LIMIT)
+        retiredHostIds.delete(retiredHostIds.values().next().value!)
+    }
+    activeHostId = event.hostId
+    const mountIdentity = `${event.hostId}:${projection.value!.current.runtimeSessionKey}`
+    if (mountIdentity !== lastMountIdentity) {
+      lastMountIdentity = mountIdentity
+      pendingSubmit = undefined
+    }
   }
 
   function handleRuntimeReady(event: PreviewRuntimeIdentity): void {
-    const current = projection.value
-    if (!current?.compileResult.success
-      || !currentCompilation
-      || event.hostId !== activeHostId
-      || !isCurrentRuntimeIdentity(event)) {
+    if (!isCurrentRuntimeIdentity(event)
+      || !projection.value?.compileResult.success
+      || !currentCompilation) {
       return
     }
     lastReadyPreview.value = {
@@ -349,104 +321,115 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
   }
 
   function handleRuntimeState(event: PreviewRuntimeStateEvent): void {
-    if (event.hostId !== activeHostId || !isCurrentRuntimeIdentity(event))
+    if (disposed || !isCurrentRuntimeIdentity(event) || !isRuntimeHostRuntimeState(event.state))
       return
-    const contracts = activeFieldContracts()
-    const currentContractFields = new Set(Object.keys(contracts))
-    const nextFieldState = {
-      touched: event.state.touched.filter(field => currentContractFields.has(field)),
-      validation: Object.fromEntries(Object.entries(event.state.validation)
-        .filter(([field]) => currentContractFields.has(field))
-        .map(([field, errors]) => [field, [...errors]])),
+    const next = filterPreviewState(event.state, activeFieldContracts())
+    fields.value = next.fields
+    values.value = next.values
+    if (!sameRuntimeFieldState({ touched: touched.value, validation: validation.value }, next)) {
+      touched.value = next.touched
+      validation.value = next.validation
     }
-    updateRuntimeModel(event.state.values)
-    if (projection.value?.compileResult.success) {
-      if (!sameRuntimeFieldState({
-        touched: touched.value,
-        validation: validation.value,
-      }, nextFieldState)) {
-        touched.value = nextFieldState.touched
-        validation.value = nextFieldState.validation
-      }
-      const ready = fallbackForCurrentScope()
-      if (ready && ready.compilation === currentCompilation) {
-        lastReadyPreview.value = {
-          ...ready,
-          runtimeState: cloneRuntimeState({
-            values: values.value,
-            ...nextFieldState,
-          }),
-        }
-      }
+    updateReadyMirror()
+  }
+
+  function handleSubmit(event: PreviewRuntimeSubmitEvent): void {
+    if (disposed || !isCurrentRuntimeIdentity(event) || !event.requestId)
       return
+    const key = JSON.stringify([identityKey(event), event.requestId])
+    if (event.phase === 'request') {
+      if (usedSubmitRequests.has(key))
+        return
+      usedSubmitRequests.add(key)
+      if (usedSubmitRequests.size > PREVIEW_TRACE_LIMIT)
+        usedSubmitRequests.delete(usedSubmitRequests.values().next().value!)
+      pendingSubmit = { key, requestId: event.requestId }
     }
-    const fallback = fallbackForCurrentScope()
-    if (fallback) {
-      lastReadyPreview.value = {
-        ...fallback,
-        runtimeState: cloneRuntimeState({
-          values: event.state.values,
-          ...nextFieldState,
-        }),
-      }
+    else if (pendingSubmit?.key === key && pendingSubmit.values === undefined) {
+      pendingSubmit.values = cloneWorkbenchJson(event.values)
     }
   }
 
   function handleSubmitResult(event: PreviewRuntimeSubmitResultEvent): void {
     const current = projection.value?.current
-    if (disposed || !current || event.hostId !== activeHostId || !isCurrentRuntimeIdentity(event))
+    const key = JSON.stringify([identityKey(event), event.result.requestId])
+    if (disposed || !current || !isCurrentRuntimeIdentity(event)
+      || !pendingSubmit || pendingSubmit.key !== key || !isRuntimeHostRuntimeState(event.result)) {
       return
-
-    const contracts = activeFieldContracts()
-    const currentContractFields = new Set(Object.keys(contracts))
-    const nextTouched = event.result.touched.filter(field => currentContractFields.has(field))
-    const nextValidation = Object.fromEntries(Object.entries(event.result.validation)
-      .filter(([field]) => currentContractFields.has(field))
-      .map(([field, errors]) => [field, [...errors]]))
-    const values = cloneWorkbenchJson(event.result.values)
-
-    updateRuntimeModel(values)
-    touched.value = nextTouched
-    validation.value = nextValidation
+    }
+    const request = pendingSubmit
+    pendingSubmit = undefined
+    const status = event.result.status === 'success' && (request.values === undefined
+      || JSON.stringify(request.values) !== JSON.stringify(event.result.values))
+      ? 'failure'
+      : event.result.status
+    const next = filterPreviewState(event.result, activeFieldContracts())
+    values.value = next.values
+    fields.value = next.fields
+    touched.value = next.touched
+    validation.value = next.validation
+    updateReadyMirror()
     lastSubmission.value = {
-      status: event.result.status,
-      values,
-      touched: [...nextTouched],
-      validation: cloneWorkbenchJson(nextValidation),
+      ...next,
+      requestId: request.requestId,
+      status,
       revisionKey: current.revisionKey,
       submittedAt: Date.now(),
     }
   }
 
-  function handleRuntimeMounted(
-    event: PreviewRuntimeIdentity,
-  ): ReturnType<PageFlowEngine['dispatch']> | undefined {
-    const current = projection.value
-    if (!current || !isCurrentRuntimeIdentity(event))
-      return undefined
-    activeHostId = event.hostId
-    const mountIdentity = `${event.hostId}:${current.current.runtimeSessionKey}`
-    if (mountIdentity === lastMountIdentity)
-      return undefined
-    lastMountIdentity = mountIdentity
-    return dispatch('page.mount')
+  function handleFlowTrace(event: PreviewRuntimeFlowTraceEvent): void {
+    if (isCurrentRuntimeIdentity(event))
+      appendTrace(event.trace)
+  }
+
+  function handleFlowError(event: PreviewRuntimeFlowDiagnosticEvent): void {
+    if (isCurrentRuntimeIdentity(event))
+      appendDiagnostic(event.diagnostic)
+  }
+
+  function handleFlowProjection(event: PreviewRuntimeFlowProjectionEvent): void {
+    if (isCurrentRuntimeIdentity(event))
+      flowProjectionMirror.value = cloneWorkbenchJson(event.projection)
+  }
+
+  function handleFlowResult(event: PreviewRuntimeFlowResultEvent): void {
+    if (!isCurrentRuntimeIdentity(event))
+      return
+    const result = event.result
+    for (const run of result.results) {
+      if (run.projection)
+        flowProjectionMirror.value = cloneWorkbenchJson(run.projection)
+      run.trace.forEach(appendTrace)
+      run.diagnostics.forEach(appendDiagnostic)
+      if (run.error)
+        appendDiagnostic(run.error)
+    }
+    result.diagnostics.forEach(appendDiagnostic)
+    if (result.error)
+      appendDiagnostic(result.error)
   }
 
   function reset(reason: unknown): void {
     projectionCoordinator.invalidate(reason)
-    flowEngine.clear()
     currentCompilation = undefined
     currentScopeKey = ''
     activeHostId = ''
+    retiredHostIds.clear()
     lastMountIdentity = ''
+    pendingSubmit = undefined
+    usedSubmitRequests.clear()
     lastReadyPreview.value = undefined
-    liveFieldContracts = Object.create(null)
+    liveFieldContracts = emptyPreviewContracts()
     projection.value = undefined
     values.value = {}
+    fields.value = []
     touched.value = []
     validation.value = {}
     lastSubmission.value = undefined
     trace.value = []
+    flowDiagnostics.value = []
+    flowProjectionMirror.value = emptyProjection()
   }
 
   function clear(reason: unknown = 'preview-session-cleared'): void {
@@ -459,11 +442,12 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
       return
     reset('preview-session-disposed')
     disposed = true
-    flowEngine.dispose()
   }
 
   return {
-    flowProjection: flowEngine.projection,
+    actions,
+    flowDiagnostics,
+    flowProjection,
     lastSubmission,
     projection,
     revisionKey,
@@ -474,18 +458,21 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     values,
     accept,
     clear,
-    dispatch,
+    clearSubmission: () => lastSubmission.value = undefined,
     dispose,
     getCompilation,
     getRuntimeModel,
     handleFieldChange,
+    handleFlowError,
+    handleFlowProjection,
+    handleFlowResult,
+    handleFlowTrace,
     handleRuntimeEvent,
     handleRuntimeMounted,
     handleRuntimeReady,
     handleRuntimeState,
-    handleSubmitResult,
-    clearSubmission: () => lastSubmission.value = undefined,
     handleSubmit,
+    handleSubmitResult,
     updateRuntimeModel,
   }
 }
@@ -494,10 +481,8 @@ export function createWorkbenchPreviewSession(
   options: CreateWorkbenchPreviewSessionOptions = {},
 ): PreviewSession {
   return createPreviewSession({
+    actions: options.actions ?? createWorkbenchFlowActionRegistry(options),
+    onDiagnostic: options.onDiagnostic,
     onTrace: options.onTrace,
-    createFlowEngine: ports => createWorkbenchPageFlowEngine({
-      ...options,
-      ...ports,
-    }),
   })
 }

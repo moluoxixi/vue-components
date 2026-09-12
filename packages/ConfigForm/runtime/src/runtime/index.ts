@@ -25,6 +25,12 @@ export {
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
+  ConfigFormPageRuntimeDataSourceStateChange,
+  ConfigFormPageRuntimeLoadOptions,
+  ConfigFormPageRuntimeOptionBinding,
+  ConfigFormPageRuntimeOptionState,
+  ConfigFormPageRuntimePlan,
+  ConfigFormPageRuntimeValueSchema,
   FormFieldDefault,
   FormFieldDefaultConfig,
   FormFieldTransform,

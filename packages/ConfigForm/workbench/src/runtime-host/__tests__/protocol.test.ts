@@ -40,11 +40,7 @@ async function syncMessage(): Promise<RuntimeHostSyncMessage> {
     compilation: compiled.compilation,
     mode: 'preview',
     locale: 'en-US',
-    runtimeState: {
-      values: { name: 'Ada' },
-      touched: ['name'],
-      validation: { name: ['Required'] },
-    },
+    runtimeState: { fields: flatFields('name'), values: { name: 'Ada' }, touched: ['name'], validation: { name: ['Required'] } },
     namespace: 'el',
     reactionProjection: {
       values: { name: 'Ada' },
@@ -203,7 +199,7 @@ describe('runtime host protocol', () => {
       sequence: 2,
       revision: message.revision,
       type: 'runtimeEvent',
-      payload: { event: 'change', nodeId: 'name' },
+      payload: { event: 'change', nodeId: 'name', scope: [], args: ['Ada'], values: { name: 'Ada' } },
     })).toBe(true)
   })
 
@@ -211,11 +207,7 @@ describe('runtime host protocol', () => {
     const message = await syncMessage()
     expect(isParentToRuntimeHostMessage({
       ...message,
-      runtimeState: {
-        values: { name: 'Ada' },
-        touched: ['name'],
-        validation: { name: ['Required'] },
-      },
+      runtimeState: { fields: flatFields('name'), values: { name: 'Ada' }, touched: ['name'], validation: { name: ['Required'] } },
     })).toBe(true)
     expect(isParentToRuntimeHostMessage({
       ...message,
@@ -223,19 +215,11 @@ describe('runtime host protocol', () => {
     })).toBe(false)
     expect(isParentToRuntimeHostMessage({
       ...message,
-      runtimeState: {
-        values: {},
-        touched: [1],
-        validation: {},
-      },
+      runtimeState: { fields: flatFields(), values: {}, touched: [1], validation: {} },
     })).toBe(false)
     expect(isRuntimeHostToParentMessage(childMessage(message, {
       type: 'runtimeState',
-      payload: {
-        values: { name: 'Lin' },
-        touched: ['name'],
-        validation: { name: [] },
-      },
+      payload: { fields: flatFields('name'), values: { name: 'Lin' }, touched: ['name'], validation: { name: [] } },
     }))).toBe(true)
   })
 
@@ -243,12 +227,7 @@ describe('runtime host protocol', () => {
     const message = await syncMessage()
     const base = childMessage(message, {
       type: 'submitResult',
-      payload: {
-        status: 'success',
-        values: { name: 'Ada' },
-        touched: ['name'],
-        validation: {},
-      },
+      payload: { fields: flatFields('name'), requestId: 'submit-1', status: 'success', values: { name: 'Ada' }, touched: ['name'], validation: {} },
     })
 
     expect(isRuntimeHostToParentMessage(structuredClone(base))).toBe(true)
@@ -264,6 +243,79 @@ describe('runtime host protocol', () => {
       ...base,
       payload: { ...(base.payload as object), touched: [''] },
     })).toBe(false)
+    expect(isParentToRuntimeHostMessage(childMessage(message, { type: 'submit' }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(childMessage(message, { type: 'submit', requestId: 'submit-1' }))).toBe(true)
+    expect(isRuntimeHostToParentMessage(childMessage(message, { type: 'submit', values: {} }))).toBe(false)
+    expect(isRuntimeHostToParentMessage({ ...base, payload: { ...(base.payload as object), requestId: undefined } })).toBe(false)
+  })
+
+  it('validates JSON-only action request/result payloads and allows omitted action input', async () => {
+    const message = await syncMessage()
+    const context = {
+      event: { trigger: { kind: 'page.mount' }, args: [] },
+      flow: {
+        runtimeVersion: 2,
+        version: 1,
+        id: 'flow-a',
+        name: 'Flow A',
+        trigger: { kind: 'page.mount' },
+      },
+      node: {
+        id: 'action-a',
+        type: 'action',
+        ref: 'host.save',
+        config: {},
+        incoming: [],
+        outgoing: [],
+      },
+      outputs: {},
+      revision: 1,
+      runId: 'run-a',
+      values: { name: 'Ada' },
+    }
+    const request = childMessage(message, {
+      type: 'actionRequest',
+      requestId: 'request-a',
+      ref: 'host.save',
+      context,
+    })
+
+    expect(isRuntimeHostToParentMessage(structuredClone(request))).toBe(true)
+    expect(isRuntimeHostToParentMessage({ ...request, input: { nested: [1, true, null] } })).toBe(true)
+    expect(isRuntimeHostToParentMessage({ ...request, input: () => undefined })).toBe(false)
+    expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, form: {} } })).toBe(false)
+    expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, scope: [{ scopeId: 'rows', rowId: 'row-1' }] } } })).toBe(true)
+    for (const scope of [null, [{ scopeId: '__proto__', rowId: 'row-1' }], [{ scopeId: 'rows', rowId: 'constructor' }], [{ scopeId: 'rows', rowId: 'one' }, { scopeId: 'rows', rowId: 'two' }], Array.from({ length: 33 }, (_, index) => ({ scopeId: `rows-${index}`, rowId: 'one' }))])
+      expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, scope } } })).toBe(false)
+    for (const unsafe of ['__proto__', 'prototype', 'constructor']) {
+      const extra = JSON.parse(`{"${unsafe}":0}`)
+      expect(isRuntimeHostToParentMessage({ ...request, extra })).toBe(false)
+      expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, extra } } })).toBe(false)
+    }
+
+    const result = childMessage(message, {
+      type: 'actionResult',
+      requestId: 'request-a',
+      success: true,
+      output: { accepted: true },
+      valuePatch: { remove: ['oldName'], set: { name: 'Grace' } },
+    })
+    expect(isParentToRuntimeHostMessage(structuredClone(result))).toBe(true)
+    expect(isParentToRuntimeHostMessage({
+      ...result,
+      valuePatch: { remove: ['name'], set: { name: 'Grace' } },
+    })).toBe(false)
+    expect(isParentToRuntimeHostMessage({
+      ...result,
+      valuePatch: { remove: [], set: { name: new Date() } },
+    })).toBe(false)
+    expect(isParentToRuntimeHostMessage({
+      ...result,
+      success: false,
+      output: undefined,
+      valuePatch: undefined,
+      diagnostic: { code: 'HOST_REJECTED', message: 'Rejected', path: 'input.name' },
+    })).toBe(true)
   })
 
   it('accepts messages only from the expected source, origin, and session', async () => {
@@ -313,4 +365,53 @@ describe('runtime host protocol', () => {
       source: otherSource,
     })).toBeUndefined()
   })
+  it('requires a bounded JSON-safe instance directory and exact instance-key meta references', async () => {
+    const message = await syncMessage()
+    const field = { nodeId: 'name-node', scope: [{ scopeId: 'rows', rowId: 'row-1' }], instanceKey: 'opaque-key', valuePath: ['rows', 0, 'a.b'] }
+    const state = { fields: [field], values: { rows: [{ 'a.b': 'value' }] }, touched: ['opaque-key'], validation: { 'opaque-key': ['Required'] } }
+    const accepts = (payload: unknown) => isRuntimeHostToParentMessage(childMessage(message, { type: 'runtimeState', payload }))
+    expect(accepts(state)).toBe(true)
+    expect(accepts({ fields: [], values: {}, touched: [], validation: {} })).toBe(true)
+    expect(accepts({ ...state, fields: undefined })).toBe(false)
+    expect(accepts({ ...state, fields: [field, field] })).toBe(false)
+    expect(accepts({ ...state, touched: ['a.b'] })).toBe(false)
+    expect(accepts({ ...state, validation: { 'a.b': ['Required'] } })).toBe(false)
+    for (const override of [
+      { nodeId: '__proto__' },
+      { instanceKey: 'constructor' },
+      { scope: [{ scopeId: 'rows', rowId: '' }] },
+      { scope: [field.scope[0], field.scope[0]] },
+      { valuePath: ['rows', -1, 'a.b'] },
+      { valuePath: ['rows', 5, 'a.b'] },
+      { valuePath: ['rows', '0', 'a.b'] },
+      { valuePath: ['__proto__', 'polluted'] },
+      { valuePath: Array.from({ length: 66 }).fill('a') },
+      { scope: Array.from({ length: 33 }, (_, i) => ({ scopeId: `s${i}`, rowId: 'r' })) },
+    ])
+      expect(accepts({ ...state, fields: [{ ...field, ...override }] })).toBe(false)
+    const cyclic: Record<string, unknown> = {}
+    cyclic.self = cyclic
+    const sparseAndExtra = [] as unknown[]
+    sparseAndExtra[1] = 1
+    ;(sparseAndExtra as unknown as Record<string, unknown>).extra = 1
+    const denseAndExtra = [1] as unknown as Record<string, unknown>
+    denseAndExtra.extra = 1
+    for (const values of [cyclic, { bad: Number.NaN }, { bad: new Date() }, JSON.parse('{"__proto__":{"bad":1}}'), sparseAndExtra, denseAndExtra, { huge: Array.from({ length: 10_001 }).fill(1) }])
+      expect(accepts({ ...state, values })).toBe(false)
+    expect(accepts({ ...state, validation: { 'opaque-key': Array.from({ length: 129 }).fill('error') } })).toBe(false)
+    expect(accepts({ ...state, fields: [{ ...field, scope: [] }] })).toBe(false)
+    expect(accepts({ ...state,
+      values: { rows: [{ 'a.b': 1 }, { other: 2 }] },
+      fields: [field, { ...field, nodeId: 'other', instanceKey: 'other-key', valuePath: ['rows', 1, 'other'] }],
+    })).toBe(false)
+    expect(accepts({ fields: [], values: { sparse: new Array(10_001) }, touched: [], validation: {} })).toBe(false)
+    let deep: unknown = 1
+    for (let depth = 0; depth < 66; depth += 1)
+      deep = { nested: deep }
+    expect(accepts({ fields: [], values: { deep }, touched: [], validation: {} })).toBe(false)
+  })
 })
+
+function flatFields(...names: string[]) {
+  return names.map(nodeId => ({ nodeId, scope: [], instanceKey: nodeId, valuePath: [nodeId] }))
+}

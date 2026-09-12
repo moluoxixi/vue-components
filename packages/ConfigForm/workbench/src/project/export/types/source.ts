@@ -1,5 +1,11 @@
 import type { CanonicalFieldDescriptor } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormFlowExecutionPlan, ConfigFormReaction } from '@moluoxixi/config-form-core'
+import type {
+  ConfigFormFlowExecutionPlan,
+  ConfigFormPageRuntimeConfiguration,
+  ConfigFormReaction,
+  ConfigFormScopedFieldDefinition,
+  ConfigFormValueScopeDefinition,
+} from '@moluoxixi/config-form-core'
 import type {
   ConditionExpression,
   ConditionTarget,
@@ -27,6 +33,7 @@ export interface StandaloneSourceNodeBase {
   props: ModelJsonObject
   events: Record<string, RegisteredEventAction[]>
   flowEvents: string[]
+  extensions?: ModelJsonObject
   bindings: Record<string, RegisteredBinding>
   placement: ModelJsonObject
   conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
@@ -40,6 +47,7 @@ export interface StandaloneSourceFieldNode extends StandaloneSourceNodeBase, Can
 export interface StandaloneSourceLayoutNode extends StandaloneSourceNodeBase {
   kind: 'layout'
   slots: Record<string, StandaloneSourceNode[]>
+  valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
 
 export type StandaloneSourceNode = StandaloneSourceFieldNode | StandaloneSourceLayoutNode
@@ -51,6 +59,13 @@ export interface StandaloneSourcePage {
   form: FormSettings
   root: StandaloneSourceNode[]
   flowPlans: ConfigFormFlowExecutionPlan[]
+  runtime: ConfigFormPageRuntimeConfiguration
+  scopedFields: ConfigFormScopedFieldDefinition[]
+  valueScopes: ConfigFormValueScopeDefinition[]
+  optionBindings: Array<{
+    nodeId: string
+    source: NonNullable<CanonicalFieldDescriptor['optionSource']>
+  }>
 }
 
 export interface StandaloneSourceComponentDefinition {

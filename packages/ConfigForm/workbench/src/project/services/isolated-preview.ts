@@ -41,6 +41,6 @@ export function prepareIsolatedProjectPreview(input: {
     reactionProjection: { values: structuredClone(values), props: {}, states: {}, validate: [] },
     revision: input.revision,
     runtimeSessionKey: `${input.document.id}:${input.adapterId}:${input.pageId}`,
-    runtimeState: { values, touched: [], validation: {} },
+    runtimeState: { fields: [], values, touched: [], validation: {} },
   }
 }

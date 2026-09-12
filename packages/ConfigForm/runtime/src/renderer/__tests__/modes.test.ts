@@ -215,7 +215,7 @@ describe('configFormRenderer design and preview modes', () => {
       props: {
         fields: [defineField<SurfaceValues>({
           component: Input,
-          extensions: { 'mx.low-code': { flowEvents: ['click', 'update:modelValue'] } },
+          eventNames: ['click', 'update:modelValue'],
           field: 'name',
           id: 'name-node',
         })],
@@ -242,7 +242,7 @@ describe('configFormRenderer design and preview modes', () => {
         editor: { interceptEvent },
         fields: [defineField<SurfaceValues>({
           component: Input,
-          extensions: { 'mx.low-code': { flowEvents: ['click', 'update:modelValue'] } },
+          eventNames: ['click', 'update:modelValue'],
           field: 'name',
           id: 'name-node',
         })],
@@ -265,7 +265,7 @@ describe('configFormRenderer design and preview modes', () => {
         fields: [{
           id: 'submit-node',
           component: 'button',
-          extensions: { 'mx.low-code': { flowEvents: ['click'] } },
+          eventNames: ['click'],
           props: { onClick },
         }],
         mode: 'preview',

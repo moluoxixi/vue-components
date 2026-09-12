@@ -16,6 +16,7 @@ function controller(): DesignerController {
     dispatch: vi.fn(() => true),
     graph: computed(() => graph),
     selectedId: ref(),
+    pasteAvailable: computed(() => false),
     selectedIds: ref([]),
     selectedMaterial: computed(() => undefined),
     selectedNode: computed(() => undefined),

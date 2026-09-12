@@ -1,50 +1,145 @@
 // @vitest-environment happy-dom
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
-import type { ProjectCommand, ProjectCommandAction, ProjectOperation } from '@moluoxixi/config-form-model'
-import type { Connection, EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
-import { VueFlow } from '@vue-flow/core'
-import { DOMWrapper, mount } from '@vue/test-utils'
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import type {
+  ConfigFormFlow,
+  ConfigFormFlowActionDescriptor,
+  ConfigFormFlowStep,
+} from '@moluoxixi/config-form-core'
+import type { ProjectCommand, ProjectOperation } from '@moluoxixi/config-form-model'
+import type { FlowWorkspaceProps } from '../components/FlowWorkspace'
+import {
+  CONFIG_FORM_FLOW_VERSION,
+  createConfigFormFlowFromSteps,
+  readConfigFormFlowSteps,
+} from '@moluoxixi/config-form-core'
+import { DESIGNER_ZH_CN_MESSAGES } from '@moluoxixi/config-form-designer'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick, reactive } from 'vue'
 import { FlowWorkspace } from '../components'
+import { useFlowWorkspace } from '../components/FlowWorkspace/composables'
 
 const PAGE_ID = 'home'
-
-function lastAction(wrapper: ReturnType<typeof mount>): ProjectCommandAction {
-  const command = lastCommand(wrapper)
-  if (!command?.actions[0])
-    throw new Error('Expected a ProjectCommand action.')
-  return command.actions[0]
+const ECHO_DESCRIPTOR: ConfigFormFlowActionDescriptor = {
+  ref: 'test.echo',
+  title: 'Echo value',
+  category: 'test',
+  parameters: [{ name: 'message', title: 'Message', control: 'value', defaultValue: 'ready' }],
+  outputs: [{ name: 'value', title: 'Value' }],
+  capabilities: [],
+}
+const REQUIRED_DESCRIPTOR: ConfigFormFlowActionDescriptor = {
+  ...ECHO_DESCRIPTOR,
+  ref: 'test.required',
+  title: 'Required action',
+  parameters: [
+    { name: 'message', title: 'Message', control: 'text', required: true },
+    { name: 'recipient', title: 'Recipient', control: 'text', required: true },
+  ],
+}
+const HTTP_DESCRIPTOR: ConfigFormFlowActionDescriptor = {
+  ref: 'test.http',
+  title: 'HTTP request',
+  category: 'data',
+  parameters: [
+    { name: 'url', title: 'URL', control: 'text', required: true, defaultValue: 'https://example.test' },
+    { name: 'headers', title: 'Headers', control: 'object' },
+    { name: 'query', title: 'Query', control: 'object' },
+    { name: 'body', title: 'Body', control: 'value' },
+  ],
+  outputs: [{ name: 'data', title: 'Response data' }],
+  capabilities: ['fetch'],
 }
 
-function lastCommand(wrapper: ReturnType<typeof mount>): ProjectCommand | undefined {
-  return wrapper.emitted('command')?.at(-1)?.[0] as ProjectCommand | undefined
+function createFlow(
+  steps: readonly ConfigFormFlowStep[] = [{ id: 'finish', type: 'terminate', outcome: 'end' }],
+  overrides: Partial<ConfigFormFlow> = {},
+): ConfigFormFlow {
+  const created = createConfigFormFlowFromSteps({
+    version: CONFIG_FORM_FLOW_VERSION,
+    id: overrides.id ?? 'existing',
+    name: overrides.name ?? 'Existing',
+    trigger: overrides.trigger ?? { kind: 'form.submit' },
+    concurrency: overrides.concurrency ?? 'latest',
+    errorPolicy: overrides.errorPolicy ?? { onError: 'failure', timeoutMs: 10000 },
+  }, steps)
+  if (!created.success)
+    throw new Error(created.diagnostics[0]?.message ?? 'Could not create flow fixture.')
+  return { ...created.flow, ...overrides }
 }
 
-function appliedOperation(wrapper: ReturnType<typeof mount>): ProjectOperation {
-  const action = lastAction(wrapper)
-  if (action.type !== 'operation.apply' || !action.operations[0])
-    throw new Error('Expected an applied ProjectOperation.')
-  return action.operations[0]
-}
-
-function createFlow(id = 'existing'): ConfigFormFlow {
+function unsupportedMergeFlow(): ConfigFormFlow {
   return {
-    version: 1,
-    id,
-    name: 'Existing',
+    version: CONFIG_FORM_FLOW_VERSION,
+    id: 'unsupported',
+    name: 'Unsupported merge',
     trigger: { kind: 'form.submit' },
     nodes: [
-      { id: 'trigger', type: 'trigger', position: { x: 40, y: 80 } },
-      { id: 'end', type: 'end', position: { x: 360, y: 80 } },
+      { id: 'trigger', type: 'trigger' },
+      { id: 'condition', type: 'condition', config: { condition: { kind: 'literal', value: true } } },
+      { id: 'left', type: 'action', ref: 'test.echo', config: { input: { message: 'left' } } },
+      { id: 'right', type: 'action', ref: 'test.echo', config: { input: { message: 'right' } } },
+      { id: 'end', type: 'end' },
     ],
-    edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' }],
+    edges: [
+      { id: 'trigger-condition', source: 'trigger', target: 'condition', condition: 'next' },
+      { id: 'condition-left', source: 'condition', target: 'left', condition: 'true' },
+      { id: 'condition-right', source: 'condition', target: 'right', condition: 'false' },
+      { id: 'left-end', source: 'left', target: 'end', condition: 'next' },
+      { id: 'right-end', source: 'right', target: 'end', condition: 'next' },
+    ],
   }
 }
 
-beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 900 })
-  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => 560 })
-})
+function operationFrom(command: ProjectCommand): ProjectOperation {
+  const action = command.actions[0]
+  if (action?.type !== 'operation.apply' || action.operations.length !== 1)
+    throw new Error('Expected one operation.apply action with one operation.')
+  return action.operations[0]!
+}
+
+function mountWorkspace(overrides: Partial<FlowWorkspaceProps> = {}) {
+  const providedExecute = overrides.execute
+  const execute = vi.fn((command: ProjectCommand) => providedExecute
+    ? providedExecute(command)
+    : Promise.resolve({ changed: true }))
+  const wrapper = mount(FlowWorkspace, {
+    attachTo: document.body,
+    props: {
+      actionDescriptors: [ECHO_DESCRIPTOR],
+      flows: [],
+      initialTrigger: { kind: 'form.submit' },
+      pageId: PAGE_ID,
+      ...overrides,
+      execute,
+    },
+  })
+  return { execute, wrapper }
+}
+
+function mountSession(overrides: Partial<FlowWorkspaceProps> = {}) {
+  const providedExecute = overrides.execute
+  const execute = vi.fn((command: ProjectCommand) => providedExecute
+    ? providedExecute(command)
+    : Promise.resolve({ changed: true }))
+  const close = vi.fn()
+  const props = reactive<FlowWorkspaceProps>({
+    actionDescriptors: [ECHO_DESCRIPTOR],
+    flows: [],
+    initialTrigger: { kind: 'form.submit' },
+    pageId: PAGE_ID,
+    ...overrides,
+    execute,
+  })
+  let session!: ReturnType<typeof useFlowWorkspace>
+  const Harness = defineComponent({
+    setup() {
+      session = useFlowWorkspace({ props: props as unknown as Readonly<FlowWorkspaceProps>, onClose: close })
+      return () => h('div')
+    },
+  })
+  const wrapper = mount(Harness)
+  return { close, execute, props, session, wrapper }
+}
 
 beforeEach(() => {
   const overlays = document.createElement('div')
@@ -52,366 +147,353 @@ beforeEach(() => {
   document.body.append(overlays)
 })
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  document.body.replaceChildren()
+  vi.restoreAllMocks()
+})
 
-function overlay(): DOMWrapper<HTMLElement> {
-  return new DOMWrapper(document.getElementById('workbench-overlays')!)
-}
-
-describe('flowWorkspace', () => {
-  it('uses an explicit locale outside the designer provider and reacts to replacements', async () => {
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [],
-        initialTrigger: { kind: 'form.submit' },
-        locale: {
-          locale: 'zh-CN',
-          messages: {
-            'flow.workspace': '流程工作区',
-            'flow.empty.title': '暂无流程',
-            'flow.empty.action': '创建首个流程',
-          },
-        },
-      },
+describe('flow workspace draft transaction', () => {
+  it('renders Chinese catalog messages and keeps English fallbacks', async () => {
+    const { wrapper } = mountWorkspace({
+      locale: { locale: 'zh-CN', messages: DESIGNER_ZH_CN_MESSAGES },
     })
+    expect(wrapper.get('.flow-workspace').attributes('aria-label')).toBe('事件流程工作区')
+    expect(wrapper.get('.flow-empty').text()).toContain('此事件尚未配置流程')
 
-    expect(wrapper.get('.flow-workspace').attributes('aria-label')).toBe('流程工作区')
-    expect(wrapper.get('.flow-empty').text()).toContain('暂无流程')
-
-    await wrapper.setProps({
-      locale: {
-        locale: 'en-US',
-        messages: {
-          'flow.workspace': 'Localized flow workspace',
-          'flow.empty.title': 'Localized empty state',
-          'flow.empty.action': 'Localized create action',
-        },
-      },
-    })
-
-    expect(wrapper.get('.flow-workspace').attributes('aria-label')).toBe('Localized flow workspace')
-    expect(wrapper.get('.flow-empty').text()).toContain('Localized empty state')
-    expect(wrapper.get('[data-testid="create-first-flow"]').text()).toContain('Localized create action')
+    await wrapper.setProps({ locale: { locale: 'en-US', messages: {} } })
+    expect(wrapper.get('.flow-workspace').attributes('aria-label')).toBe('Event flow workspace')
+    expect(wrapper.get('.flow-empty').text()).toContain('No flow configured for this event')
   })
 
-  it('creates a valid trigger-to-end flow and projects it through controlled Vue Flow', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [], initialTrigger: { kind: 'form.submit' } } })
-    await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
-    expect(wrapper.emitted('command')).toBeUndefined()
-    await wrapper.get('[data-testid="add-condition"]').trigger('click')
-    const command = lastCommand(wrapper)
-    expect(command).toMatchObject({ label: 'Add flow' })
-    expect(command?.id).toMatch(/^flow-[a-z0-9]+-1$/)
-    expect(command?.actions).toHaveLength(1)
-    const operation = appliedOperation(wrapper)
-    expect(operation.type).toBe('flow.add')
-    if (operation.type !== 'flow.add')
-      return
-    const created = operation.flow
-    await wrapper.setProps({ flows: [created] })
-
-    const vueFlow = wrapper.getComponent(VueFlow)
-    expect(vueFlow.props('applyDefault')).toBe(false)
-    expect((vueFlow.props('nodes') as Array<{ id: string }>).map(node => node.id)).toEqual(['flow-1-trigger', 'flow-1-condition-1', 'flow-1-end'])
-    expect(created).toMatchObject({ name: 'On Form submit', trigger: { kind: 'form.submit' } })
-    expect(created.edges).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source: 'flow-1-trigger', target: 'flow-1-condition-1', condition: 'next' }),
-    ]))
-    expect(wrapper.get('[data-node-id="flow-1-trigger"] strong').text()).toBe('Form submit')
-    expect(wrapper.get('[data-flow-control="locked-trigger"] code').text()).toBe('form.submit')
-  })
-
-  it('focuses an existing event handler or opens event-first creation for an unhandled inspector event', async () => {
-    const target = { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.button', event: 'click', eventLabel: 'Click' }
-    const existing = { ...createFlow('existing-click'), trigger: { kind: 'component.event', nodeId: 'submit', event: 'click' } } as ConfigFormFlow
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [createFlow('submit-flow'), existing],
-        eventTargets: [target],
-        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
-      },
-    })
-
-    expect(wrapper.get('.flow-editor-title code').text()).toBe('Submit · Click')
-    expect(wrapper.get('[data-flow-control="locked-trigger"] code').text()).toBe('submit:click')
-
-    await wrapper.setProps({
-      initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
-    })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.get('.flow-empty').text()).toContain('No flow configured')
-    expect(overlay().find('[role="menu"]').exists()).toBe(false)
-  })
-
-  it('creates a component event flow from the exact registered node event', async () => {
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [],
-        eventTargets: [
-          { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.button', event: 'click', eventLabel: 'Click' },
-        ],
-        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
-      },
-    })
+  it('keeps creation and edits isolated, then sends exactly one add command on Save', async () => {
+    let release!: (value: { changed: boolean }) => void
+    const execute = vi.fn((_command: ProjectCommand) => new Promise<{ changed: boolean }>(resolve => release = resolve))
+    const { wrapper } = mountWorkspace({ execute })
 
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
-    await wrapper.get('[data-testid="add-condition"]').trigger('click')
-
-    const operation = appliedOperation(wrapper)
-    expect(operation.type).toBe('flow.add')
-    if (operation.type !== 'flow.add')
-      return
-    expect(operation.flow).toMatchObject({
-      name: 'On Submit · Click',
-      trigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
-    })
-  })
-
-  it('keeps condition branches explicit when adding a condition node', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
-    await wrapper.get('[data-testid="add-condition"]').trigger('click')
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.graph')
-    if (updated.type !== 'flow.graph')
-      return
-    const condition = updated.nodes.find(node => node.type === 'condition')!
-    expect(updated.edges.filter(edge => edge.source === condition.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
-  })
-
-  it('locks the trigger context and does not expose a trigger selector', async () => {
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [{ ...createFlow('event-flow'), trigger: { kind: 'component.event', nodeId: 'submit', event: 'change' } } as ConfigFormFlow],
-        eventTargets: [
-          { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.input', event: 'change', eventLabel: 'Change' },
-        ],
-        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
-      },
-    })
-
-    expect(wrapper.find('[data-flow-control="trigger"]').exists()).toBe(false)
-    expect(wrapper.find('[data-flow-control="event-target"]').exists()).toBe(false)
-    expect(wrapper.get('[data-flow-control="locked-trigger"] strong').text()).toBe('Submit · Change')
-  })
-
-  it('uses Element Plus text controls for flow inspector fields', async () => {
-    const flow = createFlow('text-controls-flow')
-    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
-    flow.edges = [
-      { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
-      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-    ]
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [flow],
-        initialTrigger: { kind: 'form.submit' },
-      },
-    })
-
-    const nameControl = wrapper.get('[data-flow-control="name"]')
-    expect(nameControl.findComponent({ name: 'ElInput' }).exists()).toBe(true)
-    expect(nameControl.find('.el-input__wrapper').exists()).toBe(true)
-
-    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'action', selected: true, type: 'select' }])
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.get('[aria-label="Node ID"]').element.tagName).toBe('INPUT')
-    expect(wrapper.get('[aria-label="Action ref"]').element.tagName).toBe('INPUT')
-    expect(wrapper.get('[aria-label="Node config"]').element.tagName).toBe('TEXTAREA')
-  })
-
-  it('blocks editing when the current trigger has duplicate flows', async () => {
-    const wrapper = mount(FlowWorkspace, {
-      props: {
-        pageId: PAGE_ID,
-        flows: [createFlow('first'), createFlow('second')],
-        initialTrigger: { kind: 'form.submit' },
-      },
-    })
-
-    expect(wrapper.get('[role="alert"]').text()).toContain('multiple flows')
-    expect(wrapper.get('[data-testid="add-condition"]').attributes('disabled')).toBeDefined()
-    await wrapper.get('[data-testid="add-condition"]').trigger('click')
-    expect(wrapper.emitted('command')).toBeUndefined()
-  })
-
-  it('preserves readonly and numeric boundaries through Element Plus controls', async () => {
-    const readonlyWrapper = mount(FlowWorkspace, {
-      props: { pageId: PAGE_ID, flows: [createFlow('readonly-flow')], initialTrigger: { kind: 'form.submit' }, readonly: true },
-    })
-    expect(readonlyWrapper.findAllComponents({ name: 'ElSelect' })
-      .every(control => control.props('disabled') === true)).toBe(true)
-    const readonlyTimeout = readonlyWrapper.getComponent({ name: 'ElInputNumber' })
-    expect(readonlyTimeout.props()).toMatchObject({ disabled: true, min: 0, step: 100 })
-    readonlyTimeout.vm.$emit('change', 1200)
-    await readonlyWrapper.vm.$nextTick()
-    expect(readonlyWrapper.emitted('command')).toBeUndefined()
-
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('timeout-flow')], initialTrigger: { kind: 'form.submit' } } })
-    const timeout = wrapper.getComponent({ name: 'ElInputNumber' })
-    timeout.vm.$emit('change', -1)
-    timeout.vm.$emit('change', 12.5)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.emitted('command')).toBeUndefined()
-
-    timeout.vm.$emit('change', 1200)
-    await wrapper.vm.$nextTick()
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.settings')
-    if (updated.type !== 'flow.settings')
-      return
-    expect(updated.settings.errorPolicy).toEqual({ onError: 'end', timeoutMs: 1200 })
-  })
-
-  it('keeps both condition branches when adding a node after a condition', async () => {
-    const flow = createFlow('branch-flow')
-    flow.nodes.splice(1, 0, { id: 'condition', type: 'condition', config: { condition: { kind: 'literal', value: true } } })
-    flow.edges = [
-      { id: 'trigger-condition', source: 'trigger', target: 'condition', condition: 'next' },
-      { id: 'condition-true', source: 'condition', target: 'end', condition: 'true' },
-      { id: 'condition-false', source: 'condition', target: 'end', condition: 'false' },
-    ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
     await wrapper.get('[data-testid="add-action"]').trigger('click')
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.graph')
-    if (updated.type !== 'flow.graph')
-      return
-    const action = updated.nodes.find(node => node.type === 'action')!
-    expect(updated.edges.filter(edge => edge.target === action.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
-    expect(updated.edges.filter(edge => edge.source === action.id).map(edge => edge.condition)).toEqual(['next'])
-  })
+    await wrapper.get('[data-flow-control="name"]').setValue('Saved flow')
+    expect(execute).not.toHaveBeenCalled()
 
-  it('replaces one source handle edge with a valid controlled connection', async () => {
-    const flow = createFlow('connect-flow')
-    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
-    flow.edges.push({ id: 'action-end', source: 'action', target: 'end', condition: 'next' })
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
-    const connection: Connection = {
-      source: 'trigger',
-      sourceHandle: 'next',
-      target: 'action',
-      targetHandle: 'input',
+    const firstSave = (wrapper.vm as unknown as { save: () => Promise<boolean> }).save()
+    const duplicateSave = (wrapper.vm as unknown as { save: () => Promise<boolean> }).save()
+    expect(execute).toHaveBeenCalledTimes(1)
+    release({ changed: true })
+    await expect(firstSave).resolves.toBe(true)
+    await expect(duplicateSave).resolves.toBe(false)
+
+    const command = execute.mock.calls[0]![0]
+    expect(command.actions).toHaveLength(1)
+    const operation = operationFrom(command)
+    expect(operation.type).toBe('flow.add')
+    if (operation.type === 'flow.add') {
+      expect(operation.pageId).toBe(PAGE_ID)
+      expect(operation.flow.name).toBe('Saved flow')
+      expect(readConfigFormFlowSteps(operation.flow).steps).toHaveLength(1)
     }
-
-    wrapper.getComponent(VueFlow).vm.$emit('connect', connection)
-    await wrapper.vm.$nextTick()
-
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.edges')
-    if (updated.type !== 'flow.edges')
-      return
-    expect(updated.edges).toContainEqual(expect.objectContaining({ source: 'trigger', target: 'action', condition: 'next' }))
-    expect(updated.edges).not.toContainEqual(expect.objectContaining({ source: 'trigger', target: 'end' }))
-  })
-
-  it('rejects deleting a node whose outgoing branches have different targets', async () => {
-    const flow = createFlow('branch-delete-flow')
-    flow.nodes.splice(1, 0, { id: 'condition', type: 'condition', config: { condition: { kind: 'literal', value: true } } }, { id: 'action', type: 'action', ref: 'notify', config: {} })
-    flow.edges = [
-      { id: 'trigger-condition', source: 'trigger', target: 'condition', condition: 'next' },
-      { id: 'condition-true', source: 'condition', target: 'end', condition: 'true' },
-      { id: 'condition-false', source: 'condition', target: 'action', condition: 'false' },
-      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-    ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
-
-    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'condition', type: 'remove' }])
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('command')).toBeUndefined()
-    expect(wrapper.get('[role="alert"]').text()).toContain('Reconnect branching paths')
-  })
-
-  it('commits object node config and increments update command ids', async () => {
-    const flow = createFlow('config-flow')
-    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
-    flow.edges = [
-      { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
-      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-    ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
-    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'action', selected: true, type: 'select' }])
-    await wrapper.vm.$nextTick()
-    await wrapper.get('textarea').setValue('{"input":{"kind":"literal","value":"saved"}}')
-    await wrapper.get('textarea').trigger('blur')
-
-    const first = lastCommand(wrapper)!
-    expect(first.label).toBe('Update flow')
-    expect(first.id).toMatch(/^flow-[a-z0-9]+-1$/)
-    expect(lastAction(wrapper)).toMatchObject({
-      type: 'flow.node',
-      nodeId: 'action',
-      node: { config: { input: { kind: 'literal', value: 'saved' } } },
-    })
-
-    const timeout = wrapper.getComponent({ name: 'ElInputNumber' })
-    timeout.vm.$emit('change', 1200)
-    await wrapper.vm.$nextTick()
-    expect(lastCommand(wrapper)?.id).toMatch(/^flow-[a-z0-9]+-2$/)
-    expect(lastCommand(wrapper)?.label).toBe('Update flow')
-  })
-
-  it('commits a node position only through a controlled model update', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
-    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{
-      id: 'trigger',
-      type: 'position',
-      from: { x: 40, y: 80 },
-      position: { x: 80, y: 120 },
-      dragging: true,
-    } satisfies NodePositionChange])
-    await wrapper.vm.$nextTick()
-    expect(wrapper.emitted('command')).toBeUndefined()
-
-    const change: NodePositionChange = {
-      id: 'trigger',
-      type: 'position',
-      from: { x: 40, y: 80 },
-      position: { x: 96.4, y: 144.7 },
-      dragging: false,
-    }
-    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [change])
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('command')).toHaveLength(1)
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.node')
-    if (updated.type !== 'flow.node')
-      return
-    expect(updated.node.position).toEqual({ x: 96, y: 145 })
-  })
-
-  it('rejects an edge deletion that would leave the trigger as a dead end', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
-    const change: EdgeRemoveChange = {
-      id: 'next',
-      type: 'remove',
-      source: 'trigger',
-      target: 'end',
-      sourceHandle: 'next',
-      targetHandle: 'input',
-    }
-    wrapper.getComponent(VueFlow).vm.$emit('edgesChange', [change])
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('command')).toBeUndefined()
-    expect(wrapper.get('[role="alert"]').text()).toContain('must connect to a next node')
-  })
-
-  it('emits a semantic remove operation for one flow', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
-    await wrapper.get('[aria-label="Delete flow"]').trigger('click')
-    const popconfirm = wrapper.findComponent({ name: 'ElPopconfirm' })
-    expect(popconfirm.exists()).toBe(true)
-    popconfirm.vm.$emit('confirm', new MouseEvent('click'))
-    await wrapper.vm.$nextTick()
-    expect(appliedOperation(wrapper)).toEqual({ type: 'flow.remove', pageId: PAGE_ID, flowId: 'existing' })
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('discards an edited draft on Cancel without executing a command or mutating props', async () => {
+    const flow = createFlow()
+    const original = structuredClone(flow)
+    const { execute, wrapper } = mountWorkspace({ flows: [flow] })
+
+    await wrapper.get('[data-flow-control="name"]').setValue('Draft only')
+    await wrapper.get('[data-testid="cancel-flow"]').trigger('click')
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(flow).toEqual(original)
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  it('retains the draft and diagnostics when the transaction port rejects the command', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      changed: false,
+      diagnostics: [{ code: 'PROJECT_CONFLICT', message: 'Revision changed', path: ['pages', PAGE_ID] }],
+    })
+    const { wrapper } = mountWorkspace({ execute, flows: [createFlow()] })
+
+    await wrapper.get('[data-flow-control="name"]').setValue('Still here')
+    await wrapper.get('[data-testid="save-flow"]').trigger('click')
+    await flushPromises()
+
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(wrapper.get('[data-flow-control="name"]').element).toHaveProperty('value', 'Still here')
+    expect(wrapper.get('.flow-diagnostics').text()).toContain('Revision changed')
+  })
+
+  it('retains the draft when execute throws', async () => {
+    const execute = vi.fn().mockRejectedValue(new Error('Storage unavailable'))
+    const { wrapper } = mountWorkspace({ execute, flows: [createFlow()] })
+
+    await wrapper.get('[data-flow-control="name"]').setValue('Retry later')
+    await wrapper.get('[data-testid="save-flow"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('close')).toBeUndefined()
+    expect(wrapper.get('.flow-diagnostics').text()).toContain('Storage unavailable')
+    expect(wrapper.get('[data-testid="save-flow"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('detects a same-flow external snapshot change and refuses to overwrite it', async () => {
+    const flow = createFlow()
+    const { execute, wrapper } = mountWorkspace({ flows: [flow] })
+    await wrapper.get('[data-flow-control="name"]').setValue('Local draft')
+
+    await wrapper.setProps({ flows: [{ ...flow, name: 'External edit' }] })
+    await nextTick()
+
+    expect(wrapper.get('.flow-diagnostics').text()).toContain('changed outside the editor')
+    expect(wrapper.get('[data-testid="save-flow"]').attributes('disabled')).toBeDefined()
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('inserts explicit branch steps, reorders conditions, and remaps duplicated internal output references', () => {
+    const { execute, session } = mountSession()
+    session.addFlow()
+    session.addStep('condition')
+    const original = session.steps.value[0]!
+    expect(original.type).toBe('condition')
+    if (original.type !== 'condition')
+      return
+
+    session.addStep('action', { parentId: original.id, branch: 'then' })
+    const first = originalStep(session.steps.value, original.id, 'then', 0)
+    session.addStep('action', { parentId: original.id, branch: 'then' })
+    const second = originalStep(session.steps.value, original.id, 'then', 1)
+    session.setStepInput({ source: { $ref: { kind: 'output', stepId: first.id, path: ['value'] } } })
+    session.addStep('terminate', { parentId: original.id, branch: 'else' })
+    session.duplicateStep(original.id)
+
+    expect(session.steps.value).toHaveLength(2)
+    const duplicate = session.steps.value[1]!
+    expect(duplicate.type).toBe('condition')
+    if (duplicate.type !== 'condition')
+      return
+    expect(duplicate.then.map(step => step.id)).not.toEqual([first.id, second.id])
+    const duplicateInput = duplicate.then[1]?.type === 'action' ? duplicate.then[1].input : undefined
+    expect(duplicateInput).toEqual({ source: { $ref: { kind: 'output', stepId: duplicate.then[0]!.id, path: ['value'] } } })
+    expect(duplicate.else[0]).toMatchObject({ type: 'terminate', outcome: 'end' })
+
+    session.moveStep(duplicate.id, -1)
+    expect(session.steps.value[0]?.id).toBe(duplicate.id)
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('validates required descriptor parameters before calling execute', async () => {
+    const { execute, session } = mountSession({ actionDescriptors: [REQUIRED_DESCRIPTOR] })
+    session.addFlow()
+    session.addStep('action')
+
+    await expect(session.save()).resolves.toBe(false)
+    expect(execute).not.toHaveBeenCalled()
+    expect(session.diagnostics.value).toHaveLength(2)
+    expect(session.diagnostics.value).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FLOW_ACTION_PARAMETER_REQUIRED', path: expect.arrayContaining(['message']) }),
+      expect.objectContaining({ code: 'FLOW_ACTION_PARAMETER_REQUIRED', path: expect.arrayContaining(['recipient']) }),
+    ]))
+    expect(session.selectedStep.value?.type).toBe('action')
+  })
+
+  it('renders every diagnostic with its full path and focuses the selected invalid parameter', async () => {
+    const firstId = 'required-first'
+    const secondId = 'required-second'
+    const flow = createFlow([
+      { id: firstId, type: 'action', ref: REQUIRED_DESCRIPTOR.ref, input: {} },
+      { id: secondId, type: 'action', ref: REQUIRED_DESCRIPTOR.ref, input: {} },
+    ])
+    const { execute, wrapper } = mountWorkspace({
+      actionDescriptors: [REQUIRED_DESCRIPTOR],
+      flows: [flow],
+    })
+
+    await expect((wrapper.vm as unknown as { save: () => Promise<boolean> }).save()).resolves.toBe(false)
+    await nextTick()
+
+    const items = wrapper.findAll('.flow-diagnostic')
+    expect(items).toHaveLength(4)
+    expect(items[2]!.text()).toContain('FLOW_ACTION_PARAMETER_REQUIRED')
+    expect(items[2]!.text()).toContain(`steps / ${secondId} / input / message`)
+    expect(execute).not.toHaveBeenCalled()
+
+    await items[2]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get(`[data-step-id="${secondId}"]`).classes()).toContain('is-selected')
+    const invalidRows = wrapper.findAll('.flow-parameter-row[aria-invalid="true"]')
+    expect(invalidRows).toHaveLength(2)
+    const messageRow = wrapper.get('[data-parameter="message"]')
+    expect(messageRow.find('[aria-invalid="true"]').exists()).toBe(true)
+    expect(messageRow.element.contains(document.activeElement)).toBe(true)
+  })
+
+  it('offers only outputs that dominate the selected downstream step', () => {
+    const { session } = mountSession()
+    session.addFlow()
+    session.addStep('action')
+    const rootAction = session.steps.value[0]!
+    session.addStep('condition')
+    const condition = session.steps.value[1]!
+    expect(condition.type).toBe('condition')
+    if (condition.type !== 'condition')
+      return
+    session.addStep('action', { parentId: condition.id, branch: 'then' })
+    const branchAction = originalStep(session.steps.value, condition.id, 'then', 0)
+    session.addStep('action', { index: 2 })
+
+    const outputValues = session.outputOptions.value.map(option => option.value)
+    expect(outputValues).toContainEqual({ $ref: { kind: 'output', stepId: rootAction.id } })
+    expect(outputValues).toContainEqual({ $ref: { kind: 'output', stepId: rootAction.id, path: ['value'] } })
+    expect(JSON.stringify(outputValues)).not.toContain(branchAction.id)
+    expect(JSON.stringify(outputValues)).not.toContain('$expression')
+    expect(session.outputOptions.value.every(option => !option.label.includes(rootAction.id))).toBe(true)
+  })
+
+  it('does not replace an imported unrepresentable DAG and still permits an explicit staged removal', async () => {
+    const flow = unsupportedMergeFlow()
+    const { execute, session } = mountSession({ flows: [flow] })
+    expect(session.representable.value).toBe(false)
+    expect(session.steps.value).toEqual([])
+    expect(session.diagnostics.value.length).toBeGreaterThan(0)
+
+    await expect(session.save()).resolves.toBe(false)
+    expect(execute).not.toHaveBeenCalled()
+
+    session.stageRemoveFlow()
+    expect(execute).not.toHaveBeenCalled()
+    await expect(session.save()).resolves.toBe(true)
+    expect(operationFrom(execute.mock.calls[0]![0])).toEqual({
+      type: 'flow.remove',
+      pageId: PAGE_ID,
+      flowId: flow.id,
+    })
+  })
+
+  it('stages deletion of an existing flow until Save', async () => {
+    const flow = createFlow()
+    const { execute, session } = mountSession({ flows: [flow] })
+    session.stageRemoveFlow()
+    expect(session.removed.value).toBe(true)
+    expect(execute).not.toHaveBeenCalled()
+
+    session.restoreRemovedFlow()
+    expect(session.removed.value).toBe(false)
+    session.stageRemoveFlow()
+    await session.save()
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(operationFrom(execute.mock.calls[0]![0])).toMatchObject({ type: 'flow.remove', flowId: flow.id })
+  })
+
+  it('renders descriptor-driven structured HTTP controls without a JSON editor', async () => {
+    const { wrapper } = mountWorkspace({ actionDescriptors: [HTTP_DESCRIPTOR] })
+    await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
+    await wrapper.get('[data-testid="add-action"]').trigger('click')
+
+    const inputs = wrapper.get('[data-testid="flow-action-inputs"]')
+    expect(inputs.find('[data-parameter="headers"]').exists()).toBe(true)
+    expect(inputs.find('[data-parameter="query"]').exists()).toBe(true)
+    expect(inputs.find('[data-parameter="body"]').exists()).toBe(true)
+    expect(inputs.find('textarea').exists()).toBe(false)
+    expect(inputs.text()).toContain('Add property')
+  })
+
+  it('shows component and field labels without exposing trigger or node IDs as controls', () => {
+    const flow = createFlow(undefined, {
+      id: 'component-flow',
+      trigger: { kind: 'component.event', nodeId: 'internal-submit-id', event: 'click' },
+    })
+    const { wrapper } = mountWorkspace({
+      eventTargets: [{
+        component: 'element.button',
+        event: 'click',
+        eventLabel: 'Click',
+        field: 'submitValue',
+        nodeId: 'internal-submit-id',
+        nodeLabel: 'Submit order',
+      }],
+      flows: [flow],
+      initialTrigger: flow.trigger,
+      referenceFields: [{ nodeId: 'internal-submit-id', field: 'submitValue', label: 'Submit value' }],
+    })
+
+    expect(wrapper.get('[data-flow-control="locked-trigger"]').text()).toContain('Submit order · Click')
+    expect(wrapper.find('[aria-label="Node ID"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('internal-submit-id')
+  })
+
+  it('keeps stable node identities separate from reaction field names', () => {
+    const { session } = mountSession({
+      referenceFields: [{ nodeId: 'email-node', field: 'email', label: 'Email address' }],
+    })
+
+    expect(session.fields.value).toEqual([
+      { nodeId: 'email-node', field: 'email', label: 'Email address' },
+    ])
+
+    session.addFlow()
+    session.addStep('condition')
+    const condition = session.steps.value[0]
+    expect(condition).toMatchObject({
+      type: 'condition',
+      when: {
+        kind: 'compare',
+        left: { kind: 'field', field: 'email' },
+      },
+    })
+    expect(JSON.stringify(condition)).not.toContain('email-node')
+  })
+
+  it('keeps timeout zero and step execution/stop policies in the draft until Save', async () => {
+    const { execute, session } = mountSession()
+    session.addFlow()
+    session.addStep('action')
+    session.updateStepPolicy({
+      onError: 'continue',
+      timeoutMs: 0,
+      when: { kind: 'literal', value: true },
+      stopWhen: { kind: 'literal', value: false },
+    })
+    session.updateFlowTimeout(0)
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(session.selectedStep.value).toMatchObject({
+      policy: { onError: 'continue', timeoutMs: 0, when: { value: true }, stopWhen: { value: false } },
+    })
+    expect(session.draftMetadata.value?.errorPolicy?.timeoutMs).toBe(0)
+
+    await session.save()
+    const operation = operationFrom(execute.mock.calls[0]![0])
+    expect(operation.type).toBe('flow.add')
+    if (operation.type === 'flow.add') {
+      const read = readConfigFormFlowSteps(operation.flow)
+      expect(read.steps[0]).toMatchObject({ policy: { onError: 'continue', timeoutMs: 0 } })
+    }
+  })
+
+  it('blocks all draft mutations in readonly mode', () => {
+    const flow = createFlow()
+    const { execute, session } = mountSession({ flows: [flow], readonly: true })
+    session.patchMetadata({ name: 'Ignored' })
+    session.addStep('action')
+    session.stageRemoveFlow()
+
+    expect(session.draftMetadata.value?.name).toBe(flow.name)
+    expect(session.steps.value).toHaveLength(1)
+    expect(session.removed.value).toBe(false)
+    expect(execute).not.toHaveBeenCalled()
+  })
 })
+
+function originalStep(
+  steps: readonly ConfigFormFlowStep[],
+  conditionId: string,
+  branch: 'then' | 'else',
+  index: number,
+): ConfigFormFlowStep {
+  const condition = steps.find(step => step.id === conditionId)
+  if (condition?.type !== 'condition' || !condition[branch][index])
+    throw new Error(`Missing ${branch} branch step ${index}.`)
+  return condition[branch][index]!
+}

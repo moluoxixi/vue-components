@@ -1,7 +1,9 @@
 import type { ZodIssue, ZodTypeAny } from 'zod'
 import type {
   ConfigFormCondition,
+  ConfigFormFieldRuleIssue,
   ConfigFormFieldValidator,
+  ConfigFormFieldValidatorContext,
   ConfigFormValidateTrigger,
   ConfigFormValues,
 } from '../types'
@@ -41,7 +43,49 @@ function normalizeValidatorResult(
   return Array.isArray(result) ? result.filter(Boolean) : [result]
 }
 
-/** 依次执行 required、Zod 和业务 validator，并统一返回错误文本数组。 */
+/** 依次执行 required、Zod 和业务 validator，并统一返回结构化错误。 */
+export async function validateConfigFormFieldRuleIssues<
+  TValues extends ConfigFormValues,
+>(
+  value: unknown,
+  values: TValues,
+  options: {
+    required?: ConfigFormCondition<TValues>
+    requiredMessage?: string
+    schema?: ZodTypeAny
+    validator?: ConfigFormFieldValidator<TValues>
+  },
+  context: ConfigFormFieldValidatorContext,
+): Promise<ConfigFormFieldRuleIssue[]> {
+  context.signal.throwIfAborted()
+  if (
+    resolveConfigFormCondition(options.required, values, false)
+    && isEmptyConfigFormRequiredValue(value)
+  ) {
+    return [{ code: 'required', message: options.requiredMessage ?? '必填' }]
+  }
+
+  let validatorValue = value
+  if (options.schema) {
+    const result = await options.schema.safeParseAsync(value)
+    if (!result.success) {
+      return result.error.issues.map(issue => ({
+        code: issue.code,
+        message: issue.message || `Validation failed: ${issue.path.join('.')}`,
+      }))
+    }
+    validatorValue = result.data
+    context.signal.throwIfAborted()
+  }
+
+  if (!options.validator)
+    return []
+  const result = await options.validator(validatorValue, values, context)
+  context.signal.throwIfAborted()
+  return normalizeValidatorResult(result).map(message => ({ code: 'custom', message }))
+}
+
+/** Message-only projection for standalone rule consumers. */
 export async function validateConfigFormFieldRules<
   TValues extends ConfigFormValues,
 >(
@@ -53,23 +97,8 @@ export async function validateConfigFormFieldRules<
     schema?: ZodTypeAny
     validator?: ConfigFormFieldValidator<TValues>
   },
+  signal = new AbortController().signal,
 ): Promise<string[]> {
-  if (
-    resolveConfigFormCondition(options.required, values, false)
-    && isEmptyConfigFormRequiredValue(value)
-  ) {
-    return [options.requiredMessage ?? '必填']
-  }
-
-  let validatorValue = value
-  if (options.schema) {
-    const result = await options.schema.safeParseAsync(value)
-    if (!result.success)
-      return formatConfigFormZodIssues(result.error.issues)
-    validatorValue = result.data
-  }
-
-  return options.validator
-    ? normalizeValidatorResult(await options.validator(validatorValue, values))
-    : []
+  const issues = await validateConfigFormFieldRuleIssues(value, values, options, { signal })
+  return issues.map(issue => issue.message)
 }

@@ -1,6 +1,7 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { NodeId, NodeSubgraph, NodeTarget, PageGraph, PageId, PageNode, ProjectDocument, ProjectNodeChange, ProjectNodeRelation, SlotItem } from '../../../types'
 import type { NodeLocation } from '../types'
+import { analyzeProjectPageValueScopes } from '../../value-scope'
 import { invalid } from '../errors'
 import { nodeRelation } from './changes'
 
@@ -68,23 +69,21 @@ export function flowTargetChanges(
   return [...nodeIds].map(nodeId => ({ kind: 'content', pageId, nodeId }))
 }
 
-export function assertInsertedFieldNamesUnique(
-  graph: PageGraph,
-  subgraph: NodeSubgraph,
-  pageId: PageId,
-): void {
-  const existingFields = new Set(
-    Object.values(graph.nodesById)
-      .filter(node => node.kind === 'field')
-      .map(node => node.field),
+export function assertPageValueKeysUnique(graph: PageGraph, pageId: PageId): void {
+  const issue = analyzeProjectPageValueScopes(graph).issues[0]
+  if (!issue)
+    return
+  const nodeId = issue.path[0] === 'nodesById' && typeof issue.path[1] === 'string'
+    ? issue.path[1]
+    : undefined
+  const duplicate = issue.message.startsWith('Field name must be unique:')
+    || issue.message.startsWith('Duplicate value key in the same scope:')
+  invalid(
+    duplicate ? 'PROJECT_FIELD_DUPLICATE' : 'PROJECT_VALUE_SCOPE_INVALID',
+    issue.message,
+    pageId,
+    nodeId,
   )
-  for (const node of Object.values(subgraph.nodesById)) {
-    if (node.kind !== 'field')
-      continue
-    if (existingFields.has(node.field))
-      invalid('PROJECT_FIELD_DUPLICATE', `Field name must be unique: ${node.field}`, pageId, node.id)
-    existingFields.add(node.field)
-  }
 }
 
 export function findNodeLocation(graph: PageGraph, nodeId: NodeId): NodeLocation | undefined {

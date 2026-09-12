@@ -1,6 +1,7 @@
 import type {
   ConfigFormFlowActionRegistry,
   ConfigFormFlowDiagnostic,
+  ConfigFormFlowEvent,
   ConfigFormFlowExecutionPlan,
   ConfigFormFlowTraceEvent,
   ConfigFormFlowTrigger,
@@ -16,11 +17,11 @@ export interface PageFlowEngineSyncInput {
 }
 
 export interface PageFlowEngineDispatchInput {
+  event?: ConfigFormFlowEvent
   isCurrent?: () => boolean
   revision: number
   signal?: AbortSignal
   trigger: ConfigFormFlowTrigger
-  values: Record<string, unknown>
 }
 
 export interface PageFlowEngineOptions {
@@ -34,6 +35,8 @@ export interface PageFlowEngineOptions {
 export interface WorkbenchFlowActionHooks {
   onConfirm?: (input: ConfigFormFlowUiConfirmInput) => boolean | Promise<boolean>
   onNotify?: (message: string) => void
+  onRequest?: typeof globalThis.fetch
+  onOpenUrl?: (url: string, target: '_blank' | '_self') => void
 }
 
 export interface WorkbenchPageFlowEngineOptions extends Omit<PageFlowEngineOptions, 'actions'>, WorkbenchFlowActionHooks {}

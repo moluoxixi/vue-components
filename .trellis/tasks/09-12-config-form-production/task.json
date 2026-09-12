@@ -1,0 +1,29 @@
+{
+  "id": "config-form-production",
+  "name": "config-form-production",
+  "title": "完善 ConfigForm 核心业务表单生产能力",
+  "description": "依据已批准合同实测成熟表单产品，重写事件编排并完善双组件库业务表单闭环",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "config-form",
+  "package": "config-form",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-09-12",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-12-config-form-product-research",
+    "09-12-config-form-event-product"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

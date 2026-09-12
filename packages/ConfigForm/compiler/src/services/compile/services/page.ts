@@ -18,6 +18,7 @@ import type {
   SemanticCompilerDiagnostic,
 } from '../../../types'
 import type { CompilePageContext, PreparedCompilerContext } from '../types'
+import { deriveProjectPageValueSchema } from '@moluoxixi/config-form-model'
 import { CANONICAL_PROJECT_IR_VERSION, CONFIG_FORM_COMPILER_VERSION } from '../../../constants'
 import { clone, deepFreeze, semanticHash } from '../../../utils'
 import { validateRegistryLock } from '../validation'
@@ -61,8 +62,11 @@ function createPageCompilation(
   projectId: string,
   compiledPage: CanonicalPageIR,
   context: PreparedCompilerContext,
+  previous?: PageCompilation,
 ): PageCompilation {
-  const registryUsage = collectPageRegistryUsage(compiledPage, context.contracts)
+  const registryUsage = previous?.page.nodesById === compiledPage.nodesById
+    ? previous.registryUsage
+    : collectPageRegistryUsage(compiledPage, context.contracts)
   const key = deepFreeze({
     irVersion: CANONICAL_PROJECT_IR_VERSION,
     projectId,
@@ -91,6 +95,9 @@ function pageSemanticHash(page: CanonicalPageIR): string {
     form: page.form,
     roots: page.rootIds.map(nodeId => [nodeId, page.nodesById[nodeId]?.subtreeHash]),
     flows: page.flows,
+    runtime: page.runtime,
+    valueScopes: page.valueScopes,
+    scopedFields: page.scopedFields,
   })
 }
 
@@ -142,6 +149,7 @@ export function compilePageIR(
   const pageId = page.id
   const flows = compileFlows(page.flows ?? [], pageId, diagnostics, graph, registry)
   const flowEvents = collectFlowEvents(flows)
+  const valueSchema = deriveProjectPageValueSchema(graph)
   const nodesById: Record<NodeId, CanonicalNodeIR> = Object.create(null)
   const context: CompilePageContext = { pageId, graph, registry, diagnostics, nodesById, flowEvents }
   graph.root.forEach(item => compileNode(context, item.nodeId, {
@@ -160,6 +168,9 @@ export function compilePageIR(
     rootIds: graph.root.map(item => item.nodeId),
     nodesById,
     flows,
+    valueScopes: valueSchema.valueScopes,
+    scopedFields: valueSchema.scopedFields,
+    ...(page.runtime === undefined ? {} : { runtime: clone(page.runtime) }),
   }
 }
 
@@ -188,7 +199,7 @@ export function compileIncrementalPreparedPage(
     return { success: false, diagnostics }
   return {
     success: true,
-    compilation: createPageCompilation(snapshot, project.id, compiledPage, context),
+    compilation: createPageCompilation(snapshot, project.id, compiledPage, context, previous),
     diagnostics: [],
   }
 }
@@ -202,10 +213,13 @@ function compileIncrementalPageIR(
 ): CanonicalPageIR | undefined {
   const flows = compileFlows(page.flows ?? [], page.id, diagnostics, page.graph, registry)
   const flowEvents = collectFlowEvents(flows)
-  const nodesById = Object.assign(Object.create(null) as Record<NodeId, CanonicalNodeIR>, previous.nodesById)
-  const changesByNode = new Map(changes.map(change => [change.nodeId, change]))
+  const canonicalChanges = changes.filter(affectsCanonicalNodes)
+  const nodesById: Record<NodeId, CanonicalNodeIR> = canonicalChanges.length === 0
+    ? previous.nodesById as unknown as Record<NodeId, CanonicalNodeIR>
+    : Object.assign(Object.create(null) as Record<NodeId, CanonicalNodeIR>, previous.nodesById)
+  const changesByNode = new Map(canonicalChanges.map(change => [change.nodeId, change]))
 
-  for (const change of changes) {
+  for (const change of canonicalChanges) {
     if (change.kind === 'remove' || !page.graph.nodesById[change.nodeId])
       delete nodesById[change.nodeId]
   }
@@ -220,7 +234,7 @@ function compileIncrementalPageIR(
     return placement ? { parentId: placement.parentId, slot: placement.slot } : undefined
   }
   const affected = new Set<NodeId>()
-  for (const change of changes) {
+  for (const change of canonicalChanges) {
     if (change.kind === 'remove' || !page.graph.nodesById[change.nodeId])
       continue
     let current: NodeId | null = change.nodeId
@@ -275,6 +289,7 @@ function compileIncrementalPageIR(
   }
   if (diagnostics.length > 0)
     return undefined
+  const valueSchema = incrementalValueSchema(page, previous, changes)
   return {
     id: page.id,
     name: page.name,
@@ -284,5 +299,46 @@ function compileIncrementalPageIR(
     rootIds: page.graph.root.map(item => item.nodeId),
     nodesById,
     flows,
+    valueScopes: valueSchema.valueScopes,
+    scopedFields: valueSchema.scopedFields,
+    ...(page.runtime === undefined ? {} : { runtime: clone(page.runtime) }),
+  }
+}
+
+function affectsCanonicalNodes(change: ProjectNodeChange): boolean {
+  if (change.kind !== 'move' || !change.before || !change.after)
+    return true
+  return change.before.parentId !== change.after.parentId
+    || change.before.slot !== change.after.slot
+}
+
+function incrementalValueSchema(
+  page: ProjectPage,
+  previous: PageCompilation['page'],
+  changes: readonly ProjectNodeChange[],
+): Pick<CanonicalPageIR, 'scopedFields' | 'valueScopes'> {
+  const changed = changes.some((change) => {
+    if (change.kind === 'move')
+      return previous.valueScopes.length > 0
+    // Mixed structural/content edits can reorder siblings without changing their relation.
+    if (change.before && change.after)
+      return true
+    if (change.kind !== 'content')
+      return true
+    const source = page.graph.nodesById[change.nodeId]
+    const compiled = previous.nodesById[change.nodeId]
+    if (!source || !compiled || source.kind !== compiled.kind)
+      return true
+    return source.kind === 'field' && compiled.kind === 'field'
+      ? semanticHash([source.field, source.defaultValue]) !== semanticHash([compiled.field, compiled.defaultValue])
+      : source.kind === 'layout' && compiled.kind === 'layout'
+        ? semanticHash(source.valueScope ?? null) !== semanticHash(compiled.valueScope ?? null)
+        : true
+  })
+  if (changed)
+    return deriveProjectPageValueSchema(page.graph)
+  return {
+    scopedFields: previous.scopedFields as unknown as CanonicalPageIR['scopedFields'],
+    valueScopes: previous.valueScopes as unknown as CanonicalPageIR['valueScopes'],
   }
 }

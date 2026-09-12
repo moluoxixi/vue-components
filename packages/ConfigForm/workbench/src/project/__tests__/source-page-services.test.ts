@@ -1,12 +1,20 @@
+// @vitest-environment happy-dom
 import type { CanonicalSourceLibraryBinding } from '../export/types'
 import type {
   StandaloneSourceComponentDefinition,
   StandaloneSourceNode,
   StandaloneSourceRegistry,
 } from '../export/types/source'
+import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { collectSourceActionBindings } from '../export/services/source-action-bindings'
+import { createStandaloneFlowRuntimeSource } from '../export/services/source-flow'
 import { collectSourceLibraries } from '../export/services/source-libraries'
+import { appSource, standalonePageRuntimeSource } from '../export/services/source-page'
 import { assertPortableNode } from '../export/services/source-portability'
+import { createStandaloneValidationRuntimeSource } from '../export/services/source-validation'
+import { createGeneratedModuleLoader } from './generated-runtime-module'
 
 const baseLibrary: CanonicalSourceLibraryBinding = {
   packageName: 'provider-ui',
@@ -173,5 +181,75 @@ describe('standalone source libraries', () => {
 
     expect(() => collectSourceLibraries([layout], sourceRegistry))
       .toThrow('Source library "provider-ui" has conflicting plugin bindings.')
+  })
+})
+
+describe('standalone source configuration text', () => {
+  it.each([
+    '{{ ({}).constructor.constructor("globalThis.__sourceTemplateExecuted = true")() }}',
+    '</script><img src=x onerror="globalThis.__sourceTemplateExecuted = true">',
+    '{{ 7 * 6 }} & <tag> "quotes" \\ \u2028 \u2029',
+  ])('renders configuration as literal text after real SFC compilation: %s', async (text) => {
+    const sourceRegistry = registry({
+      'provider.input': {
+        ...definition(null),
+        binding: { ...definition(null).binding, tag: 'input', valueProp: 'value' },
+      },
+      'provider.section': {
+        ...definition(null),
+        binding: { ...definition(null).binding, component: 'provider.section', tag: 'section', render: 'section' },
+      },
+    })
+    const root: StandaloneSourceNode[] = [{
+      id: 'section',
+      kind: 'layout',
+      component: 'provider.section',
+      props: { title: text },
+      events: {},
+      flowEvents: [],
+      bindings: {},
+      placement: {},
+      slots: { default: [field({ label: text, defaultValue: text, props: { placeholder: text }, validateOn: ['submit'] })] },
+    }]
+    const load = await createGeneratedModuleLoader({
+      ...Object.fromEntries(Object.entries(getConfigFormRuntimeSources()).map(([path, source]) => [`src/runtime/${path}`, source])),
+      'src/runtime/source-page.ts': standalonePageRuntimeSource(),
+      'src/pages/home/flows.ts': createStandaloneFlowRuntimeSource([]),
+      'src/pages/home/validation.ts': createStandaloneValidationRuntimeSource(root),
+      'src/actions/index.ts': collectSourceActionBindings([], {
+        adapter: 'test',
+        adapterVersion: '1',
+        registryFingerprint: 'test',
+        resolveBinding: () => undefined,
+      }).module,
+      'src/pages/home/Page.vue': appSource({
+        id: 'home',
+        name: text,
+        route: '/',
+        root,
+        form: {},
+        flowPlans: [],
+        runtime: { variables: [], dataSources: [] },
+        scopedFields: [{ nodeId: 'name', field: 'name', defaultValue: text }],
+        valueScopes: [],
+        optionBindings: [],
+      }, sourceRegistry),
+    })
+    const marker = globalThis as typeof globalThis & { __sourceTemplateExecuted?: boolean }
+    marker.__sourceTemplateExecuted = false
+    const wrapper = mount(load('src/pages/home/Page.vue').default)
+    try {
+      expect(wrapper.get('h1').element.textContent).toBe(text)
+      expect(wrapper.get('h2').element.textContent).toBe(text)
+      expect(wrapper.get('label').element.textContent).toBe(text)
+      expect(wrapper.get('input').attributes('placeholder')).toBe(text)
+      expect((wrapper.get('input').element as HTMLInputElement).value).toBe(text)
+      expect(wrapper.find('img').exists()).toBe(false)
+      expect(marker.__sourceTemplateExecuted).toBe(false)
+    }
+    finally {
+      wrapper.unmount()
+      delete marker.__sourceTemplateExecuted
+    }
   })
 })

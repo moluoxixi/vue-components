@@ -1,3 +1,4 @@
+import type { ConfigFormDataSourceHost, ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormCondition,
   ConfigFormModelAdapter,
@@ -6,6 +7,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
+import type { ConfigFormPageRuntimePlan } from '../../runtime'
 import type {
   ConfigFormComponentRegistry,
   ConfigFormControlBindingResolver,
@@ -23,6 +25,10 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   /** read() must access Vue reactive state; write() must commit synchronously. */
   model: ConfigFormModelAdapter<TValues>
   fields: ConfigFormRendererNode<TValues>[]
+  /** Complete compiled page execution data; raw authoring flows are not accepted here. */
+  plan?: ConfigFormPageRuntimePlan
+  flowActions?: ConfigFormFlowActionRegistry
+  dataSourceHost?: ConfigFormDataSourceHost
   components?: ConfigFormComponentRegistry
   defaultValues?: Partial<TValues>
   readonly?: ConfigFormCondition<TValues>

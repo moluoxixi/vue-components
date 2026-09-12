@@ -154,6 +154,68 @@ describe('createConfigFormController', () => {
     expect(onMetaChange).toHaveBeenLastCalledWith(expect.objectContaining({ dirty: false, touched: false }))
   })
 
+  it('tracks model-only fields without a declared field tree', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    const onMetaChange = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      model: { read: () => model, write: values => model = values },
+      onMetaChange,
+    })
+
+    controller.setValue('name', 'Grace')
+    controller.setValues({ age: 20 })
+    controller.setTouched('name')
+    expect(controller.getFieldMeta('name')).toEqual({ dirty: true, touched: true })
+    expect(controller.getMeta()).toEqual({
+      dirty: true,
+      fields: {
+        age: { dirty: true, touched: false },
+        name: { dirty: true, touched: true },
+      },
+      touched: true,
+    })
+    expect(onMetaChange).toHaveBeenLastCalledWith(controller.getMeta())
+    controller.setTouched()
+    expect(controller.getFieldMeta('age')).toEqual({ dirty: true, touched: true })
+
+    await controller.resetFields('name')
+    expect(controller.getFieldMeta('name')).toEqual({ dirty: false, touched: false })
+    expect(controller.getFieldMeta('age')).toEqual({ dirty: true, touched: true })
+    await controller.resetFields()
+    expect(controller.getMeta()).toMatchObject({ dirty: false, touched: false })
+    expect(controller.getFieldMeta('age')).toEqual({ dirty: false, touched: false })
+  })
+
+  it('includes declared, current, reset and explicitly touched flat fields in meta', async () => {
+    interface PartialFields { name?: string, extra?: string, declared?: string }
+    let model: PartialFields = { name: 'Ada' }
+    const controller = createConfigFormController<PartialFields>({
+      fields: () => [{ component: 'input', field: 'declared', id: 'declared-node' }],
+      model: { read: () => model, write: values => model = values },
+    })
+    expect(controller.getMeta().fields).toEqual({
+      declared: { dirty: false, touched: false },
+      name: { dirty: false, touched: false },
+    })
+
+    controller.setValues({ extra: undefined }, true)
+    controller.setTouched('missing')
+    expect(controller.getMeta().fields).toEqual({
+      declared: { dirty: false, touched: false },
+      extra: { dirty: true, touched: false },
+      missing: { dirty: false, touched: true },
+      name: { dirty: true, touched: false },
+    })
+    const snapshot = controller.getMeta()
+    snapshot.fields.name.dirty = false
+    expect(controller.getFieldMeta('name').dirty).toBe(true)
+    await controller.resetFields()
+    expect(controller.getMeta().fields).toEqual({
+      declared: { dirty: false, touched: false },
+      name: { dirty: false, touched: false },
+    })
+  })
+
   it('stores __proto__ as a regular own field', () => {
     let model: ConfigFormPrototypeField = { name: 'Ada' }
     const controller = createConfigFormController<ConfigFormPrototypeField>({
