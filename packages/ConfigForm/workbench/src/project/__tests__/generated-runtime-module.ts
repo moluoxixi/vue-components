@@ -2,6 +2,7 @@ import { posix } from 'node:path'
 import { runInThisContext } from 'node:vm'
 import * as Lucide from '@lucide/vue'
 import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
+import * as ConfigFormVueBackend from '@moluoxixi/config-form-vue-backend'
 import * as Rules from '@moluoxixi/zod3-to-rule'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { transformWithEsbuild } from 'vite'
@@ -30,7 +31,13 @@ export async function createGeneratedModuleLoader(inputs: Readonly<Record<string
       const result = await transformWithEsbuild(source, path, { loader: 'ts', format: 'cjs', target: 'es2022' })
       return [path, result.code] as const
     })))
-  const externals: Record<string, unknown> = { 'vue': Vue, 'zod': Zod, '@lucide/vue': Lucide, '@moluoxixi/zod3-to-rule': Rules }
+  const externals: Record<string, unknown> = {
+    'vue': Vue,
+    'zod': Zod,
+    '@lucide/vue': Lucide,
+    '@moluoxixi/config-form-vue-backend': ConfigFormVueBackend,
+    '@moluoxixi/zod3-to-rule': Rules,
+  }
   const cache = new Map<string, { exports: Record<string, any> }>()
   function load(path: string): Record<string, any> {
     const existing = cache.get(path)

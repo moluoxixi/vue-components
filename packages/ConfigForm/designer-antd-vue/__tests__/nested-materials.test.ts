@@ -1,5 +1,5 @@
 import type { LayoutNode, PageGraph, ProjectDocument } from '@moluoxixi/config-form-model'
-import { createNodePathCommand, useDesignerController } from '@moluoxixi/config-form-designer'
+import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, useDesignerController } from '@moluoxixi/config-form-designer'
 import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { effectScope, shallowRef } from 'vue'
@@ -10,15 +10,25 @@ function fixture() {
   const contracts = createComponentContractRegistry(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.contracts, { adapter: 'antd', version: '1' })
   const graph = shallowRef<PageGraph>({ version: 2, props: {}, form: {}, root: [], nodesById: {} })
   const document: ProjectDocument = {
-    version: PROJECT_DOCUMENT_VERSION, id: 'nested', name: 'Nested', homePageId: 'home', pageOrder: ['home'],
+    version: PROJECT_DOCUMENT_VERSION,
+    id: 'nested',
+    name: 'Nested',
+    homePageId: 'home',
+    pageOrder: ['home'],
     pagesById: { home: { id: 'home', name: 'Home', route: '/', graph: graph.value } },
-    registryLock: structuredClone(contracts.lock), settings: {}, resources: {},
+    registryLock: structuredClone(contracts.lock),
+    settings: {},
+    resources: {},
   }
   const engine = createProjectDomainEngine({ document, registry: contracts })
   const scope = effectScope()
   const controller = scope.run(() => useDesignerController({
-    graph: () => graph.value, registry: () => registry, pageId: () => 'home', readonly: () => false,
-    onDiagnostics: vi.fn(), onSelectionChange: vi.fn(),
+    graph: () => graph.value,
+    registry: () => registry,
+    pageId: () => 'home',
+    readonly: () => false,
+    onDiagnostics: vi.fn(),
+    onSelectionChange: vi.fn(),
     execute(command) {
       const result = engine.execute(JSON.parse(JSON.stringify(command)))
       graph.value = JSON.parse(JSON.stringify(engine.snapshot.document.pagesById.home!.graph)) as PageGraph
@@ -53,7 +63,8 @@ describe('antd nested materials', () => {
       const copy = controller.selectedNode.value as LayoutNode
       expect(copy.valueScope?.field).toBe('object_copy')
       expect(copy.slots.default!.map(item => graph.value.nodesById[item.nodeId])).toEqual(expect.arrayContaining([
-        expect.objectContaining({ field: 'input' }), expect.objectContaining({ valueScope: expect.objectContaining({ field: 'items' }) }),
+        expect.objectContaining({ field: 'input' }),
+        expect.objectContaining({ valueScope: expect.objectContaining({ field: 'items' }) }),
       ]))
       controller.select(first)
       expect(controller.performNodeAction('copyToClipboard', first)).toBe(true)
@@ -69,7 +80,10 @@ describe('antd nested materials', () => {
       const id = add('detail-table')
       const values: Record<string, unknown> = { title: 'Invoice lines', scopeField: 'order.details', itemKey: 'order.id', minItems: 1, maxItems: 5, arrayDisplay: 'list', readonly: true, disabled: true }
       for (const setter of registry.getMaterial('antd.detail-table')!.setters) {
-        expect(registry.propertyControls[setter.control as 'text']).toBeDefined()
+        expect(
+          registry.propertyControls[setter.control as 'text']
+          ?? DEFAULT_DESIGNER_PROPERTY_CONTROLS[setter.control as 'text'],
+        ).toBeDefined()
         expect(controller.dispatch(createNodePathCommand(graph.value, 'home', [id], setter.path, values[setter.key]))).toBe(true)
         engine.sealHistoryGroup()
       }

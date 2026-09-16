@@ -1,32 +1,10 @@
 import type {
-  ConfigFormDataSourceState,
   ConfigFormFlowAction,
-  ConfigFormFlowActionContext,
   ConfigFormFlowActionDescriptor,
   ConfigFormJsonValue,
   ConfigFormValueReferenceScope,
 } from '@moluoxixi/config-form-core'
-import type { ConfigFormPageRuntimeLoadOptions } from '../../runtime'
-
-export type ConfigFormRendererBuiltinActionRef
-  = | 'builtin.field.set'
-    | 'builtin.variable.set'
-    | 'builtin.field.state'
-    | 'builtin.form.validate'
-    | 'builtin.form.submit'
-    | 'builtin.form.reset'
-    | 'builtin.dataSource.load'
-
-export interface RendererBuiltinActionHost {
-  validate: (context: ConfigFormFlowActionContext) => Promise<boolean>
-  submit: (context: ConfigFormFlowActionContext) => Promise<boolean>
-  reset: (context: ConfigFormFlowActionContext) => Promise<boolean>
-  loadDataSource: (
-    sourceId: string,
-    options: ConfigFormPageRuntimeLoadOptions,
-    context: ConfigFormFlowActionContext,
-  ) => Promise<ConfigFormDataSourceState>
-}
+import type { ConfigFormRendererBuiltinActionRef, RendererBuiltinActionHost } from '../types/runtime-actions'
 
 const SCOPE_OPTIONS = ['current', 'parent', 'root'].map(value => ({ title: value, value }))
 

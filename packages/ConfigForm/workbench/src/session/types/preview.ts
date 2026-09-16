@@ -4,7 +4,6 @@ import type {
   ConfigFormFlowDiagnostic,
   ConfigFormFlowTraceEvent,
   ConfigFormReactionProjection,
-  ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type { PageGraph } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
@@ -19,24 +18,10 @@ import type {
   RuntimeHostRuntimeStatePayload,
   RuntimeHostSubmitResultPayload,
 } from '../../runtime-host'
+import type { PreviewFieldContracts } from '../../types'
 import type { PagePreviewProjection } from './projection'
 
-export interface PreviewScopeContract {
-  definition: ConfigFormValueScopeDefinition
-  signature: string
-}
-
-export interface PreviewFieldContract {
-  field: string
-  signature: string
-  scopes: readonly ConfigFormValueScopeDefinition[]
-  defaultValue?: unknown
-}
-
-export interface PreviewFieldContracts {
-  fields: Record<string, PreviewFieldContract>
-  scopes: readonly PreviewScopeContract[]
-}
+export type { PreviewFieldContract, PreviewFieldContracts, PreviewScopeContract } from '../../types'
 export type PreviewValidationState = Record<string, string[]>
 
 export interface LastReadyPreview {

@@ -59,6 +59,7 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
+    "element-plus": "^2.9.0",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
@@ -73,6 +74,7 @@
     "@moluoxixi/config-form": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
+    "element-plus": "catalog:ui",
     "happy-dom": "catalog:dev",
     "sass": "catalog:dev",
     "unplugin-dts": "catalog:dev",

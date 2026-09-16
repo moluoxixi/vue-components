@@ -23,9 +23,9 @@ import type {
   ConfigFormFieldValue,
   ConfigFormLifecycleInput,
   ConfigFormLifecycleKind,
+  ConfigFormValuePatch,
   ConfigFormValues,
   ConfigFormValueSchema,
-  ConfigFormValuePatch,
 } from '../types'
 import type {
   ControllerFieldState,
@@ -466,7 +466,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     projection = { ...projection, values: cloneControllerValue(next) }
     reactionProjection = projection
     optionsModelWrite(next)
-    validation.invalidate('scoped values committed')
+    // A commit that leaves the values unchanged (a flow transaction re-committing the
+    // touched roots, for example) must not invalidate work in flight: doing so silently
+    // discarded validation that had just produced issues. Comparing is only worth its
+    // cost while something is actually in flight; otherwise keep the plain invalidation.
+    if (!validation.getValidating() || !equalControllerValues(previousValues, next))
+      validation.invalidate('scoped values committed')
     reconcileInstanceState(false)
     if (commitOptions.clearInstanceKeys !== undefined)
       validation.clearErrors(commitOptions.clearInstanceKeys)
@@ -804,8 +809,9 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     const resolved = resolveControllerValueSchema(nodes, schema)
     const nextSchema = resolved ?? deriveControllerValueSchema(nodes)
     if (Boolean(resolved) === Boolean(scopeService)
-      && equalControllerValues({ schema: schemaSnapshot }, { schema: nextSchema }))
+      && equalControllerValues({ schema: schemaSnapshot }, { schema: nextSchema })) {
       return
+    }
 
     const previousValues = cloneControllerValue(options.model.read())
     const candidate = prepareControllerSchemaRefresh({
@@ -830,14 +836,13 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
     const currentKeys = new Set(instances.map(instance => instance.instanceKey))
     const unboundInstances: ConfigFormFieldInstance[] = !scopeService && !candidate.scopeService
-      ? Object.keys(errors).filter(key => !candidate.previousInstanceKeys.has(key) && !currentKeys.has(key))
-          .map(key => ({
-            address: { nodeId: key, scope: [] },
-            field: key,
-            instanceKey: key,
-            value: cloneControllerValue(projection.values[key]),
-            valuePath: [key],
-          }))
+      ? Object.keys(errors).filter(key => !candidate.previousInstanceKeys.has(key) && !currentKeys.has(key)).map(key => ({
+          address: { nodeId: key, scope: [] },
+          field: key,
+          instanceKey: key,
+          value: cloneControllerValue(projection.values[key]),
+          valuePath: [key],
+        }))
       : []
 
     scopeService = candidate.scopeService

@@ -244,7 +244,8 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
 
 async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
   const navigationTabs = page.locator('.designer-left-tabs [role="tab"]')
-  await expect(navigationTabs).toHaveCount(4)
+  // Five views: components, pages, layers, data and history (see StudioLeftView).
+  await expect(navigationTabs).toHaveCount(5)
   const navigationGeometry = await navigationTabs.evaluateAll(tabs => tabs.map((tab) => {
     const label = tab.querySelector('span')
     return {
@@ -677,8 +678,8 @@ for (const adapter of [
 }
 
 for (const adapter of [
-  { count: 17, id: 'element', name: 'Element' },
-  { count: 22, id: 'antd', name: 'Ant' },
+  { count: 20, id: 'element', name: 'Element' },
+  { count: 25, id: 'antd', name: 'Ant' },
 ] as const) {
   test(`renders every registered ${adapter.name} material as a dense icon and name row`, async ({ page }) => {
     await createProject(page, adapter.id)
@@ -887,7 +888,9 @@ test('edits Flow settings through Element Plus keyboard and numeric controls', a
 
   const settings = flowDialog.locator('.flow-event-settings')
   const flowName = settings.locator('[data-flow-control="name"]')
-  await expect(flowName).toHaveClass(/el-input/)
+  // ElInput forwards unknown attributes to its inner <input>, so the control marker sits on
+  // the wrapper; the Element Plus input it owns is what has to be present and visible.
+  await expect(flowName.locator('.el-input')).toHaveCount(1)
   await expect(flowName.locator('.el-input__wrapper')).toBeVisible()
   await flowName.getByRole('textbox').fill('Keyboard flow')
   const concurrency = settings.locator('label').filter({ hasText: 'Concurrency' })

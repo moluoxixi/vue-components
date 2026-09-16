@@ -26,9 +26,16 @@ import {
   updateConfigFormReactionProp,
   updateConfigFormReactionState,
 } from '@moluoxixi/config-form-core'
-import { computed } from 'vue'
-import { useDesignerLocale } from '../../../locale'
-import DesignerConditionSetter from './DesignerConditionSetter.vue'
+import {
+  ElInput,
+  ElInputNumber,
+  ElOption,
+  ElSelect,
+  ElSwitch,
+} from 'element-plus'
+import { computed, ref } from 'vue'
+import { useDesignerLocale } from '@designer/locale'
+import DesignerConditionSetter from '../DesignerConditionSetter/index.vue'
 
 type ReactionBranch = ConfigFormReactionBranch
 type LiteralKind = Exclude<ConfigFormReactionLiteralKind, 'complex'>
@@ -89,9 +96,9 @@ function setCondition(index: number, value: ConfigFormReaction['when'] | undefin
     replaceReaction(index, { ...reactions.value[index]!, when: value })
 }
 
-function toggleReaction(index: number): void {
+function setReactionEnabled(index: number, enabled: boolean): void {
   const reaction = reactions.value[index]!
-  replaceReaction(index, { ...reaction, enabled: reaction.enabled === false })
+  replaceReaction(index, { ...reaction, enabled })
 }
 
 function branchEffects(
@@ -267,8 +274,46 @@ function effectLabel(kind: ConfigFormReactionEffect['kind']): string {
   return labels[kind]
 }
 
-function inputValue(event: Event): string {
-  return (event.currentTarget as HTMLInputElement | HTMLSelectElement).value
+/**
+ * Reaction ids and prop names are used as `v-for` keys, so committing on every keystroke would
+ * remount the row and drop focus. Their inputs keep a local draft and only commit on change.
+ */
+const keyDrafts = ref<Record<string, string>>({})
+
+function keyDraft(key: string, current: string): string {
+  return keyDrafts.value[key] ?? current
+}
+
+function updateKeyDraft(key: string, value: string): void {
+  keyDrafts.value = { ...keyDrafts.value, [key]: value }
+}
+
+function clearKeyDraft(key: string): void {
+  const next = { ...keyDrafts.value }
+  delete next[key]
+  keyDrafts.value = next
+}
+
+function commitReactionId(index: number, draftKey: string): void {
+  const draft = keyDrafts.value[draftKey]
+  if (draft === undefined)
+    return
+  clearKeyDraft(draftKey)
+  setReactionId(index, draft)
+}
+
+function commitPropName(
+  reactionIndex: number,
+  branch: ReactionBranch,
+  effectIndex: number,
+  current: string,
+  draftKey: string,
+): void {
+  const draft = keyDrafts.value[draftKey]
+  if (draft === undefined)
+    return
+  clearKeyDraft(draftKey)
+  renameProp(reactionIndex, branch, effectIndex, current, draft)
 }
 </script>
 
@@ -276,10 +321,20 @@ function inputValue(event: Event): string {
   <div class="mx-config-form-designer__reaction-editor">
     <article v-for="(reaction, reactionIndex) in reactions" :key="reaction.id" class="mx-config-form-designer__reaction-row">
       <header class="mx-config-form-designer__collection-row-heading">
-        <input :value="reaction.id" :aria-label="locale.t('reaction.id', 'Reaction id')" :disabled="disabled" @change="setReactionId(reactionIndex, inputValue($event))">
-        <button type="button" class="mx-config-form-designer__mini-button" role="switch" :aria-checked="reaction.enabled !== false" :title="locale.t('reaction.enabled', 'Enabled')" :disabled="disabled" @click="toggleReaction(reactionIndex)">
-          {{ reaction.enabled === false ? locale.t('switch.off', 'Off') : locale.t('switch.on', 'On') }}
-        </button>
+        <ElInput
+          :model-value="keyDraft(`reaction-${reactionIndex}`, reaction.id)"
+          :aria-label="locale.t('reaction.id', 'Reaction id')"
+          :disabled="disabled"
+          @update:model-value="updateKeyDraft(`reaction-${reactionIndex}`, $event)"
+          @change="commitReactionId(reactionIndex, `reaction-${reactionIndex}`)"
+        />
+        <ElSwitch
+          :model-value="reaction.enabled !== false"
+          :title="locale.t('reaction.enabled', 'Enabled')"
+          :aria-label="locale.t('reaction.enabled', 'Enabled')"
+          :disabled="disabled"
+          @change="setReactionEnabled(reactionIndex, $event === true)"
+        />
         <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('reaction.remove', 'Remove reaction')" :disabled="disabled" @click="removeReaction(reactionIndex)">
           <Trash2 :size="14" aria-hidden="true" />
         </button>
@@ -291,40 +346,39 @@ function inputValue(event: Event): string {
         <strong>{{ branch === 'then' ? locale.t('reaction.then', 'Then') : locale.t('reaction.else', 'Else') }}</strong>
         <div v-for="(effect, effectIndex) in branchEffects(reaction, branch)" :key="effectIndex" class="mx-config-form-designer__reaction-effect">
           <div class="mx-config-form-designer__reaction-effect-heading">
-            <select :value="effect.kind" :aria-label="locale.t('reaction.effect', 'Effect')" :disabled="disabled" @change="changeEffectKind(reactionIndex, branch, effectIndex, inputValue($event) as ConfigFormReactionEffect['kind'])">
-              <option v-for="kind in effectKinds" :key="kind" :value="kind">{{ effectLabel(kind) }}</option>
-            </select>
-            <select :value="effect.target" :aria-label="locale.t('reaction.target', 'Target field')" :disabled="disabled" @change="changeTarget(reactionIndex, branch, effectIndex, inputValue($event))">
-              <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
-            </select>
+            <ElSelect :model-value="effect.kind" :aria-label="locale.t('reaction.effect', 'Effect')" :disabled="disabled" @update:model-value="changeEffectKind(reactionIndex, branch, effectIndex, $event as ConfigFormReactionEffect['kind'])">
+              <ElOption v-for="kind in effectKinds" :key="kind" :value="kind" :label="effectLabel(kind)" />
+            </ElSelect>
+            <ElSelect :model-value="effect.target" :aria-label="locale.t('reaction.target', 'Target field')" :disabled="disabled" @update:model-value="changeTarget(reactionIndex, branch, effectIndex, String($event))">
+              <ElOption v-for="field in fieldOptions" :key="field" :value="field" :label="field" />
+            </ElSelect>
             <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('reaction.removeEffect', 'Remove effect')" :disabled="disabled" @click="removeEffect(reactionIndex, branch, effectIndex)">
               <Trash2 :size="13" aria-hidden="true" />
             </button>
           </div>
 
           <div v-if="effect.kind === 'setValue'" class="mx-config-form-designer__reaction-operand">
-            <select :value="effect.value.kind" :aria-label="locale.t('reaction.valueSource', 'Value source')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, changeOperandSource(effect.value, inputValue($event) as 'field' | 'literal'))">
-              <option value="literal">{{ locale.t('reaction.literal', 'Literal') }}</option>
-              <option value="field">{{ locale.t('reaction.fieldValue', 'Field value') }}</option>
-              <option v-if="effect.value.kind === 'expression'" value="expression" disabled>
-                {{ locale.t('reaction.expression', 'Expression') }}
-              </option>
-            </select>
-            <select v-if="effect.value.kind === 'field'" :value="effect.value.field" :aria-label="locale.t('reaction.sourceField', 'Source field')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, inputValue($event)))">
-              <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
-            </select>
+            <ElSelect :model-value="effect.value.kind" :aria-label="locale.t('reaction.valueSource', 'Value source')" :disabled="disabled" @update:model-value="updateSetValueOperand(reactionIndex, branch, effectIndex, changeOperandSource(effect.value, $event as 'field' | 'literal'))">
+              <ElOption value="literal" :label="locale.t('reaction.literal', 'Literal')" />
+              <ElOption value="field" :label="locale.t('reaction.fieldValue', 'Field value')" />
+              <ElOption v-if="effect.value.kind === 'expression'" value="expression" disabled :label="locale.t('reaction.expression', 'Expression')" />
+            </ElSelect>
+            <ElSelect v-if="effect.value.kind === 'field'" :model-value="effect.value.field" :aria-label="locale.t('reaction.sourceField', 'Source field')" :disabled="disabled" @update:model-value="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, String($event)))">
+              <ElOption v-for="field in fieldOptions" :key="field" :value="field" :label="field" />
+            </ElSelect>
             <template v-else-if="effect.value.kind === 'literal'">
               <template v-if="literalKind(effect.value) !== 'complex'">
-                <select :value="literalKind(effect.value)" :aria-label="locale.t('reaction.literalType', 'Literal type')" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, changeLiteralKind(inputValue($event) as LiteralKind))">
-                  <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-                  <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-                  <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-                </select>
-                <select v-if="literalKind(effect.value) === 'boolean'" :value="String(effect.value.value)" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, inputValue($event) === 'true'))">
-                  <option value="true">{{ locale.t('value.true', 'True') }}</option>
-                  <option value="false">{{ locale.t('value.false', 'False') }}</option>
-                </select>
-                <input v-else :value="effect.value.value" :type="literalKind(effect.value) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, literalKind(effect.value) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+                <ElSelect :model-value="literalKind(effect.value)" :aria-label="locale.t('reaction.literalType', 'Literal type')" :disabled="disabled" @update:model-value="updateSetValueOperand(reactionIndex, branch, effectIndex, changeLiteralKind($event as LiteralKind))">
+                  <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
+                  <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
+                  <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
+                </ElSelect>
+                <ElSelect v-if="literalKind(effect.value) === 'boolean'" :model-value="String(effect.value.value)" :disabled="disabled" @update:model-value="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, $event === 'true'))">
+                  <ElOption value="true" :label="locale.t('value.true', 'True')" />
+                  <ElOption value="false" :label="locale.t('value.false', 'False')" />
+                </ElSelect>
+                <ElInputNumber v-else-if="literalKind(effect.value) === 'number'" :model-value="typeof effect.value.value === 'number' ? effect.value.value : 0" :disabled="disabled" controls-position="right" @change="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, $event ?? 0))" />
+                <ElInput v-else :model-value="typeof effect.value.value === 'string' ? effect.value.value : ''" :disabled="disabled" @update:model-value="updateSetValueOperand(reactionIndex, branch, effectIndex, updateOperandValue(effect.value, $event))" />
               </template>
               <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
             </template>
@@ -334,39 +388,44 @@ function inputValue(event: Event): string {
           <div v-else-if="effect.kind === 'setState'" class="mx-config-form-designer__reaction-states">
             <label v-for="key in stateKeys" :key="key">
               <span>{{ locale.t(`condition.target.${key}`, key) }}</span>
-              <select :value="stateValue(effect, key)" :disabled="disabled" @change="setStateValue(reactionIndex, branch, effectIndex, key, inputValue($event) as 'off' | 'true' | 'false')">
-                <option value="off">{{ locale.t('condition.off', 'Off') }}</option>
-                <option value="true">{{ locale.t('value.true', 'True') }}</option>
-                <option value="false">{{ locale.t('value.false', 'False') }}</option>
-              </select>
+              <ElSelect :model-value="stateValue(effect, key)" :disabled="disabled" @update:model-value="setStateValue(reactionIndex, branch, effectIndex, key, $event as 'off' | 'true' | 'false')">
+                <ElOption value="off" :label="locale.t('condition.off', 'Off')" />
+                <ElOption value="true" :label="locale.t('value.true', 'True')" />
+                <ElOption value="false" :label="locale.t('value.false', 'False')" />
+              </ElSelect>
             </label>
           </div>
 
           <div v-else-if="effect.kind === 'setProps'" class="mx-config-form-designer__reaction-props">
             <div v-for="(operand, key) in effect.props" :key="key" class="mx-config-form-designer__reaction-prop">
-              <input :value="key" :aria-label="locale.t('reaction.propName', 'Prop name')" :disabled="disabled" @change="renameProp(reactionIndex, branch, effectIndex, key, inputValue($event))">
-              <select :value="operand.kind" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, changeOperandSource(operand, inputValue($event) as 'field' | 'literal'))">
-                <option value="literal">{{ locale.t('reaction.literal', 'Literal') }}</option>
-                <option value="field">{{ locale.t('reaction.fieldValue', 'Field value') }}</option>
-                <option v-if="operand.kind === 'expression'" value="expression" disabled>
-                  {{ locale.t('reaction.expression', 'Expression') }}
-                </option>
-              </select>
-              <select v-if="operand.kind === 'field'" :value="operand.field" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, inputValue($event)))">
-                <option v-for="field in fieldOptions" :key="field" :value="field">{{ field }}</option>
-              </select>
+              <ElInput
+                :model-value="keyDraft(`prop-${reactionIndex}-${branch}-${effectIndex}-${key}`, key)"
+                :aria-label="locale.t('reaction.propName', 'Prop name')"
+                :disabled="disabled"
+                @update:model-value="updateKeyDraft(`prop-${reactionIndex}-${branch}-${effectIndex}-${key}`, $event)"
+                @change="commitPropName(reactionIndex, branch, effectIndex, key, `prop-${reactionIndex}-${branch}-${effectIndex}-${key}`)"
+              />
+              <ElSelect :model-value="operand.kind" :disabled="disabled" @update:model-value="updatePropOperand(reactionIndex, branch, effectIndex, key, changeOperandSource(operand, $event as 'field' | 'literal'))">
+                <ElOption value="literal" :label="locale.t('reaction.literal', 'Literal')" />
+                <ElOption value="field" :label="locale.t('reaction.fieldValue', 'Field value')" />
+                <ElOption v-if="operand.kind === 'expression'" value="expression" disabled :label="locale.t('reaction.expression', 'Expression')" />
+              </ElSelect>
+              <ElSelect v-if="operand.kind === 'field'" :model-value="operand.field" :disabled="disabled" @update:model-value="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, String($event)))">
+                <ElOption v-for="field in fieldOptions" :key="field" :value="field" :label="field" />
+              </ElSelect>
               <template v-else-if="operand.kind === 'literal'">
                 <template v-if="literalKind(operand) !== 'complex'">
-                  <select :value="literalKind(operand)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, changeLiteralKind(inputValue($event) as LiteralKind))">
-                    <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-                    <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-                    <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-                  </select>
-                  <select v-if="literalKind(operand) === 'boolean'" :value="String(operand.value)" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, inputValue($event) === 'true'))">
-                    <option value="true">{{ locale.t('value.true', 'True') }}</option>
-                    <option value="false">{{ locale.t('value.false', 'False') }}</option>
-                  </select>
-                  <input v-else :value="operand.value" :type="literalKind(operand) === 'number' ? 'number' : 'text'" :disabled="disabled" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, literalKind(operand) === 'number' ? Number(inputValue($event)) : inputValue($event)))">
+                  <ElSelect :model-value="literalKind(operand)" :disabled="disabled" @update:model-value="updatePropOperand(reactionIndex, branch, effectIndex, key, changeLiteralKind($event as LiteralKind))">
+                    <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
+                    <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
+                    <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
+                  </ElSelect>
+                  <ElSelect v-if="literalKind(operand) === 'boolean'" :model-value="String(operand.value)" :disabled="disabled" @update:model-value="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, $event === 'true'))">
+                    <ElOption value="true" :label="locale.t('value.true', 'True')" />
+                    <ElOption value="false" :label="locale.t('value.false', 'False')" />
+                  </ElSelect>
+                  <ElInputNumber v-else-if="literalKind(operand) === 'number'" :model-value="typeof operand.value === 'number' ? operand.value : 0" :disabled="disabled" controls-position="right" @change="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, $event ?? 0))" />
+                  <ElInput v-else :model-value="typeof operand.value === 'string' ? operand.value : ''" :disabled="disabled" @update:model-value="updatePropOperand(reactionIndex, branch, effectIndex, key, updateOperandValue(operand, $event))" />
                 </template>
                 <output v-else>{{ locale.t('reaction.complexValue', 'Complex value preserved') }}</output>
               </template>

@@ -7,13 +7,14 @@ import type {
   DesignerPropertySetterDefinition,
   DesignerSetterControl,
   DesignerSimpleSetterControl,
-} from '../../../registry'
-import type { DesignerPropertyFormEntry } from '../types'
+} from '@designer/registry'
+import type { DesignerPropertyFormEntry } from '../../types'
 import type { Component } from 'vue'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { computed, markRaw, shallowRef, toRaw, watch } from 'vue'
-import { useDesignerLocale } from '../../../locale'
-import DesignerSetter from './DesignerSetter.vue'
+import { useDesignerLocale } from '@designer/locale'
+import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
+import DesignerSetter from '../DesignerSetter/index.vue'
 
 const props = defineProps<{
   entries: DesignerPropertyFormEntry[]
@@ -38,6 +39,12 @@ const formRenderer = computed(() => rawComponent(props.renderer))
 const simpleControls = new Set<DesignerSetterControl>(['text', 'textarea', 'number', 'boolean', 'select'])
 const propertySetterComponent = markRaw(DesignerSetter)
 
+/** Designer chrome is Element Plus; host-provided entries still win. */
+const controls = computed<DesignerPropertyControlRegistry>(() => ({
+  ...DEFAULT_DESIGNER_PROPERTY_CONTROLS,
+  ...props.controls,
+}))
+
 function rawComponent<T extends DesignerPropertyControlDefinition['component']>(component: T): T {
   return typeof component === 'object' && component !== null
     ? markRaw(toRaw(component)) as T
@@ -54,9 +61,9 @@ function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
 
 function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
   if (isSimpleControl(entry.setter.control))
-    return props.controls?.[entry.setter.control]
+    return controls.value[entry.setter.control]
   return entry.setter.control === 'defaultValue' && entry.setter.valueKind
-    ? props.controls?.defaultValue
+    ? controls.value.defaultValue
     : undefined
 }
 

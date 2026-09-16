@@ -1,16 +1,11 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { DesignerMaterialCapabilityRegistry, DesignerRegistry } from '@moluoxixi/config-form-designer'
 import type { LayoutNode, PageGraph, PageNode, ProjectDocument } from '@moluoxixi/config-form-model'
+import type { NestedMaterialProvider } from './types'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createComponentContractRegistry, createProjectSnapshot, createRegistryContractSnapshot, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
 
-export interface NestedMaterialProvider {
-  prefix: string
-  createRegistry: () => DesignerRegistry
-  capabilities: DesignerMaterialCapabilityRegistry
-  inputSelector: string
-}
+export type { NestedMaterialProvider } from './types'
 
 export function createNestedMaterialFixture(provider: NestedMaterialProvider, populated = true) {
   const registry = provider.createRegistry()
@@ -52,10 +47,15 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
     }
   }
   const document: ProjectDocument = {
-    version: PROJECT_DOCUMENT_VERSION, id: `${provider.prefix}-nested`, name: 'Nested materials',
-    homePageId: 'home', pageOrder: ['home'],
+    version: PROJECT_DOCUMENT_VERSION,
+    id: `${provider.prefix}-nested`,
+    name: 'Nested materials',
+    homePageId: 'home',
+    pageOrder: ['home'],
     pagesById: { home: { id: 'home', name: 'Home', route: '/', graph } },
-    registryLock: structuredClone(contracts.lock), settings: {}, resources: {},
+    registryLock: structuredClone(contracts.lock),
+    settings: {},
+    resources: {},
   }
   function compile() {
     const compiled = compileCanonicalProject({ snapshot: createProjectSnapshot(document, 0), registry: createRegistryContractSnapshot(contracts) })
@@ -70,17 +70,23 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
           return undefined
         const binding = entry.runtime.binding
         return {
-          component: binding.component, kind: entry.runtime.kind,
-          contractFingerprint: identity.fingerprint, contractVersion: identity.contractVersion,
-          valueProp: binding.valueProp, trigger: binding.trigger, blurTrigger: binding.blurTrigger,
-          ...(binding.readonlyRender ? {
-            readonlyRender: ({ node, componentProps, model, value }) => {
-              const source = graph.nodesById[node.id]!
-              if (source.kind !== 'field')
-                throw new Error(`Readonly field missing: ${node.id}`)
-              return binding.readonlyRender!({ node: source, componentProps, model, value })
-            },
-          } : {}),
+          component: binding.component,
+          kind: entry.runtime.kind,
+          contractFingerprint: identity.fingerprint,
+          contractVersion: identity.contractVersion,
+          valueProp: binding.valueProp,
+          trigger: binding.trigger,
+          blurTrigger: binding.blurTrigger,
+          ...(binding.readonlyRender
+            ? {
+                readonlyRender: ({ node, componentProps, model, value }) => {
+                  const source = graph.nodesById[node.id]!
+                  if (source.kind !== 'field')
+                    throw new Error(`Readonly field missing: ${node.id}`)
+                  return binding.readonlyRender!({ node: source, componentProps, model, value })
+                },
+              }
+            : {}),
         }
       },
     })
@@ -93,7 +99,8 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
 
 export function nestedMaterialValues(): ConfigFormValues {
   return {
-    buyer: { name: 'Buyer' }, seller: { name: 'Seller' },
+    buyer: { name: 'Buyer' },
+    seller: { name: 'Seller' },
     orders: [
       { sku: 'First', delivery: { city: 'London' }, lines: [{ name: 'First line' }] },
       { sku: 'Second', delivery: { city: 'Paris' }, lines: [{ name: 'Second line' }] },

@@ -4,7 +4,10 @@
     "composite": true,
     "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["vite/client", "vitest"]
+    "types": ["vite/client", "vitest"],
+    "paths": {
+      "@designer/*": ["./src/*"]
+    }
   },
   "include": ["src", "index.ts", "__tests__"],
   "exclude": ["vite.config.ts"]

@@ -1,10 +1,10 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormValueScopeDefinition } from '@moluoxixi/config-form-core'
 import type { PageGraph } from '@moluoxixi/config-form-model'
-import type { RuntimeHostFieldInstance, RuntimeHostRuntimeStatePayload } from '../../runtime-host/types/protocol'
-import type { PreviewFieldContracts } from '../types/preview'
+import type { RuntimeHostFieldInstance, RuntimeHostRuntimeStatePayload } from '../runtime-host/types/protocol'
+import type { PreviewFieldContracts } from '../types'
 import { deriveProjectPageValueSchema } from '@moluoxixi/config-form-model'
-import { cloneWorkbenchJson } from '../../utils'
+import { cloneWorkbenchJson } from '../utils'
 
 export function emptyPreviewContracts(): PreviewFieldContracts {
   return { fields: Object.create(null), scopes: [] }

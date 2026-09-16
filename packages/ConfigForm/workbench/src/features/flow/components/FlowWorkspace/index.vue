@@ -24,7 +24,7 @@ import {
   Workflow,
   Zap,
 } from '@lucide/vue'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { cloneWorkbenchJson as structuredClone } from '../../../../utils'
 import { useFlowWorkspace } from './composables'
 import {
@@ -138,6 +138,19 @@ function stepTypeLabel(step: ConfigFormFlowStep): string {
   return locale.value.t('flow.step.action', 'Action')
 }
 
+/**
+ * `ElInput` mirrors its DOM value from `modelValue` after every input tick, so binding a
+ * bare `:model-value` without accepting updates makes the field snap back to the committed
+ * title on the next tick and typing becomes impossible. The draft keeps the keystrokes and
+ * only the `change` event (blur/Enter) commits the trimmed title to the flow draft.
+ */
+const stepTitleDraft = ref('')
+watch(
+  () => [selectedStep.value?.id, selectedStep.value?.title ?? ''] as const,
+  () => { stepTitleDraft.value = selectedStep.value?.title ?? '' },
+  { immediate: true },
+)
+
 function updateTitle(value: string): void {
   const title = value.trim()
   patchSelectedStep(title ? { title } : { title: undefined })
@@ -226,13 +239,17 @@ async function activateDiagnostic(diagnostic: FlowWorkspaceDiagnostic): Promise<
 
           <label>
             <span>{{ locale.t('flow.name', 'Flow name') }}</span>
-            <ElInput
-              data-flow-control="name"
-              :model-value="draftMetadata?.name"
-              :disabled="!canEdit"
-              :aria-label="locale.t('flow.name', 'Flow name')"
-              @update:model-value="patchMetadata({ name: $event })"
-            />
+            <!-- The control marker belongs on a wrapper: hosts and tests address the
+                 Element Plus input inside it, which also keeps the attribute away from
+                 the native input element that ElInput forwards unknown attributes to. -->
+            <div data-flow-control="name">
+              <ElInput
+                :model-value="draftMetadata?.name"
+                :disabled="!canEdit"
+                :aria-label="locale.t('flow.name', 'Flow name')"
+                @update:model-value="patchMetadata({ name: $event })"
+              />
+            </div>
           </label>
 
           <div class="flow-locked-trigger" data-flow-control="locked-trigger">
@@ -385,7 +402,7 @@ async function activateDiagnostic(diagnostic: FlowWorkspaceDiagnostic): Promise<
             <section class="flow-inspector-group">
               <label>
                 <span>{{ locale.t('flow.step.title', 'Step label') }}</span>
-                <ElInput :model-value="selectedStep.title ?? ''" :disabled="!canEdit" :aria-label="locale.t('flow.step.title', 'Step label')" @change="updateTitle" />
+                <ElInput :model-value="stepTitleDraft" :disabled="!canEdit" :aria-label="locale.t('flow.step.title', 'Step label')" @update:model-value="stepTitleDraft = $event" @change="updateTitle" />
               </label>
             </section>
 
@@ -513,7 +530,7 @@ async function activateDiagnostic(diagnostic: FlowWorkspaceDiagnostic): Promise<
 .flow-dirty-state { color: var(--wb-accent); font-size: 10px; }
 .flow-event-settings > label, .flow-inspector-group > label { display: grid; min-width: 0; gap: 5px; }
 .flow-event-settings > label > span, .flow-inspector-group > label > span, .flow-locked-trigger > span { color: var(--wb-muted); font-size: 10px; }
-.flow-event-settings :deep(.el-select), .flow-event-settings :deep(.el-input-number), .flow-step-inspector :deep(.el-select), .flow-step-inspector :deep(.el-input-number) { width: 100%; }
+.flow-event-settings :deep(.el-input), .flow-event-settings :deep(.el-select), .flow-event-settings :deep(.el-input-number), .flow-step-inspector :deep(.el-input), .flow-step-inspector :deep(.el-select), .flow-step-inspector :deep(.el-input-number) { width: 100%; }
 .flow-locked-trigger { display: grid; gap: 4px; }
 .flow-locked-trigger strong { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .flow-danger-button { margin-top: auto; color: var(--wb-danger); border-color: color-mix(in srgb, var(--wb-danger) 55%, var(--wb-control-border)); }

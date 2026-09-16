@@ -113,8 +113,9 @@ function chooseExport(mode: WorkbenchExportMode): void {
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
         <WorkbenchCommandHint :label="locale.t('pages.new', 'New page')">
-          <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" circle @click="emit('newPage', 'topbar-new-page')">
+          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('pages.new', 'New page')" :title="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" @click="emit('newPage', 'topbar-new-page')">
             <Plus :size="17" aria-hidden="true" />
+            <span class="topbar-command-label">{{ locale.t('pages.new', 'New page') }}</span>
           </ElButton>
         </WorkbenchCommandHint>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
@@ -182,13 +183,14 @@ function chooseExport(mode: WorkbenchExportMode): void {
       <WorkbenchCommandHint v-if="project" :label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')">
         <ElButton
           native-type="button"
-          class="preview-toggle-button"
+          class="preview-toggle-button topbar-labeled-action"
           :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
-          circle
+          :title="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
           @click="emit('togglePreview')"
         >
           <PanelRightClose v-if="previewOpen" :size="17" aria-hidden="true" />
           <PanelRightOpen v-else :size="17" aria-hidden="true" />
+          <span class="topbar-command-label">{{ locale.t('preview.title', 'Preview') }}</span>
         </ElButton>
       </WorkbenchCommandHint>
         <ElDropdown class="mobile-action-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseMobileAction">

@@ -6,14 +6,10 @@ import type { AntdVueDesignerRegistryOptions } from '../types'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
 import { ANTD_VUE_DESIGNER_MATERIALS } from '../materials'
 import { createAntdVueOptionDiagnostics } from '../options'
-import { ANTD_VUE_DESIGNER_COMPONENTS } from './components'
-import { ANTD_VUE_DESIGNER_PROPERTY_CONTROLS } from './property-controls'
 
 export const antdVueDesignerRegistryLayer: DesignerRegistryLayer = {
   name: 'antd-vue',
-  components: ANTD_VUE_DESIGNER_COMPONENTS,
   materials: ANTD_VUE_DESIGNER_MATERIALS,
-  propertyControls: ANTD_VUE_DESIGNER_PROPERTY_CONTROLS,
 }
 
 export function createAntdVueDesignerRegistry(

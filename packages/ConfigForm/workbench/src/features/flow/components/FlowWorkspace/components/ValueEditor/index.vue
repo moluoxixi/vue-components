@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import type {
   ConfigFormJsonValue,
   ConfigFormValueInput,
@@ -296,10 +296,14 @@ function isSafeKey(value: string): boolean {
 </script>
 
 <template>
+  <!-- `aria-required` only belongs on elements whose role supports it. This wrapper is a
+       plain div, and ElSelect/ElInputNumber forward unknown attributes to their role-less
+       root, so required-ness is carried by the surrounding <label> (with its required
+       marker) plus `aria-invalid`. ElInput (inner textbox) and ElSwitch (role="switch")
+       do accept it. -->
   <div
     class="flow-value-editor"
     :aria-invalid="invalid || undefined"
-    :aria-required="required || undefined"
     :tabindex="invalid ? -1 : undefined"
   >
     <ElSelect
@@ -309,7 +313,6 @@ function isSafeKey(value: string): boolean {
       :disabled="disabled"
       :aria-label="locale.t('flow.input.source', 'Value source')"
       :aria-invalid="invalid || undefined"
-      :aria-required="required || undefined"
       append-to="#workbench-overlays"
       @change="changeSource"
     >
@@ -329,7 +332,6 @@ function isSafeKey(value: string): boolean {
         append-to="#workbench-overlays"
         :aria-label="locale.t('flow.input.field', 'Form field')"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         @change="updateField"
       >
         <ElOption v-if="fieldReference && !fields.some(item => item.nodeId === fieldReference)" :value="fieldReference" :label="locale.t('flow.source.unavailableField', 'Unavailable field')" />
@@ -345,7 +347,6 @@ function isSafeKey(value: string): boolean {
         append-to="#workbench-overlays"
         :aria-label="locale.t('flow.input.variable', 'Variable')"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         @change="updateVariable"
       >
         <ElOption v-if="variableReference && !variables.some(item => item.value === variableReference)" :value="variableReference" :label="locale.t('flow.source.unavailableVariable', 'Unavailable variable')" />
@@ -360,7 +361,6 @@ function isSafeKey(value: string): boolean {
         append-to="#workbench-overlays"
         :aria-label="locale.t('flow.input.event', 'Event parameter')"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         @change="updateEvent"
       >
         <ElOption v-if="!eventSelection" value="__unavailable" disabled :label="locale.t('flow.source.unavailableEvent', 'Unavailable event parameter')" />
@@ -375,7 +375,6 @@ function isSafeKey(value: string): boolean {
         append-to="#workbench-overlays"
         :aria-label="locale.t('flow.input.output', 'Earlier action result')"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         @change="updateOutput"
       >
         <ElOption v-if="!matchingOutputKey" value="__unavailable" disabled :label="locale.t('flow.source.unavailableOutput', 'Unavailable earlier result')" />
@@ -402,7 +401,6 @@ function isSafeKey(value: string): boolean {
         :disabled="disabled"
         :aria-label="locale.t('flow.input.valueType', 'Value type')"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         append-to="#workbench-overlays"
         @change="changeStaticKind"
       >
@@ -419,7 +417,6 @@ function isSafeKey(value: string): boolean {
         :model-value="typeof editableValue === 'number' ? editableValue : 0"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         controls-position="right"
         @change="updateStatic($event ?? 0)"
       />
@@ -436,7 +433,6 @@ function isSafeKey(value: string): boolean {
         :model-value="enumSelection"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         append-to="#workbench-overlays"
         @change="updateEnum"
       >
@@ -447,7 +443,6 @@ function isSafeKey(value: string): boolean {
         :model-value="editableValue"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         filterable
         append-to="#workbench-overlays"
         @change="updateStatic"
@@ -459,7 +454,6 @@ function isSafeKey(value: string): boolean {
         :model-value="editableValue"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         filterable
         append-to="#workbench-overlays"
         @change="updateStatic"
@@ -471,7 +465,6 @@ function isSafeKey(value: string): boolean {
         :model-value="editableValue"
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
-        :aria-required="required || undefined"
         filterable
         append-to="#workbench-overlays"
         @change="updateStatic"

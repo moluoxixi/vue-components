@@ -94,3 +94,126 @@
 - Source 仍需移除重复字段/校验/提交状态机，完整复用同一 runtime plan。
 
 上述较早阶段的代理使用 `custom/gpt-5.6-sol`；用户最新要求后已改为 `custom/gpt-6-astra`。已有脏改动全部保留；没有 reset、push、publish、清理用户持久化或提交代码。
+
+## 2026-09-14 门禁回归修复
+
+HEAD `e7892ff6` 提交时门禁为红。本轮把工作台测试从 3 文件 / 36 项失败收敛为 1 文件 / 1 项失败。
+
+已修复根因（每条均已实测）：
+
+- `architecture-boundary.test.ts` 的 `misplacedContracts` 原用纯文本正则匹配 `^export (interface|type)`，把 `compiler/src/runtime-source/services/sources.ts` 与 `workbench/src/project/export/services/config-page.ts` 中**生成代码模板字符串**的内容误判为类型声明。改为 `@babel/parser` 顶层声明判定；两处真实违规（`runtime/src/renderer/services/runtime-actions.ts`、`array-rendering.ts`）与两个测试夹子的类型分别由 `renderer/types/`、`renderer/__tests__/types/`、`project/__tests__/types/` 承载。结果 19/19 通过。
+- `business-scenarios-parity` 的两类根因：夹具对 required 字段声明 `defaultValue: ''`，被新版本 `diagnoseDefaultRules` 判为 `VUE_RUNTIME_DEFAULT_RULE_INVALID`；生成的 `form.config.ts` 新增 `@moluoxixi/config-form-vue-backend` 值导入，而测试的模块加载器外部依赖白名单未同步。分别修正夹具默认值与加载器 external。
+- 同文件两处契约漂移：`PageCompilation.snapshot` 已在 HEAD 更名为 `snapshotIdentity`（断言已按新结构精确化）；`detail-table` / `array-subform` / `object-group` 三个容器物料在两个组件库中的 `source.tag` 误写成物料名，使生成的独立源码渲染 `<div>`，与运行时 `Section` 组件的 `<section>` 不一致，Source 路径的数组增删无法定位。已统一为 `section`。
+- 运行时把 `severity: 'warning'` 的创作期诊断（如已注册的宿主动作缺少 authoring descriptor）经 `flowError` 抛出，成功提交也会被判为错误。现仅转发非 warning 诊断；warning 仍保留在 dispatch 结果与 trace 中。
+- 设计器物料面板从单列列表改为两列图标磁贴，对齐 FormCreate Pro / VForm 3 Pro 的组件面板；`theme-contract` 的调色板断言随之更新为磁贴契约。1440×900 实测：磁贴 106.5×46、每行 2 个、面板宽 232、无文字溢出、控制台 0 错误。
+
+仍为失败（未在本轮引入，也未修复）：
+
+- 工作台 `config-runtime-parity` 自定义校验器 1 项。实测自定义校验器被以正确值 `'Taken'` 调用且返回 `'Already used'`，但该 issue 未进入控制器错误表（`getErrors()` 与 `getInstanceErrors` 均为空），连续多轮 flush 后仍为空，可排除时序因素；落点应在控制器校验提交与地址键之间。
+- headless `controller-model-identity` 2 项（keyed 行替换后身份丢失、`Invalid retained array identity`）与 `controller-scope-refresh` 2 项（祖先 `itemKey` 变更未回收后代身份）。
+- `runtime` 的 `nested-materials` 2 项：复制行会连带复制 `itemKey` 业务主键。
+- 以上三项同属「行身份 / itemKey」缺陷簇，应作为同一轮修复。
+- 本轮未执行：物料面板视觉变更后的 e2e 快照更新、`typecheck`（designer 组仍有 7 处未使用变量诊断）、工作台 build。
+
+临时调试用例已删除；未新增持久化数据，未提交、推送或发布。
+
+## 2026-09-15 功能缺陷簇、UI 对齐与工程收尾
+
+工作台测试从 1 文件 / 1 项失败收敛为 **69 文件 / 761 项全部通过**；剩余唯一门禁阻塞是一个**既有的**未处理错误（见末尾）。包级测试 116 文件全绿。
+
+### 行身份 / itemKey 缺陷簇（HEAD 新增但从未通过）
+
+- `core` 的 `duplicateRow` 会把源行的 `itemKey` 业务主键一起复制，产生重复业务主键。现仅在作用域声明了 `itemKey` 时从副本中剔除该字段，由宿主重新分配。
+- `headless` 的模型观察器 `prepare` 无法在「宿主整体替换了值对象」时保留身份：声明了业务主键的方案无法据此证明可协调，未声明主键的数组又没有任何参照。现按三条规则协调：引用相同 → 按行引用；主键匹配 → 按 itemKey；仅路径匹配且**方案里存在主键声明** → 未声明主键的数组按行位置保留（已声明主键的数组仍按 itemKey，避免重排时错配）。空数组不再上报保留条目（Core 明确拒绝空 `rowIds`，该拒绝本身有测试保护）。
+- 观察器改为不再进入「宿主有、但 store 并不拥有」的行：用伪造的父作用域下钻会触发 `CONFIG_FORM_SCOPE_ANCESTOR_MISMATCH`，这条路径在 schema 刷新裁剪行之后必然出现。
+
+### 校验结果被静默丢弃
+
+- 现象：自定义校验器被以正确值调用并返回消息，但错误表始终为空。追踪发现 blur 校验期间「配置的 blur 流程事件」会提交一次作用域写入（`finalizeScopedMutation`），它无条件调用 `validation.invalidate()`，把刚产出结果的在途校验连同结果一起丢弃，且 `catch` 分支在 abort 时静默返回。
+- 现仅在提交确实改变了值时失效；无关路径保持原行为（`getValidating()` 为假时不做深比较，避免每次提交的全量深比较开销）。
+
+### UI 对齐成熟产品
+
+- 左侧物料面板从单列列表改为两列图标磁贴（`designer-palette.scss` + `StudioLeftPanel/style/index.scss`）。
+- 工具栏改为「图标 + 文字」：文字标签原在 900px 以下才显示、桌面端反而隐藏；现桌面端（>900px）显示 Save / Export / Preview / New page 文字，641–900px 仍保留 Save / Export 文字（e2e 已固定该行为），Preview 文字不进入紧凑区间，≤640px 全部收起为图标。
+
+### 工程收尾
+
+- `pnpm typecheck`（turbo 聚合）**在本仓库无法运行**：`@moluoxixi/config-form-vue-backend ↔ designer ↔ config-form ↔ designer-element-plus` 存在**既有的循环依赖**，turbo 直接报错退出。已改为逐包验证，12 个包全部通过。
+- runtime 包 `build` 原本**失败**（`DesignerPropertyPanel/index.vue` 的 `propertyPanelRef` 触发 TS6133），导致 `runtime/dist` 类型长期停留在旧版本，进而让 workbench 的 `getVariables` / `getOptionState` / `getDataSourceState` 报「属性不存在」共 10 处。已修复并重建 dist（88 个 d.ts）。
+- 顺带修掉 workbench 的既有类型错误：`flow-actions.ts` 缺少 `WorkbenchFlowActionHooks` 导入；`scoped-reference-parity.test.ts` 从错误的包导入 `ConfigFormValues`；两个夹具函数补显式返回类型（`composite` 声明产出下的 TS7056，契约类型来自 Compiler/Runtime，展开后超出可序列化上限）。
+- designer 既有 7 处未使用变量诊断已清除。
+
+### 未完成
+
+- **门禁退出码**：vitest 报告 `Errors 1 error`——`runtime-host-instances.test.ts` 中 `readValues → getValues → replaceValues → normalizeValues` 抛出 `DataCloneError`（宿主值含不可克隆内容）的浮空异常，出现在用例结束之后。**基线运行时（本会话最早的 verify1）同样是 `Errors 1 error`**，即既有问题，本轮未修。769→761 项断言全部通过但进程退出码仍为 1。
+- **e2e 无法在本机环境完成**：`--update-snapshots` 跑完 121 项后大量失败，追查发现所有失败都汇聚到 `createProject()` 等待画布节点，而设计画布 iframe（`/runtime-host.html`）的模块请求全部 `net::ERR_ABORTED`，子框架从未初始化（iframe 高度停留在 1px，因为几何消息依赖子框架）。空白模板与资料表单模板表现一致，说明与本次 UI 改动无关。仅 4 个「创建页」快照（900/390）被新写入且其断言通过；1440 设计器视觉基线**尚未重算**。
+- 交付限制同上一节：未提交、未推送、未发布。
+
+## 2026-09-15（续）设计画布空白的根因修复
+
+**症状**：设计器创建项目后画布一片空白，任何字段节点都不渲染；e2e 全部失败（都堵在 `createProject()` 等 `[data-config-node-id^="profile-name-"]`）。
+
+**根因（已实测确认）**：协议不匹配。运行时宿主的入站守卫 `isParentToRuntimeHostMessage` 通过 `isRuntimeHostRuntimeState` 要求 `runtimeState.fields` 必须是数组（`schemas/protocol.ts:142`，类型定义 `RuntimeHostRuntimeStatePayload` 也标注该字段「仅来自 `Renderer.listFieldInstances()`」），而 `DesignRuntimeHostFrame` 发送的 `sync` / `state` 载荷里**没有 `fields`** → 子框架把每一条 sync 都判为非法并静默忽略 → `active` 始终为空 → 画布只有 1px 高的空 iframe。
+
+证据链：
+
+1. 画布 iframe 高度恒为 1px（内联样式 `height:1px`），子框架 `data-mode` 始终是 `preview`、`data-runtime-session` 为空。
+2. 子框架确实收到了 sync（父级每条 `postMessage` 都被记录），但从不回 `ready`/`mounted`/`geometry`。
+3. 在子框架内动态 import 协议守卫并喂入真实载荷：`isParentToRuntimeHostMessage(payload) === false`，而 `isRuntimeHostRuntimeState(payload.runtimeState) === false`。
+4. 用极小载荷逐项替换（含合成 compilation）仍为 false —— 因为所有候选都缺 `fields`；补上 `fields: []` 后守卫立刻返回 true。
+
+**修复**：`DesignRuntimeHostFrame` 新增 `designRuntimeState(): RuntimeHostRuntimeStatePayload` 构造器，显式返回 `fields: []`（设计态由 frame 内渲染器驱动，父级没有实例列表可镜像，因此为空数组——与 `isolated-preview.ts`、各测试的写法一致），并把两处载荷改用它。**返回类型标注是关键**：原先载荷是字面量直接传给 `postMessage(Record<string, unknown>)`，缺字段不会被类型检查发现。
+
+**顺带修复的握手健壮性**：父级原先只在 `handleLoad` 与响应式变更时发送 sync，一旦消息落在子文档监听器挂载之前（子框架重载、模块图仍在求值）就永久丢失，没有任何重试。现改为：收到子框架 `mounted`/`ready`/`runtimeState`/`geometry` 视为确认；未确认前每 400ms 重发（上限 25 次），`handleLoad` 与 revision 变更都会重置确认状态，卸载时清理定时器。
+
+**验证**：画布渲染出 Name / Role / Active 三个节点（frame 内 `nodeCount: 3`），iframe 高度从 1px 恢复到 74px，`data-mode="design"`、会话键已建立；工作台 69/69 测试文件通过、typecheck 通过。
+
+**仍未修**：workbench 测试以 `Errors 1 error` 结束（`runtime-host-instances.test.ts` 结束后浮空的 `DataCloneError`），断言 761/761 通过但进程退出码为 1；此问题在本会话最早的基线运行时同样存在。
+
+### 物料面板：与既有 e2e 契约对齐
+
+`e2e/interaction.spec.ts` 的 `expectAllPaletteItems` 把物料行高钉死在 **32–36px**；我先前把面板改成两列图标磁贴时用了 46px，违反该契约。现已改为 **34px 定高**（两列保留、图标+名称同一行、名称单行省略），实测行高恒为 34、每行 2 个、每个物料 1 个图标 + 非空名称 + 有效 summary、无 preview 元素。
+
+### e2e 现状（画布修复后重跑）
+
+- 从「几乎全部失败」变为 **73 通过 / 48 失败**；画布相关的 `createProject()` 阻塞已消失。
+- 剩余 48 项为**既有契约漂移**，与本次改动无关，例如第一个失败：`expectAllPaletteItems` 断言左侧导航页签数为 4，实际渲染 5 个 —— 该 helper 与左栏页签定义均非本次改动范围。
+- 16 个此前缺失的 win32 视觉基线已由 `--update-snapshots` 生成（既有基线文件 0 个被改写）。
+
+## 2026-09-15（续）e2e 对齐全量基准
+
+命令：`pnpm --filter @config-form/workbench test:e2e`（playwright，desktop-chromium，本机 dev server 4331），耗时 13 分 24 秒。
+
+| 指标 | 上一轮（14:28） | 本轮（19:06） |
+| --- | --- | --- |
+| 通过 | 73 | **111** |
+| 失败 | 48 | **10** |
+| 合计 | 121 | 121 |
+
+本轮验证已对齐 38 项：物料面板计数（element 17→20、antd 22→25，与 `designer-*/src/materials/*.ts` 实际材料数一致）、lifecycle 全 36 项、Flow 键盘与数值控件（:882）、lifecycle element 1440 form.initialize。断言范围外未做任何放宽。
+
+### 剩余 10 项与根因
+
+| # | 用例 | 数量 | 判定 |
+| --- | --- | --- | --- |
+| 1 | `runs a registered non-binding {element,antd} event exactly once`（:1445） | 2 | **产品侧缺口** |
+| 2 | `runs a {element,antd} component event flow from the real Preview Runtime node`（:1195） | 2 | 待定（步骤标题未落库） |
+| 3 | `lifecycle {element,antd} nested branches ...`（:1826） | 2 | 待实测（条件右操作数默认值矛盾） |
+| 4 | `lifecycle {element,antd} import and design ...`（:1788） | 2 | **产品侧缺口** |
+| 5 | `provides real Monaco completion and hover for Vue and Config source`（:1638） | 1 | **测试契约漂移，需重写** |
+| 6 | `lifecycle element 1440x900 form.valuesChange`（:1691） | 1 | flaky（同轮定向跑曾通过） |
+
+- **#1**：流程确实触发（Preview 的 Run history 递增），但消息不显示。页面快照中可见产品诊断 `Flow action builtin.ui.message can execute, but has no authoring descriptor.`（core `analyzeConfigFormFlowActionDescriptor` 产出 `FLOW_ACTION_DESCRIPTOR_MISSING`，severity=warning）。即「工作台能执行该动作，但编译/创作侧没有对应 descriptor」，属 AC3 未闭环范围。antd 变体在 16:44 的定向跑中曾通过，存在 flaky 成分。
+- **#2**：`addFlowAction(page, 'Show message', 'Bound field')` 填充 Step label 之后，检查器中的 Step label 仍为空、步骤树上仍显示 "Show message"；因此 Action output 下拉只有 `Show message result` 与 `Show message · Message`，测试期望的 `/Bound field.*Message/` 不存在。`updateTitle` → `patchSelectedStep` 静态链路正确，需实测 ElInput 的 `change` 是否在 `fill()` + `Tab` 后被提交。
+- **#3**：快照显示 compare 条件右操作数为 `Value source = Fixed value`、`Value type = Boolean` + 已勾选 switch，没有 textbox，故 `operands.nth(1).getByRole('textbox').fill('blocked')` 必然超时。但源码默认值（`use-flow-workspace.ts:614-628` 与 `ConditionEditor/index.vue:35-44`）都是 `right: { kind: 'literal', value: '' }`（`staticKind` 应为 `text`）。源码与运行时表现矛盾，需实测区分默认值漂移 / 构建缓存 / 其他覆写路径。
+- **#4**：点 `Create imported project` 后 `designRuntime(page)` 内找不到 `Name` textbox；element 变体的页面快照只剩 `- main`（应用整体未渲染）。antd 变体另叠加 axe `aria-required-attr` 违规：预览 iframe 内 `#v-0-fields-1-control` 的 `aria-owns` / `aria-activedescendant` 指向被 teleport 到父文档的下拉，在 iframe 文档内无效。
+- **#5**：两侧锚点均已过期 —— `appSource()`（`project/export/services/source-page.ts`）现产出 `const model = createConfigFormModel(values)`，且已无 `import { onBeforeUnmount`；`form.config.ts`（`config-page.ts`）以 `import type { ConfigFormPageRuntimePlan } from '@moluoxixi/config-form'` 开头，已无 `import { defineFields }`。更关键：`typescript-language-features.ts` 只对 `vue` 语言注册了 hover provider，**`.ts` 编辑器没有 hover**，因此该用例的 config-hover 断言在当前实现下不可能通过 —— 需按当前编辑器能力重写，不是改字符串。
+
+### 方法论沉淀
+
+- Playwright 会在 `dist/test-results/config-form-workbench/<slug>/error-context.md` 写入 **YAML 版 ARIA 快照**（完整可访问性树 + 失败断言 + 源码行）。对齐选择器时先读它，比读源码猜 DOM 快得多；**该目录每次运行会被清空，拿到后先备份**。
+- 对齐时用 `--grep "<用例名片段>"` 单跑（20–60 秒）做反馈循环，不要每轮跑 13 分钟全量。
+- 本机 `PowerShell` 工具的 stdout 不回传、`Bash` 工具不可用；所有观察都要「写文件 → 读取」。后台命令用 `Add-Content` 写日志会在运行期间独占锁文件，须等结束后再读。
+
+本轮未提交、未推送、未发布；未新增持久化数据。设计画布空白的根因修复与上文 111 项通过同属当前工作区状态。

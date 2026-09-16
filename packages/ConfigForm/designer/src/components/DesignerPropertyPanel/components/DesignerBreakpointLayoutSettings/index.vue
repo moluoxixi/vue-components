@@ -4,13 +4,13 @@ import type { Component } from 'vue'
 import type {
   DesignerPropertyControlRegistry,
   DesignerPropertySetterDefinition,
-} from '../../../registry'
-import type { DesignerPropertyFormEntry } from '../types'
-import DesignerPropertyForm from './DesignerPropertyForm.vue'
+} from '@designer/registry'
+import type { DesignerPropertyFormEntry } from '../../types'
+import DesignerPropertyForm from '../DesignerPropertyForm/index.vue'
 
 defineOptions({ name: 'DesignerBreakpointLayoutSettings' })
 
-const props = defineProps<{
+defineProps<{
   baseLabel?: string
   components?: ConfigFormComponentRegistry
   controls?: DesignerPropertyControlRegistry

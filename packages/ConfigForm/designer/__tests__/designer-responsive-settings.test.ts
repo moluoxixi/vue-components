@@ -84,7 +84,7 @@ describe('designer responsive settings', () => {
       'Mobile, Resolved width (inherited): 6 / 12 · 1/2',
     ])
     expect(cards().map(card => card.find('.mx-config-form-designer__breakpoint-fields').exists()
-      ? card.find('.mx-config-form-designer__breakpoint-fields').findAll('.mx-config-form-designer__setter-label').map(label => label.text())
+      ? card.find('.mx-config-form-designer__breakpoint-fields').findAll('[data-config-form-label]').map(label => label.text())
       : [])).toEqual([
       ['Columns', 'Field span', 'Label width (px)'],
       ['Columns', 'Field span', 'Label width (px)'],
@@ -101,7 +101,7 @@ describe('designer responsive settings', () => {
       },
     })
     expect(outputs().at(-1)).toBe('Resolved width: 8 / 8 · 100%')
-    expect(cards()[2]!.find('.mx-config-form-designer__breakpoint-fields').findAll('.mx-config-form-designer__setter-label').map(label => label.text())).toEqual([
+    expect(cards()[2]!.find('.mx-config-form-designer__breakpoint-fields').findAll('[data-config-form-label]').map(label => label.text())).toEqual([
       'Columns',
       'Field span',
       'Label width (px)',

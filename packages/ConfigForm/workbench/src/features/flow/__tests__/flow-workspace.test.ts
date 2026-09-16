@@ -172,7 +172,7 @@ describe('flow workspace draft transaction', () => {
 
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
     await wrapper.get('[data-testid="add-action"]').trigger('click')
-    await wrapper.get('[data-flow-control="name"]').setValue('Saved flow')
+    await wrapper.get('[data-flow-control="name"] input').setValue('Saved flow')
     expect(execute).not.toHaveBeenCalled()
 
     const firstSave = (wrapper.vm as unknown as { save: () => Promise<boolean> }).save()
@@ -199,7 +199,7 @@ describe('flow workspace draft transaction', () => {
     const original = structuredClone(flow)
     const { execute, wrapper } = mountWorkspace({ flows: [flow] })
 
-    await wrapper.get('[data-flow-control="name"]').setValue('Draft only')
+    await wrapper.get('[data-flow-control="name"] input').setValue('Draft only')
     await wrapper.get('[data-testid="cancel-flow"]').trigger('click')
 
     expect(execute).not.toHaveBeenCalled()
@@ -214,13 +214,13 @@ describe('flow workspace draft transaction', () => {
     })
     const { wrapper } = mountWorkspace({ execute, flows: [createFlow()] })
 
-    await wrapper.get('[data-flow-control="name"]').setValue('Still here')
+    await wrapper.get('[data-flow-control="name"] input').setValue('Still here')
     await wrapper.get('[data-testid="save-flow"]').trigger('click')
     await flushPromises()
 
     expect(execute).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted('close')).toBeUndefined()
-    expect(wrapper.get('[data-flow-control="name"]').element).toHaveProperty('value', 'Still here')
+    expect(wrapper.get('[data-flow-control="name"] input').element).toHaveProperty('value', 'Still here')
     expect(wrapper.get('.flow-diagnostics').text()).toContain('Revision changed')
   })
 
@@ -228,7 +228,7 @@ describe('flow workspace draft transaction', () => {
     const execute = vi.fn().mockRejectedValue(new Error('Storage unavailable'))
     const { wrapper } = mountWorkspace({ execute, flows: [createFlow()] })
 
-    await wrapper.get('[data-flow-control="name"]').setValue('Retry later')
+    await wrapper.get('[data-flow-control="name"] input').setValue('Retry later')
     await wrapper.get('[data-testid="save-flow"]').trigger('click')
     await flushPromises()
 
@@ -240,7 +240,7 @@ describe('flow workspace draft transaction', () => {
   it('detects a same-flow external snapshot change and refuses to overwrite it', async () => {
     const flow = createFlow()
     const { execute, wrapper } = mountWorkspace({ flows: [flow] })
-    await wrapper.get('[data-flow-control="name"]').setValue('Local draft')
+    await wrapper.get('[data-flow-control="name"] input').setValue('Local draft')
 
     await wrapper.setProps({ flows: [{ ...flow, name: 'External edit' }] })
     await nextTick()

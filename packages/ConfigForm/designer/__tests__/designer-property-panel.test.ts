@@ -195,7 +195,10 @@ describe('designer property panel adaptive Inspector', () => {
     expect(control.element.closest('.mx-config-form-designer-property-form__field')?.classList).toContain('is-control-default-value')
     expect(control.element.closest('.mx-config-form-designer-property-form__field')
       ?.querySelector('.mx-config-form-designer__setter')).toBeNull()
-    expect(wrapper.get('label').attributes('for')).toBe(control.attributes('id'))
+    const owningLabel = control.element
+      .closest('.mx-config-form-designer-property-form__field')
+      ?.querySelector('label[data-config-form-label]')
+    expect(owningLabel?.getAttribute('for')).toBe(control.attributes('id'))
     await control.setValue('after')
     expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['defaultValue'], 'after'])
   })
@@ -220,7 +223,7 @@ describe('designer property panel adaptive Inspector', () => {
       },
     })
 
-    expect(wrapper.get('.mx-config-form-designer__default-value > input').attributes('aria-label')).toBe('Default value')
+    expect(wrapper.get('.mx-config-form-designer__default-value input').attributes('aria-label')).toBe('Default value')
   })
 
   it('renders sections from capabilities and restores focus only when the active tab disappears', async () => {
@@ -584,7 +587,7 @@ describe('designer property panel adaptive Inspector', () => {
       },
     })
 
-    expect(wrapper.get('.mx-config-form-designer__setter-hint.is-value').text()).toBe('12 / 24 · 1/2')
+    expect(wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]').attributes('data-hint-label')).toBe('12 / 24 · 1/2')
   })
 
   it('exposes every lifecycle entry without mutating the form and preserves configuration status', async () => {

@@ -133,7 +133,7 @@ describe('element plus designer materials', () => {
     expect(registry.getMaterial('element.collapse')?.events).toEqual([
       { name: 'change', title: 'Expanded items change' },
     ])
-    expect(Object.keys(registry.propertyControls)).toEqual(['defaultValue', 'text', 'textarea', 'number', 'boolean', 'select'])
+    expect(Object.keys(registry.propertyControls)).toEqual(['defaultValue'])
   })
 
   it('creates independent defaults for every field material', () => {

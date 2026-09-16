@@ -2,6 +2,7 @@ import type {
   ConfigFormFlowActionDescriptor,
   ConfigFormFlowActionRegistry,
 } from '@moluoxixi/config-form-core'
+import type { WorkbenchFlowActionHooks } from '../types'
 import * as ConfigFormRuntime from '@moluoxixi/config-form'
 import {
   createConfigFormBuiltinFlowActions,
@@ -42,19 +43,21 @@ export function createWorkbenchFlowActionRegistry(
   )
 }
 
-const rendererBuiltinDescriptors = (): ConfigFormFlowActionDescriptor[] => {
+function rendererBuiltinDescriptors(): ConfigFormFlowActionDescriptor[] {
   const provider = (ConfigFormRuntime as unknown as {
     listConfigFormRendererBuiltinActionDescriptors?: () => ConfigFormFlowActionDescriptor[]
   }).listConfigFormRendererBuiltinActionDescriptors
-  return provider ? provider() : [
-    { ref: 'builtin.field.set', title: 'Set field', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.variable.set', title: 'Set variable', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.field.state', title: 'Set field state', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.form.validate', title: 'Validate form', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.form.submit', title: 'Submit form', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.form.reset', title: 'Reset form', category: 'form', parameters: [], outputs: [], capabilities: [] },
-    { ref: 'builtin.dataSource.load', title: 'Load data source', category: 'data', parameters: [], outputs: [], capabilities: ['dataSourceHost.request'] },
-  ]
+  return provider
+    ? provider()
+    : [
+        { ref: 'builtin.field.set', title: 'Set field', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.variable.set', title: 'Set variable', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.field.state', title: 'Set field state', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.form.validate', title: 'Validate form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.form.submit', title: 'Submit form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.form.reset', title: 'Reset form', category: 'form', parameters: [], outputs: [], capabilities: [] },
+        { ref: 'builtin.dataSource.load', title: 'Load data source', category: 'data', parameters: [], outputs: [], capabilities: ['dataSourceHost.request'] },
+      ]
 }
 
 export function listWorkbenchRendererBuiltinActionDescriptors(): ConfigFormFlowActionDescriptor[] {

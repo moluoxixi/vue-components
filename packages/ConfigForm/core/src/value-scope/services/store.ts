@@ -67,7 +67,6 @@ interface SuppressedDefault {
   scope: ConfigFormScopePath
 }
 
-
 interface LocatedContainer {
   container: ConfigFormJsonObject
   path: (number | string)[]
@@ -257,11 +256,11 @@ class ValueScopeStore implements ConfigFormValueScopeStore {
         delete nextValues[field]
     }
     const nextSuppressed = new Map(this.suppressedDefaults)
-    Object.keys(rootSet).forEach(field => {
+    Object.keys(rootSet).forEach((field) => {
       this.schema.rootFields.filter(item => item.definition.field === field).forEach(item => nextSuppressed.delete(getConfigFormValueScopeInstanceKey(item.definition.nodeId, [])))
       this.schema.rootScopes.filter(item => item.definition.field === field).forEach(item => nextSuppressed.delete(getConfigFormValueScopeInstanceKey(item.definition.nodeId, [])))
     })
-    remove.forEach(field => {
+    remove.forEach((field) => {
       this.schema.rootFields.filter(item => item.definition.field === field).forEach(item => nextSuppressed.set(getConfigFormValueScopeInstanceKey(item.definition.nodeId, []), { nodeId: item.definition.nodeId, scope: [] }))
       this.schema.rootScopes.filter(item => item.definition.field === field).forEach(item => nextSuppressed.set(getConfigFormValueScopeInstanceKey(item.definition.nodeId, []), { nodeId: item.definition.nodeId, scope: [] }))
     })
@@ -321,8 +320,8 @@ class ValueScopeStore implements ConfigFormValueScopeStore {
     this.commit(checked, nextMetadata, transaction)
     this.suppressedDefaults = nextSuppressed
     return this.mutationResult([], invalidatedScopes)
-
   }
+
   transaction<T>(operation: (store: ConfigFormValueScopeStore) => T): T {
     const previousValues = this.values
     const previousMetadata = this.metadata
@@ -336,12 +335,13 @@ class ValueScopeStore implements ConfigFormValueScopeStore {
       values: cloneJsonSnapshot(this.values),
     })
     const result = operation(candidate)
-    if (result !== null && typeof result === 'object' && typeof (result as { then?: unknown }).then === 'function')
+    if (result !== null && typeof result === 'object' && typeof (result as { then?: unknown }).then === 'function') {
       throw new ConfigFormValueScopeError(
         'CONFIG_FORM_VALUE_SCOPE_TRANSACTION_ASYNC',
         'Value scope transactions must complete synchronously.',
         'operation',
       )
+    }
     if (this.values !== previousValues || this.metadata !== previousMetadata)
       throw new ConfigFormValueScopeError('CONFIG_FORM_VALUE_SCOPE_TRANSACTION_STALE', 'Value scope changed during the transaction.', 'operation')
     this.values = candidate.values
@@ -413,8 +413,9 @@ class ValueScopeStore implements ConfigFormValueScopeStore {
 
     const nextValuesDraft = cloneJsonSnapshot(this.values)
     if (current.array.length === 0 && current.scope.parent === undefined && parentScope.length === 0
-      && !Object.hasOwn(nextValuesDraft, current.scope.definition.field))
+      && !Object.hasOwn(nextValuesDraft, current.scope.definition.field)) {
       nextValuesDraft[current.scope.definition.field] = []
+    }
     const draftTarget = this.locateArray(scopeId, parentScope, nextValuesDraft, this.metadata)
     draftTarget.array.splice(index, 0, inputRow)
     const nextValues = this.normalizeValues(nextValuesDraft)
@@ -457,6 +458,10 @@ class ValueScopeStore implements ConfigFormValueScopeStore {
     const sourceIndex = findRowIndex(current.instance, rowId, 'rowId')
     const insertIndex = sourceIndex + 1
     const copiedRow = cloneJsonSnapshot(current.array[sourceIndex]!)
+    // The copy is a new row, so it must not inherit the source row's business key:
+    // keeping it would collide with the source itemKey. The host assigns a fresh one.
+    if (current.scope.definition.itemKey !== undefined)
+      delete copiedRow[current.scope.definition.itemKey]
 
     const nextValues = cloneJsonSnapshot(this.values)
     const draftTarget = this.locateArray(scopeId, parentScope, nextValues, this.metadata)

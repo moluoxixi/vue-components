@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import type { ConfigFormFlow, ConfigFormValueReferenceScope, ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormValueReferenceScope } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ComponentContract, PageNode, ProjectDocument } from '@moluoxixi/config-form-model'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
@@ -29,10 +30,22 @@ function fixture(parentTarget = 'item-code') {
   ]
   const registry = createComponentContractRegistry(contracts, { adapter: 'test', version: '1' })
   const field = (id: string, name: string): PageNode => ({
-    id, kind: 'field', component: 'test.input', field: name, props: { 'data-id': id }, events: {}, bindings: {},
+    id,
+    kind: 'field',
+    component: 'test.input',
+    field: name,
+    props: { 'data-id': id },
+    events: {},
+    bindings: {},
   })
   const container = (id: string, kind: 'object' | 'array', children: string[]): PageNode => ({
-    id, kind: 'layout', component: 'test.scope', props: {}, events: {}, bindings: {}, valueScope: { kind, field: id },
+    id,
+    kind: 'layout',
+    component: 'test.scope',
+    props: {},
+    events: {},
+    bindings: {},
+    valueScope: { kind, field: id },
     slots: { default: children.map(nodeId => ({ nodeId, placement: {} })) },
   })
   const nodes = [
@@ -72,7 +85,10 @@ function fixture(parentTarget = 'item-code') {
     settings: {},
     resources: {},
     pagesById: { home: {
-      id: 'home', name: 'Home', route: '/', flows: [flow],
+      id: 'home',
+      name: 'Home',
+      route: '/',
+      flows: [flow],
       graph: { version: 2, props: {}, form: {}, root: ['root-code', 'rows'].map(nodeId => ({ nodeId, placement: {} })), nodesById: Object.fromEntries(nodes.map(node => [node.id, node])) },
     } },
   }
@@ -98,10 +114,12 @@ describe('compiled data-scope reference contract', () => {
     const wrapper = mount(ConfigFormRenderer, { props: {
       ...runtime.artifact.renderer,
       model: createConfigFormModel(values),
-      flowActions: { get: ref => ref === 'observe' ? {
-        descriptor: { ref, title: 'Observe', category: 'test', parameters: [], outputs: [], capabilities: [] },
-        execute,
-      } : undefined },
+      flowActions: { get: ref => ref === 'observe'
+        ? {
+            descriptor: { ref, title: 'Observe', category: 'test', parameters: [], outputs: [], capabilities: [] },
+            execute,
+          }
+        : undefined },
     } })
     try {
       await flushPromises()

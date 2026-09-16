@@ -3,7 +3,7 @@ export { projectRendererDesignValueSchema } from './services/design-value-schema
 export { createConfigFormRendererExpose } from './services/expose'
 export { withConfigFormInstall } from './services/install'
 export { ConfigFormRendererActionError, listConfigFormRendererBuiltinActionDescriptors } from './services/runtime-actions'
-export type { ConfigFormRendererBuiltinActionRef } from './services/runtime-actions'
 export { initializeRendererVariables } from './services/variables'
 export type * from './types'
+export type { ConfigFormRendererBuiltinActionRef } from './types/runtime-actions'
 export * from './utils'

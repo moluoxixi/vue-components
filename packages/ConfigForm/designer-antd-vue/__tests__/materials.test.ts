@@ -164,7 +164,7 @@ describe('ant design vue designer materials', () => {
     expect(registry.getMaterial('antd.collapse')?.events).toEqual([
       { name: 'change', title: 'Expanded items change' },
     ])
-    expect(Object.keys(registry.propertyControls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
+    expect(Object.keys(registry.propertyControls)).toEqual([])
   })
 
   it('creates independent defaults for every field material', () => {

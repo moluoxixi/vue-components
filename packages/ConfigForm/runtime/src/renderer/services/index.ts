@@ -1,3 +1,4 @@
+export type { ConfigFormRendererBuiltinActionRef, RendererBuiltinActionHost } from '../types/runtime-actions'
 export { createRendererBindingService, resolveComponent } from './binding'
 export { ConfigFormRenderer } from './component'
 export { projectRendererDesignValueSchema } from './design-value-schema'
@@ -19,7 +20,6 @@ export {
   toDomId,
 } from './rendering'
 export { ConfigFormRendererActionError, createRendererBuiltinActions, listConfigFormRendererBuiltinActionDescriptors } from './runtime-actions'
-export type { ConfigFormRendererBuiltinActionRef, RendererBuiltinActionHost } from './runtime-actions'
 export { createRuntimeFlowEventService } from './runtime-flow-events'
 export { createRendererScopedFlowTransaction } from './scoped-flow-transaction'
 export { initializeRendererVariables } from './variables'

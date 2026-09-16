@@ -10,15 +10,15 @@ import type { Component } from 'vue'
 import type {
   DesignerPropertyControlRegistry,
   DesignerPropertySetterDefinition,
-} from '../../../registry'
-import type { DesignerPropertyFormEntry } from '../types'
+} from '@designer/registry'
+import type { DesignerPropertyFormEntry } from '../../types'
 import { FORM_LABEL_WIDTH_MAX_PX } from '@moluoxixi/config-form-model'
 import { Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
 import { computed } from 'vue'
-import { resolveInspectorGridFraction } from '../../../inspector'
-import { useDesignerLocale } from '../../../locale'
-import DesignerBreakpointLayoutSettings from './DesignerBreakpointLayoutSettings.vue'
+import { resolveInspectorGridFraction } from '@designer/inspector'
+import { useDesignerLocale } from '@designer/locale'
+import DesignerBreakpointLayoutSettings from '../DesignerBreakpointLayoutSettings/index.vue'
 
 type LayoutKey = 'columns' | 'fieldSpan' | 'labelWidth'
 type ResponsiveBreakpoint = Exclude<ConfigFormBreakpoint, 'desktop'>

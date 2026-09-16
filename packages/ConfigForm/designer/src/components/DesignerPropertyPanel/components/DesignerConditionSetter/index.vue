@@ -2,9 +2,16 @@
 import type {
   DesignerConditionCompareOperator,
   DesignerConditionExpression,
-} from '../../../condition'
+} from '@designer/condition'
+import {
+  ElInput,
+  ElInputNumber,
+  ElOption,
+  ElSegmented,
+  ElSelect,
+} from 'element-plus'
 import { computed, ref, watch } from 'vue'
-import { useDesignerLocale } from '../../../locale'
+import { useDesignerLocale } from '@designer/locale'
 
 type ConditionMode = 'off' | 'always' | 'never' | 'when' | 'custom'
 type LiteralType = 'text' | 'number' | 'boolean'
@@ -113,49 +120,106 @@ function changeLiteralType(next: LiteralType): void {
   commit()
 }
 
-function updateNumber(event: Event): void {
-  literalValue.value = Number((event.currentTarget as HTMLInputElement).value)
+function updateField(next: string): void {
+  field.value = next
   commit()
+}
+
+function updateOperator(next: DesignerConditionCompareOperator): void {
+  operator.value = next
+  commit()
+}
+
+function updateLiteralValue(next: string | number | boolean): void {
+  literalValue.value = next
+  commit()
+}
+
+function updateNumber(next: number | undefined): void {
+  updateLiteralValue(next ?? 0)
+}
+
+function updateLiteralText(next: string): void {
+  literalValue.value = next
 }
 </script>
 
 <template>
   <div class="mx-config-form-designer__condition-editor">
-    <div class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('condition.mode', 'Condition mode')">
-      <button
-        v-for="item in modes"
-        :key="item.value"
-        type="button"
-        :class="{ 'is-active': mode === item.value }"
-        :aria-pressed="mode === item.value"
-        :disabled="disabled"
-        @click="selectMode(item.value)"
-      >
-        {{ item.label }}
-      </button>
-    </div>
+    <ElSegmented
+      :model-value="mode"
+      :options="modes"
+      :disabled="disabled"
+      :aria-label="locale.t('condition.mode', 'Condition mode')"
+      @change="selectMode"
+    />
 
     <div v-if="mode === 'when'" class="mx-config-form-designer__condition-builder">
-      <select v-if="fieldOptions?.length" v-model="field" :aria-label="locale.t('condition.field', 'Condition field')" :disabled="disabled" @change="commit">
-        <option value="" disabled>{{ locale.t('condition.selectField', 'Select field') }}</option>
-        <option v-for="option in fieldOptions" :key="option" :value="option">{{ option }}</option>
-      </select>
-      <input v-else v-model="field" type="text" :aria-label="locale.t('condition.field', 'Condition field')" :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')" :disabled="disabled" @blur="commit">
-      <select v-model="operator" :aria-label="locale.t('condition.operator', 'Condition operator')" :disabled="disabled" @change="commit">
-        <option v-for="item in operators" :key="item.value" :value="item.value">{{ item.label }}</option>
-      </select>
+      <ElSelect
+        v-if="fieldOptions?.length"
+        :model-value="field"
+        :aria-label="locale.t('condition.field', 'Condition field')"
+        :placeholder="locale.t('condition.selectField', 'Select field')"
+        :disabled="disabled"
+        @update:model-value="updateField"
+      >
+        <ElOption v-for="option in fieldOptions" :key="option" :label="option" :value="option" />
+      </ElSelect>
+      <ElInput
+        v-else
+        :model-value="field"
+        :aria-label="locale.t('condition.field', 'Condition field')"
+        :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')"
+        :disabled="disabled"
+        @update:model-value="field = $event"
+        @blur="commit"
+      />
+      <ElSelect
+        :model-value="operator"
+        :aria-label="locale.t('condition.operator', 'Condition operator')"
+        :disabled="disabled"
+        @update:model-value="updateOperator"
+      >
+        <ElOption v-for="item in operators" :key="item.value" :label="item.label" :value="item.value" />
+      </ElSelect>
       <div class="mx-config-form-designer__typed-value">
-        <select :value="literalType" :aria-label="locale.t('condition.valueType', 'Condition value type')" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as LiteralType)">
-          <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-          <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-          <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-        </select>
-        <select v-if="literalType === 'boolean'" v-model="literalValue" :aria-label="locale.t('condition.value', 'Condition value')" :disabled="disabled" @change="commit">
-          <option :value="true">{{ locale.t('value.true', 'True') }}</option>
-          <option :value="false">{{ locale.t('value.false', 'False') }}</option>
-        </select>
-        <input v-else-if="literalType === 'number'" :value="literalValue" type="number" :aria-label="locale.t('condition.value', 'Condition value')" :disabled="disabled" @change="updateNumber">
-        <input v-else v-model="literalValue" type="text" :aria-label="locale.t('condition.value', 'Condition value')" :placeholder="locale.t('condition.valuePlaceholder', 'Value')" :disabled="disabled" @blur="commit">
+        <ElSelect
+          :model-value="literalType"
+          :aria-label="locale.t('condition.valueType', 'Condition value type')"
+          :disabled="disabled"
+          @update:model-value="changeLiteralType"
+        >
+          <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
+          <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
+          <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
+        </ElSelect>
+        <ElSelect
+          v-if="literalType === 'boolean'"
+          :model-value="literalValue"
+          :aria-label="locale.t('condition.value', 'Condition value')"
+          :disabled="disabled"
+          @update:model-value="updateLiteralValue"
+        >
+          <ElOption :value="true" :label="locale.t('value.true', 'True')" />
+          <ElOption :value="false" :label="locale.t('value.false', 'False')" />
+        </ElSelect>
+        <ElInputNumber
+          v-else-if="literalType === 'number'"
+          :model-value="typeof literalValue === 'number' ? literalValue : 0"
+          :aria-label="locale.t('condition.value', 'Condition value')"
+          :disabled="disabled"
+          controls-position="right"
+          @change="updateNumber"
+        />
+        <ElInput
+          v-else
+          :model-value="typeof literalValue === 'string' ? literalValue : ''"
+          :aria-label="locale.t('condition.value', 'Condition value')"
+          :placeholder="locale.t('condition.valuePlaceholder', 'Value')"
+          :disabled="disabled"
+          @update:model-value="updateLiteralText"
+          @blur="commit"
+        />
       </div>
     </div>
   </div>

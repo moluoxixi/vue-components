@@ -9,8 +9,8 @@ import type {
 import type {
   ConfigFormFieldAddress,
   ConfigFormFieldInstance,
-  ConfigFormValueSchema,
   ConfigFormValues,
+  ConfigFormValueSchema,
 } from '../types'
 import type { ControllerNode, ControllerScopeService } from '../types/controller-internal'
 import {
@@ -107,8 +107,7 @@ export function createControllerScopeService(
         scopeId: scope.parentId,
       }, scopeById, store)
       parents.forEach((parentScope) => {
-        rows.set(getConfigFormValueScopeInstanceKey(scope.nodeId, parentScope),
-          store.listRows(scope.nodeId, parentScope).map(row => row.rowId))
+        rows.set(getConfigFormValueScopeInstanceKey(scope.nodeId, parentScope), store.listRows(scope.nodeId, parentScope).map(row => row.rowId))
       })
     })
     return rows
@@ -223,6 +222,10 @@ export function createControllerModelObserver(service: ControllerScopeService, i
   service.schema.valueScopes.forEach((scope) => {
     children.set(scope.parentId, [...(children.get(scope.parentId) ?? []), scope])
   })
+  // Declaring a business key means an equal external replacement is a reconciliation
+  // rather than an invalidation, so arrays observed at the same path keep their row
+  // identity even when the host handed over fresh array objects.
+  const reconcilesByPath = service.schema.valueScopes.some(scope => scope.kind === 'array' && scope.itemKey !== undefined)
   let observed = new Map<string, ObservedModelArray>()
 
   function visit(
@@ -242,7 +245,14 @@ export function createControllerModelObserver(service: ControllerScopeService, i
       }
       else if (Array.isArray(value)) {
         const rowScopes = onArray(value, scope, valuePath, parentScope)
-        value.forEach((row, index) => visit(row, scope.nodeId, [...valuePath, index], rowScopes[index] ?? [], onArray))
+        value.forEach((row, index) => {
+          // A host row the store does not own has no owned child scopes: descending
+          // with a fabricated parent scope would fail ancestor resolution. This is
+          // reachable when a schema refresh prunes rows the host model still carries.
+          const rowScope = rowScopes[index]
+          if (rowScope)
+            visit(row, scope.nodeId, [...valuePath, index], rowScope, onArray)
+        })
       }
     }
   }
@@ -275,12 +285,15 @@ export function createControllerModelObserver(service: ControllerScopeService, i
     visit(values, undefined, [], [], (value, scope, valuePath) => {
       count += 1
       const atPath = observed.get(JSON.stringify(valuePath))
-      const previous = atPath?.value === value
+      const atPathMatches = atPath?.value === value
+      const observedByReference = byReference.get(value)?.find(array => array.scopeId === scope.nodeId)
+      const previous = atPathMatches
         ? atPath
-        : byReference.get(value)?.find(array => array.scopeId === scope.nodeId)
+        : observedByReference ?? (reconcilesByPath ? atPath : undefined)
       if (atPath?.value !== value || atPath.rows.length !== value.length
-        || atPath.rows.some((row, index) => row !== value[index]))
+        || atPath.rows.some((row, index) => row !== value[index])) {
         changed = true
+      }
 
       const rowIdsByReference = new Map<unknown, string>()
       const rowIdsByItemKey = new Map<string, string>()
@@ -297,7 +310,12 @@ export function createControllerModelObserver(service: ControllerScopeService, i
           }
         })
       }
-      const rowIds = value.map((row) => {
+      // An unkeyed array that only matched by path has neither a row reference nor a
+      // business key to compare, so its row identities follow the row positions.
+      const positionalIds = previous && !scope.itemKey && !atPathMatches && !observedByReference
+        ? previous.rowIds
+        : undefined
+      const rowIds = value.map((row, index) => {
         const byRow = rowIdsByReference.get(row)
         if (byRow !== undefined)
           return byRow
@@ -306,9 +324,11 @@ export function createControllerModelObserver(service: ControllerScopeService, i
           if (key !== undefined && key !== null)
             return rowIdsByItemKey.get(`${typeof key}:${String(key)}`) ?? null
         }
-        return null
+        return positionalIds?.[index] ?? null
       })
-      if (previous) {
+      // Core rejects an empty retained identity list, and an array with no rows has
+      // nothing to retain, so such an array is simply not reported as retained.
+      if (previous && rowIds.length > 0) {
         retainedArrays.push({
           scopeId: scope.nodeId,
           parentScope: previous.parentScope,

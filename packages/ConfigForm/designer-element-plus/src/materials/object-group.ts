@@ -7,7 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.object-group',
-      source: shared.elementSource('div', 'object-group', { native: true, render: 'section' }),
+      source: shared.elementSource('div', 'section', { native: true, render: 'section' }),
       version: 1,
       kind: 'layout',
       title: 'Object group',
@@ -22,14 +22,17 @@ export default defineDesignerMaterialModule({
       ],
       slots: [{ name: 'default', title: 'Fields', accepts: ['field', 'layout'] }],
       createNode: ({ id, field }) => ({
-        id, kind: 'layout', component: 'element.object-group',
+        id,
+        kind: 'layout',
+        component: 'element.object-group',
         props: { title: 'Object group' },
         valueScope: { kind: 'object', field: field ?? 'object' },
         slots: { default: [] },
       }),
     },
     locale: {
-      title: '对象分组', category: '布局',
+      title: '对象分组',
+      category: '布局',
       setters: { title: '标题', scopeField: '对象字段名', readonly: '只读', disabled: '禁用' },
       slots: { default: '字段' },
     },

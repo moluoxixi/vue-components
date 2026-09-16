@@ -1,9 +1,9 @@
-import type { ConfigFormDataSourceHost, ConfigFormFlow, ConfigFormFlowActionRegistry, ConfigFormJsonValue } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormJsonValue } from '@moluoxixi/config-form-core'
 import type { FieldNode, LayoutNode, PageGraph, ProjectDocument, ProjectPage } from '@moluoxixi/config-form-model'
-import type { VueRuntimeBindingResolver, VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
 import type { CanonicalSourceBindingResolver } from '../export'
 import type { WorkspaceFile } from '../types'
+import type { BusinessScenario, BusinessScenariosFixture } from './types'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { assertProjectDocument, createProjectSnapshot, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
@@ -11,9 +11,10 @@ import { loadWorkbenchAdapter } from '../../adapters'
 import { createCanonicalProjectConfigExport, createCanonicalProjectSourceExport } from '../export'
 import { createGeneratedModuleLoader } from './generated-runtime-module'
 
+export type { BusinessScenario, BusinessScenariosFixture } from './types'
+
 export const BUSINESS_PROVIDERS = ['element-plus', 'antd-vue'] as const
 export const BUSINESS_SCENARIOS = ['profile', 'order', 'submission'] as const
-export type BusinessScenario = typeof BUSINESS_SCENARIOS[number]
 export const BUSINESS_ORIGIN = 'https://business-scenarios.invalid'
 
 function valueEvent(prefix: string): string {
@@ -79,14 +80,12 @@ function profilePage(adapter: WorkbenchAdapter, prefix: string): ProjectPage {
   const { graph, field } = materialGraph(adapter, prefix)
   field('input', 'name', 'name', {
     label: 'Name',
-    defaultValue: '',
     validateOn: ['blur'],
     validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'required', message: 'Name required' }] },
   })
   field('input', 'country', 'country', { label: 'Country', defaultValue: 'US' })
   field('select', 'city', 'city', {
     label: 'City',
-    defaultValue: '',
     optionSource: { kind: 'dataSource', dataSourceId: 'cities' },
     validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'required', message: 'City required' }] },
   })
@@ -255,7 +254,10 @@ function submissionPage(adapter: WorkbenchAdapter, prefix: string): ProjectPage 
   }
 }
 
-export async function createBusinessScenariosFixture(provider: WorkbenchAdapterId, options: { readonlyOrder?: boolean } = {}) {
+export async function createBusinessScenariosFixture(
+  provider: WorkbenchAdapterId,
+  options: { readonlyOrder?: boolean } = {},
+): Promise<BusinessScenariosFixture> {
   const adapter = await loadWorkbenchAdapter(provider)
   const prefix = provider === 'element-plus' ? 'element' : 'antd'
   const pages = [profilePage(adapter, prefix), orderPage(adapter, prefix, options.readonlyOrder ?? false), submissionPage(adapter, prefix)]
@@ -317,7 +319,6 @@ export async function createBusinessScenariosFixture(provider: WorkbenchAdapterI
     exportSource: () => createCanonicalProjectSourceExport(compilation, sourceResolver),
   }
 }
-export type BusinessScenariosFixture = Awaited<ReturnType<typeof createBusinessScenariosFixture>>
 
 export function generatedBusinessFiles(files: Readonly<Record<string, WorkspaceFile>>): Record<string, string> {
   return Object.fromEntries(Object.entries(files).flatMap(([path, file]) => {
@@ -327,20 +328,6 @@ export function generatedBusinessFiles(files: Readonly<Record<string, WorkspaceF
       throw new TypeError(`Generated text file is not text: ${path}`)
     return [[path, file.content]]
   }))
-}
-
-export interface BusinessRuntimeHost {
-  flowActions: ConfigFormFlowActionRegistry
-  dataSourceHost: ConfigFormDataSourceHost
-}
-export interface GeneratedBusinessConfigPage {
-  pageCompilation: { key: unknown, page: unknown }
-  plan: VueRuntimeRendererConfig['plan']
-  initialValues: Record<string, unknown>
-  createRendererConfig: (
-    resolver: VueRuntimeBindingResolver & Pick<CanonicalSourceBindingResolver, 'adapter' | 'adapterVersion' | 'registryFingerprint'>,
-    host: BusinessRuntimeHost,
-  ) => VueRuntimeRendererConfig
 }
 
 /** The shared module loader executes the generated factory; no second evaluator lives in this fixture. */

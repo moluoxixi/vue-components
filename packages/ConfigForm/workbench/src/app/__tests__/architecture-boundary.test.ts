@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parse as parseTypeScript } from '@babel/parser'
 import { describe, expect, it } from 'vitest'
 
 const configFormRoot = fileURLToPath(new URL('../../../../', import.meta.url))
@@ -102,6 +103,28 @@ function collectProductDirectories(directory: string): string[] {
 
 function hasLocalEntry(directory: string): boolean {
   return ['index.ts', 'index.css', 'index.scss'].some(entry => existsSync(join(directory, entry)))
+}
+
+/**
+ * Reports whether a module declares an exported `interface`/`type` at its top level.
+ *
+ * The check parses TypeScript instead of matching text so that type declarations
+ * embedded in generated-source template literals (for example `runtime-source/services/sources.ts`
+ * and `export/services/config-page.ts`) are not mistaken for real contracts of the module
+ * that happens to contain the template.
+ */
+function declaresExportedType(source: string): boolean {
+  const file = parseTypeScript(source, {
+    sourceType: 'module',
+    errorRecovery: true,
+    plugins: ['typescript', 'decorators-legacy'],
+  })
+  return file.program.body.some((statement) => {
+    if (statement.type !== 'ExportNamedDeclaration' && statement.type !== 'ExportDefaultDeclaration')
+      return false
+    const declaration = statement.declaration
+    return declaration?.type === 'TSTypeAliasDeclaration' || declaration?.type === 'TSInterfaceDeclaration'
+  })
 }
 
 function configFormPackageSourceRoots(): Array<{ name: string, sourceRoot: string }> {
@@ -293,7 +316,7 @@ describe('workbench production architecture boundary', () => {
         return []
       }
       const source = readFileSync(path, 'utf8')
-      return /^export\s+(?:interface|type)\b/m.test(source) ? [normalized] : []
+      return declaresExportedType(source) ? [normalized] : []
     })
     const executableTypeFiles = sourceFiles.flatMap((path) => {
       const normalized = normalizedRelative(configFormRoot, path)

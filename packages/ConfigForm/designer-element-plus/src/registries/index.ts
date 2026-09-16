@@ -1,4 +1,3 @@
-export { ELEMENT_PLUS_DESIGNER_COMPONENTS } from './components'
 export {
   createElementPlusDesignerRegistry,
   elementPlusDesignerRegistryLayer,

@@ -85,7 +85,9 @@ describe('ant design vue designer fields', () => {
       props: { kind: 'select', node },
     })
     await flushPromises()
-    expect(setter.findAll('button').map(button => button.text())).toEqual(expect.arrayContaining(['Playground', 'Production']))
+    // antd 包不依赖 element-plus；核心默认值控件渲染的 ElSelect/ElOption 按组件名断言。
+    expect(setter.findAllComponents({ name: 'ElOption' }).map(option => option.props('label'))).toEqual(['Playground', 'Production'])
+    expect(setter.findComponent({ name: 'ElSelect' }).exists()).toBe(true)
   })
 
   it('renders empty, loading, and provider error states', async () => {

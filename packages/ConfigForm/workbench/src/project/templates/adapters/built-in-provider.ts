@@ -14,12 +14,14 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
+  // `flows` is optional and the model's canonical shape omits it while empty, so seeds must
+  // not introduce an empty array: undoing a first `flow.add` restores the page without the
+  // key, and any pre-seeded `[]` would make that undo inexact.
   const page: ProjectPage = {
     id: 'template-page',
     name: definition.category === 'blank' ? 'Blank form' : 'Profile form',
     route: '/',
     graph: definition.category === 'blank' ? createBlankGraph() : createProfileGraph(definition.adapter),
-    flows: [],
   }
   return {
     manifest: {

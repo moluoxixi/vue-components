@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import Vue from '@vitejs/plugin-vue'
 import dts from 'unplugin-dts/vite'
 import { defineConfig } from 'vitest/config'
+import { configFormInternalAliases } from '../../../scripts/config-form-internal-aliases.mjs'
 import { failOnDtsDiagnostics } from '../../../scripts/fail-on-dts-diagnostics.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -24,9 +25,10 @@ export default defineConfig({
   ],
   resolve: {
     conditions: ['source'],
-    alias: {
-      '@': resolve(__dirname, 'src'),
-    },
+    alias: [
+      ...configFormInternalAliases,
+      { find: '@', replacement: resolve(__dirname, 'src') },
+    ],
   },
   test: {
     environment: 'happy-dom',

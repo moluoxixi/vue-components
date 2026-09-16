@@ -300,7 +300,8 @@ describe('workbench theme contract', () => {
       '.mx-config-form-designer__palette-item',
       designerStylesheet,
     )
-    expect(paletteItem).toContain('background: transparent;')
+    expect(paletteItem).toContain('background: var(--mx-designer-subtle);')
+    expect(paletteItem).toContain('border: 1px solid var(--mx-designer-separator);')
     expect(paletteItem).toContain('transition: background-color 100ms ease, border-color 100ms ease;')
     expect(selectorBlock(
       '.mx-config-form-designer__palette-item:focus-within',

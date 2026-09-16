@@ -32,10 +32,10 @@ import type {
 } from '../types'
 import { computed, ref, shallowRef } from 'vue'
 import { createWorkbenchFlowActionRegistry } from '../../flow'
-import { isRuntimeHostFieldInstance, isRuntimeHostRuntimeState } from '../../runtime-host/schemas/protocol'
+import { isRuntimeHostFieldInstance, isRuntimeHostRuntimeState } from '../../runtime-host'
+import { collectPreviewContracts, emptyPreviewContracts, filterPreviewState, matchesPreviewInstance, reconcilePreviewState } from '../../services'
 import { cloneWorkbenchJson } from '../../utils'
 import { PREVIEW_TRACE_LIMIT } from '../constants'
-import { collectPreviewContracts, emptyPreviewContracts, filterPreviewState, matchesPreviewInstance, reconcilePreviewState } from './preview-instance-state'
 import { createPageProjectionCoordinator } from './projection-coordinator'
 
 function scopeKey(input: Pick<PreviewSessionAcceptInput, 'adapter' | 'pageId' | 'projectId'>): string {

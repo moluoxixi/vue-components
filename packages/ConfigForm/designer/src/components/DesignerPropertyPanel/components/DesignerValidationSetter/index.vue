@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import type { RuleBase, RuleDescriptor, RulePrimitive, RuleSet } from '@moluoxixi/zod3-to-rule'
 import { Plus, Trash2 } from '@lucide/vue'
+import {
+  ElCheckbox,
+  ElDatePicker,
+  ElInput,
+  ElInputNumber,
+  ElOption,
+  ElSelect,
+  ElSwitch,
+} from 'element-plus'
 import { computed, ref, watch } from 'vue'
-import { useDesignerLocale } from '../../../locale'
+import { useDesignerLocale } from '@designer/locale'
 
 type BaseType = RuleBase['type']
 type RuleKind = RuleDescriptor['kind']
@@ -129,8 +138,8 @@ function commit(): void {
   })
 }
 
-function toggleEnabled(): void {
-  enabled.value = !enabled.value
+function updateEnabled(value: string | number | boolean): void {
+  enabled.value = value === true
   commit()
 }
 
@@ -145,12 +154,17 @@ function changeBase(next: BaseType): void {
   commit()
 }
 
-function toggleFlag(flag: 'optional' | 'nullable'): void {
+function updateFlag(flag: 'optional' | 'nullable', value: string | number | boolean): void {
   if (flag === 'optional')
-    optional.value = !optional.value
+    optional.value = value === true
   else
-    nullable.value = !nullable.value
+    nullable.value = value === true
   commit()
+}
+
+/** EP selects/inputs report their payload as a wide union; narrow it for `:model-value` bindings. */
+function optionValue(value: unknown): string | number | boolean | undefined {
+  return value === null || value === undefined ? undefined : value as string | number | boolean
 }
 
 function addEnumValue(): void {
@@ -222,51 +236,43 @@ function dateInputValue(value: unknown): string {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
 }
 
-function updateDateRule(index: number, event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
-  if (!input.value) {
-    input.value = dateInputValue(rules.value[index]?.value)
+function updateDateRule(index: number, value: string | null): void {
+  if (!value) {
+    updateRule(index, 'value', undefined)
     return
   }
-  updateRule(index, 'value', `${input.value}T00:00:00.000Z`)
+  updateRule(index, 'value', `${value}T00:00:00.000Z`)
 }
 
-function updateNumberRule(index: number, event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
+function updateNumberRule(index: number, value: number | undefined): void {
   const rule = rules.value[index]
-  const numeric = Number(input.value)
-  const valid = input.value.trim() !== ''
-    && Number.isFinite(numeric)
-    && (rule?.kind !== 'multipleOf' || numeric > 0)
+  const valid = value !== undefined
+    && Number.isFinite(value)
+    && (rule?.kind !== 'multipleOf' || value > 0)
 
-  if (!valid) {
-    input.value = String(rule?.value ?? '')
+  if (!valid)
     return
-  }
 
-  const value = rule && ['minLength', 'maxLength', 'length'].includes(rule.kind)
-    ? Math.max(0, Math.floor(numeric))
-    : numeric
-  input.value = String(value)
-  updateRule(index, 'value', value)
+  const next = rule && ['minLength', 'maxLength', 'length'].includes(rule.kind)
+    ? Math.max(0, Math.floor(value))
+    : value
+  updateRule(index, 'value', next)
 }
 
-function updateLiteralValue(event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
-  if (literalType.value !== 'number') {
-    literalValue.value = input.value
+function updateLiteralText(value: string): void {
+  literalValue.value = value
+}
+
+function updateLiteralValue(value: string | number | boolean | null | undefined): void {
+  if (literalType.value === 'number') {
+    const numeric = typeof value === 'number' ? value : Number(value)
+    if (value === null || value === undefined || !Number.isFinite(numeric))
+      return
+    literalValue.value = numeric
     commit()
     return
   }
-
-  const numeric = Number(input.value)
-  if (input.value.trim() === '' || !Number.isFinite(numeric)) {
-    input.value = String(literalValue.value ?? '')
-    return
-  }
-
-  literalValue.value = numeric
-  input.value = String(numeric)
+  literalValue.value = typeof value === 'boolean' ? value : String(value ?? '')
   commit()
 }
 
@@ -287,28 +293,33 @@ function validatorChoices(rule: RuleDraft): string[] {
 
 <template>
   <div class="mx-config-form-designer__validation-editor">
-    <button type="button" class="mx-config-form-designer__switch-row" role="switch" :aria-checked="enabled" :disabled="disabled" @click="toggleEnabled">
+    <div class="mx-config-form-designer__switch-row">
       <span>{{ locale.t('validation.enable', 'Enable validation') }}</span>
-      <span class="mx-config-form-designer__switch" :class="{ 'is-on': enabled }" aria-hidden="true"><span /></span>
-    </button>
+      <ElSwitch
+        :model-value="enabled"
+        :aria-label="locale.t('validation.enable', 'Enable validation')"
+        :disabled="disabled"
+        @change="updateEnabled"
+      />
+    </div>
 
     <template v-if="enabled">
       <div class="mx-config-form-designer__validation-grid">
         <label>
           <span>{{ locale.t('validation.valueType', 'Value type') }}</span>
-          <select :value="baseType" :disabled="disabled" @change="changeBase(($event.currentTarget as HTMLSelectElement).value as BaseType)">
-            <option v-for="item in baseTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
-          </select>
+          <ElSelect :model-value="baseType" :disabled="disabled" @update:model-value="changeBase">
+            <ElOption v-for="item in baseTypes" :key="item.value" :label="item.label" :value="item.value" />
+          </ElSelect>
         </label>
         <div class="mx-config-form-designer__flag-buttons">
-          <button type="button" :class="{ 'is-active': optional }" :aria-pressed="optional" :disabled="disabled" @click="toggleFlag('optional')">{{ locale.t('validation.optional', 'Optional') }}</button>
-          <button type="button" :class="{ 'is-active': nullable }" :aria-pressed="nullable" :disabled="disabled" @click="toggleFlag('nullable')">{{ locale.t('validation.nullable', 'Nullable') }}</button>
+          <ElCheckbox :model-value="optional" :disabled="disabled" :label="locale.t('validation.optional', 'Optional')" @update:model-value="updateFlag('optional', $event)" />
+          <ElCheckbox :model-value="nullable" :disabled="disabled" :label="locale.t('validation.nullable', 'Nullable')" @update:model-value="updateFlag('nullable', $event)" />
         </div>
       </div>
 
       <div v-if="baseType === 'enum'" class="mx-config-form-designer__enum-values">
         <div v-for="(_, index) in enumValues" :key="index">
-          <input v-model="enumValues[index]" type="text" :aria-label="locale.t('validation.enumValue', 'Enum value {index}', { index: index + 1 })" :disabled="disabled" @blur="commit">
+          <ElInput v-model="enumValues[index]" :aria-label="locale.t('validation.enumValue', 'Enum value {index}', { index: index + 1 })" :disabled="disabled" @blur="commit" />
           <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteEnumValue', 'Delete enum value {index}', { index: index + 1 })" :disabled="disabled || enumValues.length <= 1" @click="removeEnumValue(index)">
             <Trash2 :size="14" aria-hidden="true" />
           </button>
@@ -317,57 +328,58 @@ function validatorChoices(rule: RuleDraft): string[] {
       </div>
 
       <div v-else-if="baseType === 'literal'" class="mx-config-form-designer__typed-value">
-        <select :value="literalType" :aria-label="locale.t('validation.literalType', 'Literal type')" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as PrimitiveType)">
-          <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
-          <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
-          <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
-        </select>
-        <select v-if="literalType === 'boolean'" v-model="literalValue" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @change="commit">
-          <option :value="true">{{ locale.t('value.true', 'True') }}</option>
-          <option :value="false">{{ locale.t('value.false', 'False') }}</option>
-        </select>
-        <input v-else :value="literalValue" :type="literalType === 'number' ? 'number' : 'text'" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @blur="updateLiteralValue">
+        <ElSelect :model-value="literalType" :aria-label="locale.t('validation.literalType', 'Literal type')" :disabled="disabled" @update:model-value="changeLiteralType">
+          <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
+          <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
+          <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
+        </ElSelect>
+        <ElSelect v-if="literalType === 'boolean'" :model-value="literalValue === true" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @update:model-value="updateLiteralValue">
+          <ElOption :value="true" :label="locale.t('value.true', 'True')" />
+          <ElOption :value="false" :label="locale.t('value.false', 'False')" />
+        </ElSelect>
+        <ElInputNumber v-else-if="literalType === 'number'" :model-value="typeof literalValue === 'number' ? literalValue : 0" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" controls-position="right" @change="updateLiteralValue" />
+        <ElInput v-else :model-value="typeof literalValue === 'string' ? literalValue : ''" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @update:model-value="updateLiteralText" @blur="updateLiteralValue(literalValue)" />
       </div>
 
       <div class="mx-config-form-designer__rule-list">
         <div v-for="(rule, index) in rules" :key="index" class="mx-config-form-designer__rule-row">
           <div class="mx-config-form-designer__collection-row-heading">
-            <select :value="rule.kind" :aria-label="locale.t('validation.ruleType', 'Rule {index} type', { index: index + 1 })" :disabled="disabled" @change="changeRuleKind(index, ($event.currentTarget as HTMLSelectElement).value as RuleKind)">
-              <option v-for="item in ruleTypes" :key="item.value" :value="item.value" :disabled="item.disabled">{{ item.label }}</option>
-            </select>
+            <ElSelect :model-value="rule.kind" :aria-label="locale.t('validation.ruleType', 'Rule {index} type', { index: index + 1 })" :disabled="disabled" @update:model-value="changeRuleKind(index, $event)">
+              <ElOption v-for="item in ruleTypes" :key="item.value" :value="item.value" :disabled="item.disabled" :label="item.label" />
+            </ElSelect>
             <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteRule', 'Delete rule {index}', { index: index + 1 })" :disabled="disabled" @click="removeRule(index)">
               <Trash2 :size="14" aria-hidden="true" />
             </button>
           </div>
 
-          <input v-if="numberKinds.includes(rule.kind)" :value="rule.value" type="number" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" @change="updateNumberRule(index, $event)">
+          <ElInputNumber v-if="numberKinds.includes(rule.kind)" :model-value="typeof rule.value === 'number' ? rule.value : 0" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumberRule(index, $event)" />
           <template v-else-if="rule.kind === 'regex'">
-            <input :value="rule.source" type="text" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @blur="updateRule(index, 'source', ($event.currentTarget as HTMLInputElement).value)">
-            <input :value="rule.flags" type="text" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @blur="updateRule(index, 'flags', ($event.currentTarget as HTMLInputElement).value || undefined)">
+            <ElInput :model-value="String(rule.source ?? '')" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @update:model-value="updateRule(index, 'source', $event)" />
+            <ElInput :model-value="String(rule.flags ?? '')" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @update:model-value="updateRule(index, 'flags', $event || undefined)" />
           </template>
-          <input v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :value="dateInputValue(rule.value)" type="date" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @change="updateDateRule(index, $event)">
+          <ElDatePicker v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :model-value="dateInputValue(rule.value)" type="date" value-format="YYYY-MM-DD" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @update:model-value="updateDateRule(index, $event)" />
           <template v-else-if="rule.kind === 'compare'">
-            <select :value="rule.field" :aria-label="locale.t('validation.ruleField', 'Rule {index} field', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'field', ($event.currentTarget as HTMLSelectElement).value)">
-              <option v-for="field in fieldChoices(rule)" :key="field" :value="field">{{ field }}</option>
-            </select>
-            <select :value="rule.operator" :aria-label="locale.t('validation.ruleOperator', 'Rule {index} operator', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'operator', ($event.currentTarget as HTMLSelectElement).value)">
-              <option value="eq">{{ locale.t('operator.eq', 'Equals') }}</option>
-              <option value="neq">{{ locale.t('operator.neq', 'Not equal') }}</option>
-              <option value="gt">{{ locale.t('operator.gt', 'Greater than') }}</option>
-              <option value="gte">{{ locale.t('operator.gte', 'At least') }}</option>
-              <option value="lt">{{ locale.t('operator.lt', 'Less than') }}</option>
-              <option value="lte">{{ locale.t('operator.lte', 'At most') }}</option>
-            </select>
+            <ElSelect :model-value="optionValue(rule.field)" :aria-label="locale.t('validation.ruleField', 'Rule {index} field', { index: index + 1 })" :disabled="disabled" @update:model-value="updateRule(index, 'field', $event)">
+              <ElOption v-for="field in fieldChoices(rule)" :key="field" :value="field" :label="field" />
+            </ElSelect>
+            <ElSelect :model-value="optionValue(rule.operator)" :aria-label="locale.t('validation.ruleOperator', 'Rule {index} operator', { index: index + 1 })" :disabled="disabled" @update:model-value="updateRule(index, 'operator', $event)">
+              <ElOption value="eq" :label="locale.t('operator.eq', 'Equals')" />
+              <ElOption value="neq" :label="locale.t('operator.neq', 'Not equal')" />
+              <ElOption value="gt" :label="locale.t('operator.gt', 'Greater than')" />
+              <ElOption value="gte" :label="locale.t('operator.gte', 'At least')" />
+              <ElOption value="lt" :label="locale.t('operator.lt', 'Less than')" />
+              <ElOption value="lte" :label="locale.t('operator.lte', 'At most')" />
+            </ElSelect>
           </template>
-          <select v-else-if="rule.kind === 'custom'" :value="rule.key" :aria-label="locale.t('validation.ruleKey', 'Rule {index} key', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'key', ($event.currentTarget as HTMLSelectElement).value)">
-            <option v-for="key in validatorChoices(rule)" :key="key" :value="key">{{ key }}</option>
-          </select>
+          <ElSelect v-else-if="rule.kind === 'custom'" :model-value="optionValue(rule.key)" :aria-label="locale.t('validation.ruleKey', 'Rule {index} key', { index: index + 1 })" :disabled="disabled" @update:model-value="updateRule(index, 'key', $event)">
+            <ElOption v-for="key in validatorChoices(rule)" :key="key" :value="key" :label="key" />
+          </ElSelect>
 
-          <button v-if="inclusiveKinds.includes(rule.kind)" type="button" class="mx-config-form-designer__switch-row is-compact" role="switch" :aria-checked="rule.inclusive !== false" :disabled="disabled" @click="updateRule(index, 'inclusive', rule.inclusive === false)">
+          <div v-if="inclusiveKinds.includes(rule.kind)" class="mx-config-form-designer__switch-row is-compact">
             <span>{{ locale.t('validation.inclusive', 'Inclusive') }}</span>
-            <span class="mx-config-form-designer__switch" :class="{ 'is-on': rule.inclusive !== false }" aria-hidden="true"><span /></span>
-          </button>
-          <input :value="rule.message" type="text" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="disabled" @blur="updateRule(index, 'message', ($event.currentTarget as HTMLInputElement).value || undefined)">
+            <ElSwitch :model-value="rule.inclusive !== false" :aria-label="locale.t('validation.inclusive', 'Inclusive')" :disabled="disabled" @change="updateRule(index, 'inclusive', $event)" />
+          </div>
+          <ElInput :model-value="String(rule.message ?? '')" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="disabled" @update:model-value="updateRule(index, 'message', $event || undefined)" />
         </div>
         <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRule">
           <Plus :size="15" aria-hidden="true" />

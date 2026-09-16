@@ -30,6 +30,19 @@ const selectedEvent = computed(() => {
     : undefined
 })
 const selectedField = computed(() => props.modelValue.kind === 'field' ? props.modelValue.field : '')
+/**
+ * Vue infers `ValueEditor`'s `modelValue` runtime type as
+ * `[Boolean, null, Number, String, Object, Array]`. `Boolean` precedes `String`, so Vue's boolean
+ * casting rewrites a bound `''` into `true`; an empty text literal would then render as a boolean
+ * switch with no way to type a value. An unset value renders the same empty text control, so the
+ * empty string is normalized away on this boundary.
+ */
+const literalEditorValue = computed<ConfigFormValueInput | undefined>(() => {
+  const operand = props.modelValue
+  if (operand.kind !== 'literal')
+    return undefined
+  return operand.value === '' ? undefined : operand.value
+})
 const source = computed<OperandSource>(() => {
   if (props.modelValue.kind === 'field')
     return 'field'
@@ -117,7 +130,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
     <ValueEditor
       v-if="modelValue.kind === 'literal'"
-      :model-value="modelValue.value"
+      :model-value="literalEditorValue"
       :allow-references="false"
       :disabled="disabled"
       :fields="fields"

@@ -99,9 +99,11 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       import('./element-plus-inspector'),
     ])
     const designerRegistry = adapter.createAntdVueDesignerRegistry({
+      // Designer chrome (property pane) is fixed to Element Plus even when the
+      // canvas materials come from Ant Design Vue; only provider-specific
+      // controls (defaultValue) still need to be layered in.
       layers: [{
         name: 'workbench-element-plus-inspector',
-        components: inspector.ELEMENT_PLUS_DESIGNER_COMPONENTS,
         propertyControls: inspector.ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS,
       }],
     })

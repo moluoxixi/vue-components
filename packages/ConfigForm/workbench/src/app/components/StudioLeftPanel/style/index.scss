@@ -141,7 +141,8 @@
 
 .designer-material-list {
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .designer-material-button.el-button {
@@ -149,29 +150,42 @@
   min-width: 0;
   height: 34px;
   margin: 0;
-  padding: 0 8px;
-  justify-content: flex-start;
-  gap: 7px;
+  padding: 0 6px;
+  justify-content: center;
+  gap: 0;
   color: var(--wb-text);
-  border: 0;
+  background: var(--wb-control-bg);
+  border: 1px solid var(--wb-separator);
+  border-radius: 5px;
+  white-space: nowrap;
 }
 
 .designer-material-button.el-button:hover,
 .designer-material-button.el-button:focus-visible,
 .designer-material-button.el-button.is-keyboard-dragging {
   color: var(--wb-text-strong);
-  background: var(--wb-control-hover);
+  background: var(--wb-hover);
+  border-color: var(--wb-accent-line);
 }
 
 .designer-material-button.el-button > span {
+  display: block;
+  width: 100%;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .designer-material-button .mx-config-form-designer__palette-item-summary {
   width: 100%;
+  grid-template-columns: 18px minmax(0, 1fr);
+  justify-content: center;
+  gap: 5px;
+}
+
+.designer-material-button .mx-config-form-designer__palette-item-name {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: left;
 }
 
 .designer-material-kind {

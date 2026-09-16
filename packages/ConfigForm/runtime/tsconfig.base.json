@@ -10,7 +10,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@designer/*": ["../designer/src/*"]
     },
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,

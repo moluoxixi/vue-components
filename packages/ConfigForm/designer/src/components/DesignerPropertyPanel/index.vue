@@ -91,6 +91,10 @@ const {
   }),
   tabs: () => propertyTabs.value,
 })
+
+// The panel root is bound to `propertyPanelRef` for keyboard tab lookups. Expose it so
+// the binding is also a script-side read and parents can address the panel element.
+defineExpose({ propertyPanelRef })
 </script>
 
 <template>

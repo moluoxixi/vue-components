@@ -611,6 +611,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:dev
         version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      element-plus:
+        specifier: catalog:ui
+        version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
       happy-dom:
         specifier: catalog:dev
         version: 20.9.0
@@ -974,13 +977,34 @@ importers:
 
   packages/ConfigForm/runtime:
     dependencies:
+      '@lucide/vue':
+        specifier: catalog:ui
+        version: 1.28.0(vue@3.5.33(typescript@5.9.3))
       '@moluoxixi/config-form-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@moluoxixi/config-form-compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@moluoxixi/config-form-designer':
+        specifier: workspace:*
+        version: link:../designer
+      '@moluoxixi/config-form-designer-antd-vue':
+        specifier: workspace:*
+        version: link:../designer-antd-vue
+      '@moluoxixi/config-form-designer-element-plus':
+        specifier: workspace:*
+        version: link:../designer-element-plus
       '@moluoxixi/config-form-headless':
         specifier: workspace:*
         version: link:../headless
+      '@moluoxixi/config-form-model':
+        specifier: workspace:*
+        version: link:../model
+      '@moluoxixi/config-form-vue-backend':
+        specifier: workspace:*
+        version: link:../vue-backend
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -3777,20 +3801,11 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@floating-ui/core@1.7.5':
-    resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
-
   '@floating-ui/core@1.8.0':
     resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
 
-  '@floating-ui/dom@1.7.6':
-    resolution: {integrity: sha512-9gZSAI5XM36880PPMm//9dfiEngYoC6Am2izES1FF406YFsjvyBMmeJ2g4SAju3xWwtuynNRFL2s9hgxpLI5SQ==}
-
   '@floating-ui/dom@1.8.0':
     resolution: {integrity: sha512-yXSrzeHZBTZadLOlfyhCkJHNeLJnHRnRInwdZ40L7ZiaAtrBwoYlsDrX3v5zB1Utk7CLfzcOVnVVWoXEky7Ceg==}
-
-  '@floating-ui/utils@0.2.11':
-    resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
@@ -12436,25 +12451,14 @@ snapshots:
     optionalDependencies:
       '@noble/hashes': 2.3.0
 
-  '@floating-ui/core@1.7.5':
-    dependencies:
-      '@floating-ui/utils': 0.2.11
-
   '@floating-ui/core@1.8.0':
     dependencies:
       '@floating-ui/utils': 0.2.12
-
-  '@floating-ui/dom@1.7.6':
-    dependencies:
-      '@floating-ui/core': 1.7.5
-      '@floating-ui/utils': 0.2.11
 
   '@floating-ui/dom@1.8.0':
     dependencies:
       '@floating-ui/core': 1.8.0
       '@floating-ui/utils': 0.2.12
-
-  '@floating-ui/utils@0.2.11': {}
 
   '@floating-ui/utils@0.2.12': {}
 
@@ -15366,7 +15370,7 @@ snapshots:
     dependencies:
       '@ctrl/tinycolor': 4.2.0
       '@element-plus/icons-vue': 2.3.2(vue@3.5.33(typescript@5.9.3))
-      '@floating-ui/dom': 1.7.6
+      '@floating-ui/dom': 1.8.0
       '@popperjs/core': '@sxzz/popperjs-es@2.11.8'
       '@types/lodash': 4.17.24
       '@types/lodash-es': 4.17.12

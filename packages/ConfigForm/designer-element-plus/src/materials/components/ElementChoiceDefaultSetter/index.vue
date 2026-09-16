@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
-import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps, ElementPlusDesignerOption } from '../../../types'
+import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps } from '../../../types'
 import { computed } from 'vue'
 import {
   normalizeElementPlusOptions,

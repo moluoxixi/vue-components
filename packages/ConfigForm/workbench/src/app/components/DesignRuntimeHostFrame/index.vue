@@ -8,6 +8,7 @@ import type {
   DesignRuntimeHostFrameEmits,
   DesignRuntimeHostFrameProps,
   RuntimeHostGeometryPayload,
+  RuntimeHostRuntimeStatePayload,
 } from '../../../runtime-host'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../../../utils'
@@ -61,6 +62,16 @@ let parentSequence = 0
 let lastChildSequence = -1
 let lastGeometry: { payload: RuntimeHostGeometryPayload, revision: string } | undefined
 let geometryRefreshFrame: number | undefined
+// A sync is fire-and-forget: the frame can reload (HMR or a fresh document) or still be
+// evaluating its module graph when the message is posted, and a message delivered before
+// the child attaches its listener is lost for good. Retry until the child answers so a
+// missed sync cannot leave the canvas blank forever.
+let syncAcknowledged = false
+let syncAttempts = 0
+let syncRetryTimer: ReturnType<typeof setTimeout> | undefined
+let disposed = false
+const SYNC_RETRY_INTERVAL_MS = 400
+const SYNC_RETRY_LIMIT = 25
 // Compilations are immutable per revision; cache the proxy-free clone so
 // repeated syncs (candidate churn during drags) do not re-clone the page.
 const compilationCloneCache = new WeakMap<object, unknown>()
@@ -91,9 +102,47 @@ function cloneState<T extends object>(value: T): T {
 }
 
 function postMessage(message: Record<string, unknown>): void {
-  if (!loaded)
+  if (!loaded || disposed)
     return
   frame.value?.contentWindow?.postMessage(message, targetOrigin)
+}
+
+function stopSyncRetry(): void {
+  if (syncRetryTimer !== undefined) {
+    clearTimeout(syncRetryTimer)
+    syncRetryTimer = undefined
+  }
+  syncAttempts = 0
+}
+
+function scheduleSyncRetry(): void {
+  if (disposed || syncAcknowledged || !loaded || syncRetryTimer !== undefined)
+    return
+  syncRetryTimer = setTimeout(() => {
+    syncRetryTimer = undefined
+    if (disposed || syncAcknowledged || !loaded)
+      return
+    if (syncAttempts >= SYNC_RETRY_LIMIT)
+      return
+    syncAttempts += 1
+    syncRuntime()
+    scheduleSyncRetry()
+  }, SYNC_RETRY_INTERVAL_MS)
+}
+
+/**
+ * Design mode renders inside the frame, so the parent has no instance list to mirror and
+ * `fields` stays empty. It is still a required part of the protocol payload: the host
+ * guard rejects any sync whose runtime state omits it, which silently blanked the canvas.
+ * Typing the builder keeps that field from being dropped again.
+ */
+function designRuntimeState(): RuntimeHostRuntimeStatePayload {
+  return {
+    fields: [],
+    touched: [],
+    validation: {},
+    values: cloneState(props.modelValue) as Record<string, unknown>,
+  }
 }
 
 function syncRuntime(): void {
@@ -120,11 +169,7 @@ function syncRuntime(): void {
       variant: props.variant,
     },
     locale: props.locale,
-    runtimeState: {
-      values: cloneState(props.modelValue),
-      touched: [],
-      validation: {},
-    },
+    runtimeState: designRuntimeState(),
     ...(props.namespace ? { namespace: props.namespace } : {}),
     reactionProjection: {
       values: cloneState(props.modelValue),
@@ -149,11 +194,7 @@ function syncRuntimeState(): void {
     sequence: ++parentSequence,
     revision: revision.value,
     type: 'state',
-    runtimeState: {
-      values: cloneState(props.modelValue),
-      touched: [],
-      validation: {},
-    },
+    runtimeState: designRuntimeState(),
     reactionProjection: {
       values: cloneState(props.modelValue),
       props: cloneState(props.reactionProps),
@@ -211,7 +252,16 @@ function emitGeometry(payload: RuntimeHostGeometryPayload, messageRevision: stri
 function handleLoad(): void {
   loaded = true
   lastChildSequence = -1
+  // A new document has no listener yet, so the previous acknowledgement is meaningless.
+  syncAcknowledged = false
+  stopSyncRetry()
   syncRuntime()
+  scheduleSyncRetry()
+}
+
+function acknowledgeChild(): void {
+  syncAcknowledged = true
+  stopSyncRetry()
 }
 
 function handleMessage(event: MessageEvent<unknown>): void {
@@ -227,6 +277,10 @@ function handleMessage(event: MessageEvent<unknown>): void {
   if (!message || message.sequence <= lastChildSequence)
     return
   lastChildSequence = message.sequence
+  // `mounted`/`ready` are the child's proof that it accepted a sync; `runtimeState` and
+  // `geometry` follow the accepted sync, so any of them means the handshake completed.
+  if (message.type === 'mounted' || message.type === 'ready' || message.type === 'runtimeState' || message.type === 'geometry')
+    acknowledgeChild()
   if (message.type === 'geometry' && props.variant === 'canvas') {
     frameHeight.value = Math.max(1, Math.ceil(message.payload.viewport.height))
     lastGeometry = { payload: message.payload, revision: message.revision }
@@ -288,6 +342,13 @@ watch(
   syncRuntimeState,
 )
 
+// A new revision needs a fresh acknowledgement before the retry loop can stop.
+watch(revision, () => {
+  syncAcknowledged = false
+  stopSyncRetry()
+  scheduleSyncRetry()
+})
+
 watch(() => props.cameraScale, () => {
   void nextTick(() => {
     if (lastGeometry)
@@ -314,6 +375,8 @@ onMounted(() => {
   window.addEventListener('resize', scheduleGeometryRefresh)
 })
 onBeforeUnmount(() => {
+  disposed = true
+  stopSyncRetry()
   window.removeEventListener('message', handleMessage)
   window.removeEventListener('scroll', scheduleGeometryRefresh, true)
   window.removeEventListener('resize', scheduleGeometryRefresh)

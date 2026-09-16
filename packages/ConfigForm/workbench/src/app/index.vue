@@ -237,8 +237,24 @@ function showExportDialog(mode: 'source' | 'config'): void {
   openExportPreview(mode)
 }
 
+// The flow dialog is unmounted as soon as it closes, so the opener has to be captured
+// before opening and restored by the owner instead of by the dialog itself. Element Plus
+// only restores focus for the Escape path, not when an in-dialog action closes the dialog.
+let flowReturnFocus: HTMLElement | undefined
+
 function showFlowDialog(trigger: ConfigFormFlowTrigger): void {
+  flowReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
   openFlowWorkspace(trigger)
+}
+
+function closeFlowDialog(): void {
+  const target = flowReturnFocus
+  flowReturnFocus = undefined
+  closeFlowWorkspace()
+  void nextTick(() => {
+    if (target?.isConnected)
+      target.focus()
+  })
 }
 
 function showComponentEventFlow(nodeId: string, eventName: string): void {
@@ -565,7 +581,7 @@ watch(recoveryDrafts, (drafts) => {
       :readonly="busy"
       :reference-fields="flowReferenceFields"
       :source-catalog="flowSourceCatalog"
-      @close="closeFlowWorkspace"
+      @close="closeFlowDialog"
     />
 
     <ExportDialog

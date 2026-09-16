@@ -124,6 +124,27 @@
   line-height: 1;
 }
 
+/* Desktop toolbars label their primary commands, like the mature form designers.
+   Below 900px the layout needs the space, so only the narrow band keeps labels. */
+@media (min-width: 901px) {
+  .topbar-command-label {
+    display: inline;
+  }
+  .topbar-actions .export-menu > button {
+    min-width: 72px;
+  }
+}
+
+.topbar-actions .topbar-labeled-action {
+  display: inline-flex;
+  width: auto;
+  min-width: 58px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .topbar-actions .export-menu > button {
   display: inline-flex;
   width: auto;
@@ -240,6 +261,10 @@
   .topbar-command-label {
     display: inline;
   }
+  /* The preview command only labels itself where the desktop layout has room. */
+  .topbar-actions .preview-toggle-button .topbar-command-label {
+    display: none;
+  }
   .topbar-actions .export-menu > button {
     min-width: 72px;
   }
@@ -275,7 +300,8 @@
   .topbar-command-label {
     display: none;
   }
-  .topbar-actions .export-menu > button {
+  .topbar-actions .export-menu > button,
+  .topbar-actions .topbar-labeled-action {
     width: 30px;
     min-width: 30px;
     padding: 0;

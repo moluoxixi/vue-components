@@ -166,6 +166,11 @@ export function useRendererEvents<TValues extends ConfigFormValues>(options: {
   }
 
   function reportDiagnostic(diagnostic: ConfigFormFlowDiagnostic, token = generation): void {
+    // Authoring warnings (a registered host action without a descriptor, a skipped
+    // step, ...) are recorded on the dispatch result and its trace. `flowError` is
+    // the runtime error channel, so a successful submit must not report one.
+    if (diagnostic.severity === 'warning')
+      return
     if (isCurrent(token))
       emit('flowError', diagnostic)
   }

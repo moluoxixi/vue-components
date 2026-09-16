@@ -1,20 +1,14 @@
 import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
-import type { ConfigFormComponentNode, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { Component, VNodeChild } from 'vue'
-import type { ConfigFormRendererCellAttrs, ConfigFormRendererFieldAttrs, ConfigFormRuntimeNodeMetadata } from '../types'
+import type { ConfigFormRuntimeNodeMetadata } from '../types'
+import type { RuntimeArrayComponentNode } from '../types/array-rendering'
 import type { RendererPipelineContext, RendererSlots } from '../types/internal'
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from '@lucide/vue'
 import { resolveConfigFormCondition } from '@moluoxixi/config-form-headless'
 import { h } from 'vue'
 import { arraySlotColumns } from './renderer-slots'
 import { toDomId } from './rendering'
-
-export type RuntimeArrayComponentNode<TValues extends ConfigFormValues> = ConfigFormComponentNode<
-  TValues,
-Component | string,
-ConfigFormRendererFieldAttrs,
-ConfigFormRendererCellAttrs
-> & { id: string }
 
 type RenderInstance<TValues extends ConfigFormValues> = (
   node: RuntimeArrayComponentNode<TValues>,

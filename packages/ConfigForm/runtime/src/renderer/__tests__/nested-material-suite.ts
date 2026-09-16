@@ -4,7 +4,7 @@ import type { Component } from 'vue'
 import type { ConfigFormRendererExpose, ConfigFormRuntimeNodeMetadata } from '../types'
 import type { NestedMaterialProvider } from './nested-material-fixture'
 import { createConfigFormValueScopeStore } from '@moluoxixi/config-form-core'
-import { createNodePathCommand, useDesignerController } from '@moluoxixi/config-form-designer'
+import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, useDesignerController } from '@moluoxixi/config-form-designer'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { createProjectDomainEngine } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
@@ -78,7 +78,7 @@ export function testNestedMaterials(provider: NestedMaterialProvider): void {
       const values: Record<string, unknown> = { scopeField: 'order.details', itemKey: 'order.id', minItems: 0, maxItems: 4, arrayDisplay: 'list', title: 'Invoice lines', readonly: true, disabled: true }
       for (const setter of setters) {
         expect(['text', 'number', 'select', 'boolean']).toContain(setter.control)
-        expect(fixture.registry.propertyControls[setter.control as 'text']).toBeDefined()
+        expect(DEFAULT_DESIGNER_PROPERTY_CONTROLS[setter.control as 'text']).toBeDefined()
         const command = createNodePathCommand(currentGraph(), 'home', ['orders'], setter.path, values[setter.key])
         expect(engine.execute(JSON.parse(JSON.stringify(command))).diagnostics).toEqual([])
         engine.sealHistoryGroup()

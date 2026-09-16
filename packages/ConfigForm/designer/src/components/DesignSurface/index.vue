@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ConfigFormBreakpoint } from '../DesignerCanvas/types'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type {
@@ -9,13 +8,10 @@ import type {
   DesignSurfaceSlots,
 } from './types'
 import {
-  Monitor,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
-  Smartphone,
-  Tablet,
   X,
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
@@ -53,8 +49,6 @@ const {
   isSidePanelOpen,
   isWorkspacePanelHidden,
   mediumPanel,
-  paletteOpen,
-  propertiesOpen,
   rootRef,
   selectBreakpoint,
   selectWorkspaceView,
@@ -66,17 +60,7 @@ const {
   navigation: () => props.workspaceNavigation,
 })
 
-const breakpoints: Array<{ key: ConfigFormBreakpoint, icon: typeof Monitor }> = [
-  { key: 'desktop', icon: Monitor },
-  { key: 'tablet', icon: Tablet },
-  { key: 'mobile', icon: Smartphone },
-]
-
-function breakpointTitle(breakpoint: ConfigFormBreakpoint): string {
-  return locale.t(`breakpoint.${breakpoint}`, breakpoint[0]!.toUpperCase() + breakpoint.slice(1))
-}
 let lastAcceptedCommandId: string | undefined
-let historyTransitionSequence = 0
 const controller = useDesignerController({
   execute: (command) => {
     const result = props.commandControl.execute(command)

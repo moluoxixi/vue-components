@@ -27,7 +27,12 @@ interface BusinessOptionState {
   status?: string
   options?: unknown
 }
-interface BusinessRendererExpose extends ConfigFormRendererExpose {
+/**
+ * The parity assertions read the data-runtime projections loosely, so the data members
+ * are re-declared here after removing the strict runtime signatures they would conflict with.
+ */
+interface BusinessRendererExpose
+  extends Omit<ConfigFormRendererExpose, 'getDataSourceState' | 'getOptionState'> {
   getVariables: () => Readonly<Record<string, unknown>>
   getOptionState: (address: Parameters<ConfigFormRendererExpose['getInstanceValue']>[0]) => BusinessOptionState | undefined
   getDataSourceState: (sourceId: string) => unknown
@@ -119,7 +124,13 @@ async function surface(fixture: BusinessScenariosFixture, path: RuntimePath, pag
       expect(generated.project.identity).toEqual(fixture.compilation.key)
       const page = generated.pageConfigs[pageId]
       expect(page.pageCompilation.page).toEqual(fixture.compilation.ir.pagesById[pageId])
-      expect(page.pageCompilation.snapshot).toEqual(fixture.snapshot)
+      expect(page.pageCompilation.snapshotIdentity).toEqual({
+        source: 'committed',
+        projectId: fixture.snapshot.document.id,
+        pageId,
+        contentHash: fixture.snapshot.contentHash,
+        editVersion: fixture.snapshot.editVersion,
+      })
       expect(page.plan).toEqual(direct.renderer.plan)
       config = page.createRendererConfig(fixture.runtimeResolver, host)
     }

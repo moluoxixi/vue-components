@@ -1,11 +1,13 @@
 # @moluoxixi/config-form-designer
 
-ConfigForm 的 UI 库无关设计器核心。它提供物料注册、页面图编辑、画布、物料面板、属性面板和完整设计工作区，不内置 Element Plus 或 Ant Design Vue 物料。
+ConfigForm 的物料无关设计器核心。它提供物料注册、页面图编辑、画布、物料面板、属性面板和完整设计工作区，不内置 Element Plus 或 Ant Design Vue 物料。
+
+设计器的**契约层保持库无关**：物料注册、`runtime`/`dragVisual` 插槽、属性 setter 定义、页面图与命令都由核心定义，适配包（`designer-element-plus` / `designer-antd-vue`）负责注入具体组件库的物料与控件。设计器**自身的界面控件统一构建在 Element Plus 之上**（属性面板的输入框、数字、开关、下拉、日期时间等），Element Plus 因此是 peer 依赖：宿主需要注册 `ElementPlus` 插件并引入其样式（`element-plus/dist/index.css`）。若要换掉设计器外壳的控件库，替换点集中在属性面板 setter 与工具条控件；也可以给 EP 换一套 CSS 命名空间（`ElConfigProvider :namespace` + 以同名前缀编译 EP SCSS）来避免与宿主样式冲突——这会同时改变 DOM 类名，需要一起更新设计器样式与依赖 `el-*` 的测试。
 
 ## 安装
 
 ```bash
-pnpm add @moluoxixi/config-form-designer vue zod
+pnpm add @moluoxixi/config-form-designer vue zod element-plus
 ```
 
 实际项目通常还需要选择一个设计器适配包：
