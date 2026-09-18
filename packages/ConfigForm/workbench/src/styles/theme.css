@@ -456,7 +456,6 @@
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .persistence-dialog,
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .export-preview-dialog,
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .page-manager-dialog-shell,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .flow-workspace-dialog,
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .appearance-drawer-shell,
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-appearance-popover.el-popper,
   :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .preview-drawer-shell {

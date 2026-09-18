@@ -33,7 +33,7 @@ describe('designer field material', () => {
           ],
         },
       },
-      setters: [{ key: 'advanced', label: 'Advanced', path: ['extensions', 'advanced'], control: 'text' }],
+      setters: [{ key: 'advanced', label: 'Advanced', path: ['props', 'advanced'], control: 'text' }],
     })
 
     expect(material).toMatchObject({
@@ -53,7 +53,7 @@ describe('designer field material', () => {
       ['clearable', ['props', 'clearable'], 'boolean'],
       ['maxlength', ['props', 'maxlength'], 'number'],
       ['size', ['props', 'size'], 'select'],
-      ['advanced', ['extensions', 'advanced'], 'text'],
+      ['advanced', ['props', 'advanced'], 'text'],
     ])
     expect(material.setters[3]).toMatchObject({ integer: true, min: 0, max: 200, step: 1 })
 
@@ -100,7 +100,7 @@ describe('designer field material', () => {
     const registry = createDesignerRegistry({ materials: [material] })
     const subgraph = registry.createSubgraph(material.key, { id: 'registered', field: 'profile' })
     expect(() => pageGraphSchema.parse({
-      version: 2,
+      version: 3,
       props: {},
       form: {},
       root: subgraph.root,
@@ -124,5 +124,28 @@ describe('designer field material', () => {
     expect(registry.getMaterial(direct.key)?.title).toBe('Direct input')
     expect(() => createDesignerRegistry({ materials: [direct, direct] }))
       .toThrow(/Duplicate designer material in materials/)
+  })
+
+  it.each([
+    ['extensions', ['extensions', 'advanced']],
+    ['valueScope', ['valueScope', 'field']],
+    ['dynamic option source', ['props', 'optionSource']],
+  ])('rejects a third-party %s setter outside the default Designer boundary', (_name, path) => {
+    const material = defineDesignerFieldMaterial({
+      key: 'project.restricted',
+      title: 'Restricted field',
+      category: 'Fields',
+      component: 'input',
+      setters: [{ key: 'restricted', label: 'Restricted', path, control: 'text' }],
+    })
+
+    let thrown: unknown
+    try {
+      createDesignerRegistry({ materials: [material] })
+    }
+    catch (error) {
+      thrown = error
+    }
+    expect(thrown).toMatchObject({ code: 'DESIGNER_SETTER_PATH_FORBIDDEN' })
   })
 })

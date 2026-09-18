@@ -90,7 +90,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
         'class': bem('control'),
         'data-config-form-control': '',
         'style': layout.control,
-      }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, metadata, address, fieldErrors)]),
+      }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, address, fieldErrors)]),
       ...fieldErrors.map((message, index) => h('p', {
         'class': bem('error'),
         'data-config-form-error': '',
@@ -109,11 +109,10 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     readonly: boolean,
     ancestors: ReadonlySet<object>,
     registration: ConfigFormComponentRegistration | undefined,
-    metadata: ConfigFormRuntimeNodeMetadata<TValues> | undefined,
     address: ConfigFormFieldAddress,
     fieldErrors: readonly string[],
   ): VNodeChild {
-    const { bem, binding, controller, designGuard, flowEvents, props } = context
+    const { bem, binding, componentListeners, controller, designGuard, props } = context
     const optionState = context.getOptionState(address)
     const optionProps = optionState === undefined
       ? {}
@@ -171,9 +170,8 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
         componentProps['aria-describedby'] = mergeAriaTokens(componentProps['aria-describedby'], errorId)
     }
 
-    const runtimeEvents = flowEvents.runtimeFlowEventMap(field)
     const bindingEventKey = toHandlerKey(camelize(controlBinding.trigger))
-    flowEvents.addListener(componentProps, controlBinding.trigger, (...args: unknown[]) => {
+    componentListeners.addListener(componentProps, controlBinding.trigger, (...args: unknown[]) => {
       controller.applyFieldInstanceChange({
         address,
         value: (field.getValueFromEvent
@@ -182,18 +180,14 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
             ? registration.getValueFromEvent(...args)
             : args[0]) as ConfigFormJsonValue,
       })
-    }, metadata, runtimeEvents.get(bindingEventKey))
+    })
     const blurEvent = field.blurTrigger ?? registration?.blurTrigger ?? 'blur'
     const blurEventKey = toHandlerKey(camelize(blurEvent))
-    flowEvents.addListener(componentProps, blurEvent, () => {
+    componentListeners.addListener(componentProps, blurEvent, () => {
       controller.setInstanceTouched(address)
       void controller.validateInstance(address, 'blur')
-    }, metadata, runtimeEvents.get(blurEventKey))
-    if (metadata) {
-      const managedListeners = new Set([bindingEventKey, blurEventKey])
-      flowEvents.addRuntimeFlowEventListeners(componentProps, metadata, runtimeEvents, managedListeners)
-      flowEvents.wrapComponentListeners(componentProps, metadata, managedListeners, runtimeEvents)
-    }
+    })
+    componentListeners.wrapComponentListeners(componentProps, new Set([bindingEventKey, blurEventKey]))
 
     return h(binding.resolveComponent(registration?.component ?? field.component), {
       ...componentProps,

@@ -1,7 +1,10 @@
 import type { RegistryContractSnapshot } from '@moluoxixi/config-form-model'
 import type { ProjectIdentityFactory } from '..'
 import type { ProjectTemplateCatalogEntry, TemplateCatalogProvider } from '../templates'
-import { registryLockFingerprint } from '@moluoxixi/config-form-model'
+import {
+  REGISTRY_CONTRACT_SNAPSHOT_VERSION,
+  registryLockFingerprint,
+} from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
   analyzeTemplateEligibility,
@@ -33,7 +36,7 @@ function deterministicFactory(namespace: string): ProjectIdentityFactory {
 function registrySnapshot(entry: ProjectTemplateCatalogEntry): RegistryContractSnapshot {
   const lock = createRegistryLockFixture(entry.manifest.adapter)
   return {
-    version: 1,
+    version: REGISTRY_CONTRACT_SNAPSHOT_VERSION,
     adapter: lock.adapter,
     adapterVersion: lock.version,
     fingerprint: lock.fingerprint,
@@ -98,7 +101,7 @@ describe('template catalog', () => {
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
   })
 
-  it('rejects nested manifest extensions and unsupported typed identity references at the catalog boundary', async () => {
+  it('rejects nested manifest extensions and removed event-domain fields at the catalog boundary', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const extended = structuredClone({ manifest: source.manifest, page: source.page })
     Object.assign(extended.manifest.preview, { executable: 'not-part-of-the-contract' })
@@ -107,37 +110,14 @@ describe('template catalog', () => {
       path: 'manifest.preview',
     })
 
-    const unsupported = structuredClone({ manifest: source.manifest, page: source.page })
-    unsupported.page.flows = [{
-      version: 1,
-      id: 'unsupported-action-identity',
-      name: 'Unsupported action identity',
-      trigger: { kind: 'page.mount' },
-      nodes: [
-        { id: 'trigger', type: 'trigger' },
-        {
-          id: 'condition',
-          type: 'condition',
-          config: { condition: { kind: 'literal', value: true } },
-        },
-        {
-          id: 'action',
-          type: 'action',
-          ref: 'notify',
-          config: { input: { $ref: { kind: 'field', nodeId: 'profile-name' } } },
-        },
-        { id: 'end', type: 'end' },
-      ],
-      edges: [
-        { id: 'start', source: 'trigger', target: 'condition', condition: 'next' },
-        { id: 'true-action', source: 'condition', target: 'action', condition: 'true' },
-        { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-        { id: 'false-end', source: 'condition', target: 'end', condition: 'false' },
-      ],
-    }]
+    const unsupported = structuredClone({ manifest: source.manifest, page: source.page }) as unknown as {
+      manifest: typeof source.manifest
+      page: Record<string, unknown>
+    }
+    unsupported.page.flows = []
     expect(parseProjectTemplateSeed(unsupported, 'test')).toMatchObject({
-      code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
-      path: 'page',
+      code: 'TEMPLATE_SEED_INVALID',
+      path: `pagesById.${source.page.id}`,
     })
   })
 
@@ -302,7 +282,7 @@ describe('template catalog', () => {
     ]))
   })
 
-  it('remaps typed condition, reaction, and Flow references while preserving opaque action config', async () => {
+  it('remaps typed condition and reaction references without adding event metadata', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const template = structuredClone(source)
     const name = template.page.graph.nodesById['profile-name']!
@@ -327,53 +307,6 @@ describe('template catalog', () => {
       base: { type: 'string' },
       rules: [{ kind: 'compare', field: 'role', operator: 'neq' }],
     }
-    template.page.flows = [{
-      version: 1,
-      id: 'role-change',
-      name: 'Role change',
-      trigger: { kind: 'component.event', nodeId: role.id, event: 'update:modelValue' },
-      nodes: [
-        { id: 'trigger', type: 'trigger' },
-        {
-          id: 'condition',
-          type: 'condition',
-          config: {
-            condition: {
-              kind: 'compare',
-              operator: 'eq',
-              left: { kind: 'field', field: 'role' },
-              right: { kind: 'literal', value: 'developer' },
-            },
-          },
-        },
-        { id: 'work', type: 'action', ref: 'notify', config: { input: { identityLikeText: 'profile-name' } } },
-        {
-          id: 'reaction',
-          type: 'reaction',
-          config: {
-            reactions: [{
-              id: 'flow-reaction',
-              when: { kind: 'literal', value: true },
-              then: [{ kind: 'setProps', target: 'name', props: { placeholder: { kind: 'field', field: 'role' } } }],
-            }],
-          },
-        },
-        { id: 'end', type: 'end' },
-      ],
-      edges: [
-        { id: 'trigger-condition', source: 'trigger', target: 'condition', condition: 'next' },
-        { id: 'condition-work', source: 'condition', target: 'work', condition: 'true' },
-        { id: 'condition-end', source: 'condition', target: 'end', condition: 'false' },
-        { id: 'work-reaction', source: 'work', target: 'reaction', condition: 'next' },
-        { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
-      ],
-    }]
-    template.page.flows.push({
-      ...structuredClone(template.page.flows[0]!),
-      id: 'secondary-role-change',
-      name: 'Secondary role change',
-      trigger: { kind: 'component.event', nodeId: 'profile-name', event: 'change' },
-    })
     const remapped = instantiateTemplatePage(template, {
       id: 'new-page',
       identityFactory: deterministicFactory('mapped'),
@@ -386,31 +319,23 @@ describe('template catalog', () => {
     expect(fields).not.toContain('name')
     expect(fields).not.toContain('role')
     expect(JSON.stringify(remapped)).not.toContain('"nodeId":"profile-name"')
-    const [flow, secondaryFlow] = remapped.flows!
-    expect(flow!.trigger.kind).toBe('component.event')
+    expect(remapped).not.toHaveProperty('events')
+    expect(remapped).not.toHaveProperty('flows')
     const mappedName = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Name')
     const mappedRole = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Role')
     if (mappedName?.kind !== 'field' || mappedRole?.kind !== 'field')
       throw new TypeError('Remapped profile fields are missing.')
     expect(mappedName.validation?.rules[0]).toMatchObject({ kind: 'compare', field: mappedRole.field })
-    expect(secondaryFlow!.trigger.nodeId).toBe(mappedName.id)
-    expect((flow!.nodes.find(node => node.type === 'condition')?.config as {
-      condition: { left: { field: string } }
-    }).condition.left.field).toBe(mappedRole.field)
-    expect(flow!.nodes.find(node => node.type === 'action')?.config).toEqual({ input: { identityLikeText: 'profile-name' } })
-    const flowNodeIds = new Set(flow!.nodes.map(node => node.id))
-    const secondaryNodeIds = new Set(secondaryFlow!.nodes.map(node => node.id))
-    const flowEdgeIds = new Set(flow!.edges.map(edge => edge.id))
-    const secondaryEdgeIds = new Set(secondaryFlow!.edges.map(edge => edge.id))
-    expect([...flowNodeIds].some(id => secondaryNodeIds.has(id))).toBe(false)
-    expect([...flowEdgeIds].some(id => secondaryEdgeIds.has(id))).toBe(false)
-    for (const currentFlow of [flow!, secondaryFlow!]) {
-      const nodeIds = new Set(currentFlow.nodes.map(node => node.id))
-      expect(currentFlow.edges.every(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target))).toBe(true)
-    }
-    const reactionIds = [flow!, secondaryFlow!].map(currentFlow =>
-      (currentFlow.nodes.find(node => node.type === 'reaction')?.config as { reactions: Array<{ id: string }> }).reactions[0]!.id)
-    expect(new Set(reactionIds).size).toBe(2)
+    expect(mappedName.conditions?.visible).toMatchObject({
+      kind: 'compare',
+      left: { field: mappedRole.field },
+    })
+    expect(mappedName.reactions?.[0]?.id).not.toBe('sync-name')
+    expect(mappedName.reactions?.[0]?.then[0]).toMatchObject({
+      kind: 'setValue',
+      target: mappedRole.field,
+      value: { kind: 'field', field: mappedName.field },
+    })
     expect(role.field).toBe('role')
   })
 })

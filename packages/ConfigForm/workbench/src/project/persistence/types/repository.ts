@@ -54,7 +54,7 @@ export interface StoredProjectEntity {
   checksum: string
   projectId: string
   revision: number
-  version: 2
+  version: 3
   value: ProjectPage | ProjectResourceReference
 }
 

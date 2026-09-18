@@ -22,5 +22,12 @@
   "parent": "09-12-config-form-production",
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "研究材料继续作为历史输入保留，但基于低代码事件编排的产品结论已被 Runtime-first 决策取代，不代表事件编排已交付。"
+    }
+  }
 }

@@ -22,9 +22,8 @@ export type DesignerSetterControl
     | 'select'
     | 'defaultValue'
     | 'options'
-    | 'condition'
-    | 'reaction'
     | 'validation'
+    | 'validateOn'
     | 'custom'
 
 export type DesignerSimpleSetterControl = Extract<
@@ -91,12 +90,6 @@ export interface DesignerMaterialSlotDefinition {
 export interface DesignerMaterialParentDefinition {
   material: string
   slot: string
-}
-
-/** Component event that may be selected as a Flow trigger. */
-export interface DesignerMaterialEventDefinition {
-  name: string
-  title: string
 }
 
 export interface DesignerRuntimeMaterialBinding {
@@ -177,7 +170,7 @@ export interface DesignerCreateNodeContext {
   field?: string
 }
 
-type DesignerOptionalNodeMaps = 'props' | 'events' | 'bindings'
+type DesignerOptionalNodeMaps = 'props' | 'bindings'
 export type DesignerFieldNodeTemplate = Omit<FieldNode, DesignerOptionalNodeMaps>
   & Partial<Pick<FieldNode, DesignerOptionalNodeMaps>>
 export type DesignerLayoutNodeTemplate = Omit<LayoutNode, DesignerOptionalNodeMaps>
@@ -197,8 +190,6 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   runtime: DesignerRuntimeMaterialBinding
   source?: DesignerSourceMaterialBinding
   designPolicy?: DesignerDesignPolicy
-  /** Explicit non-binding events exposed to Flow orchestration. */
-  events?: DesignerMaterialEventDefinition[]
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]
@@ -233,7 +224,6 @@ export interface DesignerMaterialDesignMetadata {
   category: string
   icon?: Component
   setters: DesignerPropertySetterDefinition[]
-  events: DesignerMaterialEventDefinition[]
   slots: DesignerMaterialSlotDefinition[]
   policy?: DesignerDesignPolicy
 }

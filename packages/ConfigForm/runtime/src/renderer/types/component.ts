@@ -1,4 +1,3 @@
-import type { ConfigFormFlowDiagnostic, ConfigFormFlowDispatchResult, ConfigFormFlowTraceEvent } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormDefaultSlotContext,
   ConfigFormErrors,
@@ -8,7 +7,6 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type { PublicProps, VNode } from 'vue'
 import type { ConfigFormPageRuntimeDataSourceStateChange } from '../../runtime'
-import type { ConfigFormRuntimeEventPayload } from './contracts'
 import type { ConfigFormRendererEmits } from './emits'
 import type { ConfigFormRendererExpose } from './expose'
 import type { ConfigFormRendererProps } from './props'
@@ -20,10 +18,6 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     onErrorsChange?: (errors: ConfigFormErrors) => unknown
     onFieldChange?: (payload: ConfigFormFieldChangePayload<TValues>) => unknown
     onMetaChange?: (meta: ConfigFormMeta) => unknown
-    onRuntimeEvent?: (context: ConfigFormRuntimeEventPayload<TValues>) => unknown
-    onFlowResult?: (result: ConfigFormFlowDispatchResult) => unknown
-    onFlowError?: (diagnostic: ConfigFormFlowDiagnostic) => unknown
-    onFlowTrace?: (trace: ConfigFormFlowTraceEvent) => unknown
     onVariablesChange?: (variables: Readonly<Record<string, unknown>>) => unknown
     onDataSourceStateChange?: (change: ConfigFormPageRuntimeDataSourceStateChange) => unknown
     onSubmit?: (values: TValues) => unknown

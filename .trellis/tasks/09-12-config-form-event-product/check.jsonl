@@ -1,3 +1,3 @@
-{"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"运行执行矩阵、错误与取消语义"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"该任务已被 Runtime-first 决策取代；不得把旧事件编排验收视为当前合同。"}
 {"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"提交校验和唯一值源"}
 {"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"结构化编辑、保存取消及E2E门禁"}

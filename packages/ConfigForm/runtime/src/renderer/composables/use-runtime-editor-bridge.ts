@@ -3,7 +3,6 @@ import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererNode,
   ConfigFormRendererProps,
-  ConfigFormRuntimeEventContext,
   ConfigFormRuntimeNodeMetadata,
 } from '../types'
 import type { RuntimeEditorBridgeState } from '../types/internal'
@@ -114,30 +113,11 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
     })
   }
 
-  function shouldInterceptEditorEvent(
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    event: string,
-    args: unknown[],
-  ): boolean {
-    if (props.mode !== 'design')
-      return false
-
-    const context: ConfigFormRuntimeEventContext<TValues> = {
-      args,
-      event,
-      metadata,
-      scope: metadata.scope,
-    }
-    const decision = ensureEditorBridge()?.interceptEvent?.(context)
-    return decision !== false
-  }
-
   onBeforeUnmount(cleanupRegistrations)
 
   return {
     createNodeMetadata,
     nodeMetadataAttrs,
     registerNodeElement,
-    shouldInterceptEditorEvent,
   }
 }

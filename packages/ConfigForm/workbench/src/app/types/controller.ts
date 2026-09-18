@@ -3,8 +3,7 @@ import type { createDesignerLocale, DesignerLocaleOptions } from '@moluoxixi/con
 import type { PageGraph, ProjectPage, ProjectSummary } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
-import type { FlowReferenceField, FlowSourceCatalog } from '../../features/flow'
-import type { FlowEventTarget } from '../../flow'
+import type { DataReferenceField } from '../../features/data'
 import type { ProjectEditorSessionSnapshot, ProjectRecoveryDraftSummary } from '../../project'
 import type { createWorkbenchDesignSession, createWorkbenchExportService, PreviewSession } from '../../session'
 import type { StudioLayerEntry } from '../../studio'
@@ -40,18 +39,17 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
 export interface WorkbenchController extends
   Pick<CreationCommands, 'createFromJsonImport' | 'createPageFromTemplate' | 'createProjectFromTemplate' | 'prepareJsonImport'>,
   Pick<PageCommands, 'handlePageAction' | 'selectPageFromDesigner'>,
-  Pick<PersistenceCommands,
-    | 'createNamedCheckpoint'
-    | 'discardRecoveryDraft'
-    | 'inspectProjectVersion'
-    | 'listProjectVersions'
-    | 'listRecoveryDrafts'
-    | 'restoreProjectVersion'
-    | 'restoreRecoveryDraft'
-    | 'reloadCurrentProject'
-    | 'saveProject'
-    | 'saveCurrentDraftAsProject'
-    | 'setProjectVersionLabel'> {
+  Pick<PersistenceCommands, | 'createNamedCheckpoint'
+  | 'discardRecoveryDraft'
+  | 'inspectProjectVersion'
+  | 'listProjectVersions'
+  | 'listRecoveryDrafts'
+  | 'restoreProjectVersion'
+  | 'restoreRecoveryDraft'
+  | 'reloadCurrentProject'
+  | 'saveProject'
+  | 'saveCurrentDraftAsProject'
+  | 'setProjectVersionLabel'> {
   projects: Ref<ProjectSummary[]>
   busy: Ref<boolean>
   componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']>
@@ -65,12 +63,10 @@ export interface WorkbenchController extends
   modelRevision: ComputedRef<number>
   requestDataSource: NonNullable<ConfigFormDataSourceHost['request']>
   designerFieldNames: ComputedRef<string[]>
-  flowEventTargets: ComputedRef<FlowEventTarget[]>
-  flowReferenceFields: ComputedRef<FlowReferenceField[]>
-  flowSourceCatalog: ComputedRef<FlowSourceCatalog>
+  dataReferenceFields: ComputedRef<DataReferenceField[]>
   designerLayers: ComputedRef<StudioLayerEntry[]>
   dirty: ComputedRef<boolean>
-  executeFlowCommand: ProjectBinding['executeProjectCommand']
+  executeProjectCommand: ProjectBinding['executeProjectCommand']
   getCurrentAdapterId: () => WorkbenchAdapterId
   initialized: Ref<boolean>
   localeOptions: ComputedRef<DesignerLocaleOptions>

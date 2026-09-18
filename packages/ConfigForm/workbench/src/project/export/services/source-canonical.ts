@@ -30,7 +30,6 @@ export function createCanonicalSourceRegistry(
     }
     return [component.key, {
       binding: structuredClone(binding),
-      events: component.contract.events.map(event => ({ name: event.name })),
       bindings: component.contract.bindings.map(item => ({
         name: item.name,
         valueProp: item.valueProp,
@@ -55,8 +54,6 @@ function canonicalSourceNode(
     id: node.id,
     component: node.component,
     props: structuredClone(node.props),
-    events: structuredClone(node.events),
-    flowEvents: [...(node.flowEvents ?? [])],
     bindings: structuredClone(node.bindings),
     placement: structuredClone(node.placement.props),
     ...(node.extensions === undefined ? {} : { extensions: structuredClone(node.extensions) }),
@@ -101,7 +98,6 @@ export function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage
     route: page.route,
     form: structuredClone(page.form),
     root: page.rootIds.map(nodeId => canonicalSourceNode(page, nodeId, new Set())),
-    flowPlans: page.flows.map(flow => structuredClone(flow.plan)),
     runtime: structuredClone(page.runtime ?? { dataSources: [], variables: [] }),
     scopedFields: structuredClone(page.scopedFields),
     valueScopes: structuredClone(page.valueScopes),

@@ -74,7 +74,6 @@ function sourcePackage(
 export function canonicalProjectPackage(
   name: string,
   libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
-  actionDependencies: Readonly<Record<string, string>> = {},
 ): string {
   const declaredDependencies = Object.fromEntries([...libraries.values()].map(library => [
     library.packageName,
@@ -84,12 +83,6 @@ export function canonicalProjectPackage(
   manifest.dependencies = {
     ...manifest.dependencies,
     'vue-router': '4.5.1',
-  }
-  for (const [packageName, version] of Object.entries(actionDependencies)) {
-    const currentVersion = manifest.dependencies?.[packageName]
-    if (currentVersion !== undefined && currentVersion !== version)
-      throw new Error(`Action dependency "${packageName}" conflicts with the standalone runtime version.`)
-    manifest.dependencies![packageName] = portableDependencyVersion(packageName, { [packageName]: version })
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
 }

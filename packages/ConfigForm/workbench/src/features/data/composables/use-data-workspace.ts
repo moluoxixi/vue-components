@@ -27,7 +27,6 @@ import {
   validateRuntimeDraft,
 } from '../services'
 
-const NO_OPTIONS: readonly never[] = []
 const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(value => ({ title: value, value }))
 const RESPONSE_TYPE_OPTIONS = [
   { title: 'JSON', value: 'json' },
@@ -132,7 +131,7 @@ export function useDataWorkspace(
       value: 'dataSources' as const,
     },
   ])
-  const mappingEventArguments = computed(() => [
+  const mappingContextValues = computed(() => [
     { label: locale.value.t('data.mapping.body', 'Response body'), path: ['data'], value: 'response.data' },
     { label: locale.value.t('data.mapping.status', 'Response status'), path: ['status'], value: 'response.status' },
     { label: locale.value.t('data.mapping.ok', 'Response success'), path: ['ok'], value: 'response.ok' },
@@ -556,7 +555,6 @@ export function useDataWorkspace(
 
   return {
     DATA_SOURCE_EDITOR_MAX_DURATION_MS,
-    NO_OPTIONS,
     METHOD_OPTIONS,
     RESPONSE_TYPE_OPTIONS,
     addDataSource,
@@ -575,7 +573,7 @@ export function useDataWorkspace(
     externalConflict,
     kindOptions,
     locale,
-    mappingEventArguments,
+    mappingContextValues,
     referenceFields,
     removeDependency,
     removeSelected,

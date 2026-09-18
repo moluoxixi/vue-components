@@ -1,8 +1,9 @@
 import type {
   ConfigFormDataSourceDefinition,
+  ConfigFormDataSourceHttpRequestInput,
+  ConfigFormDataSourceHttpRequestOutput,
   ConfigFormDataSourceState,
 } from '../src/data-source'
-import type { ConfigFormFlowHttpRequestInput, ConfigFormFlowHttpRequestOutput } from '../src/flow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createConfigFormDataSourceRuntime,
@@ -24,7 +25,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, reject, resolve }
 }
 
-function response(data: unknown, overrides: Partial<ConfigFormFlowHttpRequestOutput> = {}): ConfigFormFlowHttpRequestOutput {
+function response(data: unknown, overrides: Partial<ConfigFormDataSourceHttpRequestOutput> = {}): ConfigFormDataSourceHttpRequestOutput {
   return { data, ok: true, status: 200, ...overrides }
 }
 
@@ -69,7 +70,7 @@ describe('config form data-source runtime', () => {
   it('resolves the complete request through value references and maps the full response event', async () => {
     const endpoint = { value: '/orders' }
     const hostData = { items: [{ id: 7, name: 'Ada' }], meta: { total: 1 } }
-    const request = vi.fn(async (_input: ConfigFormFlowHttpRequestInput, _signal: AbortSignal) => response(hostData))
+    const request = vi.fn(async (_input: ConfigFormDataSourceHttpRequestInput, _signal: AbortSignal) => response(hostData))
     const runtime = createConfigFormDataSourceRuntime({
       host: { request },
       sources: [source({
@@ -125,7 +126,7 @@ describe('config form data-source runtime', () => {
   })
 
   it('resolves consumer params through ValueInput and isolates their request identities', async () => {
-    const request = vi.fn(async (input: ConfigFormFlowHttpRequestInput) => response(input.query))
+    const request = vi.fn(async (input: ConfigFormDataSourceHttpRequestInput) => response(input.query))
     const runtime = createConfigFormDataSourceRuntime({
       host: { request },
       sources: [source({ request: { url: '/users', query: { fixed: true } } })],
@@ -184,10 +185,10 @@ describe('config form data-source runtime', () => {
   })
 
   it('isolates latest runs per source and scope and ignores late host results', async () => {
-    const pending: Array<Deferred<ConfigFormFlowHttpRequestOutput>> = []
+    const pending: Array<Deferred<ConfigFormDataSourceHttpRequestOutput>> = []
     const states: ConfigFormDataSourceState[] = []
     const request = vi.fn(() => {
-      const next = deferred<ConfigFormFlowHttpRequestOutput>()
+      const next = deferred<ConfigFormDataSourceHttpRequestOutput>()
       pending.push(next)
       return next.promise
     })
@@ -243,7 +244,7 @@ describe('config form data-source runtime', () => {
     })
     expect(abortSignals[0]!.aborted).toBe(true)
 
-    const resetDeferred = deferred<ConfigFormFlowHttpRequestOutput>()
+    const resetDeferred = deferred<ConfigFormDataSourceHttpRequestOutput>()
     const resetStates: ConfigFormDataSourceState[] = []
     const resetRuntime = createConfigFormDataSourceRuntime({
       host: { request: () => resetDeferred.promise },
@@ -262,7 +263,7 @@ describe('config form data-source runtime', () => {
     await Promise.resolve()
     expect(resetStates).toHaveLength(resetCount)
 
-    const disposeDeferred = deferred<ConfigFormFlowHttpRequestOutput>()
+    const disposeDeferred = deferred<ConfigFormDataSourceHttpRequestOutput>()
     const disposeStates: ConfigFormDataSourceState[] = []
     const disposeRuntime = createConfigFormDataSourceRuntime({
       host: { request: () => disposeDeferred.promise },
@@ -307,7 +308,7 @@ describe('config form data-source runtime', () => {
     })
     expect(signals[0]!.aborted).toBe(true)
 
-    const pending = deferred<ConfigFormFlowHttpRequestOutput>()
+    const pending = deferred<ConfigFormDataSourceHttpRequestOutput>()
     const untimedRuntime = createConfigFormDataSourceRuntime({
       host: { request: () => pending.promise },
       sources: [source({ timeoutMs: 0 })],

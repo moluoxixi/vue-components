@@ -6,22 +6,10 @@ import type {
   ProjectCommandAction,
   ProjectNodePatchKey,
   ProjectOperation,
-  RegisteredBinding,
-  RegisteredEventAction,
 } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
+import { assertDesignerSetterPathAllowed } from './setter-path'
 
-const NODE_PATCH_KEYS = new Set<ProjectNodePatchKey>([
-  'conditions',
-  'defaultValue',
-  'extensions',
-  'field',
-  'label',
-  'reactions',
-  'validateOn',
-  'validation',
-  'valueScope',
-])
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
 
 export function createDesignerCommandId(prefix = 'design'): string {
@@ -78,32 +66,6 @@ export function createRemoveCommand(pageId: string, nodeIds: string[]): ProjectC
   )
 }
 
-export function createStoredConfigRemovalCommand(
-  pageId: string,
-  nodeId: string,
-  path: string[],
-): ProjectCommand {
-  const [property, key, ...extra] = path
-  const recordProperties = new Set(['bindings', 'conditions', 'events'])
-  const fieldProperties = new Set(['validation', 'validateOn'])
-  if (
-    !property
-    || extra.length > 0
-    || (recordProperties.has(property) && !key)
-    || (fieldProperties.has(property) && key !== undefined)
-    || (!recordProperties.has(property) && !fieldProperties.has(property))
-  ) {
-    throw new TypeError('DESIGN_STORED_CONFIG_PATH_INVALID: Stored configuration removal requires one exact supported path.')
-  }
-  return createOperationCommand('Remove stored configuration', [{
-    type: 'node.config.remove',
-    pageId,
-    nodeId,
-    property: property as 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn',
-    ...(key === undefined ? {} : { key }),
-  }])
-}
-
 export function createResizeCommand(pageId: string, nodeId: string, span: number | null): ProjectCommand {
   return {
     id: createDesignerCommandId('resize'),
@@ -151,11 +113,11 @@ export function createNodePathCommand(
 ): ProjectCommand {
   if (nodeIds.length === 0)
     throw new TypeError('DESIGN_SELECTION_EMPTY: A property update requires at least one node.')
+  assertDesignerSetterPathAllowed(path)
   const [rootKey, ...nestedPath] = path
-  if (!rootKey || UNSAFE_PATH_SEGMENTS.has(rootKey))
-    throw new TypeError('DESIGN_PROPERTY_PATH_INVALID: Property paths must contain safe non-empty segments.')
+  const writableRoot = rootKey!
 
-  if (rootKey === 'span') {
+  if (writableRoot === 'span') {
     const span = value === undefined || value === null ? null : Number(value)
     return {
       id: createDesignerCommandId('resize'),
@@ -169,51 +131,19 @@ export function createNodePathCommand(
     const node = graph.nodesById[nodeId]
     if (!node)
       throw new TypeError(`DESIGN_NODE_UNKNOWN: Node does not exist: ${nodeId}`)
-    if (rootKey === 'props') {
+    if (writableRoot === 'props') {
       const props = nestedPath.length === 0
         ? cloneRecord(value as ModelJsonObject | undefined)
         : assignPath(node.props, nestedPath, value)
       return { type: 'operation.apply', operations: [{ type: 'node.props', pageId, nodeId, props }] }
     }
-    if (rootKey === 'events') {
-      const events = nestedPath.length === 0
-        ? structuredClone((value ?? {}) as Record<string, RegisteredEventAction[]>)
-        : assignPath(node.events as ModelJsonObject, nestedPath, value) as Record<string, RegisteredEventAction[]>
-      return { type: 'operation.apply', operations: [{ type: 'node.events', pageId, nodeId, events }] }
-    }
-    if (rootKey === 'bindings') {
-      const bindings = nestedPath.length === 0
-        ? structuredClone((value ?? {}) as Record<string, RegisteredBinding>)
-        : assignPath(node.bindings as ModelJsonObject, nestedPath, value) as Record<string, RegisteredBinding>
-      return { type: 'operation.apply', operations: [{ type: 'node.bindings', pageId, nodeId, bindings }] }
-    }
-    if (!NODE_PATCH_KEYS.has(rootKey as ProjectNodePatchKey))
-      throw new TypeError(`DESIGN_PROPERTY_UNSUPPORTED: Unsupported node property: ${rootKey}`)
-
-    if (nestedPath.length === 0) {
-      return {
-        type: 'node.patch',
-        pageId,
-        nodeId,
-        patch: value === undefined
-          ? { unset: [rootKey as ProjectNodePatchKey] }
-          : { set: { [rootKey]: structuredClone(value) } },
-      }
-    }
-
-    const current = (node as unknown as Record<string, unknown>)[rootKey]
-    const nested = assignPath(
-      typeof current === 'object' && current !== null && !Array.isArray(current)
-        ? current as ModelJsonObject
-        : {},
-      nestedPath,
-      value,
-    )
     return {
       type: 'node.patch',
       pageId,
       nodeId,
-      patch: { set: { [rootKey]: nested } },
+      patch: value === undefined
+        ? { unset: [writableRoot as ProjectNodePatchKey] }
+        : { set: { [writableRoot]: structuredClone(value) } },
     }
   })
 

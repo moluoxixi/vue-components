@@ -31,7 +31,6 @@ type RuntimeMutable<T> = T extends (...args: never[]) => unknown
 
 type CompilerCanonicalRuntimePageSource = PageCompilation['page']
 type CompilerCanonicalRuntimePage = RuntimeMutable<CompilerCanonicalRuntimePageSource>
-type CompilerCanonicalRuntimeFlow = CompilerCanonicalRuntimePageSource['flows'][number]
 type CompilerCanonicalRuntimeNode = CompilerCanonicalRuntimePage['nodesById'][string]
 
 export type CanonicalRuntimeFieldNode
@@ -43,8 +42,7 @@ export type CanonicalRuntimeLayoutNode
     & { valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'> }
 
 export type CanonicalRuntimeNode = CanonicalRuntimeFieldNode | CanonicalRuntimeLayoutNode
-export type CanonicalRuntimePage = Omit<CompilerCanonicalRuntimePage, 'flows' | 'nodesById'> & {
-  flows: CompilerCanonicalRuntimeFlow[]
+export type CanonicalRuntimePage = Omit<CompilerCanonicalRuntimePage, 'nodesById'> & {
   nodesById: Record<string, CanonicalRuntimeNode>
   runtime?: ConfigFormPageRuntimeConfiguration
   scopedFields: ConfigFormScopedFieldDefinition[]

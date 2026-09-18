@@ -1,6 +1,5 @@
 import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { addFlowAction, chooseFlowOption, expectFlowAccessibility, flowDialog, lifecycleEntries, projectFlows, readExportedProject, saveFlow, watchBusinessRequests } from './flow-helpers'
 import { createProject, restoreAppearance, setAppearance } from './helpers'
 
 interface DragGeometry {
@@ -70,6 +69,20 @@ async function chooseResponsiveTopbarAction(page: Page, width: number, name: str
   }
   await page.getByRole('button', { name: 'More actions' }).click()
   await page.getByRole('menuitem', { name }).click()
+}
+
+async function chooseElementOption(page: Page, container: Locator, selectName: string, optionName: string): Promise<void> {
+  const combobox = container.getByRole('combobox', { name: selectName, exact: true })
+  const listboxId = await combobox.getAttribute('aria-controls')
+  expect(listboxId).toBeTruthy()
+  const trigger = container.locator(`.el-select__wrapper:has(input[aria-label="${selectName}"])`)
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+  const listbox = page.locator(`[id="${listboxId}"]`)
+  const option = listbox.getByRole('option', { name: optionName, exact: true })
+  await expect(option).toBeVisible()
+  await option.click()
+  await expect(trigger).toContainText(optionName)
 }
 
 function previewRuntime(page: Page): FrameLocator {
@@ -688,19 +701,12 @@ for (const adapter of [
 
   test(`projects the ${adapter.name} Inspector capability matrix from Registry contracts`, async ({ page }) => {
     await createProject(page, adapter.id)
-    const scenarios = [
-      { material: 'input', tabs: ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'] },
-      { material: 'switch', tabs: ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'] },
-      { material: 'section', tabs: ['Properties', 'Conditions', 'Reactions'] },
-      { material: 'grid', tabs: ['Properties', 'Conditions', 'Reactions'] },
-      { material: 'tabs', tabs: ['Properties', 'Events', 'Conditions', 'Reactions'] },
-      { material: 'collapse', tabs: ['Properties', 'Events', 'Conditions', 'Reactions'] },
-    ]
+    const materials = ['input', 'switch', 'section', 'grid', 'tabs', 'collapse']
 
-    for (const scenario of scenarios) {
-      await page.locator(`[data-material-key="${adapter.id}.${scenario.material}"]`).click()
-      await expectInspectorTabs(page, scenario.tabs)
-      if (scenario.material === 'input')
+    for (const material of materials) {
+      await page.locator(`[data-material-key="${adapter.id}.${material}"]`).click()
+      await expectInspectorTabs(page, ['Properties', 'Validation'])
+      if (material === 'input')
         await expectInspectorTabGeometry(page, 304)
     }
   })
@@ -773,7 +779,7 @@ for (const adapter of [
     const propertyHeading = propertyPanel.locator('.mx-config-form-designer__property-heading')
     await expect(propertyHeading).toBeVisible()
     await expect(propertyHeading).not.toContainText('element.input')
-    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabs(page, ['Properties', 'Validation'])
     await expectInspectorTabGeometry(page, 304)
 
     const nodeToolbar = selection.getByRole('toolbar', { name: 'Node actions' })
@@ -880,40 +886,6 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
   await page.mouse.up()
 })
 
-test('edits Flow settings through Element Plus keyboard and numeric controls', async ({ page }) => {
-  await createProject(page, 'element')
-  await page.getByRole('button', { name: 'Configure Form submit event flow' }).click()
-  const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-  await flowDialog.getByTestId('create-first-flow').click()
-
-  const settings = flowDialog.locator('.flow-event-settings')
-  const flowName = settings.locator('[data-flow-control="name"]')
-  // ElInput forwards unknown attributes to its inner <input>, so the control marker sits on
-  // the wrapper; the Element Plus input it owns is what has to be present and visible.
-  await expect(flowName.locator('.el-input')).toHaveCount(1)
-  await expect(flowName.locator('.el-input__wrapper')).toBeVisible()
-  await flowName.getByRole('textbox').fill('Keyboard flow')
-  const concurrency = settings.locator('label').filter({ hasText: 'Concurrency' })
-  await concurrency.getByRole('combobox').focus()
-  await page.keyboard.press('ArrowDown')
-  await page.keyboard.press('ArrowDown')
-  await page.keyboard.press('Enter')
-  await expect(concurrency).toContainText('Queue')
-
-  const timeout = settings.getByRole('spinbutton', { name: 'Timeout (ms)' })
-  await timeout.fill('1200')
-  await timeout.press('Enter')
-  await expect(timeout).toHaveValue('1200')
-  await timeout.press('ArrowUp')
-  await expect(timeout).toHaveValue('1300')
-  await saveFlow(page)
-  await page.locator('[data-form-event="form.submit"]').click()
-  await expect(flowName.getByRole('textbox')).toHaveValue('Keyboard flow')
-  await expect(concurrency).toContainText('Queue')
-  await expect(timeout).toHaveValue('1300')
-  await flowDialog.getByTestId('cancel-flow').click()
-})
-
 for (const adapter of ['element', 'antd'] as const) {
   test(`keeps the ${adapter} 900px canvas active while stable triggers open non-modal sidebars`, async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
@@ -954,7 +926,7 @@ for (const adapter of ['element', 'antd'] as const) {
     const selection = page.locator('[data-editor-focus-node-id^="profile-name-"]')
     await expect(propertiesPanel).toBeVisible()
     await expect(selection).toBeFocused()
-    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabs(page, ['Properties', 'Validation'])
     await expectInspectorTabGeometry(page, 304)
     await selection.focus()
     await page.keyboard.press('Escape')
@@ -976,61 +948,117 @@ for (const adapter of ['element', 'antd'] as const) {
     await page.getByRole('tab', { name: 'Layers' }).click()
     await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('tab', { name: 'Inspector' }).click()
-    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabs(page, ['Properties', 'Validation'])
     await expectInspectorTabGeometry(page)
   })
-
-  test(`removes and restores a ${adapter} selection-incompatible stored binding`, async ({ page }) => {
-    await createProject(page, adapter)
-    await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
-    await page.getByRole('tab', { name: 'Bindings' }).click()
-    const source = page.getByRole('tabpanel', { name: 'Bindings' }).getByRole('textbox', { name: 'value' })
-    await source.fill('profile.source')
-    await source.press('Enter')
-
-    await page.getByRole('tab', { name: 'Components' }).click()
-    await page.locator(`[data-material-key="${adapter}.section"]`).click()
-    await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click({ modifiers: ['Control'] })
-    await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
-
-    await page.getByRole('tab', { name: 'Bindings' }).click()
-    const stale = page.locator('[data-stale-kind="selection-incompatible"][data-stale-node-id^="profile-name-"]')
-    await expect(stale).toContainText('value')
-    await expect(stale).toContainText('profile.source')
-    const staleKey = stale.locator('code')
-    await staleKey.evaluate((element) => {
-      element.textContent = 'stored.binding.key.that.must.remain.fully.readable.at.compact.inspector.width'
-    })
-    const staleGeometry = await stale.evaluate((element) => {
-      const key = element.querySelector<HTMLElement>('code')!
-      const remove = element.querySelector<HTMLElement>('[data-stale-remove]')!
-      const itemRect = element.getBoundingClientRect()
-      const removeRect = remove.getBoundingClientRect()
-      return {
-        documentClientWidth: document.documentElement.clientWidth,
-        documentScrollWidth: document.documentElement.scrollWidth,
-        keyOverflowWrap: getComputedStyle(key).overflowWrap,
-        keyWhiteSpace: getComputedStyle(key).whiteSpace,
-        removeInside: removeRect.left >= itemRect.left && removeRect.right <= itemRect.right,
-        removeWidth: removeRect.width,
-      }
-    })
-    expect(staleGeometry.keyOverflowWrap).toBe('anywhere')
-    expect(staleGeometry.keyWhiteSpace).toBe('normal')
-    expect(staleGeometry.removeInside).toBe(true)
-    expect(staleGeometry.removeWidth).toBeGreaterThan(0)
-    expect(staleGeometry.documentScrollWidth).toBeLessThanOrEqual(staleGeometry.documentClientWidth + 1)
-    await stale.getByRole('button', { name: 'Delete stored configuration value' }).click()
-    await expect(page.getByRole('tab', { name: 'Bindings' })).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: 'Properties' })).toHaveAttribute('aria-selected', 'true')
-
-    await page.getByRole('button', { name: 'Undo', exact: true }).click()
-    await page.getByRole('tab', { name: 'Bindings' }).click()
-    await expect(stale).toContainText('profile.source')
-  })
 }
+
+test('applies Designer validation in Preview and blocks an invalid submission', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+  await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+
+  const inspector = page.locator('.mx-config-form-designer__properties')
+  const defaultValue = inspector.getByRole('textbox', { name: 'Default value', exact: true })
+  await defaultValue.fill('Ada')
+  await defaultValue.press('Enter')
+  await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+  const validation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+  await validation.locator('.el-switch:visible').click()
+  await validation.getByRole('button', { name: 'Add rule', exact: true }).click()
+  await validation.getByRole('textbox', { name: 'Rule 1 message', exact: true }).fill('Designer requires a name')
+
+  await page.getByRole('button', { name: 'Show preview' }).click()
+  const preview = page.getByRole('complementary', { name: 'Page preview' })
+  const name = previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })
+  await name.clear()
+  await preview.getByRole('button', { name: 'Submit preview form' }).click()
+  await expect(preview.locator('[data-preview-results]')).toContainText('Validation failed')
+  await expect(preview.locator('[data-preview-results]')).toContainText('Designer requires a name')
+
+  await name.fill('Ada')
+  await preview.getByRole('button', { name: 'Submit preview form' }).click()
+  await expect(preview.locator('[data-preview-results]')).toContainText('Submitted successfully')
+  await expect(preview.locator('[data-preview-submission-json]')).toContainText('Ada')
+})
+
+test('has no Events, Flow, or Automation entry and keeps Designer JSON function-free', async ({ page }) => {
+  await createProject(page, 'element')
+  const forbidden = /\b(?:events?|flows?|automation)\b|事件|流程|自动化/i
+
+  await expect(page.getByRole('tab', { name: forbidden })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: forbidden })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: forbidden })).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: forbidden })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: forbidden })).toHaveCount(0)
+  await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Config model' })
+  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  const source = await dialog.locator('.config-json-view').textContent()
+  expect(() => JSON.parse(source ?? '')).not.toThrow()
+  expect(source).not.toMatch(/"(?:events|flows|onClick|onChange|runtimeEvent|flowEvents)"\s*:/)
+  await dialog.getByRole('button', { name: 'Close export' }).click()
+
+  const forbiddenRoutes = await page.locator('[href]').evaluateAll(elements => elements
+    .map(element => element.getAttribute('href') ?? '')
+    .filter(href => /(?:^|\/)(?:events?|flows?|automation)(?:\/|$|[?#])/i.test(href)))
+  expect(forbiddenRoutes).toEqual([])
+})
+
+test('runs variable-backed data source requests only for explicit tests and Preview', async ({ page }) => {
+  const requestUrls: string[] = []
+  await page.route('**/api/runtime-options**', async (route) => {
+    requestUrls.push(route.request().url())
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ label: 'China', value: 'cn' }]),
+    })
+  })
+
+  await createProject(page, 'element')
+  await page.getByRole('tab', { name: 'Data', exact: true }).click()
+  await expect(page.getByText('Page data', { exact: true })).toBeVisible()
+  await expect(page.getByText('No variables', { exact: true })).toBeVisible()
+  await expect(page.getByText('No data sources', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit page data', exact: true }).click()
+
+  const dialog = page.locator('[data-data-workspace-dialog]:visible')
+  await expect(dialog).toBeVisible()
+  await dialog.getByTestId('add-data-entry').click()
+  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Endpoint')
+  const initialValue = dialog.locator('.data-editor__section')
+  await chooseElementOption(page, initialValue, 'Value type', 'Text')
+  await initialValue.getByRole('textbox').fill('/api/runtime-options?region=CN')
+
+  await dialog.locator('.data-kind-switch .el-segmented__item').filter({ hasText: 'Data sources' }).click()
+  await dialog.getByTestId('add-data-entry').click()
+  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Runtime options')
+  const url = dialog.locator('.data-request-grid .data-field--wide').filter({ hasText: 'URL' }).first()
+  await chooseElementOption(page, url, 'Value source', 'Variable')
+  await chooseElementOption(page, url, 'Variable', 'Endpoint')
+  await dialog.locator('.el-switch:has(input[aria-label="Automatic loading"])').click()
+
+  await dialog.getByTestId('test-data-source').click()
+  await expect(dialog.locator('.data-test__result')).toHaveAttribute('data-status', 'success')
+  await expect(dialog.getByTestId('data-test-preview')).toContainText('China')
+  expect(requestUrls).toHaveLength(1)
+  expect(new URL(requestUrls[0]!).searchParams.get('region')).toBe('CN')
+
+  await dialog.getByTestId('save-data').click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByText('Endpoint', { exact: true })).toBeVisible()
+  await expect(page.getByText('Runtime options', { exact: true })).toBeVisible()
+  await expect(designRuntime(page).locator('[data-config-node-id^="profile-name-"] input')).toBeVisible()
+  expect(requestUrls).toHaveLength(1)
+
+  await page.getByRole('button', { name: 'Show preview' }).click()
+  await expect(previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })).toBeVisible()
+  await expect.poll(() => requestUrls.length).toBe(2)
+  expect(new URL(requestUrls[1]!).searchParams.get('region')).toBe('CN')
+})
 
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
@@ -1189,63 +1217,6 @@ test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench'
   await page.getByRole('button', { name: 'Actual size' }).click()
   await expect(canvas).toHaveAttribute('data-camera-scale', '1')
   await expect.poll(() => viewport.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
-})
-
-for (const adapter of ['element', 'antd'] as const) {
-  test(`runs a ${adapter} component event flow from the real Preview Runtime node`, async ({ page }) => {
-    await createProject(page, adapter)
-
-    await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.getByRole('button', { name: 'Name', exact: true }).click()
-    await page.getByRole('tab', { name: 'Events' }).click()
-    await page.getByRole('button', { name: 'Configure Value change event flow' }).click()
-    const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-    await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
-    await expect(flowDialog.locator('.flow-empty')).toContainText('Name · Value change')
-    await flowDialog.getByTestId('create-first-flow').click()
-    await expect(flowDialog.locator('[data-flow-control="locked-trigger"]')).toContainText('Name · Value change')
-
-    const inspector = await addFlowAction(page, 'Show message', 'Event argument')
-    const message = inspector.locator('[data-parameter="message"]')
-    await chooseFlowOption(page, message.locator('.flow-value-source').getByRole('combobox'), 'Event parameter')
-    await chooseFlowOption(page, message.getByRole('combobox', { name: 'Event parameter', exact: true }), 'Event value')
-
-    await addFlowAction(page, 'Show message', 'Bound field')
-    await chooseFlowOption(page, message.locator('.flow-value-source').getByRole('combobox'), 'Field')
-    await chooseFlowOption(page, message.getByRole('combobox', { name: 'Field', exact: true }), 'Name')
-
-    await addFlowAction(page, 'Show message', 'Earlier output')
-    await chooseFlowOption(page, message.locator('.flow-value-source').getByRole('combobox'), 'Action output')
-    await chooseFlowOption(page, message.getByRole('combobox', { name: 'Action output', exact: true }), /Bound field.*Message/)
-    await saveFlow(page)
-    await expect(page.getByRole('button', { name: 'Configure Value change event flow' })).toBeFocused()
-
-    await page.getByRole('button', { name: 'Show preview' }).click()
-    const value = `${adapter}-component-event`
-    const input = previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })
-    await input.fill(value)
-    await expect(input).toHaveValue(value)
-    await expect(page.getByText(value, { exact: true })).toHaveCount(3)
-    await page.getByRole('complementary', { name: 'Page preview' }).getByRole('button', { name: 'Submit preview form' }).click()
-    await expect(page.locator('[data-preview-submission-json]')).toContainText(value)
-    await expect(page.locator('[data-preview-results]')).toContainText('Submitted successfully')
-  })
-}
-
-test('opens the form submit flow from the form property surface', async ({ page }) => {
-  await createProject(page, 'element')
-  await page.getByRole('button', { name: 'Configure Form submit event flow' }).click()
-
-  const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-  await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
-  await expect(flowDialog.locator('.flow-empty')).toContainText('Form submit')
-  await flowDialog.getByTestId('create-first-flow').click()
-  await expect(flowDialog.locator('[data-flow-control="locked-trigger"]')).toContainText('Form submit')
-  await flowDialog.getByTestId('cancel-flow').click()
-  await expect(page.locator('[data-form-event="form.submit"]')).toBeFocused()
-  await page.locator('[data-form-event="form.submit"]').press('Enter')
-  await expect(flowDialog.getByTestId('create-first-flow')).toBeVisible()
-  await page.keyboard.press('Escape')
 })
 
 test('uses one Element Plus Inspector focus frame', async ({ page }) => {
@@ -1437,35 +1408,6 @@ test('lets Element Plus own the material search focus frame', async ({ page }) =
   expect(state.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
   expect(state.wrapperShadow).not.toBe(restingShadow)
 })
-
-for (const scenario of [
-  { adapter: 'element', material: 'element.collapse', trigger: '.el-collapse-item__header' },
-  { adapter: 'antd', material: 'antd.collapse', trigger: '.ant-collapse-header' },
-] as const) {
-  test(`runs a registered non-binding ${scenario.adapter} event exactly once`, async ({ page }) => {
-    await createProject(page, scenario.adapter)
-    const canvas = page.locator('.mx-config-form-designer__canvas')
-    const collapse = await pointerDrop(page, scenario.material, canvas)
-
-    await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator(`[data-layer-id="${collapse.nodeId}"] .designer-layer-select`).click()
-    await page.getByRole('tab', { name: 'Events' }).click()
-    await page.getByRole('button', { name: 'Configure Expanded items change event flow' }).click()
-    const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-    await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
-    await expect(flowDialog.locator('.flow-empty')).toContainText('Expanded items change')
-    await flowDialog.getByTestId('create-first-flow').click()
-    await expect(flowDialog.locator('[data-flow-control="locked-trigger"]')).toContainText('Expanded items change')
-    const inspector = await addFlowAction(page, 'Show message')
-    await inspector.locator('[data-parameter="message"]').getByRole('textbox').fill(`${scenario.adapter}-collapse-change`)
-    await saveFlow(page)
-    await expect(page.getByRole('button', { name: 'Configure Expanded items change event flow' })).toBeFocused()
-
-    await page.getByRole('button', { name: 'Show preview' }).click()
-    await previewRuntime(page).locator(`[data-config-node-id="${collapse.nodeId}"] ${scenario.trigger}`).click()
-    await expect(page.getByText(`${scenario.adapter}-collapse-change`, { exact: true })).toHaveCount(1)
-  })
-}
 
 test('pins the selected Preview viewport when the host window is wider', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -1684,247 +1626,3 @@ test('provides real Monaco completion and hover for Vue and Config source', asyn
   await expect(page.locator('.monaco-hover:visible')).toContainText('defineFields')
   expect(browserErrors).toEqual([])
 })
-
-for (const adapter of ['element', 'antd'] as const) {
-  for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
-    for (const entry of lifecycleEntries) {
-      test(`lifecycle ${adapter} ${viewport.width}x${viewport.height} ${entry.kind} keeps one explicit undoable configuration`, async ({ page }) => {
-        test.setTimeout(120_000)
-        await page.setViewportSize(viewport)
-        const requests = await watchBusinessRequests(page)
-        await createProject(page, adapter)
-        const baseline = await readExportedProject(page)
-        const buttons = page.locator('button[data-form-event]')
-        expect(await buttons.evaluateAll(elements => elements.map(element => element.getAttribute('data-form-event'))))
-          .toEqual(lifecycleEntries.map(item => item.kind))
-        const trigger = page.locator(`button[data-form-event="${entry.kind}"]`)
-        await expect(trigger).toHaveAccessibleName(`Configure ${entry.label} event flow`)
-        const dialog = flowDialog(page)
-
-        await test.step('Keyboard open and close an untouched entry', async () => {
-          await trigger.focus()
-          await trigger.press('Enter')
-          await expect(dialog.locator('.flow-empty')).toContainText(entry.label)
-          await expect(dialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
-          await page.keyboard.press('Escape')
-          await expect(dialog).toBeHidden()
-          await expect(trigger).toBeFocused()
-        })
-
-        await test.step('Creating and editing a draft then Cancel does not persist', async () => {
-          await trigger.press('Space')
-          await dialog.getByTestId('create-first-flow').click()
-          await expect(dialog.locator('[data-flow-control="locked-trigger"] strong')).toHaveText(entry.label)
-          await dialog.locator('[data-flow-control="name"]').getByRole('textbox').fill(`Cancelled ${entry.kind}`)
-          const inspector = await addFlowAction(page, 'HTTP request')
-          await inspector.locator('[data-parameter="url"]').getByRole('textbox').fill(`https://flow-lifecycle.invalid/${entry.kind}/cancelled`)
-          await dialog.getByTestId('cancel-flow').focus()
-          await page.keyboard.press('Enter')
-          await expect(dialog).toBeHidden()
-          await expect(trigger).toBeFocused()
-          expect(await readExportedProject(page)).toEqual(baseline)
-          expect(requests).toEqual([])
-        })
-
-        const name = `${adapter} ${entry.kind}`
-        const url = `https://flow-lifecycle.invalid/${adapter}/${entry.kind}`
-        await test.step('Save exactly one formal configuration with its locked kind', async () => {
-          await trigger.focus()
-          await trigger.press('Enter')
-          await expect(dialog.getByTestId('create-first-flow')).toBeVisible()
-          await dialog.getByTestId('create-first-flow').click()
-          await dialog.locator('[data-flow-control="name"]').getByRole('textbox').fill(name)
-          const inspector = await addFlowAction(page, 'HTTP request', 'Inert request')
-          await inspector.locator('[data-parameter="url"]').getByRole('textbox').fill(url)
-          await saveFlow(page)
-          await expect(trigger).toBeFocused()
-        })
-        const saved = await readExportedProject(page)
-        const flows = projectFlows(saved)
-        expect(flows).toHaveLength(1)
-        expect(flows[0]).toMatchObject({ name, trigger: { kind: entry.kind } })
-
-        await test.step('Reopen retains parameters and cancelling an edit preserves the saved flow', async () => {
-          await trigger.focus()
-          await trigger.press('Enter')
-          await expect(dialog.locator('[data-flow-control="locked-trigger"] strong')).toHaveText(entry.label)
-          await expect(dialog.locator('[data-flow-control="name"]').getByRole('textbox')).toHaveValue(name)
-          await dialog.locator('[data-step-id]').click()
-          await expect(dialog.locator('[data-parameter="url"]').getByRole('textbox')).toHaveValue(url)
-          await expect(dialog.getByTestId('save-flow')).toBeDisabled()
-          await dialog.locator('[data-parameter="url"]').getByRole('textbox').fill(`${url}/discarded`)
-          await dialog.getByTestId('cancel-flow').focus()
-          await page.keyboard.press('Enter')
-          await expect(trigger).toBeFocused()
-          expect(await readExportedProject(page)).toEqual(saved)
-        })
-
-        await test.step('One Undo removes the save and one Redo restores it exactly', async () => {
-          await page.getByRole('button', { name: 'Undo', exact: true }).click()
-          expect(await readExportedProject(page)).toEqual(baseline)
-          await trigger.focus()
-          await trigger.press('Enter')
-          await expect(dialog.getByTestId('create-first-flow')).toBeVisible()
-          await page.keyboard.press('Escape')
-          await expect(trigger).toBeFocused()
-          await page.getByRole('button', { name: 'Redo', exact: true }).click()
-          expect(await readExportedProject(page)).toEqual(saved)
-          await trigger.focus()
-          await trigger.press('Enter')
-          await dialog.locator('[data-step-id]').click()
-          await expect(dialog.locator('[data-parameter="url"]').getByRole('textbox')).toHaveValue(url)
-          await expect(dialog.locator('[data-flow-control="locked-trigger"] strong')).toHaveText(entry.label)
-        })
-        await test.info().attach('lifecycle-workspace', { body: await page.screenshot(), contentType: 'image/png' })
-        await expectFlowAccessibility(page, `${adapter}-${viewport.width}-${entry.kind}`)
-        await page.keyboard.press('Escape')
-        await expect(trigger).toBeFocused()
-        await test.info().attach('business-requests', { body: JSON.stringify(requests), contentType: 'application/json' })
-        expect(requests).toEqual([])
-      })
-    }
-  }
-
-  test(`lifecycle ${adapter} import and design do not run any of the nine saved request actions`, async ({ page }) => {
-    test.setTimeout(180_000)
-    const requests = await watchBusinessRequests(page)
-    await createProject(page, adapter)
-    for (const entry of lifecycleEntries) {
-      await page.locator(`[data-form-event="${entry.kind}"]`).click()
-      await flowDialog(page).getByTestId('create-first-flow').click()
-      const inspector = await addFlowAction(page, 'HTTP request')
-      await inspector.locator('[data-parameter="url"]').getByRole('textbox').fill(`https://flow-lifecycle.invalid/import/${entry.kind}`)
-      await saveFlow(page)
-    }
-    const exported = await readExportedProject(page)
-    expect(projectFlows(exported).map(flow => flow.trigger.kind)).toEqual(lifecycleEntries.map(entry => entry.kind))
-    expect(requests).toEqual([])
-    await page.getByRole('tab', { name: 'Pages', exact: true }).click()
-    await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-    await page.getByRole('dialog', { name: 'Pages', exact: true }).getByRole('button', { name: 'New project' }).click()
-    const workspace = page.getByRole('main', { name: 'Create project', exact: true })
-    await workspace.locator('.creation-mode-switch .el-segmented__item').filter({ hasText: 'JSON import' }).click()
-    await workspace.getByRole('textbox', { name: 'Config Model JSON' }).fill(JSON.stringify(exported))
-    await workspace.getByRole('button', { name: 'Analyze JSON' }).click()
-    await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
-    await expect(workspace.frameLocator('iframe[data-preview-runtime-host]').getByRole('textbox', { name: 'Name', exact: true })).toBeVisible()
-    await expectFlowAccessibility(page, `${adapter}-lifecycle-import`)
-    expect(requests).toEqual([])
-    await workspace.getByRole('button', { name: 'Create imported project' }).click()
-    await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
-    await expect(designRuntime(page).getByRole('textbox', { name: 'Name', exact: true })).toBeVisible()
-    const importedFlows = projectFlows(await readExportedProject(page))
-    expect(importedFlows.map(flow => flow.trigger.kind)).toEqual(lifecycleEntries.map(entry => entry.kind))
-    expect(importedFlows.map(flow => flow.nodes.filter(node => node.type === 'action').map(node => ({ ref: node.ref, config: node.config }))))
-      .toEqual(projectFlows(exported).map(flow => flow.nodes.filter(node => node.type === 'action').map(node => ({ ref: node.ref, config: node.config }))))
-    await test.info().attach('business-requests', { body: JSON.stringify(requests), contentType: 'application/json' })
-    expect(requests).toEqual([])
-  })
-}
-
-for (const adapter of ['element', 'antd'] as const) {
-  test(`lifecycle ${adapter} nested branches duplicate and reorder steps, block submit, and preserve field state`, async ({ page }) => {
-    test.setTimeout(120_000)
-    await createProject(page, adapter)
-    const trigger = page.locator('[data-form-event="form.beforeSubmit"]')
-    await trigger.click()
-    const dialog = flowDialog(page)
-    await dialog.getByTestId('create-first-flow').click()
-    const inspector = dialog.locator('.flow-step-inspector')
-    const tree = dialog.getByTestId('step-tree')
-    const rename = async (name: string): Promise<void> => {
-      const label = inspector.getByRole('textbox', { name: 'Step label', exact: true })
-      await label.fill(name)
-      await label.press('Tab')
-    }
-    const addToBranch = async (branch: Locator, type: string): Promise<void> => {
-      await branch.getByRole('button', { name: 'Add step to branch' }).click()
-      await page.getByRole('menuitem', { name: type, exact: true }).click()
-    }
-
-    await dialog.getByTestId('add-condition').click()
-    await rename('Name gate')
-    await expect(inspector.locator('.flow-condition-heading').first()).toContainText('Compare values')
-    const operands = inspector.locator('.flow-operand-editor')
-    await chooseFlowOption(page, operands.first().getByRole('combobox').last(), 'Name')
-    await operands.nth(1).getByRole('textbox').fill('blocked')
-
-    await addToBranch(tree.locator('.flow-branch-row.is-then').first(), 'Condition')
-    await rename('Nested gate')
-    await chooseFlowOption(page, inspector.getByRole('combobox', { name: 'Condition type' }), 'Always')
-    await addToBranch(tree.locator('.flow-branch-row.is-then').nth(1), 'Action')
-    await chooseFlowOption(page, inspector.getByRole('combobox').first(), 'Delay')
-    await rename('Original delay')
-    await inspector.locator('[data-parameter="ms"]').getByRole('spinbutton').fill('10')
-    await inspector.locator('[data-parameter="ms"]').getByRole('spinbutton').press('Tab')
-    const originalId = await tree.locator('.is-selected').getAttribute('data-step-id')
-    await tree.locator('.is-selected').getByRole('button', { name: 'Duplicate step' }).click()
-    const copyId = await tree.locator('.is-selected').getAttribute('data-step-id')
-    expect(copyId).not.toBe(originalId)
-    await rename('Copied delay')
-    await inspector.locator('[data-parameter="ms"]').getByRole('spinbutton').fill('20')
-    await inspector.locator('[data-parameter="ms"]').getByRole('spinbutton').press('Tab')
-    await tree.locator(`[data-step-id="${copyId}"]`).getByRole('button', { name: 'Move up' }).click()
-    await expect(tree.locator(`[data-step-id="${copyId}"]`).getByRole('button', { name: 'Move up' })).toBeDisabled()
-    await expect(tree.locator(`[data-step-id="${originalId}"]`).getByRole('button', { name: 'Move down' })).toBeDisabled()
-
-    await addToBranch(tree.locator('.flow-branch-row.is-then').nth(1), 'Finish')
-    await rename('Block submit')
-    await chooseFlowOption(page, inspector.getByRole('combobox').first(), 'Blocked')
-    await addToBranch(tree.locator('.flow-branch-row.is-else').last(), 'Update form')
-    await rename('Lock name')
-    await inspector.getByTestId('add-reaction-rule').click()
-    await chooseFlowOption(page, inspector.getByRole('combobox', { name: 'Target field' }), 'Name')
-    await chooseFlowOption(page, inspector.getByRole('combobox', { name: 'Update type' }), 'Set field state')
-    await chooseFlowOption(page, inspector.locator('.flow-state-grid label').filter({ hasText: 'Disabled' }).getByRole('combobox'), 'Yes')
-    await dialog.getByTestId('add-terminate').click()
-    await rename('Submit allowed')
-    await chooseFlowOption(page, inspector.getByRole('combobox').first(), 'Success')
-    const labels = ['Name gate', 'Nested gate', 'Copied delay', 'Original delay', 'Block submit', 'Lock name', 'Submit allowed']
-    await expect(tree.locator('.flow-step-label strong')).toHaveText(labels)
-    const stepIds = await tree.locator('[data-step-id]').evaluateAll(elements => elements.map(element => element.getAttribute('data-step-id')))
-    expect(new Set(stepIds).size).toBe(stepIds.length)
-    await saveFlow(page)
-    const saved = await readExportedProject(page)
-
-    await trigger.click()
-    await expect(tree.locator('.flow-step-label strong')).toHaveText(labels)
-    expect(await tree.locator('[data-step-id]').evaluateAll(elements => elements.map(element => element.getAttribute('data-step-id')))).toEqual(stepIds)
-    await tree.locator(`[data-step-id="${copyId}"]`).focus()
-    await page.keyboard.press('Enter')
-    await expect(inspector.locator('[data-parameter="ms"]').getByRole('spinbutton')).toHaveValue('20')
-    await rename('Unsaved label')
-    await page.keyboard.press('Escape')
-    const discard = page.getByRole('dialog', { name: 'Discard changes', exact: true })
-    await expect(discard).toBeVisible()
-    await discard.getByRole('button', { name: 'Keep editing', exact: true }).click()
-    await expect(inspector.getByRole('textbox', { name: 'Step label' })).toHaveValue('Unsaved label')
-    await dialog.getByRole('button', { name: 'Close event flow orchestration' }).click()
-    await discard.getByRole('button', { name: 'Discard', exact: true }).click()
-    await expect(dialog).toBeHidden()
-    await expect(trigger).toBeFocused()
-    expect(await readExportedProject(page)).toEqual(saved)
-
-    await page.getByRole('button', { name: 'Show preview' }).click()
-    const preview = page.getByRole('complementary', { name: 'Page preview' })
-    const input = previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })
-    await input.fill('blocked')
-    await preview.getByRole('button', { name: 'Submit preview form' }).click()
-    await expect(preview.locator('.preview-result-status')).toHaveAttribute('data-status', 'blocked')
-    await expect(preview.locator('[data-preview-results]')).toContainText('Submission blocked')
-    await expect(input).toBeEnabled()
-    await input.fill('allowed')
-    await preview.getByRole('button', { name: 'Submit preview form' }).click()
-    await expect(preview.locator('.preview-result-status')).toHaveAttribute('data-status', 'success')
-    await expect(preview.locator('[data-preview-submission-json]')).toContainText('allowed')
-    await expect(input).toBeDisabled()
-    await test.info().attach('nested-branch-preview', { body: await page.screenshot(), contentType: 'image/png' })
-    await expectFlowAccessibility(page, `${adapter}-nested-branch-preview`)
-    await page.getByRole('button', { name: 'Close preview' }).click()
-    await expect(page.getByRole('button', { name: 'Show preview' })).toBeFocused()
-    await expect(page.locator('iframe[data-preview-runtime-host]')).toHaveCount(0)
-    await page.getByRole('button', { name: 'Show preview' }).click()
-    await expect(previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('allowed')
-    await expect(previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })).toBeDisabled()
-  })
-}

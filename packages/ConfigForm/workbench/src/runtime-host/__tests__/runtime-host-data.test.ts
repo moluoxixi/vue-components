@@ -2,18 +2,19 @@
 import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 import type { ConfigFormDataSourceHost } from '@moluoxixi/config-form-core'
 import type { RuntimeHostSyncMessage, RuntimeHostToParentMessage } from '../types'
-import { flushPromises, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { compileDataFixture, DataControl } from '../../project/__tests__/data-runtime-fixture'
+import { compileDataFixture } from '../../project/__tests__/data-runtime-fixture'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
 import RuntimeHostApp from '../index.vue'
 import { isParentToRuntimeHostMessage, isRuntimeHostToParentMessage } from '../schemas'
+import { createRuntimeHostDataExecutor } from '../services/data-rpc'
+
 type RuntimeDataExpose = ConfigFormRendererExpose & {
   getOptionState: ConfigFormRendererExpose['getOptionState']
   getVariables: ConfigFormRendererExpose['getVariables']
   getDataSourceState: ConfigFormRendererExpose['getDataSourceState']
 }
-import { createRuntimeHostDataExecutor } from '../services/data-rpc'
 
 const adapter = vi.hoisted(() => ({ load: vi.fn() }))
 vi.mock('../../adapters', () => ({ loadWorkbenchRuntimeAdapter: adapter.load }))
@@ -49,9 +50,14 @@ describe('real RuntimeHost data capability', () => {
     try {
       expect(request).not.toHaveBeenCalled()
       dispatch({
-        type: 'sync', adapter: 'element-plus', compilation: fixture.compilation, locale: 'en-US', mode,
+        type: 'sync',
+        adapter: 'element-plus',
+        compilation: fixture.compilation,
+        locale: 'en-US',
+        mode,
         ...(mode === 'preview' ? { dataSourceRequest: true } : { design: { breakpoint: 'desktop', variant: 'canvas' } }),
-        runtimeSessionKey: 'data-session', runtimeState: { fields: [], values: {}, touched: [], validation: {} },
+        runtimeSessionKey: 'data-session',
+        runtimeState: { fields: [], values: {}, touched: [], validation: {} },
         reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
       } satisfies Omit<RuntimeHostSyncMessage, keyof ReturnType<typeof base>>)
       await vi.waitFor(() => expect(messages.some(message => message.type === 'ready')).toBe(true))
@@ -64,18 +70,13 @@ describe('real RuntimeHost data capability', () => {
         return
       }
       await vi.waitFor(() => expect(api.getOptionState({ nodeId: 'choice', scope: [] })?.status).toBe('success'))
-      expect(api.getVariables()).toEqual({ region: 'US', status: 'idle' })
+      expect(api.getVariables()).toEqual({ region: 'US' })
       expect(request).toHaveBeenCalledWith({ url: '/choices', query: { region: 'US' } }, expect.any(AbortSignal))
       const initialRequests = request.mock.calls.length
-      await wrapper.get('[data-field="choice"]').findComponent(DataControl).trigger('click')
-      await flushPromises()
-      expect(api.getVariables()).toEqual({ region: 'US', status: 'success' })
-      expect(api.getValues().result).toBe('success')
       expect(api.getDataSourceState('choices')).toMatchObject({ status: 'success' })
       expect(request).toHaveBeenCalledTimes(initialRequests)
       expect(initialRequests).toBe(1)
-      expect(messages.filter(message => message.type === 'actionRequest')).toEqual([])
-      expect(messages.filter(message => message.type === 'error' || message.type === 'flowError')).toEqual([])
+      expect(messages.filter(message => message.type === 'error')).toEqual([])
     }
     finally {
       wrapper.unmount()

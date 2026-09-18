@@ -1,6 +1,6 @@
 # @moluoxixi/config-form-core
 
-ConfigForm 的零 UI 依赖共享内核。它提供可序列化 JSON、条件表达式、reaction effect 类型，以及同步稳定的纯 reaction reducer。
+ConfigForm 的零 UI 依赖共享内核。它提供可序列化 JSON、value reference、条件表达式、reaction、Data Source 和响应式布局等纯协议与执行器。
 
 Core 不依赖 Vue、Zod、Headless、Runtime、Designer 或任何组件库，可单独用于配置编辑、服务端预处理、导入校验前的业务投影和测试。
 
@@ -47,12 +47,10 @@ const reaction = createConfigFormReaction({
 
 表单 Controller、Vue 渲染、校验生命周期和字段节点树属于 `@moluoxixi/config-form-headless`；可视化文档、Zod schema 和编辑器属于 Designer。
 
-## 事件运行时
+## Data Source 与值引用
 
-`createConfigFormEventRuntime` 是公开表单、工作台预览与导出源码共用的事件执行入口。每个表单实例持有独立运行时，通过 `readValues/writeValues` 连接唯一值源，以 `sync(plans)` 更新执行计划，并在销毁时调用 `dispose()`。
+Data Source Runtime 解析声明式请求、依赖和响应映射，通过宿主注入的 `ConfigFormDataSourceHost` 发起请求，并负责缓存、超时、取消和稳定状态。HTTP 输入输出合同属于 Data Source 领域，不依赖事件或动作系统。
 
-动作的 `execute(input, context)` 接收 `event`、`signal`、运行身份、值快照、前序输出和 `form` API。`context.form.setValue/setValues` 只写当前运行事务，成功后提交；`getValue/getValues` 返回防御性副本。并发支持 `latest/queue/ignore`，按 Flow ID 隔离。排队任务启动时读取最新值，事件参数仍使用触发时快照。
+value reference 可读取字段、variables、Data Source 响应映射上下文和安全表达式。Runtime 消费这些纯合同，但 Core 不读取 Vue 组件、DOM、Designer 文档或 Workbench 状态。
 
-输入引用支持 `{ $field: 'name' }`、`{ $event: 'args.0' }`、`{ $output: 'action-id' }` 和 `{ $expression: '$event.args[0]' }`。缺失的事件参数、前序输出或非法表达式会形成诊断。`snapshotConfigFormEventArgs` 将原生事件转换为受限 JSON 数据，不传递 DOM 或组件实例。
-
-当前执行合同版本为 `CONFIG_FORM_FLOW_RUNTIME_VERSION = 2`。图协议仍为 v1，但同一出口的重复边与终止节点出边不再合法。
+复杂组件事件不属于 Core。宿主直接在运行时 config 的 `props.onX` 中维护普通 Vue/TypeScript 函数。

@@ -10,6 +10,7 @@ import {
   createProjectDraftSnapshotFromTransaction,
   createProjectSnapshot,
   createRegistryContractSnapshot,
+  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
@@ -27,7 +28,6 @@ function fixture() {
     version: '1',
     kind: 'field',
     props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
-    events: [],
     bindings: [{ name: 'model', valueProp: 'modelValue', trigger: 'update:modelValue' }],
     slots: [],
     allowedParents: [],
@@ -46,7 +46,6 @@ function fixture() {
       kind: 'field',
       field: id,
       props: { placeholder: `Field ${index}` },
-      events: {},
       bindings: {},
     }
     return { nodeId: id, placement: { span: 6 } }
@@ -63,7 +62,7 @@ function fixture() {
         name: 'Home',
         route: '/',
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: { columns: 24 },
           root,

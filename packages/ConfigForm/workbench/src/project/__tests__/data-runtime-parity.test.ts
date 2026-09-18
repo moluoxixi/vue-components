@@ -9,6 +9,7 @@ import { shallowRef } from 'vue'
 import { createWorkbenchDataSourceRequest } from '../../app/services/data-source-request'
 import { compileDataFixture, DataControl } from './data-runtime-fixture'
 import { createGeneratedModuleLoader } from './generated-runtime-module'
+
 type RuntimeDataExpose = ConfigFormRendererExpose & {
   getOptionState: ConfigFormRendererExpose['getOptionState']
   getVariables: ConfigFormRendererExpose['getVariables']
@@ -16,13 +17,16 @@ type RuntimeDataExpose = ConfigFormRendererExpose & {
 }
 
 describe('generated Page data-source parity', () => {
-  it('shares named options, variables and renderer-local Flow actions with the direct renderer', async () => {
+  it('shares named options, variables and data-source lifecycle with the direct renderer', async () => {
     const fixture = compileDataFixture()
     const fetchHost = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('[{"label":"A","value":"a"}]', { status: 200 }))
     const base = document.createElement('base')
     base.href = 'https://generated.test/app/'
     document.head.append(base)
-    onTestFinished(() => { base.remove(); fetchHost.mockRestore() })
+    onTestFinished(() => {
+      base.remove()
+      fetchHost.mockRestore()
+    })
     const exported = fixture.exportSource()
     expect(fetchHost).not.toHaveBeenCalled()
     const load = await createGeneratedModuleLoader(Object.fromEntries(Object.entries(exported.files)
@@ -39,14 +43,13 @@ describe('generated Page data-source parity', () => {
       for (const wrapper of [direct, source]) {
         const api = wrapper.vm as unknown as RuntimeDataExpose
         await vi.waitFor(() => expect(api.getOptionState({ nodeId: 'choice', scope: [] })?.status).toBe('success'))
-        expect(api.getVariables()).toEqual({ region: 'US', status: 'idle' })
+        expect(api.getVariables()).toEqual({ region: 'US' })
         expect(api.getOptionState({ nodeId: 'choice', scope: [] })?.options).toEqual([{ label: 'A', value: 'a' }])
         await wrapper.get('[data-field="choice"]').findComponent(DataControl).trigger('click')
         await flushPromises()
-        expect(api.getVariables()).toEqual({ region: 'US', status: 'success' })
-        expect(api.getValues().result).toBe('success')
+        expect(api.getVariables()).toEqual({ region: 'US' })
+        expect(api.getValues().result).toBe('')
         expect(api.getDataSourceState('choices')).toMatchObject({ status: 'success', data: [{ label: 'A', value: 'a' }] })
-        expect(wrapper.emitted('flowError')).toBeUndefined()
       }
       expect(fetchHost).toHaveBeenCalledTimes(2)
       expect(fetchHost.mock.calls.every(([url]) => url === 'https://generated.test/choices?region=US')).toBe(true)

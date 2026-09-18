@@ -1,19 +1,8 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type {
-  ConfigFormFlowActionRegistry,
-  ConfigFormFlowDiagnostic,
-  ConfigFormFlowTraceEvent,
-  ConfigFormReactionProjection,
-} from '@moluoxixi/config-form-core'
 import type { PageGraph } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
-import type { WorkbenchFlowActionHooks } from '../../flow'
 import type {
-  PreviewRuntimeFlowDiagnosticEvent,
-  PreviewRuntimeFlowProjectionEvent,
-  PreviewRuntimeFlowResultEvent,
-  PreviewRuntimeFlowTraceEvent,
   RuntimeHostFieldInstance,
   RuntimeHostRuntimeStatePayload,
   RuntimeHostSubmitResultPayload,
@@ -73,29 +62,12 @@ export interface PreviewSubmission {
   readonly values: Record<string, unknown>
 }
 
-export interface CreatePreviewSessionOptions {
-  readonly actions?: ConfigFormFlowActionRegistry
-  readonly onDiagnostic?: (diagnostic: ConfigFormFlowDiagnostic) => void
-  readonly onTrace?: (event: ConfigFormFlowTraceEvent) => void
-}
-
-export type CreateWorkbenchPreviewSessionOptions = WorkbenchFlowActionHooks & {
-  readonly actions?: ConfigFormFlowActionRegistry
-  readonly onDiagnostic?: (diagnostic: ConfigFormFlowDiagnostic) => void
-  readonly onTrace?: (event: ConfigFormFlowTraceEvent) => void
-}
-
 export interface PreviewSession {
-  /** Trusted action registry supplied to the parent RuntimeHost capability port. */
-  readonly actions: ConfigFormFlowActionRegistry
-  readonly flowDiagnostics: ShallowRef<readonly ConfigFormFlowDiagnostic[]>
-  readonly flowProjection: ComputedRef<ConfigFormReactionProjection<Record<string, unknown>>>
   readonly lastSubmission: ShallowRef<PreviewSubmission | undefined>
   readonly projection: ShallowRef<PagePreviewProjection | undefined>
   readonly revisionKey: ComputedRef<string>
   readonly runtimeState: ComputedRef<RuntimeHostRuntimeStatePayload>
   readonly touched: ShallowRef<readonly string[]>
-  readonly trace: ShallowRef<readonly ConfigFormFlowTraceEvent[]>
   readonly validation: ShallowRef<Readonly<PreviewValidationState>>
   readonly values: Ref<Record<string, unknown>>
   accept: (input: PreviewSessionAcceptInput) => PagePreviewProjection | undefined
@@ -105,11 +77,6 @@ export interface PreviewSession {
   getCompilation: () => PageCompilation | undefined
   getRuntimeModel: () => Record<string, unknown>
   handleFieldChange: (payload: import('../../runtime-host').PreviewRuntimeFieldChangeEvent) => void
-  handleFlowError: (event: PreviewRuntimeFlowDiagnosticEvent) => void
-  handleFlowProjection: (event: PreviewRuntimeFlowProjectionEvent) => void
-  handleFlowResult: (event: PreviewRuntimeFlowResultEvent) => void
-  handleFlowTrace: (event: PreviewRuntimeFlowTraceEvent) => void
-  handleRuntimeEvent: (payload: import('../../runtime-host').PreviewRuntimeComponentEvent) => void
   handleRuntimeMounted: (event: PreviewRuntimeIdentity) => void
   handleRuntimeReady: (event: PreviewRuntimeIdentity) => void
   handleRuntimeState: (event: PreviewRuntimeStateEvent) => void

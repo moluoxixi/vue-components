@@ -36,7 +36,7 @@ export function createComponentRenderer<TValues extends ConfigFormValues>(
     scope: ConfigFormScopePath,
     slotOverride?: RendererSlots,
   ): VNodeChild {
-    const { binding, designGuard, editorBridge, flowEvents } = context
+    const { binding, componentListeners, designGuard, editorBridge } = context
     const slots = slotOverride ?? createNodeSlots(node, path, ancestors, scope)
     const registration = binding.resolveRegistration(node.component)
     const component = registration?.component ?? node.component
@@ -51,10 +51,7 @@ export function createComponentRenderer<TValues extends ConfigFormValues>(
     designGuard.applyDesignInteractionGuard(componentProps)
     if (registerElement)
       Object.assign(componentProps, { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) })
-    const runtimeEvents = flowEvents.runtimeFlowEventMap(node)
-    const managedListeners = new Set<string>()
-    flowEvents.addRuntimeFlowEventListeners(componentProps, metadata, runtimeEvents, managedListeners)
-    flowEvents.wrapComponentListeners(componentProps, metadata, managedListeners, runtimeEvents)
+    componentListeners.wrapComponentListeners(componentProps)
     const configuredKey = componentProps.key
     const vnodeKey = isVNodeKey(configuredKey) ? configuredKey : `${path}.component`
 

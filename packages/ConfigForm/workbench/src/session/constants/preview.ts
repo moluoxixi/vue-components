@@ -1,1 +1,1 @@
-export const PREVIEW_TRACE_LIMIT = 200
+export const PREVIEW_SESSION_HISTORY_LIMIT = 200

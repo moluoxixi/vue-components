@@ -30,7 +30,7 @@ const registry = createDesignerRegistry({ materials: [
 ] })
 
 const graph: PageGraph = {
-  version: 2,
+  version: 3,
   props: {},
   form: {},
   root: [
@@ -46,7 +46,6 @@ const graph: PageGraph = {
       component: 'test.section',
       kind: 'layout',
       props: {},
-      events: {},
       bindings: {},
       slots: { default: [{ nodeId: 'nested', placement: {} }] },
     },
@@ -63,7 +62,6 @@ function field(id: string) {
     kind: 'field' as const,
     field: id,
     props: {},
-    events: {},
     bindings: {},
   }
 }
@@ -147,6 +145,19 @@ describe('designer controller batch actions', () => {
       { type: 'node.resize', pageId: 'home', nodeId: 'lead', span: 6 },
       { type: 'node.resize', pageId: 'home', nodeId: 'sibling', span: 6 },
     ])
+  })
+
+  it.each([
+    ['events', 'click'],
+    ['bindings', 'value'],
+    ['conditions', 'disabled'],
+    ['reactions'],
+    ['extensions', 'advanced'],
+    ['valueScope', 'field'],
+    ['props', 'optionSource'],
+  ])('rejects commands that write %s outside the default Designer boundary', (...path) => {
+    expect(() => createNodePathCommand(graph, 'home', ['lead'], path, true))
+      .toThrow(/DESIGNER_SETTER_PATH_FORBIDDEN/)
   })
 })
 

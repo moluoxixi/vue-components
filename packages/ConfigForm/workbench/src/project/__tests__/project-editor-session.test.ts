@@ -5,13 +5,18 @@ import type {
   ProjectRepositoryCommitInput,
   ProjectRepositoryCommitResult,
 } from '@moluoxixi/config-form-model'
-import { createMemoryProjectRepository, ProjectRepositoryError } from '@moluoxixi/config-form-model'
+import {
+  createMemoryProjectRepository,
+  PAGE_GRAPH_VERSION,
+  PROJECT_DOCUMENT_VERSION,
+  ProjectRepositoryError,
+} from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { createProjectEditorSession, openProjectEditorSession } from '..'
 
 function projectDocument(): ProjectDocument {
   return {
-    version: 4,
+    version: PROJECT_DOCUMENT_VERSION,
     id: 'project',
     name: 'Project',
     homePageId: 'home',
@@ -22,7 +27,7 @@ function projectDocument(): ProjectDocument {
         name: 'Home',
         route: '/',
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [],

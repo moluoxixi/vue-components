@@ -5,7 +5,7 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectCommand } from '@moluoxixi/config-form-model'
-import type { FlowReferenceField } from '../../flow'
+import type { DataReferenceField } from '../components/DataValueEditor/types'
 
 export interface DataCommandDiagnostic {
   code: string
@@ -28,7 +28,7 @@ export interface DataEditorBaseProps {
   onRequest?: ConfigFormDataSourceHost['request']
   pageId: string
   readonly?: boolean
-  referenceFields?: readonly FlowReferenceField[]
+  referenceFields?: readonly DataReferenceField[]
   runtime?: ConfigFormPageRuntimeConfiguration
   /** Optional page/project revision captured with runtime for optimistic conflict detection. */
   runtimeRevision?: number | string

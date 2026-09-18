@@ -1,62 +1,48 @@
-# ConfigForm 完善路线图
+# ConfigForm 路线图
 
-> 决策背景：继续全线自研（含设计器/配置化表单），对标 FcDesigner / FormCreate Pro 补齐功能与交互，必要处重构。本文档跟踪各专项进度与待办，随实施持续更新。
+产品方向以 [PRODUCT.md](./PRODUCT.md) 为准：Runtime-first，Designer optional，复杂业务逻辑由工程师在宿主 Vue/TypeScript 中维护。
 
-## 已完成
+## 当前优先级
 
-### 稳定性与性能（审查报告 H/M 项）
+1. 稳定 Runtime、Headless、Element Plus 与 Ant Design Vue 的生产表单能力。
+2. 保持嵌套对象/数组、readonly、校验、提交、同步 reactions、Data Source、动态 options 和 value scope 的运行一致性。
+3. 将 Designer 维持为只包含 `properties` 与 `validation` 的轻量 Schema 编辑器。
+4. 让 Preview 与静态 Source/Config 导出持续验证 Runtime 合同，但不承载宿主业务函数。
+5. 完善包级类型、架构、发布和真实生成项目门禁。
 
-- [x] H1 拖拽性能：候选编译 LRU 缓存、几何坐标刷新（`65a53e51`）
-- [x] H2 Flex/Grid 容器拖入：空容器占位、流向轴感知插入（`fd6f294b`）
-- [x] H3/H4 几何陈旧与深克隆治理（`626490f8`）
-- [x] M5 历史 jump 落点后一次性编译（`99637ee4`）
-- [x] 拖拽边缘自旋冻死页面修复 + 画布节点本体直接拖拽（`1af49254`）
-- [x] 指针拖拽 Escape 取消、对话框焦点栈、inert 排除（`a3bcd314`）
-- [x] 运行时样式命名空间失配修复：控件宽度跟随栅格列（`f125ac1c`）
-- [x] 画布与 iframe 命中测试统一（`d10889d6`）
+## 已完成的基础
 
-### 主题与视觉
+- 同步 `model.read/write` 单一值源、Headless controller 与统一 Renderer。
+- Element Plus / Ant Design Vue 运行适配与 readonly 展示。
+- 响应式布局、嵌套 slot、object/array value scope 与行级操作。
+- required、RuleSet、Zod、业务 validator、`validateOn`、dirty/touched 和防陈旧异步校验。
+- 同步 reactions、Data Source、option source、variables 与 scope cancellation。
+- ProjectDocument、编译链、Preview、Source/Config 导出和 current-contract-only 版本门禁。
+- 画布选择、拖拽、resize、候选投影、模板创建和 JSON ingress。
 
-- [x] 四套配色体系：水墨（宣纸/夜墨）、莫兰迪奶油、赛博科技（电光/深空）、玻璃拟态（`35d713d9`）
-  - 结构 token：`--wb-shadow-*`、`--wb-action-glow`、`--wb-veil`；对比度契约逐主题固化
-- [x] 工作台状态色 EP 变量映射、视觉 token 收敛（`65f4a1d2`、`8ed58869`）
+## 明确终止的方向
 
-### 事件编排专项（E1-E5）
+旧 E1-E5 事件编排专项及其后续扩张已被 Runtime-first 决策取代，不属于“完成项”：
 
-- [x] **E1 内置动作库**（`078ce5be`）：`builtin.http.request` / `builtin.delay` / `builtin.nav.open` / `builtin.ui.message` / `builtin.ui.confirm`；宿主能力注入；flow 编辑器动作预设下拉 + input 模板
-- [x] **E2 安全表达式引擎**（`c0284039`）：无 eval 解释器 + 30 个公式函数；联动条件/操作数、flow 条件、`$expression` 输入输出映射全接入
-- [ ] **E3 变量池 + 命名数据源**：表单级变量（flow 读写、组件绑定），数据源定义复用到 options 与 http.request
-- [ ] **E4 低门槛事件配置**：属性面板内联动作清单快捷编辑（复杂场景升级为流程图）；flow 执行 trace 调试面板；ui.confirm 接 ElMessageBox、message 类型透传
-- [ ] **E5 触发器扩展**：valuesChange / reset / 校验失败等生命周期
+- 可视化事件编辑、内联动作清单和流程图。
+- 动作注册表、异步 Flow 调度、trace 面板和事件参数映射。
+- Designer/Preview iframe 的组件事件转发。
+- Source 中的 handler stub、action binding 或 Flow runtime。
 
-### 画布交互（对齐成熟产品基线）
+复杂组件事件统一使用代码态 config 的 `props.onX`。未来若真实需求证明 Automation 值得产品化，必须重新立项并使用独立 package 和合同，不从主产品恢复旧实现。
 
-- [x] 节点右键菜单（9 项，iframe `designContextMenu` 协议）+ 剪贴板 Ctrl/Cmd+C/X/V、跨页粘贴、id/字段重映射（`692eb203`）
-- [x] 悬停高亮、双击直达检查器、图层大纲树拖拽排序（`914b72a2`）
-- [x] 拖拽极端场景矩阵实测与修复：非 100% 缩放落点、快速甩动、拖出取消、边缘自动滚动、空/非空容器拖入、Escape 后重拖、连续压力
-  - 修复：节点本体拖拽会话激活死锁（overlay 挂载前 iframe 指针流持续驱动会话，拖拽视觉/候选投影/自动滚动全程可用）
-  - 修复：空 slot 容器全高命中带（不再套用 0.2/0.8 兄弟边缘带，小尺寸空容器可直接拖入）
-- [x] 落子即选中：`select()` 支持待生效选中，插入命令的图传播一拍后落地（此前拖入的新节点选中被清空，容器内元素密集时需反复补点）
-- [x] 预览改为居中模态弹窗（原右侧抽屉）：结果面板空态收缩、非空态封顶 45% 内部滚动，全屏切换保留
-- [x] **子表单 / 表格布局**：valueScope（object/array）model 协议、`array-subform` / `detail-table` / `object-group` 物料、运行时 list/table 双模式行操作（增删/复制/上移/下移）、设计态单实例模板投影
+## 后续候选
 
-## 进行中
+- 基于真实业务样本补齐表单组件与校验能力。
+- 移动端渲染适配与 Vant adapter 可行性验证。
+- 元素级多语言配置。
+- Data Source 的可观测性与 DevTools，前提是不引入事件编排。
+- AI 辅助生成静态 PageGraph，输出仍须通过当前 Schema、Registry 和 Compiler 校验。
 
-（无）
+候选项不代表承诺。任何新增作者能力都必须先满足 `PRODUCT.md` 的扩展准入条件。
 
-## 待办（按优先级）
+## 已知风险
 
-1. E3 → E4 → E5（见上）
-2. 交互增强（可选）：点击添加物料后左面板滚动位置保持（图层树增长会把物料列表挤出视口）、图层树拖入容器内部、`Ctrl+V` 读系统剪贴板跨应用粘贴
-3. 元素级多语言（表单元素文案多语种）
-4. 移动端渲染适配（断点体系已有，评估 Vant 适配包）
-5. AI 表单助理（PageGraph 结构化生成）
-6. 组件扩容（签名/评分/穿梭框/级联/上传增强等，随需求）
-7. 架构增强（低优）：store 迁移 Pinia 评估、antd adapter 路由级 code-split、postMessage 心跳与 iframe 崩溃恢复
-
-## 已知遗留风险
-
-- CI linux 视觉基线因配色更名/视觉改动需重新生成（darwin 本地无基线）
-- e2e 4 个用例在 macOS 环境性失败（`interaction.spec` L617/L961，origin/main 同样复现），以 CI linux 为准
-- 表达式内的字段引用不参与模板字段重命名（结构化操作数不受影响）
-- compiler 性能预算测试在高并发 turbo 下偶发超标（负载噪声，空闲复跑为准）
+- CI Linux 视觉基线需随现有主题变更维护。
+- Compiler 性能预算在高并发任务下可能受机器负载影响，应在独立复跑后判断。
+- Preview 无法复现宿主未注入的 `props.onX` 函数，这是可序列化边界，不通过 RPC 绕过。

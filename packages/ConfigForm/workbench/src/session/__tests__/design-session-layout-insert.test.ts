@@ -48,7 +48,7 @@ describe('candidate previews after layout inserts', () => {
             ...page.graph,
             nodesById: {
               ...page.graph.nodesById,
-              'sec-1': { id: 'sec-1', kind: 'layout' as const, component: 'element.section', props: { title: 'Section' }, events: {}, bindings: {}, slots: { default: [] } },
+              'sec-1': { id: 'sec-1', kind: 'layout' as const, component: 'element.section', props: { title: 'Section' }, bindings: {}, slots: { default: [] } },
             },
             root: [...page.graph.root, { nodeId: 'sec-1', placement: {} }],
           },
@@ -69,7 +69,7 @@ describe('candidate previews after layout inserts', () => {
           pageId: 'home',
           subgraph: {
             root: [{ nodeId: 'cand-1', placement: {} }],
-            nodesById: { 'cand-1': { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, events: {}, bindings: {} } },
+            nodesById: { 'cand-1': { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, bindings: {} } },
           },
           target: { parentId: null, index: next.pagesById.home!.graph.root.length },
         }],

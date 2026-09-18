@@ -1,7 +1,4 @@
 import type {
-  ConfigFormFlowConditionNodeConfig,
-  ConfigFormFlowNode,
-  ConfigFormFlowReactionNodeConfig,
   ConfigFormReaction,
   ConfigFormReactionCondition,
   ConfigFormReactionEffect,
@@ -86,46 +83,6 @@ function remapReaction(
     then: reaction.then.map(effect => remapEffect(effect, fields)),
     ...(reaction.else ? { else: reaction.else.map(effect => remapEffect(effect, fields)) } : {}),
   }
-}
-
-function remapFlowNode(
-  node: ConfigFormFlowNode,
-  identity: {
-    fields: ReadonlyMap<string, string>
-    flowId: string
-    flowNodes: ReadonlyMap<string, string>
-    reactions: ReadonlyMap<string, string>
-  },
-): ConfigFormFlowNode {
-  const id = requireMapped(identity.flowNodes, node.id, 'flow node')
-  if (node.type === 'condition' && node.config) {
-    const config = node.config as unknown as ConfigFormFlowConditionNodeConfig
-    if (!config.condition)
-      throw new TypeError(`TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED: Flow condition node "${node.id}" has no typed condition config.`)
-    return { ...structuredClone(node), id, config: { condition: remapCondition(config.condition, identity.fields) } }
-  }
-  if (node.type === 'reaction' && node.config) {
-    const config = node.config as unknown as ConfigFormFlowReactionNodeConfig
-    if (!Array.isArray(config.reactions))
-      throw new TypeError(`TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED: Flow reaction node "${node.id}" has no typed reaction config.`)
-    return {
-      ...structuredClone(node),
-      id,
-      config: structuredClone({
-        reactions: config.reactions.map(reaction => remapReaction(
-          reaction,
-          identity.fields,
-          requireMapped(
-            identity.reactions,
-            scopedIdentityKey('flow', identity.flowId, node.id, reaction.id),
-            'reaction',
-          ),
-        )),
-      }) as unknown as ConfigFormFlowNode['config'],
-    }
-  }
-  // Action config is Registry-owned JSON. It is cloned but never guessed at.
-  return { ...structuredClone(node), id }
 }
 
 function remapNode(
@@ -219,27 +176,6 @@ export function remapProjectPageIdentity(
       factory.create('reaction', `${node.id}-${reaction.id}`),
     )
   }))
-  seed.flows?.forEach(flow => flow.nodes.forEach((node) => {
-    if (node.type !== 'reaction' || !node.config)
-      return
-    const config = node.config as unknown as Partial<ConfigFormFlowReactionNodeConfig>
-    config.reactions?.forEach((reaction) => {
-      reactions.set(
-        scopedIdentityKey('flow', flow.id, node.id, reaction.id),
-        factory.create('reaction', `${flow.id}-${node.id}-${reaction.id}`),
-      )
-    })
-  }))
-  const flows = new Map((seed.flows ?? []).map(flow => [flow.id, factory.create('flow', flow.id)]))
-  const flowNodes = new Map((seed.flows ?? []).flatMap(flow => flow.nodes.map(node => [
-    scopedIdentityKey(flow.id, node.id),
-    factory.create('flow-node', `${flow.id}-${node.id}`),
-  ] as const)))
-  const flowEdges = new Map((seed.flows ?? []).flatMap(flow => flow.edges.map(edge => [
-    scopedIdentityKey(flow.id, edge.id),
-    factory.create('flow-edge', `${flow.id}-${edge.id}`),
-  ] as const)))
-
   const page: ProjectPage = {
     ...structuredClone(seed),
     id: pageId,
@@ -251,44 +187,10 @@ export function remapProjectPageIdentity(
         return [mapped.id, mapped]
       })),
     },
-    ...(seed.flows
-      ? {
-          flows: seed.flows.map((flow) => {
-            const scopedFlowNodes = new Map(flow.nodes.map(node => [
-              node.id,
-              requireMapped(flowNodes, scopedIdentityKey(flow.id, node.id), 'flow node'),
-            ]))
-            const scopedFlowEdges = new Map(flow.edges.map(edge => [
-              edge.id,
-              requireMapped(flowEdges, scopedIdentityKey(flow.id, edge.id), 'flow edge'),
-            ]))
-            return {
-              ...structuredClone(flow),
-              id: requireMapped(flows, flow.id, 'flow'),
-              trigger: {
-                ...structuredClone(flow.trigger),
-                ...(flow.trigger.nodeId ? { nodeId: requireMapped(nodes, flow.trigger.nodeId, 'node') } : {}),
-              },
-              nodes: flow.nodes.map(node => remapFlowNode(node, {
-                fields,
-                flowId: flow.id,
-                flowNodes: scopedFlowNodes,
-                reactions,
-              })),
-              edges: flow.edges.map(edge => ({
-                ...structuredClone(edge),
-                id: requireMapped(scopedFlowEdges, edge.id, 'flow edge'),
-                source: requireMapped(scopedFlowNodes, edge.source, 'flow node'),
-                target: requireMapped(scopedFlowNodes, edge.target, 'flow node'),
-              })),
-            }
-          }),
-        }
-      : {}),
   }
 
   return {
     page: assertRemappedPage(page),
-    identityMap: { fields, flowEdges, flowNodes, flows, nodes, reactions },
+    identityMap: { fields, nodes, reactions },
   }
 }

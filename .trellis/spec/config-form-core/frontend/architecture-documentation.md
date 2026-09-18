@@ -113,11 +113,15 @@ field name: `version`. `revision` is reserved for content/history cursors;
 `adapterVersion` and `contractVersion` are dependency/component identities.
 
 ```ts
-PROJECT_DOCUMENT_VERSION = 4
-PAGE_GRAPH_VERSION = 2
-REGISTRY_CONTRACT_SNAPSHOT_VERSION = 1
-CONFIG_FORM_FLOW_VERSION = 1
-RUNTIME_HOST_PROTOCOL_VERSION = 4
+PROJECT_DOCUMENT_VERSION = 5
+PAGE_GRAPH_VERSION = 3
+REGISTRY_CONTRACT_SNAPSHOT_VERSION = 2
+CANONICAL_PROJECT_IR_VERSION = 4
+CONFIG_FORM_COMPILER_VERSION = '5.0.0'
+PAGE_TRANSFER_VERSION = 2
+PROJECT_ENTITY_CODEC_VERSION = 3
+CONFIG_FORM_EXPORT_GENERATOR_VERSION = '4.0.0'
+RUNTIME_HOST_PROTOCOL_VERSION = 6
 ```
 
 The serialized field is always `version`:
@@ -126,7 +130,7 @@ The serialized field is always `version`:
 ProjectDocument.version = PROJECT_DOCUMENT_VERSION
 PageGraph.version = PAGE_GRAPH_VERSION
 RegistryContractSnapshot.version = REGISTRY_CONTRACT_SNAPSHOT_VERSION
-PageTransferDocument.version = 1
+PageTransferDocument.version = PAGE_TRANSFER_VERSION
 ProjectTemplateManifest.version = 1
 ```
 
@@ -197,7 +201,7 @@ type CurrentContractResult<T, D> =
 
 - Good: bump a contract, update every producer and consumer atomically, remove
   the prior parser/type/tests, and make stale development state fail closed.
-- Base: keep Flow v1 because it is the current and only accepted Flow contract.
+- Base: keep a version-1 protocol when it is still the current and only accepted contract; the number alone is not a legacy reader.
 - Bad: retain `legacyProject`, an optional `onEvent` alias, an IndexedDB v2→v3
   migrator, or a dormant component migration registry "just in case".
 

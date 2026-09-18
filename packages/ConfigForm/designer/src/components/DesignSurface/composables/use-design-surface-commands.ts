@@ -11,7 +11,6 @@ import {
   createMoveCommand,
   createNodePathCommand,
   createResizeCommand,
-  createStoredConfigRemovalCommand,
   findDesignNode,
 } from '../../../graph'
 
@@ -141,10 +140,6 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
 
   function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
     dispatch(createNodePathCommand(options.controller.graph.value, options.pageId(), nodeIds, path, value))
-  }
-
-  function handleRemoveStoredConfig(nodeId: string, path: string[]): void {
-    dispatch(createStoredConfigRemovalCommand(options.pageId(), nodeId, path))
   }
 
   function handleUpdateForm(changes: Record<string, unknown>): void {
@@ -288,7 +283,6 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     handleCanvasSelect,
     handleMove,
     handleRedo,
-    handleRemoveStoredConfig,
     handleResize,
     handleRootKeydown,
     handleUndo,

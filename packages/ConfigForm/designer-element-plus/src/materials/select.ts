@@ -17,7 +17,7 @@ export default defineDesignerMaterialModule({
       icon: shared.List,
       runtime: { component: shared.ElementSelectField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
       analyze: shared.createElementPlusOptionDiagnostics(),
-      setters: [shared.choiceDefaultValueSetter('select'), shared.optionSourceSetter, shared.optionsSetter, shared.placeholderSetter, shared.clearableSetter, shared.propSetter('filterable', 'Filterable', 'boolean')],
+      setters: [shared.choiceDefaultValueSetter('select'), shared.optionsSetter, shared.placeholderSetter, shared.clearableSetter, shared.propSetter('filterable', 'Filterable', 'boolean')],
       createNode: ({ id, field = 'select' }) => ({
         id,
         kind: 'field',
@@ -27,6 +27,6 @@ export default defineDesignerMaterialModule({
         props: { options: shared.defaultOptions(), placeholder: '' },
       }),
     },
-    locale: { title: '选择器', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '静态选项' } },
+    locale: { title: '选择器', category: '选择', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '静态选项' } },
   },
 })

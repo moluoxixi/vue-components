@@ -7,6 +7,7 @@ import {
   createMemoryProjectRepository,
   createProjectDomainEngine,
   createProjectSnapshot,
+  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '../index'
 
@@ -26,7 +27,7 @@ function projectDocument(): ProjectDocument {
         name: 'Home',
         route: '/',
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [{ nodeId: 'name', placement: {} }],
@@ -38,7 +39,6 @@ function projectDocument(): ProjectDocument {
               field: 'name',
               label: 'Name',
               props: {},
-              events: {},
               bindings: {},
             },
           },

@@ -22,7 +22,6 @@ export default defineDesignerMaterialModule({
       analyze: s.createAntdVueOptionDiagnostics(),
       setters: [
         s.choiceDefaultValueSetter('select'),
-        s.optionSourceSetter,
         s.optionsSetter,
         s.placeholderSetter,
         s.allowClearSetter,
@@ -42,7 +41,6 @@ export default defineDesignerMaterialModule({
       category: '选择',
       setters: {
         defaultValue: '默认值',
-        optionSource: '选项来源',
         options: '静态选项',
         placeholder: '占位文本',
         allowClear: '可清空',

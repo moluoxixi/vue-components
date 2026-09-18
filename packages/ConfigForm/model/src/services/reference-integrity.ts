@@ -1,4 +1,4 @@
-import type { ConfigFormExpressionNode, ConfigFormFlow, ConfigFormJsonValue, ConfigFormReaction, ConfigFormReactionCondition, ConfigFormReactionEffect, ConfigFormReactionOperand, ConfigFormValueInput, ConfigFormValueReference } from '@moluoxixi/config-form-core'
+import type { ConfigFormExpressionNode, ConfigFormReaction, ConfigFormReactionCondition, ConfigFormReactionEffect, ConfigFormReactionOperand, ConfigFormValueInput, ConfigFormValueReference } from '@moluoxixi/config-form-core'
 import type { NodeId, PageNode, ProjectPage } from '../types'
 import {
   parseConfigFormExpression,
@@ -65,7 +65,7 @@ export function remapStableConfigFormExpression(
   source: string,
   fields: ReadonlyMap<string, string>,
 ): string {
-  if (!/\$(?:fields|variables|outputs)\s*(?:\.|\[)/.test(source) || fields.size === 0)
+  if (!/\$(?:fields|variables)\s*(?:\.|\[)/.test(source) || fields.size === 0)
     return source
   const remapped = remapConfigFormValueReferences(
     { $ref: { kind: 'expression', source } },
@@ -107,7 +107,6 @@ export function rewritePageFieldReferences(
     if (before !== JSON.stringify(target))
       changedNodes.add(node.id)
   })
-  page.flows?.forEach(flow => rewriteFlowReferences(flow, analysis, undefined, sourceNodeId, oldName, newName))
   return changedNodes
 }
 
@@ -163,44 +162,6 @@ function rewriteNodeReferences(node: PageNode, context: RewriteContext): void {
   }
   if (node.kind === 'field' && node.optionSource?.params)
     node.optionSource.params = remapInputRecord(node.optionSource.params, context)
-  Object.entries(node.events).forEach(([event, actions]) => {
-    actions.forEach((action) => {
-      if (Object.hasOwn(action, 'input'))
-        action.input = rewriteLegacyInput(action.input, { ...context, sourceNodeId: node.id, referenceSourceNodeId }, `${node.id}.events.${event}`) as ConfigFormJsonValue
-    })
-  })
-}
-
-function rewriteFlowReferences(
-  flow: ConfigFormFlow,
-  analysis: ReturnType<typeof analyzeProjectPageValueScopes>,
-  sourceNodeId: NodeId | undefined,
-  targetNodeId: NodeId,
-  oldName: string,
-  newName: string,
-): void {
-  const context: RewriteContext = { analysis, newName, oldName, sourceNodeId, targetNodeId }
-  flow.nodes.forEach((node) => {
-    if (node.policy?.when)
-      rewriteCondition(node.policy.when, context, `flow.${flow.id}.${node.id}.policy.when`)
-    if (node.policy?.stopWhen)
-      rewriteCondition(node.policy.stopWhen, context, `flow.${flow.id}.${node.id}.policy.stopWhen`)
-    if (node.type === 'condition' && node.config?.condition)
-      rewriteCondition(node.config.condition as ConfigFormReactionCondition, context, `flow.${flow.id}.${node.id}.condition`)
-    if (node.type === 'reaction' && Array.isArray(node.config?.reactions)) {
-      ;(node.config.reactions as unknown as ConfigFormReaction[]).forEach((reaction, index) => rewriteReaction(
-        reaction,
-        context,
-        `flow.${flow.id}.${node.id}.reactions.${index}`,
-      ))
-    }
-    if (node.type === 'action' && node.config) {
-      if (Object.hasOwn(node.config, 'input'))
-        node.config.input = rewriteLegacyInput(node.config.input, context, `flow.${flow.id}.${node.id}.input`) as ConfigFormJsonValue
-      if (Object.hasOwn(node.config, 'output'))
-        node.config.output = rewriteLegacyInput(node.config.output, context, `flow.${flow.id}.${node.id}.output`) as ConfigFormJsonValue
-    }
-  })
 }
 
 function rewriteCondition(condition: ConfigFormReactionCondition, context: RewriteContext, path: string): void {

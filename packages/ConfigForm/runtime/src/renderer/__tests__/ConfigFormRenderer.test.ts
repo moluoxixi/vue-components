@@ -117,10 +117,10 @@ describe('config form renderer', () => {
     })
     const wrapper = mount(Host)
 
-    model.value = { ...model.value, name: 'Flow preview' }
+    model.value = { ...model.value, name: 'Updated preview' }
     await flushPromises()
 
-    expect((wrapper.get('[data-testid="renderer-input"]').element as HTMLInputElement).value).toBe('Flow preview')
+    expect((wrapper.get('[data-testid="renderer-input"]').element as HTMLInputElement).value).toBe('Updated preview')
     expect(handleUpdate).not.toHaveBeenCalled()
 
     await wrapper.get('[data-testid="renderer-input"]').setValue('User edit')
@@ -173,10 +173,8 @@ describe('config form renderer', () => {
     )
   })
 
-  it('design mode blocks control events by default while the bridge may explicitly allow them', async () => {
-    const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
-      interceptEvent: vi.fn(),
-    }
+  it('design mode blocks control events without delegating business events to the editor bridge', async () => {
+    const editor: ConfigFormRuntimeEditorBridge<TestValues> = {}
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         editor,
@@ -188,11 +186,6 @@ describe('config form renderer', () => {
 
     await wrapper.get('[data-testid="renderer-input"]').setValue('Grace')
     expect(wrapper.emitted('change')).toBeUndefined()
-    expect(editor.interceptEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'update:modelValue' }))
-
-    vi.mocked(editor.interceptEvent!).mockReturnValue(false)
-    await wrapper.get('[data-testid="renderer-input"]').setValue('Lin')
-    expect(wrapper.emitted('change')?.at(-1)).toEqual([{ enabled: false, name: 'Lin', status: 'draft' }])
   })
 
   it('同步写回受控模型，并统一处理 Grid、attrs、校验和 expose', async () => {

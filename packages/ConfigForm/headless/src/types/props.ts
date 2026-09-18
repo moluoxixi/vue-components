@@ -190,10 +190,8 @@ export interface ConfigFormNodeBase<
   TComponent = Component | string,
   TCellAttrs = ConfigFormAttrs,
 > {
-  /** Stable identity shared by Headless, Runtime, Designer, and Flow. */
+  /** Stable identity shared by Headless, Runtime, and Designer. */
   id: string
-  /** Component events explicitly forwarded to the host event runtime. */
-  eventNames?: readonly string[]
   /** 真实渲染的 UI 组件、业务组件或原生标签。 */
   component: TComponent
   /** 透传给真实字段组件的 props。 */

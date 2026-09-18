@@ -1,5 +1,4 @@
-import type { ConfigFormDataSourceHost, ConfigFormFlowHttpRequestOutput } from '@moluoxixi/config-form-core'
-import type { RuntimeHostActionIdentity } from '../types/action-rpc'
+import type { ConfigFormDataSourceHost, ConfigFormDataSourceHttpRequestOutput } from '@moluoxixi/config-form-core'
 import type {
   RuntimeHostDataDiagnostic,
   RuntimeHostDataExecutor,
@@ -8,11 +7,12 @@ import type {
   RuntimeHostDataProxyOptions,
   RuntimeHostDataRequestMessage,
 } from '../types/data-rpc'
+import type { RuntimeHostIdentity } from '../types/protocol'
 import { RUNTIME_HOST_DATA_DEADLINE_MS, RUNTIME_HOST_MAX_PENDING_DATA_REQUESTS } from '../constants'
 import { isRuntimeHostDataInput, isRuntimeHostDataOutput } from '../schemas/data-rpc'
 import { isParentToRuntimeHostMessage, isRuntimeHostToParentMessage } from '../schemas/protocol'
 
-function sameIdentity(left: RuntimeHostActionIdentity, right: RuntimeHostActionIdentity): boolean {
+function sameIdentity(left: RuntimeHostIdentity, right: RuntimeHostIdentity): boolean {
   return left.hostId === right.hostId && left.projectId === right.projectId
     && left.pageId === right.pageId && left.revision === right.revision
 }
@@ -55,7 +55,7 @@ interface PendingProxyRequest {
   signal: AbortSignal
   abort: () => void
   timer: ReturnType<typeof setTimeout>
-  resolve: (value: ConfigFormFlowHttpRequestOutput) => void
+  resolve: (value: ConfigFormDataSourceHttpRequestOutput) => void
   reject: (reason: unknown) => void
 }
 
@@ -108,7 +108,7 @@ export function createRuntimeHostDataProxy(options: RuntimeHostDataProxyOptions)
       const request: RuntimeHostDataRequestMessage = { ...base, type: 'dataRequest', requestId, input: cloneJson(input) }
       if (!isRuntimeHostToParentMessage(request))
         throw dataError('RUNTIME_DATA_INPUT_INVALID', 'Runtime data request exceeds the message budget.', 'input')
-      return new Promise<ConfigFormFlowHttpRequestOutput>((resolve, rejectPromise) => {
+      return new Promise<ConfigFormDataSourceHttpRequestOutput>((resolve, rejectPromise) => {
         const abort = (): void => reject(requestId, dataError('RUNTIME_DATA_ABORTED', 'Runtime data request was aborted.', 'signal'), true)
         const timer = setTimeout(() => reject(requestId, dataError('RUNTIME_DATA_TIMEOUT', 'Runtime data request timed out.', 'request'), true), deadline)
         pending.set(requestId, { request, signal, abort, timer, resolve, reject: rejectPromise })

@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import type { ConfigFormRuntimeEventContext, ConfigFormRuntimeNodeMetadata } from '../types'
+import type { ConfigFormRuntimeNodeMetadata } from '../types'
 import { createConfigFormModel, defineField } from '@moluoxixi/config-form-headless'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -162,16 +162,9 @@ describe('configFormRenderer design and preview modes', () => {
     expect(cell.attributes('data-config-node-id')).toBe('name-node')
   })
 
-  it('blocks control side effects in design mode unless the editor explicitly allows them', async () => {
-    const intercepted: ConfigFormRuntimeEventContext<SurfaceValues>[] = []
-    const editor = {
-      interceptEvent: (context: ConfigFormRuntimeEventContext<SurfaceValues>) => {
-        intercepted.push(context)
-      },
-    }
+  it('blocks control side effects directly in design mode', async () => {
     const wrapper = mount(ConfigFormRenderer as Component, {
       props: {
-        editor,
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'design',
         model: createConfigFormModel(shallowRef({ name: 'Ada' })),
@@ -180,114 +173,16 @@ describe('configFormRenderer design and preview modes', () => {
 
     await wrapper.get('[data-testid="surface-input"]').setValue('Grace')
     expect(wrapper.emitted('change')).toBeUndefined()
-    expect(intercepted[0]).toMatchObject({
-      event: 'update:modelValue',
-      metadata: { nodeId: 'name-node', path: 'fields.0' },
-    })
-
-    const allowWrapper = mount(ConfigFormRenderer as Component, {
-      props: {
-        editor: { interceptEvent: () => false },
-        fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
-        mode: 'design',
-        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
-      },
-    })
-    await allowWrapper.get('[data-testid="surface-input"]').setValue('Grace')
-    expect(allowWrapper.emitted('change')).toEqual([[{ name: 'Grace' }]])
   })
 
-  it('does not broadcast component events without a canonical Flow subscription', async () => {
-    const wrapper = mount(ConfigFormRenderer as Component, {
-      props: {
-        fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
-        mode: 'preview',
-        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
-      },
-    })
-
-    await wrapper.get('[data-testid="surface-input"]').setValue('Grace')
-    expect(wrapper.emitted('runtimeEvent')).toBeUndefined()
-  })
-
-  it('listens to canonical Flow component events on the real component without duplicating bindings', async () => {
-    const wrapper = mount(ConfigFormRenderer as Component, {
-      props: {
-        fields: [defineField<SurfaceValues>({
-          component: Input,
-          eventNames: ['click', 'update:modelValue'],
-          field: 'name',
-          id: 'name-node',
-        })],
-        mode: 'preview',
-        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
-      },
-    })
-
-    const input = wrapper.get('[data-testid="surface-input"]')
-    await input.trigger('click')
-    await input.setValue('Grace')
-
-    const events = wrapper.emitted('runtimeEvent')?.map(item => item[0]) ?? []
-    expect(events).toEqual([
-      expect.objectContaining({ event: 'click', metadata: expect.objectContaining({ nodeId: 'name-node' }) }),
-      expect.objectContaining({ event: 'update:modelValue', metadata: expect.objectContaining({ nodeId: 'name-node' }) }),
-    ])
-  })
-
-  it('does not broadcast canonical Flow component events in design mode', async () => {
-    const interceptEvent = vi.fn()
-    const wrapper = mount(ConfigFormRenderer as Component, {
-      props: {
-        editor: { interceptEvent },
-        fields: [defineField<SurfaceValues>({
-          component: Input,
-          eventNames: ['click', 'update:modelValue'],
-          field: 'name',
-          id: 'name-node',
-        })],
-        mode: 'design',
-        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
-      },
-    })
-
-    const input = wrapper.get('[data-testid="surface-input"]')
-    await input.trigger('click')
-    await input.setValue('Grace')
-    expect(interceptEvent).toHaveBeenCalled()
-    expect(wrapper.emitted('runtimeEvent')).toBeUndefined()
-  })
-
-  it('normalizes existing Vue listener keys to canonical component event names', async () => {
-    const onClick = vi.fn()
-    const wrapper = mount(ConfigFormRenderer as Component, {
-      props: {
-        fields: [{
-          id: 'submit-node',
-          component: 'button',
-          eventNames: ['click'],
-          props: { onClick },
-        }],
-        mode: 'preview',
-        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
-      },
-    })
-
-    await wrapper.get('button').trigger('click')
-    expect(onClick).toHaveBeenCalledTimes(1)
-    expect(wrapper.emitted('runtimeEvent')).toEqual([[
-      expect.objectContaining({ event: 'click', metadata: expect.objectContaining({ nodeId: 'submit-node' }) }),
-    ]])
-  })
-
-  it('merges an external flow reaction projection into real field props and states', async () => {
+  it('merges an external reaction projection into real field props and states', async () => {
     const wrapper = mount(ConfigFormRenderer as Component, {
       props: {
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         model: createConfigFormModel(shallowRef({ name: 'Ada' })),
         reactionProjection: {
           values: { name: 'Ada' },
-          props: { name: { placeholder: 'Generated by flow' } },
+          props: { name: { placeholder: 'Generated by reaction' } },
           states: { name: { disabled: true, required: true } },
           validate: [],
         },
@@ -298,7 +193,7 @@ describe('configFormRenderer design and preview modes', () => {
     expect(input.attributes()).toMatchObject({
       'aria-required': 'true',
       'disabled': '',
-      'placeholder': 'Generated by flow',
+      'placeholder': 'Generated by reaction',
     })
 
     await wrapper.setProps({

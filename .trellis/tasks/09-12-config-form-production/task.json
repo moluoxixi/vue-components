@@ -25,5 +25,12 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "原任务包含的低代码与事件编排扩张方向已终止，后续产品边界由 Runtime-first 任务接管。原任务仅保留历史证据，未完成验收不视为已交付。"
+    }
+  }
 }

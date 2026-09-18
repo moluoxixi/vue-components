@@ -1,5 +1,4 @@
 import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
-import type { AntdVueOptionSource } from './options'
 import type { AntdAutoCompleteValue, AntdSelectValue } from './props'
 
 export interface AntdAutoCompleteFieldEmits {
@@ -12,10 +11,6 @@ export interface AntdCheckboxFieldEmits {
 
 export interface AntdChoiceDefaultSetterEmits {
   'update:modelValue': [value: DesignerJsonValue | undefined]
-}
-
-export interface AntdOptionSourceSetterEmits {
-  'update:modelValue': [value: AntdVueOptionSource | undefined]
 }
 
 export interface AntdRadioFieldEmits {

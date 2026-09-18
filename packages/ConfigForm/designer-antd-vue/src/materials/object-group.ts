@@ -16,7 +16,6 @@ export default defineDesignerMaterialModule({
       runtime: { component: s.AntdSection },
       setters: [
         s.propSetter('title', 'Title', 'text'),
-        { key: 'scopeField', label: 'Object key', path: ['valueScope', 'field'], control: 'text' },
         s.propSetter('readonly', 'Read only', 'boolean'),
         s.disabledSetter,
       ],
@@ -33,7 +32,7 @@ export default defineDesignerMaterialModule({
     locale: {
       title: '对象分组',
       category: '布局',
-      setters: { title: '标题', scopeField: '对象字段名', readonly: '只读', disabled: '禁用' },
+      setters: { title: '标题', readonly: '只读', disabled: '禁用' },
       slots: { default: '字段' },
     },
   },

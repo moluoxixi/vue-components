@@ -1,4 +1,3 @@
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { WorkbenchLocaleId } from '../../locale'
 import type { PreviewViewport, StudioLeftView } from '../../studio'
 import type {
@@ -45,9 +44,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const pageManagerLoaded = ref(false)
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
-  const flowWorkspaceOpen = ref(false)
-  const flowDialogLoaded = ref(false)
-  const flowInitialTrigger = shallowRef<ConfigFormFlowTrigger>()
   const dataWorkspaceOpen = ref(false)
   const dataDialogLoaded = ref(false)
   const appearanceDrawerOpen = ref(false)
@@ -113,16 +109,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   function openExportPreview(mode: 'source' | 'config'): void {
     exportDialogLoaded.value = true
     exportPreviewMode.value = mode
-  }
-
-  function closeFlowWorkspace(): void {
-    flowWorkspaceOpen.value = false
-  }
-
-  function openFlowWorkspace(trigger: ConfigFormFlowTrigger): void {
-    flowInitialTrigger.value = trigger
-    flowDialogLoaded.value = true
-    flowWorkspaceOpen.value = true
   }
 
   function closeDataWorkspace(): void {
@@ -227,16 +213,12 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     closeAppearanceDrawer,
     clearNotice,
     closeExportPreview,
-    closeFlowWorkspace,
     closeDataWorkspace,
     dataDialogLoaded,
     dataWorkspaceOpen,
     closePageManager,
     exportDialogLoaded,
     exportPreviewMode,
-    flowDialogLoaded,
-    flowInitialTrigger,
-    flowWorkspaceOpen,
     localeId,
     message,
     mobileStudioView,
@@ -244,7 +226,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     notify,
     openAppearanceDrawer,
     openExportPreview,
-    openFlowWorkspace,
     openDataWorkspace,
     openPageManager,
     pageManagerLoaded,

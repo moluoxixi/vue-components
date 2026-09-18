@@ -1,11 +1,9 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type {
   ComponentContract,
   ProjectDocument,
   ProjectOperation,
   RegistryLock,
 } from '../index'
-import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
 import { describe, expect, it } from 'vitest'
 import {
   applyProjectCommandDraftTransaction,
@@ -21,6 +19,7 @@ import {
   createProjectSnapshot,
   createRegistryContractSnapshot,
   getProjectDocumentContentHash,
+  PAGE_GRAPH_VERSION,
   parseProjectCompilationSnapshot,
   parseProjectDocument,
   parseProjectDraftSnapshot,
@@ -28,23 +27,22 @@ import {
   parseRegistryContractSnapshot,
   PROJECT_DOCUMENT_VERSION,
   redoProjectHistory,
+  REGISTRY_CONTRACT_SNAPSHOT_VERSION,
   registryLockFingerprint,
   resolveProjectCommand,
   undoProjectHistory,
 } from '../index'
 
-function pageFlow(id = 'mounted', nodeId?: string): ConfigFormFlow {
-  return {
-    version: CONFIG_FORM_FLOW_VERSION,
-    id,
-    name: id,
-    trigger: nodeId ? { kind: 'component.event', nodeId, event: 'change' } : { kind: 'page.mount' },
-    nodes: [
-      { id: 'trigger', type: 'trigger' },
-      { id: 'success', type: 'success' },
-    ],
-    edges: [{ id: `${id}-edge`, source: 'trigger', target: 'success' }],
-  }
+interface LegacyProjectShape {
+  version: number
+  pagesById: Record<string, {
+    flows?: unknown[]
+    graph: {
+      version: number
+      flows?: unknown[]
+      nodesById: Record<string, { events?: Record<string, unknown> }>
+    }
+  }>
 }
 
 function projectDocument(registryLock: RegistryLock = {
@@ -68,7 +66,7 @@ function projectDocument(registryLock: RegistryLock = {
         name: 'Home',
         route: '/',
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [{ nodeId: 'section', placement: {} }],
@@ -78,7 +76,6 @@ function projectDocument(registryLock: RegistryLock = {
               component: 'element.section',
               kind: 'layout',
               props: {},
-              events: {},
               bindings: {},
               slots: { default: [{ nodeId: 'name', placement: {} }] },
             },
@@ -89,7 +86,6 @@ function projectDocument(registryLock: RegistryLock = {
               field: 'name',
               label: 'Name',
               props: {},
-              events: {},
               bindings: {},
             },
           },
@@ -105,7 +101,7 @@ function projectDocument(registryLock: RegistryLock = {
 function dragSortDocument(registryLock: RegistryLock): ProjectDocument {
   const document = projectDocument(registryLock)
   document.pagesById.home!.graph = {
-    version: 2,
+    version: PAGE_GRAPH_VERSION,
     props: {},
     form: {},
     root: [
@@ -136,7 +132,6 @@ function fieldNode(id: string) {
     kind: 'field' as const,
     field: id,
     props: {},
-    events: {},
     bindings: {},
   }
 }
@@ -147,7 +142,6 @@ function layoutNode(id: string, childIds: string[]) {
     component: 'element.section',
     kind: 'layout' as const,
     props: {},
-    events: {},
     bindings: {},
     slots: { default: childIds.map(nodeId => ({ nodeId, placement: {} })) },
   }
@@ -158,7 +152,6 @@ const inputContract: ComponentContract = {
   version: '1',
   kind: 'field',
   props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
-  events: [{ name: 'change' }],
   bindings: [],
   slots: [],
   allowedParents: [],
@@ -170,7 +163,6 @@ const sectionContract: ComponentContract = {
   version: '1',
   kind: 'layout',
   props: [],
-  events: [],
   bindings: [],
   slots: [{ name: 'default', accepts: ['field', 'layout'] }],
   allowedParents: [],
@@ -258,7 +250,6 @@ describe('projectDocument schema', () => {
       component: 'element.section',
       kind: 'layout',
       props: nested?.props ?? {},
-      events: {},
       bindings: {},
       slots: { default: [{ nodeId: 'section', placement: {} }] },
     }
@@ -295,7 +286,6 @@ describe('projectDocument schema', () => {
       kind: 'field',
       field: 'name',
       props: {},
-      events: {},
       bindings: {},
       conditions: {
         visible: {
@@ -322,80 +312,28 @@ describe('projectDocument schema', () => {
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
   })
 
-  it('owns flows at the page boundary and validates component event references against the page graph', () => {
-    const source = projectDocument()
-    source.pagesById.home!.flows = [pageFlow('name-change', 'name')]
-    expect(parseProjectDocument(source).success).toBe(true)
+  it('rejects legacy event and Flow shapes without migration', () => {
+    const nodeEvents = structuredClone(projectDocument()) as unknown as LegacyProjectShape
+    nodeEvents.pagesById.home!.graph.nodesById.name!.events = {}
+    expect(parseProjectDocument(nodeEvents).success).toBe(false)
 
-    source.pagesById.home!.flows = [pageFlow('missing-change', 'missing')]
-    const missing = parseProjectDocument(source)
-    expect(missing.success).toBe(false)
-    if (!missing.success) {
-      expect(missing.diagnostics).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          message: expect.stringContaining('unknown node'),
-          path: ['pagesById', 'home', 'flows', 0, 'trigger', 'nodeId'],
-        }),
-      ]))
-    }
+    const pageFlows = structuredClone(projectDocument()) as unknown as LegacyProjectShape
+    pageFlows.pagesById.home!.flows = []
+    expect(parseProjectDocument(pageFlows).success).toBe(false)
 
-    const invalidGraphOwner = projectDocument() as ProjectDocument & {
-      pagesById: Record<string, ProjectDocument['pagesById'][string] & { graph: { flows?: ConfigFormFlow[] } }>
-    }
-    invalidGraphOwner.pagesById.home!.graph.flows = [pageFlow()]
-    expect(parseProjectDocument(invalidGraphOwner).success).toBe(false)
+    const graphFlows = structuredClone(projectDocument()) as unknown as LegacyProjectShape
+    graphFlows.pagesById.home!.graph.flows = []
+    expect(parseProjectDocument(graphFlows).success).toBe(false)
   })
 
-  it('validates component event flow triggers against the normalized page graph', () => {
-    const source = projectDocument()
-    source.pagesById.home!.flows = [{
-      ...pageFlow('name-event'),
-      trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
-    }]
-    expect(parseProjectDocument(source).success).toBe(true)
+  it('rejects old document and page graph versions', () => {
+    const oldDocument = structuredClone(projectDocument()) as unknown as LegacyProjectShape
+    oldDocument.version = PROJECT_DOCUMENT_VERSION - 1
+    expect(parseProjectDocument(oldDocument).success).toBe(false)
 
-    source.pagesById.home!.flows[0]!.trigger = {
-      kind: 'component.event',
-      nodeId: 'missing',
-      event: 'change',
-    }
-    const invalid = parseProjectDocument(source)
-    expect(invalid.success).toBe(false)
-    if (!invalid.success)
-      expect(invalid.diagnostics.some(item => item.message.includes('unknown node'))).toBe(true)
-  })
-
-  it('rejects duplicate flow triggers within one page', () => {
-    const source = projectDocument()
-    source.pagesById.home!.flows = [
-      {
-        ...pageFlow('first-click'),
-        trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
-      },
-      {
-        ...pageFlow('second-click'),
-        trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
-      },
-    ]
-
-    const result = parseProjectDocument(source)
-    expect(result.success).toBe(false)
-    if (!result.success)
-      expect(result.diagnostics.some(item => item.message.includes('Duplicate flow trigger'))).toBe(true)
-  })
-
-  it('rejects the removed field.change trigger without migrating it', () => {
-    const source = projectDocument() as unknown as Record<string, unknown>
-    const pages = source.pagesById as Record<string, Record<string, unknown>>
-    pages.home!.flows = [{
-      ...pageFlow('legacy-field-change'),
-      trigger: { kind: 'field.change', field: 'name' },
-    }]
-
-    const result = parseProjectDocument(source as unknown as ProjectDocument)
-    expect(result.success).toBe(false)
-    if (!result.success)
-      expect(JSON.stringify(result.diagnostics)).toContain('field.change')
+    const oldGraph = structuredClone(projectDocument()) as unknown as LegacyProjectShape
+    oldGraph.pagesById.home!.graph.version = PAGE_GRAPH_VERSION - 1
+    expect(parseProjectDocument(oldGraph).success).toBe(false)
   })
 })
 
@@ -667,7 +605,6 @@ describe('componentContractRegistry', () => {
         { key: 'defaultValue', path: ['defaultValue'] },
         { key: 'showWordLimit', path: ['props', 'showWordLimit'] },
       ],
-      events: [{ name: 'update:modelValue' }],
       bindings: [{ name: 'modelValue', valueProp: 'modelValue', trigger: 'update:modelValue' }],
     }], {
       adapter: 'element-plus',
@@ -823,74 +760,6 @@ describe('projectTransaction', () => {
     })
   })
 
-  it('applies page-owned Flow changes with semantic inverse and rejects dangling component event triggers', () => {
-    const initial = projectDocument()
-    const added = applyProjectTransaction(initial, {
-      id: 'add-name-flow',
-      label: 'Add name flow',
-      operations: [{ type: 'flow.add', pageId: 'home', flow: pageFlow('name-change', 'name') }],
-    })
-    expect(added.success).toBe(true)
-    if (!added.success)
-      return
-    expect(added.document.pagesById.home?.flows?.map(flow => flow.id)).toEqual(['name-change'])
-    expect(added.document.pagesById.home?.graph).not.toHaveProperty('flows')
-
-    const dangling = applyProjectTransaction(added.document, {
-      id: 'remove-name',
-      label: 'Remove name',
-      operations: [{ type: 'node.remove', pageId: 'home', nodeId: 'name' }],
-    })
-    expect(dangling.success).toBe(false)
-    expect(dangling.document).toBe(added.document)
-    expect(dangling.diagnostics[0]?.message).toContain('unknown node')
-
-    const undone = applyProjectTransaction(added.document, added.inverse)
-    expect(undone.success).toBe(true)
-    if (!undone.success)
-      return
-    expect(undone.document.pagesById.home).not.toHaveProperty('flows')
-    expect(undone.document).toEqual(initial)
-  })
-
-  it('checks component event flow triggers against the active Registry contract', () => {
-    const registry = createComponentContractRegistry([
-      { ...inputContract, events: [{ name: 'change' }] },
-      sectionContract,
-    ], { adapter: 'element-plus', version: '2.9.1' })
-    const initial = projectDocument(registry.lock)
-    const valid = applyProjectTransaction(initial, {
-      id: 'add-component-event-flow',
-      label: 'Add component event flow',
-      operations: [{
-        type: 'flow.add',
-        pageId: 'home',
-        flow: {
-          ...pageFlow('name-click'),
-          trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
-        },
-      }],
-    }, { registry })
-    expect(valid.success).toBe(true)
-
-    const invalid = applyProjectTransaction(initial, {
-      id: 'add-unknown-component-event-flow',
-      label: 'Add unknown component event flow',
-      operations: [{
-        type: 'flow.add',
-        pageId: 'home',
-        flow: {
-          ...pageFlow('name-hover'),
-          trigger: { kind: 'component.event', nodeId: 'name', event: 'hover' },
-        },
-      }],
-    }, { registry })
-    expect(invalid).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'PROJECT_FLOW_TRIGGER_EVENT_UNKNOWN', nodeId: 'name' }],
-    })
-  })
-
   it('resolves semantic command actions against one evolving draft', () => {
     const registry = componentRegistry()
     const initial = projectDocument(registry.lock)
@@ -969,7 +838,6 @@ describe('projectTransaction', () => {
       kind: 'field',
       field: 'dependent',
       props: {},
-      events: {},
       bindings: {},
       conditions: {
         visible: {
@@ -1087,7 +955,6 @@ describe('projectTransaction', () => {
                 kind: 'field',
                 field: 'email',
                 props: { placeholder: 'Email' },
-                events: {},
                 bindings: {},
               },
             },
@@ -1211,7 +1078,6 @@ describe('projectTransaction', () => {
               kind: 'field',
               field: 'name',
               props: {},
-              events: {},
               bindings: {},
             },
           },
@@ -1235,7 +1101,6 @@ describe('projectTransaction', () => {
       kind: 'field',
       field: 'dependent',
       props: {},
-      events: {},
       bindings: {},
       conditions: {
         visible: {
@@ -1390,7 +1255,7 @@ describe('projectTransaction', () => {
         id: pageId,
         name: `Page ${index}`,
         route: `/nul-${index}`,
-        graph: { version: 2, props: {}, form: {}, root: [{ nodeId, placement: {} }], nodesById: { [nodeId]: fieldNode(nodeId) } },
+        graph: { version: PAGE_GRAPH_VERSION, props: {}, form: {}, root: [{ nodeId, placement: {} }], nodesById: { [nodeId]: fieldNode(nodeId) } },
       }
     })
     expect(parseProjectDocument(document).success).toBe(true)
@@ -1482,44 +1347,46 @@ describe('projectTransaction', () => {
     const result = applyProjectTransaction(initial, {
       id: 'normalized-payload',
       label: 'Normalize payload',
-      operations: [
-        {
-          type: 'node.events',
-          pageId: 'home',
-          nodeId: 'name',
-          events: { change: [{ action: '  save  ' }] },
-        },
-        {
-          type: 'node.bindings',
-          pageId: 'home',
-          nodeId: 'name',
-          bindings: { value: { source: '  profile.name  ' } },
-        },
-      ],
+      operations: [{
+        type: 'node.bindings',
+        pageId: 'home',
+        nodeId: 'name',
+        bindings: { value: { source: '  profile.name  ' } },
+      }],
     })
 
     expect(result.success).toBe(true)
     if (!result.success)
       return
     expect(result.document.pagesById.home?.graph.nodesById.name).toMatchObject({
-      events: { change: [{ action: 'save' }] },
       bindings: { value: { source: 'profile.name' } },
     })
     expect(initial.pagesById.home?.graph.nodesById.name).toMatchObject({
-      events: {},
       bindings: {},
     })
+  })
+
+  it('rejects old Registry snapshots and removed component event contracts', () => {
+    const snapshot = createRegistryContractSnapshot(componentRegistry())
+    const oldVersion = structuredClone(snapshot) as unknown as { version: number }
+    oldVersion.version = REGISTRY_CONTRACT_SNAPSHOT_VERSION - 1
+    expect(parseRegistryContractSnapshot(oldVersion).success).toBe(false)
+
+    const legacyEvents = structuredClone(snapshot) as unknown as {
+      components: Array<{ contract: Record<string, unknown> }>
+    }
+    legacyEvents.components[0]!.contract.events = []
+    expect(parseRegistryContractSnapshot(legacyEvents).success).toBe(false)
   })
 
   it('removes one stored config item from a Registry-stale document and restores it with undo', () => {
     const registry = componentRegistry()
     const initial = projectDocument(registry.lock)
     const node = initial.pagesById.home!.graph.nodesById.name!
-    node.events = {
-      'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
-      'stale.remove': [{ action: 'remove', args: { exact: true } }],
+    node.bindings = {
+      'stale.keep': { source: 'stale.keep', args: { nested: [1, 2] } },
+      'stale.remove': { source: 'stale.remove', args: { exact: true } },
     }
-    node.bindings = { staleValue: { source: 'stale.value' } }
     const engine = createProjectDomainEngine({ document: initial, registry })
 
     const ordinaryRemoval = engine.execute({
@@ -1528,15 +1395,15 @@ describe('projectTransaction', () => {
       actions: [{
         type: 'operation.apply',
         operations: [{
-          type: 'node.events',
+          type: 'node.bindings',
           pageId: 'home',
           nodeId: 'name',
-          events: { 'stale.keep': node.events['stale.keep']! },
+          bindings: { 'stale.keep': node.bindings['stale.keep']! },
         }],
       }],
     })
     expect(ordinaryRemoval.changed).toBe(false)
-    expect(ordinaryRemoval.diagnostics[0]?.code).toBe('PROJECT_COMPONENT_EVENT_UNKNOWN')
+    expect(ordinaryRemoval.diagnostics[0]?.code).toBe('PROJECT_COMPONENT_BINDING_UNKNOWN')
 
     const removed = engine.execute({
       id: 'remove-one-stale-config',
@@ -1547,7 +1414,7 @@ describe('projectTransaction', () => {
           type: 'node.config.remove',
           pageId: 'home',
           nodeId: 'name',
-          property: 'events',
+          property: 'bindings',
           key: 'stale.remove',
         }],
       }],
@@ -1555,32 +1422,31 @@ describe('projectTransaction', () => {
     expect(removed.changed).toBe(true)
     expect(removed.diagnostics).toEqual([])
     expect(removed.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({
-      events: { 'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }] },
-      bindings: { staleValue: { source: 'stale.value' } },
+      bindings: { 'stale.keep': { source: 'stale.keep', args: { nested: [1, 2] } } },
     })
 
     const undone = engine.undo()
     expect(undone.changed).toBe(true)
     expect(undone.diagnostics).toEqual([])
-    expect(undone.snapshot.document.pagesById.home?.graph.nodesById.name?.events).toEqual(node.events)
+    expect(undone.snapshot.document.pagesById.home?.graph.nodesById.name?.bindings).toEqual(node.bindings)
 
     const redone = engine.redo()
     expect(redone.changed).toBe(true)
-    expect(redone.snapshot.document.pagesById.home?.graph.nodesById.name?.events).toEqual({
-      'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
+    expect(redone.snapshot.document.pagesById.home?.graph.nodesById.name?.bindings).toEqual({
+      'stale.keep': { source: 'stale.keep', args: { nested: [1, 2] } },
     })
   })
 
   it('keeps stored config removal isolated from ordinary edits and history merging', () => {
     const initial = projectDocument()
-    initial.pagesById.home!.graph.nodesById.name!.events = {
-      stale: [{ action: 'stale' }],
+    initial.pagesById.home!.graph.nodesById.name!.bindings = {
+      stale: { source: 'stale' },
     }
     const removal = {
       type: 'node.config.remove' as const,
       pageId: 'home',
       nodeId: 'name',
-      property: 'events' as const,
+      property: 'bindings' as const,
       key: 'stale',
     }
 
@@ -1605,11 +1471,11 @@ describe('projectTransaction', () => {
   it.each([
     {
       code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED',
-      operation: { property: 'events', key: '   ', nodeId: 'name' },
+      operation: { property: 'bindings', key: '   ', nodeId: 'name' },
     },
     {
       code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID',
-      operation: { property: 'events', key: '__proto__', nodeId: 'name' },
+      operation: { property: 'bindings', key: '__proto__', nodeId: 'name' },
     },
     {
       code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID',
@@ -1657,7 +1523,7 @@ describe('projectTransaction', () => {
         type: 'node.config.remove',
         pageId: 'home',
         nodeId: 'name',
-        property: 'events',
+        property: 'bindings',
         key: 'missing',
       }],
     }, { registry })
@@ -1792,7 +1658,6 @@ describe('projectTransaction', () => {
               kind: 'field',
               field: 'unknown',
               props: {},
-              events: {},
               bindings: {},
             },
           },

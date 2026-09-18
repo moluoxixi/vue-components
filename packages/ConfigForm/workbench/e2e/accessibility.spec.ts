@@ -130,14 +130,10 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(inspectorTab).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('[data-workspace-panel="properties"]')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('complementary', { name: 'Properties' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.mx-config-form-designer__properties .mx-config-form-designer__tabs > [role="tab"]'))
+      .toHaveText(['Properties', 'Validation'])
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
-    await page.getByRole('tab', { name: 'Events' }).click()
-    await page.getByRole('button', { name: 'Configure Value change event flow' }).click()
-    await expect(page.getByRole('dialog', { name: 'Event flow orchestration' })).toBeVisible()
-    await expectNoAccessibilityViolations(page, `${adapter} mobile flow dialog`)
-
-    await page.getByRole('button', { name: 'Close event flow orchestration' }).click()
     await page.getByRole('button', { name: 'Export' }).click()
     await page.getByRole('menuitem', { name: 'Export source' }).click()
     await expect(page.getByRole('dialog', { name: 'Generated Vue source' })).toBeVisible()

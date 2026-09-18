@@ -73,26 +73,10 @@ export interface ConfigFormRuntimeNodeMetadata<
   state?: unknown
 }
 
-/** Context passed to editor event interception hooks. */
-export interface ConfigFormRuntimeEventContext<
-  TValues extends ConfigFormValues = ConfigFormValues,
-> {
-  metadata: ConfigFormRuntimeNodeMetadata<TValues>
-  event: string
-  args: unknown[]
-  /** JSON-safe row identity captured with the event. */
-  scope?: ConfigFormScopePath
-}
-
-/** Event emitted by the Preview Runtime for Flow component.event triggers. */
-export interface ConfigFormRuntimeEventPayload<TValues extends ConfigFormValues = ConfigFormValues>
-  extends ConfigFormRuntimeEventContext<TValues> {}
-
 /**
  * Optional bridge used by Design Canvas integrations. Registration is invoked
- * with the real node cell element when it mounts. Returning `false` from
- * `interceptEvent` explicitly allows the normal renderer listener to run;
- * any other return value keeps design mode side-effect free.
+ * with the real node cell element when it mounts. Component interaction is
+ * blocked internally whenever the Renderer is in design mode.
  */
 export interface ConfigFormRuntimeEditorBridge<
   TValues extends ConfigFormValues = ConfigFormValues,
@@ -102,7 +86,6 @@ export interface ConfigFormRuntimeEditorBridge<
     element: HTMLElement,
   ) => void | (() => void)
   unregisterNode?: (metadata: ConfigFormRuntimeNodeMetadata<TValues>, element?: HTMLElement) => void
-  interceptEvent?: (context: ConfigFormRuntimeEventContext<TValues>) => boolean | void
   /** Optional state reader for overlays; renderer never mutates this state. */
   readState?: (metadata: ConfigFormRuntimeNodeMetadata<TValues>) => unknown
   /**

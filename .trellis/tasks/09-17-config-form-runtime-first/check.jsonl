@@ -1,0 +1,9 @@
+{"file":".trellis/spec/directory-structure.md","reason":"检查目录、导出、死代码和跨包依赖是否符合仓库合同。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查当前合同硬切、README 同步、版本提升和包架构门禁。"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查旧 Flow/事件域已删除，宿主 listener、Designer Lite、序列化与扩展边界符合当前产品合同。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"检查 ComponentContract.events 删除后 Registry snapshot、fingerprint 与 bindings 仍一致。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查 Designer 类型、样式、测试和交互质量。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"检查默认 Inspector 与命令边界没有事件或高级作者入口。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"检查代码态 props listener、表单 API、reaction 和 Data 生命周期无回归。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查 Workbench 不再包含事件编辑、事件转发、Flow Runtime 或 Source Flow 生成。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 Data 与 listener 逻辑已迁入所属领域，没有复制实现或保留 Flow 转发壳。"}

@@ -1,4 +1,4 @@
-import type { ConfigFormValueInput } from '../src/value-reference'
+import type { ConfigFormValueInput, ConfigFormValueReferenceRemap } from '../src/value-reference'
 import { describe, expect, it, vi } from 'vitest'
 import {
   collectConfigFormValueReferences,
@@ -23,7 +23,7 @@ function readValueError(run: () => unknown): ConfigFormValueReferenceError {
 }
 
 describe('config form value references', () => {
-  it('resolves recursive inputs, scoped fields, event paths, outputs, and preserves null', () => {
+  it('resolves recursive inputs, scoped fields, Data payload paths, and preserves null', () => {
     const resolveField = vi.fn((id: string, scope: string) => (
       id === 'title' && scope === 'parent'
         ? { found: true, value: { text: 'Parent' } }
@@ -33,13 +33,11 @@ describe('config form value references', () => {
       title: { $ref: { kind: 'field', nodeId: 'title', scope: 'parent' } },
       variable: { $ref: { kind: 'variable', variableId: 'nullable' } },
       eventId: { $ref: { kind: 'event', path: ['items', '0', 'id'] } },
-      output: { $ref: { kind: 'output', stepId: 'save', path: ['data'] } },
       values: [false, 0, '', null],
     }
 
     const resolved = resolveConfigFormValueInput(input, {
       event: { items: [{ id: 7 }] },
-      outputs: { save: { data: ['ok'] } },
       resolveField,
       variables: { nullable: null },
     })
@@ -48,7 +46,6 @@ describe('config form value references', () => {
       title: { text: 'Parent' },
       variable: null,
       eventId: 7,
-      output: ['ok'],
       values: [false, 0, '', null],
     })
     expect(resolveField).toHaveBeenCalledWith('title', 'parent')
@@ -121,28 +118,26 @@ describe('config form value references', () => {
       formula: {
         $ref: {
           kind: 'expression',
-          source: '$fields["quantity"] * $variables["price"] + $outputs["discount"].amount',
+          source: '$fields["quantity"] * $variables["price"]',
         },
       },
-      nested: [{ $ref: { kind: 'output', stepId: 'load' } }],
+      nested: [{ $ref: { kind: 'variable', variableId: 'status' } }],
     }
 
     expect(collectConfigFormValueReferences(input)).toEqual([
       { id: 'customer', kind: 'field', path: '$.field', scope: 'root' },
       { id: 'quantity', kind: 'field', path: '$.formula', scope: 'current' },
       { id: 'price', kind: 'variable', path: '$.formula' },
-      { id: 'discount', kind: 'output', path: '$.formula' },
-      { id: 'load', kind: 'output', path: '$.nested[0]' },
+      { id: 'status', kind: 'variable', path: '$.nested[0]' },
     ])
     expect(resolveConfigFormValueInput(input, {
       fields: { customer: 'Ada', quantity: 3 },
-      outputs: { discount: { amount: 2 }, load: { ok: true } },
       resolveField: (id, scope) => ({
         found: scope === 'root' ? id === 'customer' : id === 'quantity',
         value: scope === 'root' ? 'Ada' : 3,
       }),
-      variables: { price: 5 },
-    })).toEqual({ field: 'Ada', formula: 17, nested: [{ ok: true }] })
+      variables: { price: 5, status: { ok: true } },
+    })).toEqual({ field: 'Ada', formula: 15, nested: [{ ok: true }] })
   })
 
   it('remaps direct and expression identities through the AST without replacing string literals', () => {
@@ -151,13 +146,12 @@ describe('config form value references', () => {
       formula: {
         $ref: {
           kind: 'expression',
-          source: '$fields["field-old"] + $variables["var-old"] + $outputs["step-old"].value + "field-old"',
+          source: '$fields["field-old"] + $variables["var-old"] + "field-old"',
         },
       },
     }
     const remapped = remapConfigFormValueReferences(input, {
       fields: new Map([['field-old', 'field-new']]),
-      outputs: { 'step-old': 'step-new' },
       variables: { 'var-old': 'var-new' },
     }) as typeof input
     const source = (remapped.formula as { $ref: { source: string } }).$ref.source
@@ -165,13 +159,37 @@ describe('config form value references', () => {
     expect(remapped.direct).toEqual({ $ref: { kind: 'field', nodeId: 'field-new' } })
     expect(source).toContain('$fields["field-new"]')
     expect(source).toContain('$variables["var-new"]')
-    expect(source).toContain('$outputs["step-new"].value')
     expect(source).toContain('"field-old"')
     expect(resolveConfigFormValueInput(remapped, {
       fields: { 'field-new': 1 },
-      outputs: { 'step-new': { value: 3 } },
       variables: { 'var-new': 2 },
-    })).toEqual({ direct: 1, formula: '6field-old' })
+    })).toEqual({ direct: 1, formula: '3field-old' })
+  })
+
+  it('rejects removed Flow output references and expression roots', () => {
+    const direct = readValueError(() => collectConfigFormValueReferences(invalidInput({
+      $ref: { kind: 'output', stepId: 'save' },
+    })))
+    expect(direct).toMatchObject({
+      code: 'CONFIG_FORM_VALUE_REFERENCE_INVALID',
+      path: '$.$ref.kind',
+    })
+
+    const expression = readValueError(() => collectConfigFormValueReferences({
+      $ref: { kind: 'expression', source: '$outputs["save"]' },
+    }))
+    expect(expression).toMatchObject({
+      code: 'CONFIG_FORM_VALUE_EXPRESSION_IDENTIFIER_UNTRACKABLE',
+      path: '$',
+    })
+
+    const remap = readValueError(() => remapConfigFormValueReferences(null, {
+      outputs: { save: 'next' },
+    } as unknown as ConfigFormValueReferenceRemap))
+    expect(remap).toMatchObject({
+      code: 'CONFIG_FORM_VALUE_REMAP_INVALID',
+      path: '$maps.outputs',
+    })
   })
 
   it('diagnoses malformed, dynamic, untrackable, and unresolved expressions', () => {

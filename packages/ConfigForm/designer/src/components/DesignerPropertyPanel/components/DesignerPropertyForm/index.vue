@@ -22,9 +22,6 @@ const props = defineProps<{
   controls?: DesignerPropertyControlRegistry
   readonly?: boolean
   node?: PageNode
-  fieldOptions?: string[]
-  reactionIds?: string[]
-  validatorOptions?: string[]
   renderer: Component
 }>()
 
@@ -186,9 +183,6 @@ function customField(
       inheritedValue: entry.inheritedValue,
       readonly: props.readonly,
       node: props.node,
-      fieldOptions: props.fieldOptions,
-      reactionIds: props.reactionIds,
-      validatorOptions: props.validatorOptions,
     },
     fieldAttrs: {
       class: 'mx-config-form-designer-property-form__field is-custom',

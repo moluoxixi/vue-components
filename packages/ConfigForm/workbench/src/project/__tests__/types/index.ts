@@ -4,6 +4,8 @@ import type { VueRuntimeArtifact, VueRuntimeBindingResolver, VueRuntimeCompileSu
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../../adapters'
 import type { CanonicalConfigExport, CanonicalProjectSourceExport } from '../../export'
 
+export type { NestedMaterialProvider } from './nested-material'
+
 /** 业务场景套件覆盖的页面集合。 */
 export type BusinessScenario = 'profile' | 'order' | 'submission'
 
@@ -23,7 +25,7 @@ export interface BusinessScenariosFixture {
   exportSource: () => CanonicalProjectSourceExport
 }
 
-/** `compileDataFixture` 的产物面：数据源/Flow 联动的最小可编译工程。 */
+/** `compileDataFixture` 的产物面：数据源联动的最小可编译工程。 */
 export interface DataRuntimeFixture {
   compilation: PageCompilation
   runtime: VueRuntimeCompileSuccess

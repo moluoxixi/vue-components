@@ -53,7 +53,6 @@ export function createComponentContractRegistry(
       )
     }
     assertUniqueNames(contract.key, 'property', contract.props.map(item => item.key))
-    assertUniqueNames(contract.key, 'event', contract.events.map(item => item.name))
     assertUniqueNames(contract.key, 'binding', contract.bindings.map(item => item.name))
     assertUniqueNames(contract.key, 'slot', contract.slots.map(item => item.name))
     if (contract.kind === 'field' && contract.slots.length > 0) {

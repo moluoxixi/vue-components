@@ -58,7 +58,6 @@ describe('element plus designer fields', () => {
       component: 'element.select',
       field: 'environment',
       props: { optionSource: { kind: 'dictionary', key: 'environments' } },
-      events: {},
       bindings: {},
     }
     const wrapper = mount(ElementChoiceDefaultSetter, {
@@ -175,7 +174,6 @@ describe('element plus designer fields', () => {
           { label: 'String one', value: '1' },
         ],
       },
-      events: {},
       bindings: {},
     }
     const wrapper = mount(ElementChoiceDefaultSetter, { props: { kind: 'select', node } })

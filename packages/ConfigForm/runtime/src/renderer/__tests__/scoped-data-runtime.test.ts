@@ -1,4 +1,4 @@
-import type { ConfigFormDataSourceHost, ConfigFormFlowHttpRequestOutput } from '@moluoxixi/config-form-core'
+import type { ConfigFormDataSourceHost, ConfigFormDataSourceHttpRequestOutput } from '@moluoxixi/config-form-core'
 import type { ConfigFormRendererNode } from '../types'
 import { flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -54,7 +54,7 @@ function scopedValues() {
 describe('renderer scoped option consumers', () => {
   it('isolates two rows and nested scopes and preserves state across row sorting', async () => {
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>(async input => response([input.query]))
-    const { api, wrapper } = await fixture({ values: scopedValues(), props: { fields, dataSourceHost: { request } }, plan: scopedPlan() })
+    const { api } = await fixture({ values: scopedValues(), props: { fields, dataSourceHost: { request } }, plan: scopedPlan() })
     expect(request).toHaveBeenCalledTimes(6)
     const [first, second] = api.listRows('rows')
     const nested = api.listRows('items', first!.scope)
@@ -67,11 +67,10 @@ describe('renderer scoped option consumers', () => {
     await flushPromises()
     expect(api.getOptionState(address)).toEqual(initial)
     expect(request).toHaveBeenCalledTimes(6)
-    expect(wrapper.emitted('flowError')).toBeUndefined()
   })
 
   it.each(['delete', 'ancestor', 'replacement', 'empty replacement'] as const)('cancels removed consumers on %s and never publishes a late host result', async (operation) => {
-    const waits: Array<ReturnType<typeof deferred<ConfigFormFlowHttpRequestOutput>>> = []
+    const waits: Array<ReturnType<typeof deferred<ConfigFormDataSourceHttpRequestOutput>>> = []
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>(() => {
       const wait = deferred()
       waits.push(wait)

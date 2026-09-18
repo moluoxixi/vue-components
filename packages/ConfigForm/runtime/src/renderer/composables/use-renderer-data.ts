@@ -1,9 +1,7 @@
 import type {
   ConfigFormDataSourceDefinition,
-  ConfigFormDataSourceDiagnostic,
   ConfigFormDataSourceRuntime,
   ConfigFormDataSourceState,
-  ConfigFormFlowActionContext,
   ConfigFormJsonValue,
   ConfigFormScopePath,
   ConfigFormValueContext,
@@ -14,7 +12,7 @@ import type { ConfigFormPageRuntimeLoadOptions, ConfigFormPageRuntimeOptionState
 import type { ConfigFormRendererEmits, ConfigFormRendererProps } from '../types'
 import type { RendererControllerState } from '../types/internal'
 import {
-  cloneConfigFormFlowData,
+  cloneConfigFormDataValue,
   collectConfigFormValueReferences,
   CONFIG_FORM_DATA_SOURCE_DEFAULT_MAX_ENTRIES,
   ConfigFormDataSourceError,
@@ -23,7 +21,7 @@ import {
   resolveConfigFormValueInput,
 } from '@moluoxixi/config-form-core'
 import { shallowRef } from 'vue'
-import { createRendererFlowValueContext, isRendererScopeActive, rendererScopeStartsWith, sameRendererScope } from '../services/flow-value-context'
+import { createRendererValueContext, isRendererScopeActive, rendererScopeStartsWith, sameRendererScope } from '../services/value-context'
 import { initializeRendererVariables } from '../services/variables'
 
 const MAX_ENTRIES = CONFIG_FORM_DATA_SOURCE_DEFAULT_MAX_ENTRIES
@@ -55,7 +53,6 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
   emit: ConfigFormRendererEmits<TValues>
   controller: () => RendererControllerState<TValues>
   canPublish: () => boolean
-  onDiagnostic: (diagnostic: ConfigFormDataSourceDiagnostic) => void
 }) {
   const { props } = options
   const revision = shallowRef(0)
@@ -71,21 +68,24 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
   const requests = new Map<string, RequestEntry>()
 
   function getVariables(): Readonly<Record<string, unknown>> {
-    return cloneConfigFormFlowData(variables.value)
+    return cloneConfigFormDataValue(variables.value)
   }
 
   function publishVariables(next: Record<string, unknown>): void {
-    variables.value = cloneConfigFormFlowData(next)
+    variables.value = cloneConfigFormDataValue(next)
     if (options.canPublish())
       options.emit('variablesChange', getVariables())
   }
 
   function readContext(scope: ConfigFormScopePath = [], nodeId: string | undefined = scope.at(-1)?.scopeId): ConfigFormValueContext {
-    return createRendererFlowValueContext(props.plan, options.controller(), options.controller().getValues(), {
-      trigger: nodeId === undefined ? { kind: 'form.valuesChange' } : { kind: 'component.event', nodeId, event: 'dataSource.load' },
-      args: [],
+    return createRendererValueContext(
+      props.plan,
+      options.controller(),
+      options.controller().getValues(),
       scope,
-    }, getVariables())
+      nodeId,
+      getVariables(),
+    )
   }
 
   function prepare(): void {
@@ -103,15 +103,9 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
         publishRequest(entry, state)
       },
     })
-    initialVariables = cloneConfigFormFlowData(next)
+    initialVariables = cloneConfigFormDataValue(next)
     enabled = props.mode !== 'design'
     publishVariables(next)
-  }
-
-  function commitVariables(patch: Record<string, unknown>): void {
-    if (Object.keys(patch).length > 0)
-      publishVariables({ ...variables.value, ...cloneConfigFormFlowData(patch) })
-    refresh()
   }
 
   function reset(partial = false): void {
@@ -146,7 +140,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     engine = undefined
   }
 
-  function diagnostic(cause: unknown, path: string): ConfigFormDataSourceDiagnostic {
+  function diagnostic(cause: unknown, path: string) {
     const detail = cause as { code?: string, path?: string }
     return {
       code: detail?.code ?? 'CONFIG_FORM_DATA_SOURCE_INPUT_INVALID',
@@ -165,7 +159,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       || (!allowAborted && consumer.controller?.signal.aborted)) {
       return
     }
-    let next: ConfigFormDataSourceState = cloneConfigFormFlowData({ ...state, scopeKey: JSON.stringify(consumer.scope) })
+    let next: ConfigFormDataSourceState = cloneConfigFormDataValue({ ...state, scopeKey: JSON.stringify(consumer.scope) })
     if (consumer.address && ['success', 'empty'].includes(next.status) && !Array.isArray(next.data)) {
       next = errorState(consumer.sourceId, consumer.scope, new ConfigFormDataSourceError(
         'CONFIG_FORM_OPTION_SOURCE_NOT_ARRAY',
@@ -177,13 +171,26 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       return
     consumer.state = next
     revision.value += 1
-    if (next.error)
-      options.onDiagnostic({ ...next.error, path: `${consumer.key}:${next.error.path ?? 'request'}` })
-    options.emit('dataSourceStateChange', cloneConfigFormFlowData({
+    options.emit('dataSourceStateChange', cloneConfigFormDataValue({
       state: next,
       scope: consumer.scope,
       consumerKey: consumer.key,
       ...(consumer.address ? { address: consumer.address } : {}),
+    }))
+  }
+
+  function publishStandaloneError(
+    sourceId: string,
+    scope: ConfigFormScopePath,
+    consumerKey: string,
+    cause: unknown,
+  ): void {
+    if (!enabled || !options.canPublish())
+      return
+    options.emit('dataSourceStateChange', cloneConfigFormDataValue({
+      state: errorState(sourceId, scope, cause, consumerKey),
+      scope,
+      consumerKey,
     }))
   }
 
@@ -212,7 +219,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     const consumer: Consumer = {
       key,
       sourceId,
-      scope: cloneConfigFormFlowData(scope),
+      scope: cloneConfigFormDataValue(scope),
       address,
       requestGeneration: 0,
       order: ++sequence,
@@ -247,7 +254,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     const request = resolveConfigFormValueInput(source.request as unknown as ConfigFormValueInput, context)
     const resolvedParams = resolveConfigFormValueInput(params ?? {}, context)
     const dependencies = resolveConfigFormValueInput(source.dependencies ?? [], context)
-    // Capture only referenced fields. Mapping can run after an action's read capability expires.
+    // Capture referenced fields so asynchronous mapping reads one stable request snapshot.
     const fields = new Map<string, unknown>()
     const references = collectConfigFormValueReferences([
       source.request as unknown as ConfigFormValueInput,
@@ -263,18 +270,16 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       }
     }
     const snapshot: ConfigFormValueContext = {
-      event: cloneConfigFormFlowData(context.event),
-      variables: cloneConfigFormFlowData(context.variables ?? {}),
-      outputs: cloneConfigFormFlowData(context.outputs ?? {}),
+      variables: cloneConfigFormDataValue(context.variables ?? {}),
       resolveField: (id, scope) => {
         const key = JSON.stringify([id, scope])
-        return { found: fields.has(key), value: cloneConfigFormFlowData(fields.get(key)) }
+        return { found: fields.has(key), value: cloneConfigFormDataValue(fields.get(key)) }
       },
     }
     const mappingInputs = collectConfigFormValueReferences(source.mapping ?? null).map(ref =>
       ref.kind === 'field'
         ? fields.get(JSON.stringify([ref.id, ref.scope]))
-        : ref.kind === 'variable' ? snapshot.variables?.[ref.id] : snapshot.outputs?.[ref.id])
+        : snapshot.variables?.[ref.id])
     return {
       context: snapshot,
       signature: getConfigFormJsonSemanticHash({ request, params: resolvedParams, dependencies, mappingInputs } as ConfigFormJsonValue),
@@ -348,9 +353,9 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       if (consumer.requestGeneration === requestGeneration && consumer.controller === controller && !controller.signal.aborted) {
         // Core cache hits do not call onState.
         publishRequest(shared, state)
-        return cloneConfigFormFlowData(consumer.state)
+        return cloneConfigFormDataValue(consumer.state)
       }
-      return cloneConfigFormFlowData(state)
+      return cloneConfigFormDataValue(state)
     }
     finally {
       settings.signal?.removeEventListener('abort', abort)
@@ -381,7 +386,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
         }
         else if (!overflowReported) {
           overflowReported = true
-          options.onDiagnostic(diagnostic(cause, key))
+          publishStandaloneError(sourceId, scope, key, cause)
         }
       }
     }
@@ -408,7 +413,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     })
   }
 
-  async function loadDataSource(sourceId: string, settings: ConfigFormPageRuntimeLoadOptions = {}, context?: ConfigFormValueContext): Promise<ConfigFormDataSourceState> {
+  async function loadDataSource(sourceId: string, settings: ConfigFormPageRuntimeLoadOptions = {}): Promise<ConfigFormDataSourceState> {
     const scope = settings.scope ?? []
     let consumer: Consumer | undefined
     try {
@@ -417,7 +422,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       if (!isRendererScopeActive(options.controller(), scope))
         throw new ConfigFormDataSourceError('CONFIG_FORM_DATA_SOURCE_SCOPE_REMOVED', 'The data-source row no longer exists.', sourceId)
       consumer = createConsumer(`load:${JSON.stringify([sourceId, scope])}`, sourceId, scope)
-      const prepared = prepareRequest(sourceId, settings.params, context ?? readContext(scope))
+      const prepared = prepareRequest(sourceId, settings.params, readContext(scope))
       return await loadConsumer(consumer, settings, prepared)
     }
     catch (cause) {
@@ -428,27 +433,10 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
         publish(consumer, state)
       }
       else if (options.canPublish()) {
-        options.onDiagnostic(state.error!)
+        publishStandaloneError(sourceId, scope, sourceId, cause)
       }
       return state
     }
-  }
-
-  function loadFromAction(sourceId: string, settings: ConfigFormPageRuntimeLoadOptions, action: ConfigFormFlowActionContext): Promise<ConfigFormDataSourceState> {
-    const context: ConfigFormValueContext = {
-      event: action.event,
-      outputs: action.outputs,
-      variables: Object.fromEntries((props.plan?.runtime.variables ?? []).map(variable => [variable.id, action.form.getVariable?.(variable.id)])),
-      resolveField: (nodeId, scope) => {
-        try {
-          return action.form.getField ? { found: true, value: action.form.getField(nodeId, scope) } : { found: false }
-        }
-        catch {
-          return { found: false }
-        }
-      },
-    }
-    return loadDataSource(sourceId, settings, context)
   }
 
   function getDataSourceState(sourceId: string, settings: { scope?: ConfigFormScopePath } = {}): ConfigFormDataSourceState {
@@ -457,7 +445,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     try {
       requireSource(sourceId)
       const latest = [...consumers.values()].filter(consumer => consumer.sourceId === sourceId && sameRendererScope(scope, consumer.scope)).sort((left, right) => right.order - left.order)[0]
-      return cloneConfigFormFlowData(latest?.state ?? { sourceId, scopeKey: JSON.stringify(scope), status: 'idle' })
+      return cloneConfigFormDataValue(latest?.state ?? { sourceId, scopeKey: JSON.stringify(scope), status: 'idle' })
     }
     catch (cause) {
       return errorState(sourceId, scope, cause, sourceId)
@@ -470,12 +458,12 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
       const consumer = consumers.get(`option:${options.controller().getInstanceKey(address)}`)
       if (!consumer)
         return undefined
-      return cloneConfigFormFlowData({ ...consumer.state, options: Array.isArray(consumer.state.data) ? consumer.state.data : [] })
+      return cloneConfigFormDataValue({ ...consumer.state, options: Array.isArray(consumer.state.data) ? consumer.state.data : [] })
     }
     catch {
       return undefined
     }
   }
 
-  return { cancelScope, commitVariables, getDataSourceState, getOptionState, getVariables, loadDataSource, loadFromAction, prepare, refresh, reset, start, stop }
+  return { cancelScope, getDataSourceState, getOptionState, getVariables, loadDataSource, prepare, refresh, reset, start, stop }
 }

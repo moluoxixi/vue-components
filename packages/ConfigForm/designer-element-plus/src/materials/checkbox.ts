@@ -17,7 +17,7 @@ export default defineDesignerMaterialModule({
       icon: shared.CheckSquare,
       runtime: { component: shared.ElementCheckboxField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
       analyze: shared.createElementPlusOptionDiagnostics(),
-      setters: [shared.choiceDefaultValueSetter('multiselect'), shared.optionSourceSetter, shared.optionsSetter, shared.disabledSetter],
+      setters: [shared.choiceDefaultValueSetter('multiselect'), shared.optionsSetter, shared.disabledSetter],
       createNode: ({ id, field = 'checkbox' }) => ({
         id,
         kind: 'field',
@@ -28,6 +28,6 @@ export default defineDesignerMaterialModule({
         props: { options: shared.defaultOptions() },
       }),
     },
-    locale: { title: '复选框', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' } },
+    locale: { title: '复选框', category: '选择', setters: { defaultValue: '默认值', options: '静态选项', disabled: '禁用' } },
   },
 })

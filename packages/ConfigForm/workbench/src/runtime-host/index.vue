@@ -15,17 +15,12 @@ const {
   dataSourceHost,
   design,
   fieldChange,
-  flowActions,
-  flowError,
-  flowResult,
-  flowTrace,
   modelValue,
   namespace,
   postRuntimeState,
   reactionProjection,
   renderer,
   runtimeError,
-  runtimeEvent,
   runtimeMode,
   runtimeSessionKey,
   submitValues,
@@ -70,19 +65,13 @@ const {
         :aria-hidden="runtimeMode === 'design' ? 'true' : undefined"
         :inert="runtimeMode === 'design' ? true : undefined"
         :namespace="namespace"
-        :flow-actions="runtimeMode === 'preview' ? flowActions : undefined"
         :data-source-host="runtimeMode === 'preview' ? dataSourceHost : undefined"
-        :flow-revision="runtimeSessionKey"
         :reaction-projection="reactionProjection"
         v-bind="active.artifact.renderer"
-        @flow-error="flowError"
-        @flow-result="flowResult"
-        @flow-trace="flowTrace"
         @submit="submitValues"
         @field-change="fieldChange"
         @errors-change="postRuntimeState"
         @meta-change="postRuntimeState"
-        @runtime-event="runtimeEvent"
       />
     </div>
   </main>

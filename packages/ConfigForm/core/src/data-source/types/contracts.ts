@@ -1,7 +1,4 @@
-import type {
-  ConfigFormFlowHttpRequestInput,
-  ConfigFormFlowHttpRequestOutput,
-} from '../../flow'
+import type { ConfigFormJsonValue } from '../../json'
 import type { ConfigFormValueContext, ConfigFormValueInput } from '../../value-reference'
 
 export interface ConfigFormVariableDefinition {
@@ -54,11 +51,26 @@ export interface ConfigFormDataSourceState {
   finishedAt?: number
 }
 
+export interface ConfigFormDataSourceHttpRequestInput {
+  url: string
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  headers?: Record<string, string>
+  query?: Record<string, string | number | boolean>
+  body?: ConfigFormJsonValue
+  responseType?: 'json' | 'text'
+}
+
+export interface ConfigFormDataSourceHttpRequestOutput {
+  status: number
+  ok: boolean
+  data: unknown
+}
+
 export interface ConfigFormDataSourceHost {
   request?: (
-    input: ConfigFormFlowHttpRequestInput,
+    input: ConfigFormDataSourceHttpRequestInput,
     signal: AbortSignal,
-  ) => Promise<ConfigFormFlowHttpRequestOutput>
+  ) => Promise<ConfigFormDataSourceHttpRequestOutput>
 }
 
 export interface ConfigFormDataSourceLoadOptions {

@@ -2,6 +2,7 @@ import type { ConfigFormJsonObject, ConfigFormValueContext } from '@moluoxixi/co
 import type { PageGraph } from '@moluoxixi/config-form-model'
 import { createConfigFormValueScopeStore } from '@moluoxixi/config-form-core'
 import { deriveProjectPageValueSchema } from '@moluoxixi/config-form-model'
+import { cloneWorkbenchJson } from '../../utils'
 
 export function createWorkbenchDataTestContext(
   graph: PageGraph | undefined,
@@ -9,11 +10,11 @@ export function createWorkbenchDataTestContext(
 ): ConfigFormValueContext {
   if (!graph)
     return { fields: {} }
-  const schema = deriveProjectPageValueSchema(graph)
+  const schema = deriveProjectPageValueSchema(cloneWorkbenchJson(graph))
   const store = createConfigFormValueScopeStore({
     fields: schema.scopedFields,
     scopes: schema.valueScopes,
-    values: values as ConfigFormJsonObject,
+    values: cloneWorkbenchJson(values) as ConfigFormJsonObject,
   })
   return {
     resolveField: (nodeId) => {

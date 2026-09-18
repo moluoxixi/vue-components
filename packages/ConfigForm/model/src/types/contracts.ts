@@ -1,8 +1,5 @@
 import type {
   ConfigFormDataSourceDefinition,
-  ConfigFormFlow,
-  ConfigFormFlowEdge,
-  ConfigFormFlowNode,
   ConfigFormJsonObject,
   ConfigFormJsonValue,
   ConfigFormPageRuntimeConfiguration,
@@ -29,10 +26,6 @@ export type ComponentKey = string
 export type ConditionTarget = 'visible' | 'hidden' | 'required' | 'disabled' | 'readonly'
 export type ConditionExpression = ConfigFormReactionCondition
 export type ValidateTrigger = 'submit' | 'blur' | 'change'
-
-export interface RegisteredEventAction extends ModelJsonObject {
-  action: string
-}
 
 export interface RegisteredBinding extends ModelJsonObject {
   source: string
@@ -67,10 +60,6 @@ export interface ComponentPropertyContract {
   required?: boolean
 }
 
-export interface ComponentEventContract {
-  name: string
-}
-
 export interface ComponentBindingContract {
   name: string
   valueProp: string
@@ -93,7 +82,6 @@ export interface ComponentContract {
   version: string
   kind: 'field' | 'layout'
   props: ComponentPropertyContract[]
-  events: ComponentEventContract[]
   bindings: ComponentBindingContract[]
   slots: ComponentSlotContract[]
   allowedParents: ComponentParentContract[]
@@ -144,7 +132,6 @@ interface PageNodeBase {
   id: NodeId
   component: ComponentKey
   props: ModelJsonObject
-  events: Record<string, RegisteredEventAction[]>
   bindings: Record<string, RegisteredBinding>
   extensions?: ModelJsonObject
   conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
@@ -197,7 +184,6 @@ export interface ProjectPage {
   name: string
   route: string
   graph: PageGraph
-  flows?: ConfigFormFlow[]
   runtime?: ConfigFormPageRuntimeConfiguration
 }
 
@@ -308,21 +294,17 @@ export type ProjectOperation
     | { type: 'node.insert', pageId: PageId, subgraph: NodeSubgraph, target: NodeTarget }
     | { type: 'node.move', pageId: PageId, nodeId: NodeId, target: NodeTarget }
     | { type: 'node.props', pageId: PageId, nodeId: NodeId, props: ModelJsonObject }
-    | { type: 'node.events', pageId: PageId, nodeId: NodeId, events: Record<string, RegisteredEventAction[]> }
     | { type: 'node.bindings', pageId: PageId, nodeId: NodeId, bindings: Record<string, RegisteredBinding> }
     | {
       type: 'node.config.remove'
       pageId: PageId
       nodeId: NodeId
-      property: 'bindings' | 'conditions' | 'events' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
+      property: 'bindings' | 'conditions' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
       key?: string
     }
     | { type: 'node.placement', pageId: PageId, nodeId: NodeId, placement: NodePlacement }
     | { type: 'node.settings', pageId: PageId, nodeId: NodeId, settings: PageNodeSettings }
     | { type: 'node.remove', pageId: PageId, nodeId: NodeId }
-    | { type: 'flow.add', pageId: PageId, flow: ConfigFormFlow, index?: number }
-    | { type: 'flow.update', pageId: PageId, flowId: string, flow: ConfigFormFlow }
-    | { type: 'flow.remove', pageId: PageId, flowId: string }
 
 export interface ProjectNodePatchValues {
   conditions: Partial<Record<ConditionTarget, ConditionExpression>>
@@ -347,11 +329,6 @@ export interface ProjectNodePatch {
   unset?: ProjectNodePatchKey[]
 }
 
-export type ProjectFlowSettings = Pick<
-  ConfigFormFlow,
-  'name' | 'trigger' | 'concurrency' | 'errorPolicy'
->
-
 /**
  * User intent accepted by the domain command boundary. Actions may be
  * resolved against the current snapshot before one atomic transaction is
@@ -370,17 +347,6 @@ export type ProjectCommandAction
       idMap: Record<NodeId, NodeId>
       fieldMap?: Record<string, string>
     }
-    | { type: 'flow.settings', pageId: PageId, flowId: string, settings: ProjectFlowSettings }
-    | { type: 'flow.node', pageId: PageId, flowId: string, nodeId: string, node: ConfigFormFlowNode }
-    | { type: 'flow.edges', pageId: PageId, flowId: string, edges: ConfigFormFlowEdge[] }
-    | {
-      type: 'flow.graph'
-      pageId: PageId
-      flowId: string
-      nodes: ConfigFormFlowNode[]
-      edges: ConfigFormFlowEdge[]
-    }
-    | { type: 'flow.replaceAll', pageId: PageId, flows?: ConfigFormFlow[] }
 
 export interface ProjectCommand {
   id: string

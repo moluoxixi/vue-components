@@ -1,5 +1,5 @@
 import type { PageGraph } from '@moluoxixi/config-form-model'
-import { defineDesignerFieldMaterial } from '@moluoxixi/config-form-designer'
+import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
 import { pageGraphSchema } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
@@ -35,7 +35,7 @@ const expectedKeys = [
 
 function graphForRootMaterials(): PageGraph {
   const registry = createElementPlusDesignerRegistry()
-  const graph: PageGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: PageGraph = { version: 3, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -116,7 +116,7 @@ describe('element plus designer materials', () => {
     })
   })
 
-  it('publishes complete source, binding, event, and property-control metadata', () => {
+  it('publishes source and binding metadata without event authoring capabilities', () => {
     const registry = createElementPlusDesignerRegistry()
     expect(registry.listMaterials().every(material => !!material.source)).toBe(true)
     expect(registry.getMaterial('element.date')?.source?.tag).toBe('el-date-picker')
@@ -127,12 +127,11 @@ describe('element plus designer materials', () => {
     const inputRuntime = registry.getMaterial('element.input')?.runtime
     expect(inputRuntime?.valueProp ?? 'modelValue').toBe('modelValue')
     expect(inputRuntime?.trigger ?? `update:${inputRuntime?.valueProp ?? 'modelValue'}`).toBe('update:modelValue')
-    expect(registry.getMaterial('element.tabs')?.events).toEqual([
-      { name: 'tab-change', title: 'Active tab change' },
-    ])
-    expect(registry.getMaterial('element.collapse')?.events).toEqual([
-      { name: 'change', title: 'Expanded items change' },
-    ])
+    expect(registry.listMaterials().every(material => !Object.hasOwn(material, 'events'))).toBe(true)
+    expect(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.contracts.every(contract => !Object.hasOwn(contract, 'events'))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).every(setter => isDesignerSetterPathAllowed(setter.path))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path.join('.') === 'props.optionSource')).toBe(false)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path[0] === 'valueScope')).toBe(false)
     expect(Object.keys(registry.propertyControls)).toEqual(['defaultValue'])
   })
 

@@ -333,7 +333,8 @@ self-contained runtime:
 - [ ] Link the domain code-spec that owns the detailed contract.
 
 For ConfigForm, follow
-`config-form-core/frontend/flow-runtime-consistency.md`.
+`config-form/frontend/product-boundaries.md` and
+`config-form/frontend/runtime-state-boundaries.md`.
 
 ---
 

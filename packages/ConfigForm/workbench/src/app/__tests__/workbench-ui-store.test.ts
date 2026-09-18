@@ -36,7 +36,6 @@ describe('workbench UI store', () => {
     const ui = createWorkbenchUiStore({ locale: { locale: 'en-US' } })
 
     ui.openExportPreview('source')
-    ui.openFlowWorkspace({ kind: 'page.mount' })
     ui.openPageManager()
     ui.openDataWorkspace()
     ui.notify('Saved')
@@ -49,8 +48,6 @@ describe('workbench UI store', () => {
 
     expect(ui.exportDialogLoaded.value).toBe(true)
     expect(ui.exportPreviewMode.value).toBe('source')
-    expect(ui.flowDialogLoaded.value).toBe(true)
-    expect(ui.flowInitialTrigger.value).toEqual({ kind: 'page.mount' })
     expect(ui.pageManagerLoaded.value).toBe(true)
     expect(ui.pageManagerOpen.value).toBe(true)
     expect(ui.dataDialogLoaded.value).toBe(true)

@@ -57,11 +57,6 @@
       "style": "./src/materials/components/ElementOptionState/style/index.scss",
       "default": "./src/materials/components/ElementOptionState/style/index.scss"
     },
-    "./element-option-source-setter/style": {
-      "sass": "./src/materials/components/ElementOptionSourceSetter/style/index.scss",
-      "style": "./src/materials/components/ElementOptionSourceSetter/style/index.scss",
-      "default": "./src/materials/components/ElementOptionSourceSetter/style/index.scss"
-    },
     "./element-choice-default-setter/style": {
       "sass": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",
       "style": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",
@@ -89,8 +84,8 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-designer": "^0.1.7",
-    "@moluoxixi/config-form-model": "^0.1.3",
+    "@moluoxixi/config-form-designer": "^0.2.0",
+    "@moluoxixi/config-form-model": "^0.2.0",
     "element-plus": "^2.9.0",
     "vue": "^3.5.0"
   },

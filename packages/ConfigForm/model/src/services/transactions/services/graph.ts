@@ -1,4 +1,3 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { NodeId, NodeSubgraph, NodeTarget, PageGraph, PageId, PageNode, ProjectDocument, ProjectNodeChange, ProjectNodeRelation, SlotItem } from '../../../types'
 import type { NodeLocation } from '../types'
 import { analyzeProjectPageValueScopes } from '../../value-scope'
@@ -54,19 +53,6 @@ export function collectRemovedNodeChanges(
   }
   visit(rootId, nodeRelation(rootLocation.parentId, rootLocation.slot))
   return changes
-}
-
-export function flowTargetChanges(
-  pageId: PageId,
-  before: ConfigFormFlow | undefined,
-  after: ConfigFormFlow | undefined,
-): ProjectNodeChange[] {
-  const nodeIds = new Set<NodeId>()
-  if (before?.trigger.kind === 'component.event' && before.trigger.nodeId)
-    nodeIds.add(before.trigger.nodeId)
-  if (after?.trigger.kind === 'component.event' && after.trigger.nodeId)
-    nodeIds.add(after.trigger.nodeId)
-  return [...nodeIds].map(nodeId => ({ kind: 'content', pageId, nodeId }))
 }
 
 export function assertPageValueKeysUnique(graph: PageGraph, pageId: PageId): void {

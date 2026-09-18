@@ -28,7 +28,7 @@ function isEmptyValue(value: unknown): boolean {
 }
 
 /**
- * Allow-listed formula library shared by flow conditions and formula fields.
+ * Allow-listed formula library shared by reactions and formula fields.
  * Names are matched case-insensitively; every function is a pure computation
  * with loose numeric/text coercion so half-filled forms do not explode.
  */

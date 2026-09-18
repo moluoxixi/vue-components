@@ -1,7 +1,6 @@
 import { posix } from 'node:path'
 import { runInThisContext } from 'node:vm'
 import * as Lucide from '@lucide/vue'
-import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
 import * as ConfigFormVueBackend from '@moluoxixi/config-form-vue-backend'
 import * as Rules from '@moluoxixi/zod3-to-rule'
 import { compileScript, parse } from '@vue/compiler-sfc'
@@ -63,12 +62,4 @@ export async function createGeneratedModuleLoader(inputs: Readonly<Record<string
     return module.exports
   }
   return load
-}
-
-export async function evaluateGeneratedRuntimeModule(source: string): Promise<Record<string, any>> {
-  const load = await createGeneratedModuleLoader({
-    'src/pages/home/flows.ts': source,
-    ...Object.fromEntries(Object.entries(getConfigFormRuntimeSources()).map(([path, text]) => [`src/runtime/${path}`, text])),
-  })
-  return { ...load('src/runtime/flow/index.ts'), ...load('src/pages/home/flows.ts') }
 }

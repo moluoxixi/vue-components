@@ -295,7 +295,6 @@ describe('workbench template project creation transaction', () => {
       component: node.component,
       kind: 'layout',
       props: structuredClone(node.props),
-      events: structuredClone(node.events),
       bindings: structuredClone(node.bindings),
       slots: {},
     }

@@ -1,16 +1,16 @@
-import type { ConfigFormDataSourceHost, ConfigFormFlowHttpRequestOutput } from '@moluoxixi/config-form-core'
-import type { RuntimeHostActionIdentity, RuntimeHostDataCancelMessage, RuntimeHostDataRequestMessage, RuntimeHostDataResultMessage, RuntimeHostMessageBase } from '../types'
+import type { ConfigFormDataSourceHost, ConfigFormDataSourceHttpRequestOutput } from '@moluoxixi/config-form-core'
+import type { RuntimeHostDataCancelMessage, RuntimeHostDataRequestMessage, RuntimeHostDataResultMessage, RuntimeHostIdentity, RuntimeHostMessageBase } from '../types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
 import { isParentToRuntimeHostMessage, isRuntimeHostToParentMessage } from '../schemas'
 import { createRuntimeHostDataExecutor, createRuntimeHostDataProxy } from '../services/data-rpc'
 
 const identity = { hostId: 'host', projectId: 'project', pageId: 'page', revision: '1' }
-const response = (data: unknown): ConfigFormFlowHttpRequestOutput => ({ ok: true, status: 200, data })
+const response = (data: unknown): ConfigFormDataSourceHttpRequestOutput => ({ ok: true, status: 200, data })
 function deferred() {
-  let resolve!: (value: ConfigFormFlowHttpRequestOutput) => void
+  let resolve!: (value: ConfigFormDataSourceHttpRequestOutput) => void
   let reject!: (reason: unknown) => void
-  const promise = new Promise<ConfigFormFlowHttpRequestOutput>((done, fail) => {
+  const promise = new Promise<ConfigFormDataSourceHttpRequestOutput>((done, fail) => {
     resolve = done
     reject = fail
   })
@@ -25,7 +25,7 @@ function bridge(host?: ConfigFormDataSourceHost, settings: { hostDeadline?: numb
   const results: RuntimeHostDataResultMessage[] = []
   const cancels: RuntimeHostDataCancelMessage[] = []
   const base = (sequence = 0): RuntimeHostMessageBase => ({ channel: RUNTIME_HOST_CHANNEL, version: RUNTIME_HOST_PROTOCOL_VERSION, ...current, sequence })
-  const isCurrent = (candidate: RuntimeHostActionIdentity) => Object.entries(current).every(([key, value]) => candidate[key as keyof RuntimeHostActionIdentity] === value)
+  const isCurrent = (candidate: RuntimeHostIdentity) => Object.entries(current).every(([key, value]) => candidate[key as keyof RuntimeHostIdentity] === value)
   let proxy!: ReturnType<typeof createRuntimeHostDataProxy>
   const executor = createRuntimeHostDataExecutor({
     getHost: () => host,
@@ -57,7 +57,12 @@ function bridge(host?: ConfigFormDataSourceHost, settings: { hostDeadline?: numb
     },
   })
   return {
-    proxy, executor, requests, results, cancels, base,
+    proxy,
+    executor,
+    requests,
+    results,
+    cancels,
+    base,
     request: proxy.getDataSourceHost().request!,
     holdResults: () => { deliver = false },
     changeIdentity: () => { current = { ...current, revision: '2' } },
@@ -71,7 +76,7 @@ function bridge(host?: ConfigFormDataSourceHost, settings: { hostDeadline?: numb
 afterEach(() => vi.useRealTimers())
 
 describe('request-only RuntimeHost RPC', () => {
-  it('keeps independent calls, response failures and no synthetic form/Flow context', async () => {
+  it('keeps independent calls, response failures and no synthetic form context', async () => {
     const pending = [deferred(), deferred()]
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>()
       .mockImplementationOnce(() => pending[0]!.promise)
@@ -202,7 +207,7 @@ describe('request-only RuntimeHost RPC', () => {
   it('rejects non-JSON input and output, dangerous keys, oversized messages and unsafe URLs', async () => {
     const request = vi.fn(async () => response({ unsupported: new Date() }))
     const rpc = bridge({ request })
-    const invalid = [{ url: 'javascript:alert(1)' }, { url: '' }, { url: '/choices', query: { nested: {} } }, { url: '/choices', headers: { token: 1 } }, { url: '/choices', body: JSON.parse('{"constructor":0}') }, { url: '/choices', body: 'x'.repeat(16_385) }, { url: '/choices', body: Array.from({ length: 10_001 }, () => 1) }]
+    const invalid = [{ url: 'javascript:alert(1)' }, { url: '' }, { url: '/choices', query: { nested: {} } }, { url: '/choices', headers: { token: 1 } }, { url: '/choices', body: JSON.parse('{"constructor":0}') }, { url: '/choices', body: 'x'.repeat(16_385) }, { url: '/choices', body: Array.from({ length: 10_001 }).fill(1) }]
     for (const input of invalid) {
       expect(rpc.executor.handleRequest({ ...rpc.base(1), type: 'dataRequest', requestId: 'invalid', input } as RuntimeHostDataRequestMessage)).toBe(false)
       await expect(rpc.request(input as { url: string }, new AbortController().signal)).rejects.toMatchObject({ code: 'RUNTIME_DATA_INPUT_INVALID' })

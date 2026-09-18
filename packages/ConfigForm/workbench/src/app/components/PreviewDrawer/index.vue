@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormFlowTraceEvent } from '@moluoxixi/config-form-core'
 import type {
-  PreviewRuntimeFlowDiagnosticEvent,
-  PreviewRuntimeFlowProjectionEvent,
-  PreviewRuntimeFlowResultEvent,
-  PreviewRuntimeFlowTraceEvent,
   PreviewRuntimeHostFrameExpose,
 } from '../../../runtime-host'
 import type { PreviewRuntimeIdentity } from '../../../session'
@@ -34,10 +29,6 @@ const emit = defineEmits<PreviewDrawerEmits>()
 
 const runtimeHost = useTemplateRef<PreviewRuntimeHostFrameExpose>('runtimeHost')
 const runtimeReady = ref(false)
-const resultsView = ref<'submission' | 'trace'>('submission')
-const resultTabs = useTemplateRef<HTMLElement>('resultTabs')
-const traceEntries = computed(() => (props.flowTrace ?? []).slice(-200).reverse())
-const traceDiagnostics = computed(() => (props.flowDiagnostics ?? []).slice(-200))
 let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
 const dialogWidth = computed(() => 'min(calc(100vw - 24px), clamp(720px, 78vw, 1200px))')
@@ -67,40 +58,6 @@ const viewports = computed(() => [
   { icon: Tablet, id: 'tablet' as const, label: locale.value.t('preview.tablet', 'Tablet preview') },
   { icon: Smartphone, id: 'mobile' as const, label: locale.value.t('preview.mobile', 'Mobile preview') },
 ])
-
-function traceTitle(event: ConfigFormFlowTraceEvent): string {
-  const flow = props.flows?.find(item => item.id === event.flowId)
-  const node = flow?.nodes.find(item => item.id === event.nodeId)
-  const descriptor = node?.ref ? props.flowActions?.describe?.(node.ref) : undefined
-  const action = descriptor ? locale.value.t(`flow.action.${descriptor.ref}`, descriptor.title) : undefined
-  const step = action && event.nodeId ? `${action} (${event.nodeId})` : event.nodeId
-  return boundedText([flow?.name || event.flowId, step].filter(Boolean).join(' / '))
-}
-
-function traceKey(event: ConfigFormFlowTraceEvent): string {
-  return JSON.stringify([event.flowId, event.runId, event.revision, event.nodeId, event.type, event.timestamp, event.status])
-}
-
-function boundedText(text: string): string {
-  return text.length > 4096 ? `${text.slice(0, 4096)}\n...` : text
-}
-
-function traceValue(value: unknown): string {
-  try {
-    return boundedText(JSON.stringify(value, null, 2) ?? '')
-  }
-  catch {
-    return locale.value.t('preview.trace.unavailable', 'Snapshot unavailable')
-  }
-}
-
-function handleResultTabKeydown(event: KeyboardEvent): void {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
-    return
-  event.preventDefault()
-  resultsView.value = event.key === 'Home' ? 'submission' : event.key === 'End' ? 'trace' : resultsView.value === 'submission' ? 'trace' : 'submission'
-  void nextTick(() => resultTabs.value?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus())
-}
 
 function submitForm(): void {
   runtimeHost.value?.submit()
@@ -147,24 +104,8 @@ function handleDialogClose(): void {
     emit('close')
 }
 
-function handleFlowError(event: PreviewRuntimeFlowDiagnosticEvent): void {
-  emit('flowError', event)
-}
-
-function handleFlowProjection(event: PreviewRuntimeFlowProjectionEvent): void {
-  emit('flowProjection', event)
-}
-
-function handleFlowResult(event: PreviewRuntimeFlowResultEvent): void {
-  emit('flowResult', event)
-}
-
-function handleFlowTrace(event: PreviewRuntimeFlowTraceEvent): void {
-  emit('flowTrace', event)
-}
-
 watch(
-  () => [props.adapter, props.compilation, props.flowActions, props.projection?.current.revisionKey],
+  () => [props.adapter, props.compilation, props.projection?.current.revisionKey],
   () => runtimeReady.value = false,
 )
 
@@ -207,7 +148,7 @@ watch(() => props.open, (open, wasOpen) => {
     <aside
       v-if="open"
       class="preview-pane"
-      :class="{ 'is-expanded': expanded, 'is-result-empty': !lastSubmission && resultsView === 'submission' }"
+      :class="{ 'is-expanded': expanded, 'is-result-empty': !lastSubmission }"
       role="complementary"
       :aria-label="locale.t('preview.page', 'Page preview')"
     >
@@ -284,7 +225,6 @@ watch(() => props.open, (open, wasOpen) => {
             :adapter="adapter"
             :compilation="compilation"
             :data-source-host="dataSourceHost"
-            :flow-actions="flowActions"
             :locale="locale.locale"
             :runtime-state="runtimeState"
             :namespace="namespace"
@@ -296,13 +236,8 @@ watch(() => props.open, (open, wasOpen) => {
             @field-change="emit('fieldChange', $event)"
             @mounted="emit('runtimeMounted', $event)"
             @ready="handleRuntimeReady"
-            @runtime-event="emit('runtimeEvent', $event)"
             @runtime-state="emit('runtimeState', $event)"
             @submit="emit('submit', $event)"
-            @flow-error="handleFlowError"
-            @flow-projection="handleFlowProjection"
-            @flow-result="handleFlowResult"
-            @flow-trace="handleFlowTrace"
             @submit-result="emit('submitResult', $event)"
           />
           <div v-else class="preview-errors">
@@ -316,17 +251,14 @@ watch(() => props.open, (open, wasOpen) => {
       <section class="preview-results" data-preview-results :aria-label="locale.t('preview.inspection', 'Preview results')">
         <header class="preview-results-header">
           <div>
-            <div ref="resultTabs" class="preview-result-tabs" role="tablist" :aria-label="locale.t('preview.inspection', 'Preview results')" @keydown="handleResultTabKeydown">
-              <button id="preview-submission-tab" type="button" role="tab" aria-controls="preview-submission-panel" :aria-selected="resultsView === 'submission'" :tabindex="resultsView === 'submission' ? 0 : -1" @click="resultsView = 'submission'">{{ locale.t('preview.results', 'Submission results') }}</button>
-              <button id="preview-trace-tab" type="button" role="tab" aria-controls="preview-trace-panel" :aria-selected="resultsView === 'trace'" :tabindex="resultsView === 'trace' ? 0 : -1" @click="resultsView = 'trace'">{{ locale.t('preview.trace.title', 'Run history') }}<span class="preview-trace-count">{{ traceEntries.length }}</span></button>
-            </div>
-            <span v-if="lastSubmission && resultsView === 'submission'" class="preview-result-status" :data-status="lastSubmission.status" role="status" aria-live="polite">
+            <strong>{{ locale.t('preview.results', 'Submission results') }}</strong>
+            <span v-if="lastSubmission" class="preview-result-status" :data-status="lastSubmission.status" role="status" aria-live="polite">
               <Check v-if="lastSubmission.status === 'success'" :size="13" aria-hidden="true" />
               <span v-else aria-hidden="true">!</span>
               {{ submissionStatusLabel }}
             </span>
           </div>
-          <div v-if="lastSubmission && resultsView === 'submission'" class="preview-results-actions">
+          <div v-if="lastSubmission" class="preview-results-actions">
             <button type="button" :title="locale.t('preview.copy', 'Copy submission JSON')" :aria-label="locale.t('preview.copy', 'Copy submission JSON')" @click="copySubmission">
               <Clipboard :size="14" aria-hidden="true" />
               <span>{{ locale.t('preview.copy', 'Copy') }}</span>
@@ -337,7 +269,7 @@ watch(() => props.open, (open, wasOpen) => {
             </button>
           </div>
         </header>
-        <div id="preview-submission-panel" role="tabpanel" aria-labelledby="preview-submission-tab" :hidden="resultsView !== 'submission'">
+        <div id="preview-submission-panel">
         <template v-if="lastSubmission">
           <div class="preview-result-toolbar">
             <span>{{ locale.t('preview.submittedAt', 'Submitted {time}', { time: new Date(lastSubmission.submittedAt).toLocaleTimeString(locale.locale) }) }}</span>
@@ -364,37 +296,6 @@ watch(() => props.open, (open, wasOpen) => {
         <p v-else class="preview-results-empty">
           {{ locale.t('preview.noSubmission', 'No submission') }}
         </p>
-        </div>
-        <div id="preview-trace-panel" role="tabpanel" aria-labelledby="preview-trace-tab" :hidden="resultsView !== 'trace'" data-preview-trace>
-          <ul v-if="traceDiagnostics.length" class="preview-trace-diagnostics" :aria-label="locale.t('preview.trace.diagnostics', 'Diagnostics')">
-            <li v-for="(diagnostic, index) in traceDiagnostics" :key="`${diagnostic.code}-${diagnostic.path}-${index}`" :data-severity="diagnostic.severity ?? 'error'">
-              <strong>{{ boundedText(diagnostic.code) }}</strong><span>{{ boundedText(diagnostic.message) }}</span>
-              <code v-if="diagnostic.path">{{ boundedText(diagnostic.path) }}</code>
-              <code v-if="diagnostic.nodeId">{{ locale.t('preview.trace.node', 'Step') }}: {{ boundedText(diagnostic.nodeId) }}</code>
-              <code v-if="diagnostic.edgeId">{{ locale.t('preview.trace.edge', 'Branch') }}: {{ boundedText(diagnostic.edgeId) }}</code>
-            </li>
-          </ul>
-          <ol class="preview-trace-list">
-            <li v-for="event in traceEntries" :key="traceKey(event)">
-              <details :data-status="event.status ?? event.type">
-                <summary>
-                  <time>{{ event.timestamp === undefined ? '' : new Date(event.timestamp).toLocaleTimeString(locale.locale) }}</time>
-                  <span class="preview-trace-label">{{ traceTitle(event) }}</span>
-                  <span>{{ locale.t(`preview.trace.${event.status ?? event.type}`, event.status ?? event.type) }}</span>
-                  <span class="preview-trace-duration">{{ event.durationMs === undefined ? '' : `${event.durationMs.toFixed(1)} ms` }}</span>
-                </summary>
-                <dl class="preview-trace-payload">
-                  <dt>{{ locale.t('preview.trace.run', 'Run') }}</dt><dd><code>{{ boundedText(event.runId) }}</code></dd>
-                  <template v-if="event.input !== undefined"><dt>{{ locale.t('preview.trace.input', 'Input') }}</dt><dd><pre>{{ traceValue(event.input) }}</pre></dd></template>
-                  <template v-if="event.output !== undefined"><dt>{{ locale.t('preview.trace.output', 'Output') }}</dt><dd><pre>{{ traceValue(event.output) }}</pre></dd></template>
-                  <template v-if="event.valuePatch !== undefined"><dt>{{ locale.t('preview.trace.patch', 'Value changes') }}</dt><dd><pre>{{ traceValue(event.valuePatch) }}</pre></dd></template>
-                  <template v-if="event.error"><dt>{{ locale.t('preview.trace.error', 'Error') }}</dt><dd>{{ boundedText(event.error) }}</dd></template>
-                </dl>
-                <p v-if="event.truncated" class="preview-trace-truncated">{{ locale.t('preview.trace.truncated', 'Snapshot truncated') }}</p>
-              </details>
-            </li>
-          </ol>
-          <p v-if="!traceEntries.length" class="preview-results-empty">{{ locale.t('preview.trace.empty', 'No runs') }}</p>
         </div>
       </section>
       </div>

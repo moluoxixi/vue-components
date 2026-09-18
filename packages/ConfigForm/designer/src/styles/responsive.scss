@@ -11,10 +11,3 @@
     animation: none;
   }
 }
-
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-heading,
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-effect-heading,
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-operand,
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-prop {
-  grid-template-columns: minmax(0, 1fr);
-}

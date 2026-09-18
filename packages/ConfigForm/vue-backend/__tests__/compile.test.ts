@@ -6,7 +6,6 @@ import type {
   PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormFlow, ConfigFormFlowActionContext } from '@moluoxixi/config-form-core'
 import type {
   CanonicalRuntimePage,
   VueRuntimeBindingResolver,
@@ -18,9 +17,8 @@ import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
-import { analyzeConfigFormFlow, CONFIG_FORM_FLOW_VERSION, getConfigFormFlowSemanticHash } from '@moluoxixi/config-form-core'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
-import { flushPromises, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, shallowRef } from 'vue'
 import { compileCanonicalPageRuntime } from '../index'
@@ -108,7 +106,6 @@ function pageFixture(): CanonicalRuntimePage {
         placement: { parentId: null, slot: null, props: {} },
         configuredProps: {},
         props: { gap: 12 },
-        events: {},
         bindings: {},
         slots: { default: ['name'] },
       },
@@ -126,7 +123,6 @@ function pageFixture(): CanonicalRuntimePage {
         },
         configuredProps: { placeholder: 'Configured name' },
         props: { clearable: true, placeholder: 'Configured name' },
-        events: { change: [{ action: 'track' }] },
         bindings: { model: { source: 'profile.name' } },
         field: 'name',
         label: 'Name',
@@ -142,7 +138,6 @@ function pageFixture(): CanonicalRuntimePage {
         },
       },
     },
-    flows: [],
   }
 }
 
@@ -214,6 +209,27 @@ function compilePage(
   }, bindingResolver)
 }
 
+function mutableProjectCompilation() {
+  const compilation = structuredClone(compilationFixture()) as unknown as {
+    ir: Record<string, unknown> & { identity: Record<string, unknown> }
+    key: Record<string, unknown>
+  }
+  compilation.key = { ...compilation.key }
+  compilation.ir.identity = { ...compilation.ir.identity }
+  return compilation
+}
+
+function addUnexpectedCanonicalKey(
+  page: Record<string, unknown>,
+  target: 'node' | 'page',
+  key: string,
+): void {
+  const targetRecord = target === 'page'
+    ? page
+    : Object.values(page.nodesById as Record<string, Record<string, unknown>>)[0]!
+  targetRecord[key] = target === 'page' ? [] : {}
+}
+
 function nestedField(root: ConfigFormRendererNode): ConfigFormRendererField {
   const slot = root.slots?.default
   const child = Array.isArray(slot) ? slot[0] : undefined
@@ -260,10 +276,12 @@ describe('vue Runtime backend', () => {
     })
     expect(field.extensions).toMatchObject({
       'mx.low-code': {
-        events: { change: [{ action: 'track' }] },
         bindings: { model: { source: 'profile.name' } },
       },
     })
+    expect(field).not.toHaveProperty('eventNames')
+    expect(field.extensions?.['mx.low-code']).not.toHaveProperty('events')
+    expect(result.artifact.renderer.plan).not.toHaveProperty('flows')
     expect(field.schema?.safeParse('A').success).toBe(false)
     expect(field.schema?.safeParse('Ada').success).toBe(true)
     expect(field.readonlyRender?.({
@@ -308,53 +326,6 @@ describe('vue Runtime backend', () => {
       success: false,
       diagnostics: [{ code: 'VUE_RUNTIME_BINDING_IDENTITY_MISMATCH', nodeId: 'name' }],
     })
-  })
-
-  it('forwards only component events projected onto the canonical node listener set', () => {
-    const page = pageFixture()
-    page.nodesById.name!.flowEvents = ['click']
-    page.flows = [{
-      semanticHash: 'fnv1a:component-click',
-      plan: {
-        version: 1,
-        flowId: 'field-click-flow',
-        name: 'Field click',
-        trigger: { kind: 'component.event', nodeId: 'name', event: 'click' },
-        triggerNodeId: 'trigger',
-        topologicalOrder: ['trigger'],
-        nodes: [{ id: 'trigger', type: 'trigger', incoming: [], outgoing: [] }],
-      },
-    }]
-
-    const result = compilePage(page)
-    expect(result.success).toBe(true)
-    if (!result.success)
-      return
-
-    expect(nestedField(result.artifact.renderer.fields[0]!).eventNames).toEqual(['click'])
-  })
-
-  it('does not reinterpret Flow plans when the canonical node listener projection is absent', () => {
-    const page = pageFixture()
-    page.flows = [{
-      semanticHash: 'fnv1a:component-click',
-      plan: {
-        version: 1,
-        flowId: 'field-click-flow',
-        name: 'Field click',
-        trigger: { kind: 'component.event', nodeId: 'name', event: 'click' },
-        triggerNodeId: 'trigger',
-        topologicalOrder: ['trigger'],
-        nodes: [{ id: 'trigger', type: 'trigger', incoming: [], outgoing: [] }],
-      },
-    }]
-
-    const result = compilePage(page)
-    expect(result.success).toBe(true)
-    if (!result.success)
-      return
-    const metadata = nestedField(result.artifact.renderer.fields[0]!).extensions?.['mx.low-code']
-    expect(metadata).not.toHaveProperty('flowEvents')
   })
 
   it('reuses unchanged Runtime fragments across incremental page compilations', () => {
@@ -424,6 +395,113 @@ describe('vue Runtime backend', () => {
     })
   })
 
+  it('rejects stale, future, and missing IR versions for page and project inputs', () => {
+    const cases = [
+      { name: 'stale', value: CANONICAL_PROJECT_IR_VERSION - 1 },
+      { name: 'future', value: CANONICAL_PROJECT_IR_VERSION + 1 },
+      { name: 'missing', value: undefined },
+    ]
+
+    for (const { name, value } of cases) {
+      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
+        key: Record<string, unknown>
+      }
+      pageCompilation.key.irVersion = value
+      expect(compileCanonicalPageRuntime({
+        compilation: pageCompilation as unknown as PageCompilation,
+      }, resolver()), `${name} page IR version`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_IR_VERSION_UNSUPPORTED', path: ['key', 'irVersion'] }],
+      })
+
+      const projectCompilation = structuredClone(compilationFixture()) as unknown as {
+        ir: Record<string, unknown>
+      }
+      projectCompilation.ir.version = value
+      expect(compileCanonicalPageRuntime({
+        compilation: projectCompilation as unknown as ProjectCompilation,
+        pageId: 'home',
+      }, resolver()), `${name} project IR version`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_IR_VERSION_UNSUPPORTED', path: ['ir', 'version'] }],
+      })
+    }
+  })
+
+  it('rejects stale, future, missing, and mixed compiler identities', () => {
+    const cases = [
+      { name: 'stale', value: '4.0.0' },
+      { name: 'future', value: `${CONFIG_FORM_COMPILER_VERSION}-future` },
+      { name: 'missing', value: undefined },
+    ]
+
+    for (const { name, value } of cases) {
+      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
+        key: Record<string, unknown>
+      }
+      pageCompilation.key.compilerVersion = value
+      expect(compileCanonicalPageRuntime({
+        compilation: pageCompilation as unknown as PageCompilation,
+      }, resolver()), `${name} page compiler version`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
+      })
+
+      const projectWithKeyMismatch = mutableProjectCompilation()
+      projectWithKeyMismatch.key.compilerVersion = value
+      expect(compileCanonicalPageRuntime({
+        compilation: projectWithKeyMismatch as unknown as ProjectCompilation,
+        pageId: 'home',
+      }, resolver()), `${name} project key compiler version`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
+      })
+
+      const projectWithIdentityMismatch = mutableProjectCompilation()
+      projectWithIdentityMismatch.ir.identity.compilerVersion = value
+      expect(compileCanonicalPageRuntime({
+        compilation: projectWithIdentityMismatch as unknown as ProjectCompilation,
+        pageId: 'home',
+      }, resolver()), `${name} project IR identity compiler version`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['ir', 'identity', 'compilerVersion'] }],
+      })
+    }
+  })
+
+  it('rejects additive page and node fields for page and project inputs', () => {
+    const cases = [
+      { key: 'flows', target: 'page' },
+      { key: 'events', target: 'node' },
+      { key: 'flowEvents', target: 'node' },
+    ] as const
+
+    for (const { key, target } of cases) {
+      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
+        page: Record<string, unknown>
+      }
+      addUnexpectedCanonicalKey(pageCompilation.page, target, key)
+      expect(compileCanonicalPageRuntime({
+        compilation: pageCompilation as unknown as PageCompilation,
+      }, resolver()), `${key} in page compilation`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED', path: ['page'] }],
+      })
+
+      const projectCompilation = structuredClone(compilationFixture()) as unknown as {
+        ir: { pagesById: Record<string, Record<string, unknown>> }
+      }
+      addUnexpectedCanonicalKey(projectCompilation.ir.pagesById.home!, target, key)
+      expect(compileCanonicalPageRuntime({
+        compilation: projectCompilation as unknown as ProjectCompilation,
+        pageId: 'home',
+      }, resolver()), `${key} in project compilation`).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED', path: ['ir', 'pagesById', 'home'] }],
+      })
+    }
+  })
+
   it('binds a 2000-node page plan within the page-scoped production budget', () => {
     const page = pageFixture()
     page.rootIds = []
@@ -441,7 +519,6 @@ describe('vue Runtime backend', () => {
         placement: { parentId: null, slot: null, props: { span: 6 } },
         configuredProps: {},
         props: {},
-        events: {},
         bindings: {},
         field: id,
         validateOn: ['submit'],
@@ -457,51 +534,5 @@ describe('vue Runtime backend', () => {
       return
     expect(result.artifact.renderer.fields).toHaveLength(2_000)
     expect(duration).toBeLessThan(750)
-  })
-})
-
-describe('compiled event runtime plans', () => {
-  it('carries and executes plans without separately providing raw flows', async () => {
-    const flow: ConfigFormFlow = {
-      version: CONFIG_FORM_FLOW_VERSION,
-      id: 'initialize-name',
-      name: 'Initialize name',
-      trigger: { kind: 'page.mount' as const },
-      nodes: [
-        { id: 'start', type: 'trigger' as const },
-        { id: 'assign', type: 'action' as const, ref: 'set-name', config: { input: { name: 'Grace' } } },
-        { id: 'end', type: 'end' as const },
-      ],
-      edges: [
-        { id: 'first', source: 'start', target: 'assign' },
-        { id: 'last', source: 'assign', target: 'end' },
-      ],
-    }
-    const analyzed = analyzeConfigFormFlow(flow)
-    expect(analyzed.success).toBe(true)
-    if (!analyzed.success)
-      return
-    const page = pageFixture()
-    page.flows = [{ semanticHash: getConfigFormFlowSemanticHash(flow), plan: analyzed.plan }]
-    const compiled = compileCanonicalPageRuntime({ compilation: compilationFixture(page), pageId: 'home' }, resolver())
-    expect(compiled.success).toBe(true)
-    if (!compiled.success)
-      return
-    const renderer = compiled.artifact.renderer
-    expect(renderer.plan.flows).toEqual([analyzed.plan])
-    expect(Object.isFrozen(renderer.plan.flows)).toBe(true)
-    const state = shallowRef<Record<string, unknown>>({ name: 'Ada' })
-    const execute = vi.fn((_input: unknown, context: ConfigFormFlowActionContext) => context.form.setValue('name', 'Grace'))
-    const wrapper = mount(ConfigFormRenderer, {
-      props: {
-        ...renderer,
-        model: createConfigFormModel(state),
-        flowActions: { get: ref => ref === 'set-name' ? { execute } : undefined },
-      },
-    })
-    await flushPromises()
-    expect(execute).toHaveBeenCalledOnce()
-    expect(state.value.name).toBe('Grace')
-    wrapper.unmount()
   })
 })

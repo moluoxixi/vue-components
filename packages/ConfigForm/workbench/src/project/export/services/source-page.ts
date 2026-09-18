@@ -24,48 +24,33 @@ export function appSource(
   page: StandaloneSourcePage,
   registry: StandaloneSourceRegistry,
 ): string {
-  const { flowPlans: _flowPlans, ...pageConfiguration } = page
+  const pageConfiguration = page
   const bindings = Object.fromEntries([...collectSourceBindings(page.root, registry)]
     .sort(([left], [right]) => left.localeCompare(right)))
   return `<script setup lang="ts">
 import type { ConfigFormRendererExpose } from '../../runtime/vue/renderer'
-import { createSourceDataSourceRequest, createSourceFlowActions } from '../../actions'
+import { createSourceDataSourceRequest } from '../../data'
 import { createConfigFormModel } from '../../runtime/headless'
 import { createSourceRendererConfig } from '../../runtime/source-page'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '../../runtime/vue/renderer'
 import { resolveComponent, shallowRef, useTemplateRef } from 'vue'
-import { flowPlans } from './flows'
 import { resolveFieldValidation } from './validation'
 
 const pageName = ${scriptJson(page.name)}
 const submitted = shallowRef('')
-const eventError = shallowRef('')
 const values = shallowRef<Record<string, unknown>>({})
 const model = createConfigFormModel(values)
 const rendererRef = useTemplateRef<ConfigFormRendererExpose>('renderer')
 const rendererConfig = createSourceRendererConfig({
   bindings: ${scriptJson(bindings, 2)},
-  flowPlans,
   page: ${scriptJson(pageConfiguration, 2)},
   resolveComponent,
   resolveFieldValidation,
 })
 const onRequest: typeof globalThis.fetch = (...args) => globalThis.fetch(...args)
 const dataSourceHost = { request: createSourceDataSourceRequest(onRequest, () => document.baseURI) }
-const flowActions = createSourceFlowActions({
-  fetch: onRequest,
-  openUrl: (url, target) => { globalThis.open(url, target) },
-  message: ({ message }) => { submitted.value = message },
-  confirm: ({ message }) => globalThis.confirm(message),
-  notify: (message) => { submitted.value = message },
-})
-
 function handleSubmit(next: Record<string, unknown>): void {
   submitted.value = JSON.stringify(next, null, 2)
-}
-
-function handleFlowError(diagnostic: { message: string }): void {
-  eventError.value = diagnostic.message
 }
 
 defineExpose(createConfigFormRendererExpose(rendererRef))
@@ -82,24 +67,20 @@ defineExpose(createConfigFormRendererExpose(rendererRef))
       ref="renderer"
       v-bind="rendererConfig"
       :model="model"
-      :flow-actions="flowActions"
       :data-source-host="dataSourceHost"
-      @flow-error="handleFlowError"
       @submit="handleSubmit"
     >
       <button class="source-submit" type="submit">Save</button>
     </ConfigFormRenderer>
     <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
-    <p v-if="eventError" class="source-field-error" role="alert">{{ eventError }}</p>
   </main>
 </template>
 `
 }
 
-/** Generic projection only; field state, lifecycle, validation and Flow execution stay in the shared renderer. */
+/** Generic projection only; field state, lifecycle, validation and data stay in the shared renderer. */
 export function standalonePageRuntimeSource(): string {
   return `import type {
-  ConfigFormFlowExecutionPlan,
   ConfigFormPageRuntimeConfiguration,
   ConfigFormReaction,
   ConfigFormReactionCondition,
@@ -138,8 +119,6 @@ interface SourceNodeBase {
   id: string
   component: string
   props: Record<string, unknown>
-  events: Record<string, unknown[]>
-  flowEvents: string[]
   extensions?: Record<string, unknown>
   bindings: Record<string, unknown>
   placement: Record<string, unknown>
@@ -196,7 +175,6 @@ interface SourceFieldRuntimeValidation {
 
 interface CreateSourceRendererConfigInput {
   bindings: Record<string, SourceComponentBinding>
-  flowPlans: readonly ConfigFormFlowExecutionPlan[]
   page: SourcePageConfiguration
   resolveComponent: (name: string) => Component | string
   resolveFieldValidation: (nodeId: string) => SourceFieldRuntimeValidation
@@ -289,13 +267,12 @@ function condition(source: ConfigFormReactionCondition | undefined) {
 }
 
 function extensions(node: SourceNode): Record<string, unknown> | undefined {
-  const lowCode = {
-    ...(Object.keys(node.events).length ? { events: structuredClone(node.events) } : {}),
-    ...(Object.keys(node.bindings).length ? { bindings: structuredClone(node.bindings) } : {}),
-  }
+  const bindingMetadata = Object.keys(node.bindings).length
+    ? { bindings: structuredClone(node.bindings) }
+    : undefined
   const result = {
     ...(node.extensions ? structuredClone(node.extensions) : {}),
-    ...(Object.keys(lowCode).length ? { 'mx.low-code': lowCode } : {}),
+    ...(bindingMetadata ? { 'mx.low-code': bindingMetadata } : {}),
   }
   return Object.keys(result).length ? result : undefined
 }
@@ -317,7 +294,6 @@ function rendererNode(
       ...(node.kind === 'layout' ? { style: [node.props.style, layoutStyle(node, binding.render)] } : {}),
     },
     ...(metadata ? { extensions: metadata } : {}),
-    ...(node.flowEvents.length ? { eventNames: [...node.flowEvents] } : {}),
     ...(node.reactions ? { reactions: structuredClone(node.reactions) } : {}),
     ...(typeof node.placement.span === 'number' ? { span: node.placement.span } : {}),
     ...(node.conditions?.visible ? { visible: condition(node.conditions.visible) } : {}),
@@ -356,7 +332,7 @@ function rendererNode(
 
 export function createSourceRendererConfig(
   input: CreateSourceRendererConfigInput,
-): Omit<ConfigFormRendererProps, 'model' | 'flowActions'> {
+): Omit<ConfigFormRendererProps, 'model'> {
   const components: ConfigFormComponentRegistry = Object.fromEntries(Object.entries(input.bindings).map(([key, binding]) => {
     const registration: ConfigFormComponentRegistration = {
       component: resolveSourceComponent(binding, input.resolveComponent),
@@ -368,7 +344,6 @@ export function createSourceRendererConfig(
     return [key, registration]
   }))
   const plan: ConfigFormPageRuntimePlan = Object.freeze({
-    flows: Object.freeze([...input.flowPlans]),
     optionBindings: Object.freeze(structuredClone(input.page.optionBindings)),
     runtime: Object.freeze(structuredClone(input.page.runtime)),
     valueSchema: Object.freeze({

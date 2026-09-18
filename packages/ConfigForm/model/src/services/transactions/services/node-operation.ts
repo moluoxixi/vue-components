@@ -22,7 +22,6 @@ import {
 type NodeOperation = Extract<ProjectOperation, { type:
   | 'node.bindings'
   | 'node.config.remove'
-  | 'node.events'
   | 'node.insert'
   | 'node.move'
   | 'node.placement'
@@ -44,15 +43,6 @@ export function applyNodeOperation(document: ProjectDocument, operation: NodeOpe
         return unchanged()
       requirePage(document, operation.pageId).graph.nodesById[node.id] = nextNode
       return changed([{ type: 'node.props', pageId: operation.pageId, nodeId: node.id, props: previous }], [operation.pageId], [node.id])
-    }
-    case 'node.events': {
-      const node = requireNode(document, operation.pageId, operation.nodeId)
-      const previous = cloneModelValue(node.events)
-      const nextNode = parseNodeCandidate({ ...node, events: operation.events }, operation.pageId, node.id)
-      if (semanticallyEqual(previous, nextNode.events))
-        return unchanged()
-      requirePage(document, operation.pageId).graph.nodesById[node.id] = nextNode
-      return changed([{ type: 'node.events', pageId: operation.pageId, nodeId: node.id, events: previous }], [operation.pageId], [node.id])
     }
     case 'node.bindings': {
       const node = requireNode(document, operation.pageId, operation.nodeId)
@@ -96,7 +86,7 @@ function removeNodeConfig(
   const page = requirePage(document, operation.pageId)
   const node = requireNode(document, operation.pageId, operation.nodeId)
 
-  if (operation.property === 'events' || operation.property === 'bindings' || operation.property === 'conditions') {
+  if (operation.property === 'bindings' || operation.property === 'conditions') {
     const key = operation.key
     if (!key?.trim())
       invalid('PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED', `Stored ${operation.property} removal requires a non-empty key.`, page.id, node.id)
@@ -104,13 +94,6 @@ function removeNodeConfig(
     const current = operation.property === 'conditions' ? node.conditions : node[operation.property]
     if (!current || !Object.hasOwn(current, key))
       return unchanged()
-    if (operation.property === 'events') {
-      const previous = cloneModelValue(node.events)
-      const events = cloneModelValue(node.events)
-      delete events[key]
-      page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, events }, page.id, node.id)
-      return changed([{ type: 'node.events', pageId: page.id, nodeId: node.id, events: previous }], [page.id], [node.id])
-    }
     if (operation.property === 'bindings') {
       const previous = cloneModelValue(node.bindings)
       const bindings = cloneModelValue(node.bindings)
@@ -262,7 +245,6 @@ function updateNodeSettings(
     id: node.id,
     component: operation.settings.component,
     props: node.props,
-    events: node.events,
     bindings: node.bindings,
     ...(operation.settings.extensions ? { extensions: cloneModelValue(operation.settings.extensions) } : {}),
     ...(operation.settings.conditions ? { conditions: cloneModelValue(operation.settings.conditions) } : {}),
@@ -360,18 +342,14 @@ function pageHasValueScopes(graph: ProjectDocument['pagesById'][string]['graph']
 
 function subgraphRequiresPageContentValidation(subgraph: NodeSubgraph): boolean {
   return Object.values(subgraph.nodesById).some((node) => {
-    const hasReferenceInput = Object.values(node.events)
-      .some(actions => actions.some(action => Object.hasOwn(action, 'input')))
     if (node.kind === 'layout') {
       return node.valueScope !== undefined
         || node.conditions !== undefined
         || node.reactions !== undefined
-        || hasReferenceInput
     }
     return node.optionSource !== undefined
       || node.validation !== undefined
       || node.conditions !== undefined
       || node.reactions !== undefined
-      || hasReferenceInput
   })
 }

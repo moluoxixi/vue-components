@@ -34,11 +34,6 @@ export interface AntdChoiceReadonlyContentProps {
   optionSource?: AntdVueOptionSource
 }
 
-export interface AntdOptionSourceSetterProps {
-  modelValue?: unknown
-  disabled?: boolean
-}
-
 export interface AntdOptionStateProps {
   state: AntdVueResolvedOptionState
 }

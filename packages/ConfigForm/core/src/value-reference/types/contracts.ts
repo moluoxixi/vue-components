@@ -6,8 +6,8 @@ export type ConfigFormValueReference
   = | { kind: 'literal', value: ConfigFormJsonValue }
     | { kind: 'field', nodeId: string, scope?: ConfigFormValueReferenceScope }
     | { kind: 'variable', variableId: string }
+    /** Data payload supplied while mapping a Data Source response. */
     | { kind: 'event', path: string[] }
-    | { kind: 'output', stepId: string, path?: string[] }
     | { kind: 'expression', source: string }
 
 export interface ConfigFormValueReferenceWrapper {
@@ -28,7 +28,7 @@ export interface ConfigFormFieldResolution {
 export interface ConfigFormValueContext {
   fields?: Readonly<Record<string, unknown>>
   variables?: Readonly<Record<string, unknown>>
-  outputs?: Readonly<Record<string, unknown>>
+  /** Current Data Source response payload; unrelated to component event forwarding. */
   event?: unknown
   resolveField?: (
     nodeId: string,
@@ -39,7 +39,6 @@ export interface ConfigFormValueContext {
 export type ConfigFormValueReferenceCollectionEntry
   = | { kind: 'field', id: string, scope: ConfigFormValueReferenceScope, path: string }
     | { kind: 'variable', id: string, path: string }
-    | { kind: 'output', id: string, path: string }
 
 export type ConfigFormValueReferenceIdMap
   = | ReadonlyMap<string, string>
@@ -48,5 +47,4 @@ export type ConfigFormValueReferenceIdMap
 export interface ConfigFormValueReferenceRemap {
   fields?: ConfigFormValueReferenceIdMap
   variables?: ConfigFormValueReferenceIdMap
-  outputs?: ConfigFormValueReferenceIdMap
 }

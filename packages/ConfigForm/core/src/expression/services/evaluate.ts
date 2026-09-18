@@ -159,7 +159,7 @@ export function evaluateConfigFormExpression(
   return evaluateNode(root, 0)
 }
 
-/** Non-throwing wrapper used by flow conditions and reaction operands. */
+/** Non-throwing wrapper used by reaction conditions and formula operands. */
 export function tryEvaluateConfigFormExpression(
   expression: ConfigFormExpressionNode | string,
   values: Record<string, unknown>,

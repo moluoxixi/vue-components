@@ -34,5 +34,6 @@ describe('vue backend architecture boundary', () => {
     expect(rootEntry).not.toMatch(/from ['"]\.\/src['"]/)
     expect(Object.keys(manifest.exports)).toEqual(['.'])
     expect(source).not.toContain('@moluoxixi/config-form/renderer')
+    expect(source).not.toMatch(/ConfigFormFlow|flowEvents|eventNames|RegisteredEventAction/)
   })
 })

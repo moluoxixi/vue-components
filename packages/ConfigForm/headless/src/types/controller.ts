@@ -33,8 +33,8 @@ import type {
   ConfigFormFieldAddress,
   ConfigFormFieldInstance,
   ConfigFormFieldInstanceChangeRequest,
-  ConfigFormValuePatch,
   ConfigFormValidationIssue,
+  ConfigFormValuePatch,
   ConfigFormValueSchema,
 } from './scope'
 
@@ -58,7 +58,7 @@ export interface ConfigFormControllerOptions<TValues extends ConfigFormValues = 
   defaultValues?: Partial<TValues>
   /** Read the current form-level readonly condition. */
   readonly?: () => ConfigFormCondition<TValues> | undefined
-  /** Host Flow state overlays participate in the same validation and submission policy. */
+  /** Host reaction state overlays participate in the same validation and submission policy. */
   reactionStates?: () => ConfigFormReactionProjection<TValues>['states'] | undefined
   /** Lets adapters skip an async hook round-trip when a lifecycle has no subscriber. */
   shouldRunLifecycle?: (kind: ConfigFormLifecycleKind) => boolean

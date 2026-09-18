@@ -2,7 +2,6 @@ import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type {
   ParentToRuntimeHostMessage,
-  RuntimeHostActionContext,
   RuntimeHostFieldInstance,
   RuntimeHostGeometryPayload,
   RuntimeHostMessageBase,
@@ -10,16 +9,17 @@ import type {
   RuntimeHostRectPayload,
   RuntimeHostRuntimeStatePayload,
   RuntimeHostToParentMessage,
-  RuntimeHostValuePatch,
 } from '../types'
+import {
+  CANONICAL_PROJECT_IR_VERSION,
+  CONFIG_FORM_COMPILER_VERSION,
+  hasOnlyCurrentCanonicalPageKeys,
+} from '@moluoxixi/config-form-compiler'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
 import { isRuntimeHostDataDiagnostic, isRuntimeHostDataInput, isRuntimeHostDataOutput } from './data-rpc'
 import { isRuntimeHostJson as isJsonValue } from './json'
 
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
-const FLOW_STATUSES = new Set(['success', 'failure', 'end', 'blocked', 'aborted', 'timeout', 'ignored'])
-const TRACE_TYPES = new Set(['start', 'enter', 'exit', 'error', 'abort', 'finish'])
-const NODE_TYPES = new Set(['trigger', 'condition', 'reaction', 'action', 'success', 'failure', 'end', 'blocked'])
 const MAX_STRING_LENGTH = 16_384
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,17 +31,7 @@ function isSafeText(value: unknown): value is string {
 }
 
 function isMessageJson(value: Record<string, unknown>): boolean {
-  const descriptors = Object.getOwnPropertyDescriptors(value)
-  const type = descriptors.type?.value
-  // Existing action envelopes treat explicit undefined optional fields as omitted.
-  const optional = type === 'actionResult'
-    ? ['diagnostic', 'output', 'valuePatch']
-    : type === 'actionRequest' ? ['input'] : []
-  for (const key of optional) {
-    if (descriptors[key] && Object.hasOwn(descriptors[key], 'value') && descriptors[key].value === undefined)
-      delete descriptors[key]
-  }
-  return isJsonValue(Object.defineProperties(Object.create(Object.getPrototypeOf(value)), descriptors))
+  return isJsonValue(value)
 }
 
 function isJsonRecord(value: unknown): value is Record<string, unknown> {
@@ -65,14 +55,20 @@ function isPageCompilation(value: unknown): value is PageCompilation {
   if (!isRecord(value) || !isRecord(value.snapshotIdentity) || !isRecord(value.key) || !isRecord(value.page))
     return false
   const pageId = value.page.id
+  const projectId = value.snapshotIdentity.projectId
+  const nodesById = value.page.nodesById
   return isSafeText(pageId)
+    && isSafeText(projectId)
     && value.snapshotIdentity.pageId === pageId
+    && value.key.projectId === projectId
     && value.key.pageId === pageId
+    && value.key.irVersion === CANONICAL_PROJECT_IR_VERSION
+    && value.key.compilerVersion === CONFIG_FORM_COMPILER_VERSION
     && isSafeText(value.key.registryAdapter)
     && Array.isArray(value.page.rootIds)
     && value.page.rootIds.every(item => isSafeText(item))
-    && isJsonRecord(value.page.nodesById)
-    && isJsonValue(value.page.flows ?? [])
+    && hasOnlyCurrentCanonicalPageKeys(value.page)
+    && isJsonRecord(nodesById)
 }
 
 function isReactionProjection(value: unknown): value is ConfigFormReactionProjection<Record<string, unknown>> {
@@ -120,7 +116,7 @@ function hasValueContainer(values: Record<string, unknown>, path: readonly (stri
 function hasConsistentRows(fields: readonly RuntimeHostFieldInstance[]): boolean {
   const pathsByRow = new Map<string, string>()
   const rowsByPath = new Map<string, string>()
-  return fields.every(field => {
+  return fields.every((field) => {
     let rowIndex = 0
     return field.valuePath.every((part, pathIndex) => {
       if (typeof part !== 'number')
@@ -128,8 +124,9 @@ function hasConsistentRows(fields: readonly RuntimeHostFieldInstance[]): boolean
       const row = JSON.stringify(field.scope.slice(0, ++rowIndex).map(entry => [entry.scopeId, entry.rowId]))
       const path = JSON.stringify(field.valuePath.slice(0, pathIndex + 1))
       if ((pathsByRow.has(row) && pathsByRow.get(row) !== path)
-        || (rowsByPath.has(path) && rowsByPath.get(path) !== row))
+        || (rowsByPath.has(path) && rowsByPath.get(path) !== row)) {
         return false
+      }
       pathsByRow.set(row, path)
       rowsByPath.set(path, row)
       return true
@@ -196,152 +193,6 @@ function isRuntimeHostGeometry(value: unknown): value is RuntimeHostGeometryPayl
       && isRuntimeHostRect(node.rect))
 }
 
-function isTrigger(value: unknown): boolean {
-  return isRecord(value)
-    && isSafeText(value.kind)
-    && (value.nodeId === undefined || isSafeText(value.nodeId))
-    && (value.event === undefined || isSafeText(value.event))
-}
-
-function isFlowEvent(value: unknown): boolean {
-  return isRecord(value)
-    && isTrigger(value.trigger)
-    && (value.scope === undefined || isScopePath(value.scope))
-    && Array.isArray(value.args)
-    && value.args.every(arg => isJsonValue(arg))
-    && (value.field === undefined || isSafeText(value.field))
-}
-
-function isActionContext(value: unknown): value is RuntimeHostActionContext {
-  if (!isRecord(value))
-    return false
-  if ('signal' in value || 'form' in value)
-    return false
-  const flow = value.flow
-  const node = value.node
-  return isRecord(flow)
-    && Number.isSafeInteger(flow.runtimeVersion)
-    && Number.isSafeInteger(flow.version)
-    && isSafeText(flow.id)
-    && isSafeText(flow.name)
-    && isTrigger(flow.trigger)
-    && (flow.concurrency === undefined || ['latest', 'queue', 'ignore'].includes(String(flow.concurrency)))
-    && (flow.errorPolicy === undefined || isJsonValue(flow.errorPolicy))
-    && isRecord(node)
-    && isSafeText(node.id)
-    && typeof node.type === 'string'
-    && NODE_TYPES.has(node.type)
-    && (node.ref === undefined || isSafeText(node.ref))
-    && (node.config === undefined || isJsonValue(node.config))
-    && (node.policy === undefined || isJsonValue(node.policy))
-    && Array.isArray(node.incoming)
-    && Array.isArray(node.outgoing)
-    && isJsonValue(node.incoming)
-    && isJsonValue(node.outgoing)
-    && Number.isSafeInteger(value.revision)
-    && isSafeText(value.runId)
-    && isFlowEvent(value.event)
-    && isJsonRecord(value.values)
-    && isJsonRecord(value.outputs)
-}
-
-function isValuePatch(value: unknown): value is RuntimeHostValuePatch {
-  if (!isRecord(value) || !isJsonRecord(value.set) || !Array.isArray(value.remove))
-    return false
-  if (!value.remove.every(field => isSafeKey(field)))
-    return false
-  const remove = value.remove as string[]
-  if (new Set(remove).size !== remove.length)
-    return false
-  const setKeys = Object.keys(value.set)
-  return setKeys.every(key => isSafeText(key))
-    && !setKeys.some(key => remove.includes(key))
-}
-
-function isDiagnostic(value: unknown): boolean {
-  return isRecord(value)
-    && isSafeText(value.code)
-    && isSafeText(value.message)
-    && (value.path === undefined || (typeof value.path === 'string' && value.path.length <= MAX_STRING_LENGTH))
-    && (value.nodeId === undefined || isSafeText(value.nodeId))
-    && (value.edgeId === undefined || isSafeText(value.edgeId))
-    && (value.severity === undefined || value.severity === 'error' || value.severity === 'warning')
-}
-
-function isActionRequest(value: Record<string, unknown>): boolean {
-  return value.type === 'actionRequest'
-    && isSafeText(value.requestId)
-    && isSafeText(value.ref)
-    && (value.input === undefined || isJsonValue(value.input))
-    && isActionContext(value.context)
-}
-
-function isActionCancel(value: Record<string, unknown>): boolean {
-  return value.type === 'actionCancel' && isSafeText(value.requestId)
-}
-
-function isActionResult(value: Record<string, unknown>): boolean {
-  if (value.type !== 'actionResult' || !isSafeText(value.requestId) || typeof value.success !== 'boolean')
-    return false
-  if (value.success) {
-    return value.diagnostic === undefined
-      && isValuePatch(value.valuePatch)
-      && (value.output === undefined || isJsonValue(value.output))
-  }
-  return isDiagnostic(value.diagnostic)
-    && value.output === undefined
-    && value.valuePatch === undefined
-}
-
-function isFlowTrace(value: unknown): boolean {
-  return isRecord(value)
-    && typeof value.type === 'string'
-    && TRACE_TYPES.has(value.type)
-    && isSafeText(value.flowId)
-    && isSafeText(value.runId)
-    && Number.isSafeInteger(value.revision)
-    && (value.nodeId === undefined || isSafeText(value.nodeId))
-    && (value.status === undefined || (typeof value.status === 'string' && FLOW_STATUSES.has(value.status)))
-    && (value.error === undefined || typeof value.error === 'string')
-    && (value.timestamp === undefined || isFiniteNumber(value.timestamp))
-    && (value.durationMs === undefined || (isFiniteNumber(value.durationMs) && value.durationMs >= 0))
-    && (value.input === undefined || isJsonValue(value.input))
-    && (value.output === undefined || isJsonValue(value.output))
-    && (value.valuePatch === undefined || isJsonValue(value.valuePatch))
-    && (value.truncated === undefined || typeof value.truncated === 'boolean')
-}
-
-function isFlowRunResult(value: unknown): boolean {
-  return isRecord(value)
-    && typeof value.status === 'string'
-    && FLOW_STATUSES.has(value.status)
-    && isSafeText(value.flowId)
-    && isSafeText(value.runId)
-    && Number.isSafeInteger(value.revision)
-    && isJsonRecord(value.values)
-    && isJsonRecord(value.outputs)
-    && isReactionProjection(value.projection)
-    && Array.isArray(value.trace)
-    && value.trace.every(trace => isFlowTrace(trace))
-    && Array.isArray(value.diagnostics)
-    && value.diagnostics.every(diagnostic => isDiagnostic(diagnostic))
-    && (value.error === undefined || isDiagnostic(value.error))
-}
-
-function isFlowDispatchResult(value: unknown): boolean {
-  return isRecord(value)
-    && typeof value.status === 'string'
-    && new Set(['committed', 'noop', 'ignored', 'blocked', 'aborted', 'failure', 'timeout', 'stale']).has(value.status)
-    && Array.isArray(value.results)
-    && value.results.every(result => isFlowRunResult(result))
-    && isValuePatch(value.valuePatch)
-    && isRecord(value.projectionUpdates)
-    && Object.values(value.projectionUpdates).every(projection => isReactionProjection(projection))
-    && Array.isArray(value.diagnostics)
-    && value.diagnostics.every(diagnostic => isDiagnostic(diagnostic))
-    && (value.error === undefined || isDiagnostic(value.error))
-}
-
 export function isParentToRuntimeHostMessage(value: unknown): value is ParentToRuntimeHostMessage {
   if (!hasMessageBase(value))
     return false
@@ -350,8 +201,6 @@ export function isParentToRuntimeHostMessage(value: unknown): value is ParentToR
       ? value.diagnostic === undefined && isRuntimeHostDataOutput(value.output)
       : value.success === false && value.output === undefined && isRuntimeHostDataDiagnostic(value.diagnostic))
   }
-  if (value.type === 'actionResult')
-    return isActionResult(value)
   if (value.type === 'submit')
     return isSafeKey(value.requestId)
   if (value.type === 'state') {
@@ -388,10 +237,6 @@ export function isRuntimeHostToParentMessage(value: unknown): value is RuntimeHo
     return isSafeKey(value.requestId) && isRuntimeHostDataInput(value.input)
   if (value.type === 'dataCancel')
     return isSafeKey(value.requestId)
-  if (value.type === 'actionRequest')
-    return isActionRequest(value)
-  if (value.type === 'actionCancel')
-    return isActionCancel(value)
   if (value.type === 'ready' || value.type === 'mounted')
     return true
   if (value.type === 'geometry')
@@ -432,29 +277,6 @@ export function isRuntimeHostToParentMessage(value: unknown): value is RuntimeHo
       && isJsonRecord(value.payload.values)
       && hasValueContainer(value.payload.values, value.payload.valuePath)
   }
-  if (value.type === 'runtimeEvent') {
-    return isRecord(value.payload)
-      && isJsonValue(value.payload)
-      && isScopePath(value.payload.scope)
-      && (value.payload.field === undefined
-        ? value.payload.instanceKey === undefined && value.payload.valuePath === undefined
-        : isRuntimeHostFieldInstance(value.payload)
-          && isJsonRecord(value.payload.values) && hasValueContainer(value.payload.values, value.payload.valuePath))
-        && isSafeText(value.payload.nodeId)
-        && isSafeText(value.payload.event)
-        && Array.isArray(value.payload.args)
-        && value.payload.args.every(arg => isJsonValue(arg))
-        && isJsonRecord(value.payload.values)
-        && (value.payload.field === undefined || isSafeText(value.payload.field))
-  }
-  if (value.type === 'flowTrace')
-    return isFlowTrace(value.payload)
-  if (value.type === 'flowError')
-    return isDiagnostic(value.payload)
-  if (value.type === 'flowProjection')
-    return isReactionProjection(value.payload)
-  if (value.type === 'flowResult')
-    return isFlowDispatchResult(value.payload)
   return value.type === 'error'
     && isSafeText(value.code)
     && isSafeText(value.message)

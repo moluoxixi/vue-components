@@ -25,7 +25,6 @@ export function scopedGraph(): PageGraph {
     kind: 'field',
     component: 'test.input',
     props: {},
-    events: {},
     bindings: {},
     defaultValue: `${id} default`,
     validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'required', message: `${id} required` }] },
@@ -35,7 +34,6 @@ export function scopedGraph(): PageGraph {
     kind: 'layout',
     component: 'test.scope',
     props: {},
-    events: {},
     bindings: {},
     valueScope: { field: name, kind },
     slots: { default: children.map(nodeId => ({ nodeId, placement: {} })) },
@@ -84,7 +82,6 @@ export function compileScopedFixture(graph = scopedGraph(), editVersion = 0, inp
     version: key === 'test.input' ? inputVersion : '1',
     kind: key === 'test.scope' ? 'layout' : 'field',
     props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
-    events: [{ name: 'update:modelValue' }, { name: 'blur' }],
     bindings: key === 'test.scope' ? [] : [{ name: 'model', valueProp: 'modelValue', trigger: 'update:modelValue' }],
     slots: key === 'test.scope' ? [{ name: 'default', accepts: ['field', 'layout'] }] : [],
     allowedParents: [],
@@ -100,14 +97,7 @@ export function compileScopedFixture(graph = scopedGraph(), editVersion = 0, inp
     registryLock: registry.lock,
     settings: {},
     resources: {},
-    pagesById: { home: { id: 'home', name: 'Home', route: '/', graph, flows: ['billing-name', 'item-name'].map(nodeId => ({
-      version: 1,
-      id: `observe-${nodeId}`,
-      name: 'Observe',
-      trigger: { kind: 'component.event', nodeId, event: 'update:modelValue' },
-      nodes: [{ id: 'start', type: 'trigger' }, { id: 'end', type: 'success' }],
-      edges: [{ id: 'next', source: 'start', target: 'end', condition: 'next' }],
-    })) } },
+    pagesById: { home: { id: 'home', name: 'Home', route: '/', graph } },
   }
   const result = compileCanonicalPage({ snapshot: createProjectSnapshot(document, editVersion), pageId: 'home', registry: createRegistryContractSnapshot(registry) })
   if (!result.success)

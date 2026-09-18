@@ -1,4 +1,3 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ComponentContractRegistry, PageGraph } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
 import type { DesignerLocaleOptions } from '../../../locale'
@@ -11,7 +10,6 @@ export interface DesignSurfaceProps {
   componentRegistry: ComponentContractRegistry
   graph: PageGraph
   historyControl: DesignerHistoryControl
-  flows?: ConfigFormFlow[]
   locale?: DesignerLocaleOptions
   pageId: string
   readonly?: boolean

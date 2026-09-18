@@ -10,6 +10,7 @@ contract and the package-specific contracts that contain real project rules.
 | Guide | Description | Status |
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
+| [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Designer Lite, material, and serialization contracts | Ready |
 | [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md) | Package-specific contract | Ready |
 | [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md) | Package-specific contract | Ready |
 

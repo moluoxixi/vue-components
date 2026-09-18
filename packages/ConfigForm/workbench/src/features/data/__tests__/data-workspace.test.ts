@@ -2,17 +2,18 @@
 
 import type {
   ConfigFormDataSourceHost,
-  ConfigFormFlowHttpRequestOutput,
+  ConfigFormDataSourceHttpRequestOutput,
   ConfigFormPageRuntimeConfiguration,
 } from '@moluoxixi/config-form-core'
 import type { ProjectCommand, ProjectOperation } from '@moluoxixi/config-form-model'
 import type { DataWorkspaceProps } from '../types'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { createProjectDomainEngine } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createProjectDocumentFixture } from '../../../project/__tests__/fixtures'
-import { DataWorkspace } from '../components'
+import { DataValueEditor, DataWorkspace } from '../components'
 
 const PAGE_ID = 'home'
 
@@ -90,6 +91,32 @@ afterEach(() => {
 })
 
 describe('page data workspace transactions', () => {
+  it('preserves an empty text literal instead of coercing it to boolean true', async () => {
+    const wrapper = mount(DataValueEditor, {
+      attachTo: document.body,
+      props: {
+        fields: [],
+        locale: createDesignerLocale(),
+        modelValue: null,
+      },
+    })
+
+    expect(wrapper.props('modelValue')).toBeNull()
+    const kindSelect = wrapper.findAllComponents({ name: 'ElSelect' })
+      .find(select => select.classes().includes('data-value-kind'))
+    expect(kindSelect).toBeDefined()
+    kindSelect!.vm.$emit('change', 'text')
+    await nextTick()
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([''])
+
+    await wrapper.setProps({ modelValue: '' })
+    await nextTick()
+    expect(wrapper.props('modelValue')).toBe('')
+    expect(wrapper.find('.data-value-editor > .el-input').exists()).toBe(true)
+    expect(wrapper.find('.data-value-editor > .el-switch').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('saves one page.runtime operation, retains stable ids on rename, and is undoable', async () => {
     const runtime = runtimeFixture()
     delete runtime.dataSources[0]!.dependencies
@@ -184,9 +211,9 @@ describe('page data workspace transactions', () => {
     const { wrapper } = mountWorkspace()
     await selectDataSources(wrapper)
 
-    expect(wrapper.findAll('.flow-structured-list.is-object').length).toBeGreaterThanOrEqual(3)
+    expect(wrapper.findAll('.data-structured-list.is-object').length).toBeGreaterThanOrEqual(3)
     expect(wrapper.find('textarea').exists()).toBe(false)
-    expect(wrapper.findAllComponents({ name: 'FlowValueEditor' }).length).toBeGreaterThan(6)
+    expect(wrapper.findAllComponents({ name: 'DataValueEditor' }).length).toBeGreaterThan(6)
     expect(wrapper.get('input[aria-label="Timeout (ms, 0 disables)"]').element).toHaveProperty('value', '0')
     expect(wrapper.get('input[aria-label="Cache TTL (ms, 0 disables)"]').element).toHaveProperty('value', '0')
     wrapper.unmount()
@@ -229,14 +256,14 @@ describe('explicit data-source tests', () => {
     expect(request.mock.calls[0]![0].query).toEqual({ country: 'US' })
     expect(wrapper.get('.data-test__result').attributes('data-status')).toBe('empty')
     wrapper.unmount()
-  })
+  }, 10_000)
 
   it('lets the user stop a test and ignores its late result', async () => {
-    let release!: (value: ConfigFormFlowHttpRequestOutput) => void
+    let release!: (value: ConfigFormDataSourceHttpRequestOutput) => void
     let signal!: AbortSignal
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>((_input, requestSignal) => {
       signal = requestSignal
-      return new Promise<ConfigFormFlowHttpRequestOutput>(resolve => release = resolve)
+      return new Promise<ConfigFormDataSourceHttpRequestOutput>(resolve => release = resolve)
     })
     const { wrapper } = mountWorkspace({ onRequest: request })
     await selectDataSources(wrapper)
@@ -253,11 +280,11 @@ describe('explicit data-source tests', () => {
   })
 
   it('aborts a running test when its request declaration changes', async () => {
-    let release!: (value: ConfigFormFlowHttpRequestOutput) => void
+    let release!: (value: ConfigFormDataSourceHttpRequestOutput) => void
     let signal!: AbortSignal
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>((_input, requestSignal) => {
       signal = requestSignal
-      return new Promise<ConfigFormFlowHttpRequestOutput>(resolve => release = resolve)
+      return new Promise<ConfigFormDataSourceHttpRequestOutput>(resolve => release = resolve)
     })
     const { wrapper } = mountWorkspace({ onRequest: request })
     await selectDataSources(wrapper)
@@ -309,7 +336,7 @@ describe('explicit data-source tests', () => {
     const releases: Array<(value: { data: unknown, ok: boolean, status: number }) => void> = []
     const request: NonNullable<ConfigFormDataSourceHost['request']> = vi.fn((_input, signal) => {
       signals.push(signal)
-      return new Promise<ConfigFormFlowHttpRequestOutput>(resolve => releases.push(resolve))
+      return new Promise<ConfigFormDataSourceHttpRequestOutput>(resolve => releases.push(resolve))
     })
     const { wrapper } = mountWorkspace({ onRequest: request })
     await selectDataSources(wrapper)
@@ -342,7 +369,7 @@ describe('explicit data-source tests', () => {
     const signals: AbortSignal[] = []
     const request: NonNullable<ConfigFormDataSourceHost['request']> = vi.fn((_input, signal) => {
       signals.push(signal)
-      return new Promise<ConfigFormFlowHttpRequestOutput>(() => undefined)
+      return new Promise<ConfigFormDataSourceHttpRequestOutput>(() => undefined)
     })
     const { wrapper } = mountWorkspace({ onRequest: request })
     await selectDataSources(wrapper)

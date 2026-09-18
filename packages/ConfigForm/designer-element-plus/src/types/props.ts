@@ -32,11 +32,6 @@ export interface ElementDefaultValueSetterProps {
   options?: DesignerSetterOption[]
 }
 
-export interface ElementOptionSourceSetterProps {
-  modelValue?: unknown
-  disabled?: boolean
-}
-
 export interface ElementOptionStateProps {
   state: ElementPlusResolvedOptionState
 }

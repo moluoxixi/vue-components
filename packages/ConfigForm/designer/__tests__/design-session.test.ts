@@ -5,7 +5,7 @@ import { createDesignerDesignSession } from '../src/components/DesignerCanvas/se
 
 function controller(): DesignerController {
   const graph = {
-    version: 2 as const,
+    version: 3 as const,
     props: {},
     form: {},
     root: [],

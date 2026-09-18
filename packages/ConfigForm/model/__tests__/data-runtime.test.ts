@@ -1,10 +1,9 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ProjectDocument } from '../index'
-import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
 import { describe, expect, it } from 'vitest'
 import {
   applyProjectTransaction,
   deriveProjectPageValueSchema,
+  PAGE_GRAPH_VERSION,
   parseProjectDocument,
   PROJECT_DOCUMENT_VERSION,
   resolveProjectCommand,
@@ -39,7 +38,7 @@ function documentFixture(): ProjectDocument {
           }],
         },
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [
@@ -54,7 +53,6 @@ function documentFixture(): ProjectDocument {
               kind: 'layout',
               valueScope: { kind: 'object', field: 'customer' },
               props: {},
-              events: {},
               bindings: {},
               slots: {
                 default: [
@@ -75,7 +73,6 @@ function documentFixture(): ProjectDocument {
                 params: { locale: { $ref: { kind: 'variable', variableId: 'locale' } } },
               },
               props: {},
-              events: {},
               bindings: {},
             },
             'customer-display': {
@@ -97,25 +94,6 @@ function documentFixture(): ProjectDocument {
                 },
               },
               props: {},
-              events: {
-                change: [{
-                  action: 'inspect',
-                  input: {
-                    legacy: { $field: 'name' },
-                    stable: { $ref: { kind: 'field', nodeId: 'customer-name' } },
-                    external: { $field: 'global' },
-                    escaped: {
-                      $ref: {
-                        kind: 'literal',
-                        value: {
-                          $field: 'name',
-                          nested: { $ref: { kind: 'field', nodeId: 'customer-name' } },
-                        },
-                      },
-                    },
-                  },
-                }],
-              },
               bindings: {},
             },
             'shipping': {
@@ -124,7 +102,6 @@ function documentFixture(): ProjectDocument {
               kind: 'layout',
               valueScope: { kind: 'object', field: 'shipping' },
               props: {},
-              events: {},
               bindings: {},
               slots: { default: [{ nodeId: 'shipping-name', placement: {} }] },
             },
@@ -134,7 +111,6 @@ function documentFixture(): ProjectDocument {
               kind: 'field',
               field: 'name',
               props: {},
-              events: {},
               bindings: {},
             },
             'global': {
@@ -143,7 +119,6 @@ function documentFixture(): ProjectDocument {
               kind: 'field',
               field: 'global',
               props: {},
-              events: {},
               bindings: {},
             },
           },
@@ -188,6 +163,20 @@ describe('data runtime model contract', () => {
         { nodeId: 'global', field: 'global' },
       ],
     })
+  })
+
+  it('rejects removed Flow output value references at the document boundary', () => {
+    const direct = structuredClone(documentFixture())
+    ;(direct.pagesById.home!.runtime!.variables[0] as { initialValue: unknown }).initialValue = {
+      $ref: { kind: 'output', stepId: 'load' },
+    }
+    expect(parseProjectDocument(direct).success).toBe(false)
+
+    const expression = structuredClone(documentFixture())
+    ;(expression.pagesById.home!.runtime!.variables[0] as { initialValue: unknown }).initialValue = {
+      $ref: { kind: 'expression', source: '$outputs["load"]' },
+    }
+    expect(parseProjectDocument(expression).success).toBe(false)
   })
 
   it('updates page runtime atomically and restores the exact optional block with undo', () => {
@@ -258,7 +247,6 @@ describe('data runtime model contract', () => {
               kind: 'field',
               field: 'name',
               props: {},
-              events: {},
               bindings: {},
             },
           },
@@ -289,55 +277,7 @@ describe('data runtime model contract', () => {
     expect(input.pagesById.home!.graph.nodesById).not.toHaveProperty('duplicate-name')
   })
 
-  it('revalidates Flow field references when moving the trigger node across value scopes', () => {
-    const input = documentFixture()
-    input.pagesById.home!.flows = [{
-      version: CONFIG_FORM_FLOW_VERSION,
-      id: 'scoped-flow',
-      name: 'Scoped flow',
-      trigger: { kind: 'component.event', nodeId: 'customer-display', event: 'change' },
-      nodes: [
-        { id: 'trigger', type: 'trigger' },
-        {
-          id: 'inspect',
-          type: 'action',
-          ref: 'inspect',
-          config: {
-            input: { value: { $ref: { kind: 'field', nodeId: 'customer-name', scope: 'current' } } },
-          },
-        },
-        { id: 'end', type: 'end' },
-      ],
-      edges: [
-        { id: 'trigger-inspect', source: 'trigger', target: 'inspect', condition: 'next' },
-        { id: 'inspect-end', source: 'inspect', target: 'end', condition: 'next' },
-      ],
-    }]
-    expect(parseProjectDocument(input).success).toBe(true)
-
-    const moved = applyProjectTransaction(input, {
-      id: 'move-flow-trigger-between-scopes',
-      label: 'Move Flow trigger between scopes',
-      operations: [{
-        type: 'node.move',
-        pageId: 'home',
-        nodeId: 'customer-display',
-        target: { parentId: 'shipping', slot: 'default' },
-      }],
-    })
-    expect(moved.success).toBe(false)
-    expect(moved.document).toBe(input)
-    expect(moved.diagnostics).toContainEqual(expect.objectContaining({
-      code: 'PROJECT_DOCUMENT_INVALID',
-      message: 'Field customer-name is not available from the current value scope.',
-      path: ['pagesById', 'home', 'flows', 0, 'nodes', 1, 'config', 'input', 'value', '$ref', 'nodeId'],
-    }))
-    expect(input.pagesById.home!.graph.nodesById.shipping).toMatchObject({
-      slots: { default: [{ nodeId: 'shipping-name' }] },
-    })
-  })
-
-  it('renames structured field references while preserving stable ids and literal payloads', () => {
+  it('renames structured validation and condition field references', () => {
     const input = documentFixture()
     const result = applyPatch(input, 'customer-name', { field: 'fullName' })
 
@@ -351,24 +291,6 @@ describe('data runtime model contract', () => {
     expect(display).toMatchObject({
       validation: { rules: [{ field: 'fullName' }] },
       conditions: { visible: { left: { field: 'fullName' } } },
-      events: {
-        change: [{
-          input: {
-            legacy: { $field: 'fullName' },
-            stable: { $ref: { kind: 'field', nodeId: 'customer-name' } },
-            external: { $field: 'global' },
-            escaped: {
-              $ref: {
-                kind: 'literal',
-                value: {
-                  $field: 'name',
-                  nested: { $ref: { kind: 'field', nodeId: 'customer-name' } },
-                },
-              },
-            },
-          },
-        }],
-      },
     })
   })
 
@@ -400,24 +322,6 @@ describe('data runtime model contract', () => {
     expect(duplicated.document.pagesById.home!.graph.nodesById['customer-display-copy']).toMatchObject({
       field: 'displayCopy',
       conditions: { visible: { left: { field: 'nameCopy' } } },
-      events: {
-        change: [{
-          input: {
-            legacy: { $field: 'nameCopy' },
-            stable: { $ref: { kind: 'field', nodeId: 'customer-name-copy' } },
-            external: { $field: 'global' },
-            escaped: {
-              $ref: {
-                kind: 'literal',
-                value: {
-                  $field: 'name',
-                  nested: { $ref: { kind: 'field', nodeId: 'customer-name' } },
-                },
-              },
-            },
-          },
-        }],
-      },
     })
 
     const expressionDocument = documentFixture()
@@ -454,45 +358,5 @@ describe('data runtime model contract', () => {
       document: input,
       diagnostics: [expect.objectContaining({ message: expect.stringContaining('unknown data source') })],
     })
-  })
-
-  it('rejects outputs from mutually exclusive branches at the consuming action', () => {
-    const input = documentFixture()
-    const flow: ConfigFormFlow = {
-      version: CONFIG_FORM_FLOW_VERSION,
-      id: 'branch-output',
-      name: 'Branch output',
-      trigger: { kind: 'form.beforeSubmit' },
-      nodes: [
-        { id: 'trigger', type: 'trigger' },
-        { id: 'gate', type: 'condition', config: { condition: { kind: 'literal', value: true } } },
-        { id: 'left', type: 'action', ref: 'left', config: {} },
-        { id: 'right', type: 'action', ref: 'right', config: {} },
-        {
-          id: 'join',
-          type: 'action',
-          ref: 'join',
-          config: { input: { value: { $ref: { kind: 'output', stepId: 'left' } } } },
-        },
-        { id: 'end', type: 'end' },
-      ],
-      edges: [
-        { id: 'trigger-gate', source: 'trigger', target: 'gate', condition: 'next' },
-        { id: 'gate-left', source: 'gate', target: 'left', condition: 'true' },
-        { id: 'gate-right', source: 'gate', target: 'right', condition: 'false' },
-        { id: 'left-join', source: 'left', target: 'join', condition: 'next' },
-        { id: 'right-join', source: 'right', target: 'join', condition: 'next' },
-        { id: 'join-end', source: 'join', target: 'end', condition: 'next' },
-      ],
-    }
-    input.pagesById.home!.flows = [flow]
-    const parsed = parseProjectDocument(input)
-    expect(parsed.success).toBe(false)
-    if (!parsed.success) {
-      expect(parsed.diagnostics).toContainEqual(expect.objectContaining({
-        message: 'Value reference requires an existing flow output: left',
-        path: ['pagesById', 'home', 'flows', 0, 'nodes', 4, 'config', 'input', 'value', '$ref', 'stepId'],
-      }))
-    }
   })
 })

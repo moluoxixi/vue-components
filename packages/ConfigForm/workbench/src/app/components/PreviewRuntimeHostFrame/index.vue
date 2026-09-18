@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import type {
-  PreviewRuntimeFlowDiagnosticEvent,
-  PreviewRuntimeFlowProjectionEvent,
-  PreviewRuntimeFlowResultEvent,
-  PreviewRuntimeFlowTraceEvent,
   PreviewRuntimeHostFrameEmits,
   PreviewRuntimeHostFrameExpose,
   PreviewRuntimeHostFrameProps,
 } from '../../../runtime-host'
-import type {
-  RuntimeHostActionCancelMessage,
-  RuntimeHostActionRequestMessage,
-} from '../../../runtime-host'
+import type { PreviewRuntimeIdentity } from '../../../session'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../../../utils'
 import {
@@ -23,9 +16,7 @@ import {
   RUNTIME_HOST_PROTOCOL_VERSION,
 } from '../../../runtime-host'
 import {
-  createRuntimeHostActionExecutor,
   createRuntimeHostDataExecutor,
-  type RuntimeHostActionIdentity,
 } from '../../../runtime-host'
 
 const props = defineProps<PreviewRuntimeHostFrameProps>()
@@ -40,9 +31,9 @@ let loaded = false
 let parentSequence = 0
 let lastChildSequence = -1
 let submitSequence = 0
-let pendingSubmit: { identity: RuntimeHostActionIdentity, requestId: string, values?: Record<string, unknown> } | undefined
+let pendingSubmit: { identity: PreviewRuntimeIdentity, requestId: string, values?: Record<string, unknown> } | undefined
 
-function currentIdentity(): RuntimeHostActionIdentity {
+function currentIdentity(): PreviewRuntimeIdentity {
   return {
     hostId,
     pageId: props.compilation.snapshotIdentity.pageId,
@@ -51,7 +42,7 @@ function currentIdentity(): RuntimeHostActionIdentity {
   }
 }
 
-function isCurrentIdentity(identity: RuntimeHostActionIdentity): boolean {
+function isCurrentIdentity(identity: PreviewRuntimeIdentity): boolean {
   const current = currentIdentity()
   return identity.hostId === current.hostId
     && identity.projectId === current.projectId
@@ -73,13 +64,6 @@ function postMessage(message: Record<string, unknown>): void {
     ...message,
   }, targetOrigin)
 }
-
-const actionExecutor = createRuntimeHostActionExecutor({
-  defaultDeadlineMs: 10_000,
-  getRegistry: () => props.flowActions,
-  isCurrent: isCurrentIdentity,
-  postResult: message => postMessage(message as Record<string, unknown>),
-})
 
 const dataExecutor = createRuntimeHostDataExecutor({
   getHost: () => props.dataSourceHost,
@@ -128,7 +112,6 @@ function identityEvent<T extends object>(payload: T): T & {
 }
 
 function handleLoad(): void {
-  actionExecutor.cancelAll(new Error('Runtime frame reloaded.'), false)
   dataExecutor.cancelAll(new Error('Runtime frame reloaded.'))
   loaded = true
   lastChildSequence = -1
@@ -155,12 +138,6 @@ function handleMessage(event: MessageEvent<unknown>): void {
       break
     case 'dataCancel':
       dataExecutor.handleCancel(message)
-      break
-    case 'actionRequest':
-      actionExecutor.handleRequest(message as RuntimeHostActionRequestMessage)
-      break
-    case 'actionCancel':
-      actionExecutor.handleCancel(message as RuntimeHostActionCancelMessage)
       break
     case 'ready':
       emit('ready', identityEvent({}))
@@ -194,29 +171,6 @@ function handleMessage(event: MessageEvent<unknown>): void {
     case 'fieldChange':
       emit('fieldChange', identityEvent(cloneWorkbenchJson(message.payload)))
       break
-    case 'runtimeEvent':
-      emit('runtimeEvent', identityEvent(cloneWorkbenchJson(message.payload)))
-      break
-    case 'flowTrace': {
-      const flowTrace: PreviewRuntimeFlowTraceEvent = identityEvent({ trace: cloneWorkbenchJson(message.payload) })
-      emit('flowTrace', flowTrace)
-      break
-    }
-    case 'flowError': {
-      const flowError: PreviewRuntimeFlowDiagnosticEvent = identityEvent({ diagnostic: cloneWorkbenchJson(message.payload) })
-      emit('flowError', flowError)
-      break
-    }
-    case 'flowProjection': {
-      const projection: PreviewRuntimeFlowProjectionEvent = identityEvent({ projection: cloneWorkbenchJson(message.payload) })
-      emit('flowProjection', projection)
-      break
-    }
-    case 'flowResult': {
-      const flowResult: PreviewRuntimeFlowResultEvent = identityEvent({ result: cloneWorkbenchJson(message.payload) })
-      emit('flowResult', flowResult)
-      break
-    }
     case 'error':
       emit('error', new Error(`${message.code}: ${message.message}`))
       break
@@ -229,7 +183,6 @@ watch(
   () => [
     props.adapter,
     props.compilation,
-    props.flowActions,
     props.dataSourceHost,
     props.locale,
     props.namespace,
@@ -237,7 +190,6 @@ watch(
     props.runtimeSessionKey,
   ],
   () => {
-    actionExecutor.cancelAll(new Error('Runtime preview identity changed.'), true)
     syncRuntime()
   },
 )
@@ -251,7 +203,6 @@ watch(
 onMounted(() => window.addEventListener('message', handleMessage))
 onBeforeUnmount(() => {
   pendingSubmit = undefined
-  actionExecutor.dispose()
   dataExecutor.dispose()
   loaded = false
   window.removeEventListener('message', handleMessage)

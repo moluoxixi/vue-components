@@ -24,7 +24,6 @@
     "@moluoxixi/config-form-model": "workspace:*",
     "@moluoxixi/config-form-vue-backend": "workspace:*",
     "@moluoxixi/indexed-db": "workspace:*",
-    "@vue-flow/core": "catalog:",
     "@vue/compiler-sfc": "catalog:dev",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",

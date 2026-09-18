@@ -1,12 +1,4 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type {
-  ConfigFormFlowActionRegistry,
-  ConfigFormFlowDiagnostic,
-  ConfigFormFlowDispatchResult,
-  ConfigFormFlowRunResult,
-  ConfigFormFlowTraceEvent,
-  ConfigFormReactionProjection,
-} from '@moluoxixi/config-form-core'
 import type { ModelJsonValue, PageGraph } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 import {
@@ -14,7 +6,7 @@ import {
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
 import { PAGE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   createPreviewSession,
   createWorkbenchPreviewSession,
@@ -39,7 +31,6 @@ function graph(...fields: FieldFixture[]): PageGraph {
       field: field.field,
       component: field.component ?? 'element.input',
       props: {},
-      events: {},
       bindings: {},
       ...(field.defaultValue === undefined ? {} : { defaultValue: field.defaultValue }),
     }])),
@@ -87,7 +78,6 @@ function compilation(options: {
       form: {},
       rootIds: [],
       nodesById: {},
-      flows: [],
       valueScopes: [],
       scopedFields: [],
     },
@@ -103,7 +93,6 @@ function success(value: PageCompilation): VueRuntimeCompileResult {
       renderer: {
         fields: [],
         plan: {
-          flows: [],
           valueSchema: { valueScopes: [], scopedFields: [] },
           runtime: { variables: [], dataSources: [] },
           optionBindings: [],
@@ -155,63 +144,6 @@ function runtimeIdentity(
     pageId: projection.current.pageId,
     projectId: projection.current.projectId,
     revision: projection.current.revisionKey,
-  }
-}
-
-function projection(values: Record<string, unknown> = {}): ConfigFormReactionProjection<Record<string, unknown>> {
-  return { values, props: {}, states: {}, validate: [] }
-}
-
-function traceEvent(index: number, runId = 'run'): ConfigFormFlowTraceEvent {
-  return {
-    type: 'enter',
-    flowId: 'flow',
-    runId,
-    revision: 1,
-    nodeId: `node-${index}`,
-    timestamp: index,
-  }
-}
-
-function diagnostic(index: number): ConfigFormFlowDiagnostic {
-  return {
-    code: `TEST_${index}`,
-    message: `Diagnostic ${index}`,
-    path: `nodes.${index}`,
-    nodeId: `node-${index}`,
-  }
-}
-
-function runResult(options: {
-  diagnostics?: ConfigFormFlowDiagnostic[]
-  flowProjection?: ConfigFormReactionProjection<Record<string, unknown>>
-  runId?: string
-  trace?: ConfigFormFlowTraceEvent[]
-  values?: Record<string, unknown>
-} = {}): ConfigFormFlowRunResult {
-  return {
-    status: 'success',
-    flowId: 'flow',
-    runId: options.runId ?? 'run',
-    revision: 1,
-    values: options.values ?? {},
-    outputs: {},
-    projection: options.flowProjection ?? projection(),
-    trace: options.trace ?? [],
-    diagnostics: options.diagnostics ?? [],
-  }
-}
-
-function dispatchResult(
-  results: ConfigFormFlowRunResult[],
-  diagnostics: ConfigFormFlowDiagnostic[] = [],
-): ConfigFormFlowDispatchResult {
-  return {
-    status: 'committed',
-    results,
-    valuePatch: { remove: [], set: {} },
-    projectionUpdates: {},
-    diagnostics,
   }
 }
 
@@ -352,74 +284,6 @@ describe('preview session', () => {
     session.dispose()
   })
 
-  it('owns bounded, de-duplicated Flow trace and diagnostic mirrors', () => {
-    const onTrace = vi.fn()
-    const onDiagnostic = vi.fn()
-    const session = createWorkbenchPreviewSession({ onDiagnostic, onTrace })
-    const current = accept(session)!
-    const host = runtimeIdentity(current, 'host-a')
-    session.handleRuntimeMounted(host)
-    const firstTrace = traceEvent(0)
-    const firstDiagnostic = diagnostic(0)
-
-    session.handleFlowTrace({ ...host, trace: firstTrace })
-    session.handleFlowTrace({ ...host, trace: structuredClone(firstTrace) })
-    session.handleFlowError({ ...host, diagnostic: firstDiagnostic })
-    session.handleFlowError({ ...host, diagnostic: structuredClone(firstDiagnostic) })
-    session.handleFlowResult({
-      ...host,
-      result: dispatchResult([
-        runResult({ trace: [firstTrace], diagnostics: [firstDiagnostic] }),
-      ], [firstDiagnostic]),
-    })
-
-    expect(session.trace.value).toEqual([firstTrace])
-    expect(session.flowDiagnostics.value).toEqual([firstDiagnostic])
-    expect(onTrace).toHaveBeenCalledTimes(1)
-    expect(onDiagnostic).toHaveBeenCalledTimes(1)
-
-    for (let index = 1; index <= 205; index += 1) {
-      session.handleFlowTrace({ ...host, trace: traceEvent(index) })
-      session.handleFlowError({ ...host, diagnostic: diagnostic(index) })
-    }
-
-    expect(session.trace.value).toHaveLength(200)
-    expect(session.flowDiagnostics.value).toHaveLength(200)
-    expect(session.trace.value[0]?.nodeId).toBe('node-6')
-    expect(session.trace.value.at(-1)?.nodeId).toBe('node-205')
-    expect(session.flowDiagnostics.value[0]?.code).toBe('TEST_6')
-    expect(session.flowDiagnostics.value.at(-1)?.code).toBe('TEST_205')
-    expect(onTrace).toHaveBeenCalledTimes(206)
-    expect(onDiagnostic).toHaveBeenCalledTimes(206)
-    session.dispose()
-  })
-
-  it('mirrors field and runtime event values without executing the action registry in the parent', () => {
-    const get = vi.fn()
-    const actions: ConfigFormFlowActionRegistry = { get }
-    const session = createPreviewSession({ actions })
-    const host = runtimeIdentity(accept(session)!, 'host-a')
-    session.handleRuntimeMounted(host)
-
-    session.handleFieldChange({ ...host, ...flatFields('name')[0]!, field: 'name', values: { name: 'Field change' } })
-    session.handleRuntimeEvent({
-      ...host,
-      scope: [],
-      nodeId: 'name',
-      event: 'update:modelValue',
-      args: ['Runtime event'],
-      values: { name: 'Runtime event' },
-    })
-
-    expect(session.actions).toBe(actions)
-    expect(get).not.toHaveBeenCalled()
-    expect(session.getRuntimeModel()).toEqual({ name: 'Runtime event' })
-    session.handleFieldChange({ ...host, revision: 'old', ...flatFields('name')[0]!, field: 'name', values: { name: 'Stale change' } })
-    session.handleRuntimeEvent({ ...host, hostId: 'old-host', nodeId: 'name', scope: [], event: 'change', args: [], values: { name: 'Stale event' } })
-    expect(session.getRuntimeModel()).toEqual({ name: 'Runtime event' })
-    session.dispose()
-  })
-
   it('keeps fallback compilation and runtime state from the last ready revision in the same scope', () => {
     const session = createPreviewSession()
     const oldCompilation = compilation()
@@ -470,43 +334,6 @@ describe('preview session', () => {
     session.dispose()
   })
 
-  it('does not let a late Flow result overwrite newer RuntimeHost values', () => {
-    const session = createPreviewSession()
-    const current = accept(session)!
-    const host = runtimeIdentity(current, 'host-a')
-    session.handleRuntimeMounted(host)
-    session.handleRuntimeState({
-      ...host,
-      state: { fields: flatFields('name'), values: { name: 'Newer value' }, touched: [], validation: {} },
-    })
-    const projected = {
-      values: { name: 'Older value' },
-      props: { name: { placeholder: 'Flow projection' } },
-      states: {},
-      validate: [],
-    }
-
-    session.handleFlowResult({
-      ...host,
-      result: dispatchResult([
-        runResult({
-          flowProjection: projected,
-          trace: [traceEvent(1, 'first-run')],
-          values: { name: 'Older value' },
-        }),
-        runResult({ trace: [traceEvent(2, 'second-run')], values: { name: 'Old final value' } }),
-      ]),
-    })
-
-    expect(session.getRuntimeModel()).toEqual({ name: 'Newer value' })
-    expect(session.trace.value.map(item => item.runId)).toEqual(['first-run', 'second-run'])
-    expect(session.flowProjection.value).toEqual(projection())
-
-    session.handleFlowProjection({ ...host, projection: projected })
-    expect(session.flowProjection.value).toEqual(projected)
-    session.dispose()
-  })
-
   it('does not establish a ready fallback from an unmounted or stale host', () => {
     const session = createPreviewSession()
     const current = accept(session)!
@@ -523,7 +350,7 @@ describe('preview session', () => {
     session.dispose()
   })
 
-  it('clears mirror ownership and ignores all future RuntimeHost events when disposed', () => {
+  it('clears mirror ownership and ignores all future RuntimeHost updates when disposed', () => {
     const session = createPreviewSession()
     const current = accept(session)!
     const host = runtimeIdentity(current, 'host-a')
@@ -534,8 +361,6 @@ describe('preview session', () => {
       ...host,
       state: { fields: flatFields('name'), values: { name: 'Ignored' }, touched: ['name'], validation: { name: ['Ignored'] } },
     })
-    session.handleFlowTrace({ ...host, trace: traceEvent(1) })
-    session.handleFlowError({ ...host, diagnostic: diagnostic(1) })
     session.handleSubmit({ ...host, phase: 'success', requestId: 'ignored', values: { name: 'Ignored' } })
     session.handleSubmitResult({
       ...host,
@@ -545,8 +370,6 @@ describe('preview session', () => {
 
     expect(session.projection.value).toBeUndefined()
     expect(session.getRuntimeModel()).toEqual({})
-    expect(session.trace.value).toEqual([])
-    expect(session.flowDiagnostics.value).toEqual([])
     expect(session.lastSubmission.value).toBeUndefined()
   })
   it('rejects unrequested, superseded same-revision, old-host and old-revision submit identities without changing the mirror', () => {

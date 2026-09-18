@@ -1,4 +1,3 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
@@ -9,7 +8,6 @@ import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 export interface DesignerPropertyPanelProps {
   renderer: Component
   graph: PageGraph
-  flows?: ConfigFormFlow[]
   node?: PageNode
   nodes?: PageNode[]
   material?: DesignerMaterialDefinition
@@ -18,7 +16,6 @@ export interface DesignerPropertyPanelProps {
   getComponentDefinition?: (component: string) => ComponentContract | undefined
   diagnostics: DesignerDiagnostic[]
   breakpoint?: ConfigFormBreakpoint
-  validatorOptions?: string[]
   components?: ConfigFormComponentRegistry
   propertyControls?: DesignerPropertyControlRegistry
   readonly?: boolean

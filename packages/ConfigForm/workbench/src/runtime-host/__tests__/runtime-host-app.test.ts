@@ -65,7 +65,6 @@ vi.mock('@moluoxixi/config-form-vue-backend', () => ({
       renderer: {
         fields: [],
         plan: {
-          flows: [],
           valueSchema: { valueScopes: [], scopedFields: [] },
           runtime: { variables: [], dataSources: [] },
           optionBindings: [],
@@ -125,7 +124,6 @@ function compilation(pageId = 'home'): PageCompilation {
       form: {},
       rootIds: [],
       nodesById: {},
-      flows: [],
       valueScopes: [],
       scopedFields: [{ nodeId: 'name', field: 'name' }],
     },
@@ -244,7 +242,7 @@ describe('runtime host app', () => {
     postMessage.mockRestore()
   })
 
-  it('forwards field changes and component events through the child protocol', async () => {
+  it('forwards field changes through the child protocol', async () => {
     const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
     const wrapper = mount(RuntimeHostApp)
     dispatchParentMessage({
@@ -264,7 +262,6 @@ describe('runtime host app', () => {
     const values = { name: 'Grace' }
 
     renderer.vm.$emit('fieldChange', { field: 'name', values })
-    renderer.vm.$emit('runtimeEvent', { event: 'click', args: [{ value: 1 }], metadata: { nodeId: 'submit' } })
     values.name = 'Changed after emit'
     await nextTick()
 
@@ -272,10 +269,6 @@ describe('runtime host app', () => {
       expect.objectContaining({
         type: 'fieldChange',
         payload: { ...flatFields('name')[0], field: 'name', values: { name: 'Grace' } },
-      }),
-      expect.objectContaining({
-        type: 'runtimeEvent',
-        payload: { event: 'click', nodeId: 'submit', scope: [], args: [{ value: 1 }], values: { name: 'Ada' } },
       }),
     ]))
     wrapper.unmount()

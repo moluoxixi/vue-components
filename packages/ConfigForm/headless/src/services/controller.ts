@@ -466,8 +466,8 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     projection = { ...projection, values: cloneControllerValue(next) }
     reactionProjection = projection
     optionsModelWrite(next)
-    // A commit that leaves the values unchanged (a flow transaction re-committing the
-    // touched roots, for example) must not invalidate work in flight: doing so silently
+    // A commit that leaves the values unchanged (a scoped update re-committing touched
+    // roots, for example) must not invalidate work in flight: doing so silently
     // discarded validation that had just produced issues. Comparing is only worth its
     // cost while something is actually in flight; otherwise keep the plain invalidation.
     if (!validation.getValidating() || !equalControllerValues(previousValues, next))

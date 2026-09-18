@@ -1,6 +1,4 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
 import { applyProjectTransaction } from '@moluoxixi/config-form-model'
 import { IndexDBStorage } from '@moluoxixi/indexed-db'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -43,20 +41,6 @@ function rename(document: ProjectDocument, name: string): ProjectDocument {
   if (!result.success)
     throw new Error(result.diagnostics[0]?.message)
   return result.document
-}
-
-function mountedFlow(): ConfigFormFlow {
-  return {
-    version: CONFIG_FORM_FLOW_VERSION,
-    id: 'mounted',
-    name: 'Mounted',
-    trigger: { kind: 'page.mount' },
-    nodes: [
-      { id: 'trigger', type: 'trigger' },
-      { id: 'success', type: 'success' },
-    ],
-    edges: [{ id: 'mounted-edge', source: 'trigger', target: 'success' }],
-  }
 }
 
 describe('indexedDBProjectRepository', () => {
@@ -210,41 +194,8 @@ describe('indexedDBProjectRepository', () => {
     expect(committed.project.entityRevisions.pages).toEqual(created.entityRevisions.pages)
   })
 
-  it('persists page-owned flows in the same revisioned Page entity as the visual graph', async () => {
-    const dbName = `project-document-page-flow-${sequence++}`
-    const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
-    closeables.push(repository)
-    await repository.open()
-    const initial = projectDocument()
-    const created = await repository.create({ document: initial })
-    const withFlow = applyProjectTransaction(initial, {
-      id: 'add-page-flow',
-      label: 'Add page flow',
-      operations: [{
-        type: 'flow.add',
-        pageId: initial.homePageId,
-        flow: mountedFlow(),
-      }],
-    })
-    if (!withFlow.success)
-      throw new Error(withFlow.diagnostics[0]?.message)
-
-    const committed = await repository.commit({
-      commandId: 'save-page-flow',
-      document: withFlow.document,
-      expectedRepositoryRevision: created.repositoryRevision,
-      id: initial.id,
-      metadata: { source: 'autosave' },
-    })
-    const reloaded = await repository.get(initial.id)
-
-    expect(committed.project.entityRevisions.pages.home).toBe(committed.project.repositoryRevision)
-    expect(reloaded?.document.pagesById.home?.flows?.map(flow => flow.id)).toEqual(['mounted'])
-    expect(reloaded?.document.pagesById.home?.graph).not.toHaveProperty('flows')
-  })
-
   it('rejects a persisted document from an unsupported schema version', async () => {
-    const dbName = `project-document-v3-flow-${sequence++}`
+    const dbName = `project-document-old-schema-${sequence++}`
     const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
     closeables.push(repository)
     await repository.open()
@@ -254,12 +205,7 @@ describe('indexedDBProjectRepository', () => {
     const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
     closeables.push(storage)
     const keys = await storage.keys()
-    const pageKey = keys.find(key => key.includes(':page:'))!
     const manifestKey = keys.find(key => key.endsWith(':manifest'))!
-    const entity = await storage.getItem<Record<string, unknown>>(pageKey) as {
-      checksum: string
-      value: ProjectDocument['pagesById'][string] & { graph: { flows?: ConfigFormFlow[] } }
-    }
     const manifest = await storage.getItem<Record<string, unknown>>(manifestKey) as {
       checksum: string
       receipts: unknown[]
@@ -272,11 +218,7 @@ describe('indexedDBProjectRepository', () => {
       version: number
     }
 
-    entity.value.graph.flows = [mountedFlow()]
-    delete entity.value.flows
-    entity.checksum = semanticChecksum(entity.value)
-    manifest.snapshot.project.version = 3
-    manifest.snapshot.pages.home!.checksum = entity.checksum
+    manifest.snapshot.project.version = 4
     manifest.snapshot.checksum = semanticChecksum({
       pages: manifest.snapshot.pages,
       project: manifest.snapshot.project,
@@ -287,7 +229,6 @@ describe('indexedDBProjectRepository', () => {
       snapshot: manifest.snapshot,
       version: manifest.version,
     })
-    await storage.setItem(pageKey, entity)
     await storage.setItem(manifestKey, manifest)
 
     await expect(repository.get(initial.id)).rejects.toMatchObject({ code: 'PROJECT_REPOSITORY_CORRUPT' })
@@ -357,7 +298,7 @@ describe('indexedDBProjectRepository', () => {
     expect(await storage.getItem<Record<string, unknown>>(manifestKey)).toEqual(manifest)
     const pageKey = (await storage.keys()).find(key => key.includes(':page:'))!
     expect(await storage.getItem<Record<string, unknown>>(pageKey)).toMatchObject({
-      version: 2,
+      version: 3,
     })
   })
 

@@ -3,8 +3,8 @@
 ## 1. Scope / Trigger
 
 Apply this contract when changing the ConfigForm Model package, Workbench state,
-Designer commands, project persistence, history, Preview projection, Flow
-editing, or Source/Config export.
+Designer commands, project persistence, history, Preview projection, or
+Source/Config export.
 
 `ProjectDocument` is the only persisted business content model in the Workbench.
 `ProjectSnapshot` is its immutable editor envelope. `PersistedProjectEnvelope`
@@ -99,7 +99,7 @@ type ProjectStoredConfigRemovalOperation = {
   type: 'node.config.remove'
   pageId: PageId
   nodeId: NodeId
-  property: 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn'
+  property: 'bindings' | 'conditions' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
   key?: string
 }
 
@@ -112,7 +112,7 @@ interface AppliedProjectTransaction {
 }
 
 interface PageGraph {
-  version: 2
+  version: 3
   props: ModelJsonObject
   form: FormSettings
   root: SlotItem[]
@@ -124,7 +124,6 @@ interface ProjectPage {
   name: string
   route: string
   graph: PageGraph
-  flows?: ConfigFormFlow[]
 }
 
 interface SlotItem {
@@ -152,7 +151,7 @@ interface SlotItem {
   inverse, never an unresolved Command or a full project deep copy.
 - A multi-action Command may temporarily violate cross-entity references while
   its actions are being expanded. The complete Operation batch must pass final
-  PageGraph, Registry, Flow, and schema validation before publication. Failure
+  PageGraph, Registry, and schema validation before publication. Failure
   preserves the original snapshot, history, and revision.
 - One accepted Command produces at most one editVersion and one history
   entry. Merge keys may combine adjacent history entries without changing
@@ -163,10 +162,11 @@ interface SlotItem {
   `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
   postMessage, Worker, and persisted command logs discard it.
 - Registry-stale stored configuration uses the narrower
-  `node.config.remove` repair operation. `events`, `bindings`, and `conditions`
-  require one safe non-empty `key`; `validation` and `validateOn` reject a key
-  and require a field node. The operation carries no replacement value and an
-  absent target is a semantic no-op.
+  `node.config.remove` repair operation. `bindings` and `conditions` require one
+  safe non-empty `key`; `validation`, `validateOn`, `optionSource`, and
+  `valueScope` reject a key and require the matching field/layout node kind. The
+  operation carries no replacement value and an absent target is a semantic
+  no-op. This low-level repair contract is not a default Designer authoring UI.
 - A transaction containing `node.config.remove` contains only that operation
   type and has no `mergeKey`. Forward application still validates the current
   Registry lock and the changed Page schema, while deliberately allowing
@@ -278,7 +278,7 @@ interface SlotItem {
   Export capture/refresh. Ordinary Design edits invalidate the pinned Export
   identity but do not compile other pages or rebuild generated files.
 - Persistence scheduling is owned by one `ProjectPersistenceSession`, not by
-  Inspector, Designer, Flow, or Pages. It coalesces edits with an 800ms idle /
+  Inspector, Designer, Preview, or Pages. It coalesces edits with an 800ms idle /
   5s maximum autosave policy and a 250ms idle / 1s maximum durable recovery
   draft policy. A save captures one edit identity; edits arriving while it is
   in flight remain pending for the next save. Draft coverage is tracked
@@ -315,27 +315,19 @@ interface SlotItem {
   origin, protocol version, session, and payload shape before accepting a
   message. Replayed, stale-revision, or out-of-order messages are ignored.
 - Structural RuntimeHost sync and transient state sync are separate. Model or
-  Flow projection changes send only values/reaction state; they must not clone
+  reaction projection changes send only values/reaction state; they must not clone
   or recompile the complete `PageCompilation`. A same-page revision keeps one
-  runtime session and does not emit `page.mount` again.
+  runtime session.
 - Each RuntimeHost realm loads provider CSS and owns its Teleport targets.
-  Workbench theme CSS must not enter the iframe. Component events crossing the
-  bridge carry registered `{ nodeId, event, args, field?, values }` with bounded
-  JSON argument snapshots. Runtime component instances and live DOM events stay
-  inside the realm; Preview installs values before dispatching the captured args.
-- In the Workbench, the selected node's Registry events are authored through a
-  single Inspector-to-Flow path. The Inspector emits the exact stable
-  `{ nodeId, event }` target, the Flow dialog selects an existing matching Flow
-  or creates one from that event source, and all edits still commit through
-  Project Transactions. Workbench does not expose a second action-string event
-  model beside Flow.
-- Form-level Flow events are authored from the no-selection Form property panel.
-  It exposes exactly `page.mount` (shown as Form load) and `form.submit` (shown
-  as Form submit); each row opens a Flow dialog locked to that trigger. A Flow
-  dialog never offers a trigger switch or a page-wide Flow list.
-- The current Flow trigger union is `page.mount | form.submit | component.event`;
-  `field.change` is rejected as an unsupported historical shape at current
-  schema/compiler boundaries. Do not migrate, delete, or execute it.
+  Workbench theme CSS must not enter the iframe. Component listener functions,
+  listener names, and argument snapshots never cross the bridge. Preview may
+  transport form values, field-change state, validation, submit results, Data
+  requests, and design geometry through their explicit protocols; none is an
+  event-authoring or action-dispatch channel.
+- Workbench has no component-event authoring path, action registry, handler
+  registry, or event forwarding RPC. Host-only `props.onX` functions
+  are composed in the consuming Vue/TypeScript application and are outside
+  ProjectDocument, Preview, and Source.
 - Design Runtime nodes register geometry by stable `nodeId`; ancestry path and
   slot are mutable traversal metadata, not registration identity. Candidate
   moves between nested slots must update the registration without allowing an
@@ -359,8 +351,8 @@ interface SlotItem {
 - Design, Pages, RuntimeHost, and Export consume `ProjectDocument`,
   `ProjectSnapshot`, `PageGraph`, or fixed compiler artifacts directly. There
   is no page-tree projection or project wrapper between those boundaries.
-- Runtime form values, touched state, validation, Flow queues, outputs, traces,
-  abort signals, panel state, selection, drag candidates, and Monaco models are
+- Runtime form values, touched state, validation, Data requests/cancellation,
+  panel state, selection, drag candidates, and Monaco models are
   transient session/UI state.
 - Source and Config are read-only. They pin one immutable export revision;
   later design edits mark the session stale rather than partially replacing
@@ -401,7 +393,7 @@ interface SlotItem {
   their coordinate space while iframe geometry is sampled. Runtime content and
   parent stage rectangles must be comparable without timing waits.
 - Canvas camera, selection, resize, drag candidate/visual, Registry specimens,
-  schema-driven setters, Flow canvas, RuntimeHost bridges, and Monaco models
+  schema-driven setters, RuntimeHost bridges, and Monaco models
   remain domain-owned. Replacing them with a general UI component is allowed
   only when Project Command ownership, Runtime geometry, and provider isolation
   remain unchanged; generic `BaseButton` / `BaseTabs` abstraction layers are
@@ -409,11 +401,10 @@ interface SlotItem {
 
 ## 5. Repository Boundary
 
-- Repository storage may split Manifest, Page, and Resource entities. A
-  `ConfigFormFlow` is owned by one `ProjectPage` as a sibling of its visual
-  `PageGraph`, and both persist inside the same Page entity; project-wide
-  automation requires a different future contract.
-  The manifest references exact revisioned keys and checksums.
+- Repository storage may split Manifest, Page, and Resource entities. A Page
+  entity stores the current `ProjectPage` and its `PageGraph`; it does not store
+  action graphs or event metadata. The manifest references exact revisioned keys
+  and checksums.
 - `load` publishes only a complete validated `PersistedProjectEnvelope`. Missing entities,
   checksum drift, or mismatched project IDs return
   `PROJECT_REPOSITORY_CORRUPT`.
@@ -421,7 +412,7 @@ interface SlotItem {
   atomic storage transaction.
 - Repository open/load validates the current schema version and Registry lock.
   Unknown versions, records from other namespaces, incomplete entities, and
-  ambiguous Flow ownership fail closed with `PROJECT_REPOSITORY_CORRUPT`.
+  ambiguous entity ownership fail closed with `PROJECT_REPOSITORY_CORRUPT`.
   Load never scans, rewrites, or deletes the rejected source record.
 
 ## 6. Error Matrix
@@ -451,7 +442,7 @@ interface SlotItem {
   inverse, command expansion, multi-action final validation, merge, undo/redo,
   no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
 - Model repair tests start from a schema-valid document with multiple unrelated
-  Registry-stale event/binding keys, prove an ordinary record rewrite fails,
+  Registry-stale binding/condition keys, prove an ordinary record rewrite fails,
   remove only the named target, preserve every sibling key, and prove one
   Undo/Redo round trip restores and removes the exact structured value.
 - Designer and Workbench tests prove removal intent is absent when matching
@@ -493,8 +484,8 @@ interface SlotItem {
   component remains interactive in Preview. These checks must run for every
   supported UI adapter.
 - RuntimeHost tests structured-clone a real `PageCompilation`, reject invalid
-  source/origin/session/version/payloads, exercise model/submit/field/component
-  events through the iframe, and prove provider Teleports plus Runtime computed
+  source/origin/session/version/payloads, exercise model/submit/field state and
+  Data request protocols through the iframe, and prove provider Teleports plus Runtime computed
   styles stay inside the iframe across Workbench Light/Dark changes. Design
   tests additionally cover geometry sync, nested hit testing, pointer
   down/move/up/cancel, stable registration across slot moves, and candidate /
@@ -502,11 +493,11 @@ interface SlotItem {
 
 ### 7.1 Good / Base / Bad Cases
 
-- Good: delete `events.legacy.remove` while `events.legacy.keep` and an unknown
-  binding remain, then Undo restores the exact nested action payload.
+- Good: delete `bindings.legacy.remove` while `bindings.legacy.keep` and an
+  unknown condition remain, then Undo restores the exact nested value.
 - Base: delete an already absent supported path; publish no revision or history
   entry.
-- Bad: rewrite the full `events` record, mix repair with `page.rename`, attach a
+- Bad: rewrite the full `bindings` record, mix repair with `page.rename`, attach a
   merge key, or expose Registry-validation bypass as a UI option.
 
 ## 8. Wrong vs Correct
@@ -550,14 +541,14 @@ projectEditorSession.execute({
       type: 'node.config.remove',
       pageId,
       nodeId,
-      property: 'events',
-      key: 'legacy.change',
+      property: 'bindings',
+      key: 'legacy.value',
     }],
   }],
 })
 ```
 
-Wrong: copy the remaining stale record into `node.events`, mix the repair with
+Wrong: copy the remaining stale record into `node.bindings`, mix the repair with
 ordinary edits, or add a replacement value to `node.config.remove`.
 
 ## 9. Readonly Export Snapshot Contract
@@ -607,8 +598,10 @@ function isExportSnapshotStale(
   `ExportFileSet`. Binary files are never coerced through a text getter.
 - Config source preserves `ProjectDocument.version`, `registryLock`, page
   graph version/props, complete `SlotItem.placement`, node authoring metadata,
-  and Flow editor positions. Runtime-compatible numeric `span` may also be
-  promoted, but it does not replace relation metadata.
+  static props, bindings, validation, reactions, and Data configuration.
+  Runtime-compatible numeric `span` may also be promoted, but it does not
+  replace relation metadata. Generated files contain no handler stub, action
+  binding, event metadata, or action plan.
 - `__proto__`, `constructor`, and `prototype` are rejected by one shared Config
   object-key guard in both generation and current Model parsing.
 - Object URLs are revoked on a later task after the anchor click. Synchronous
@@ -657,7 +650,8 @@ duplicate public names, and legacy/deprecated/migration/compat entry points.
 - Unit: text/binary Blob MIME and bytes, requested filename, and deferred URL
   revocation are exact.
 - Unit: Config source preserves graph props, nested placement, Registry lock,
-  node metadata, and Flow positions; Babel parses every generated file.
+  node metadata, bindings, validation, reactions, and Data configuration while
+  omitting handlers/event metadata/action plans; Babel parses every generated file.
 - Unit: all three unsafe keys fail in nested objects, `defineField`, and value
   model generation.
 - Integration: Element Plus and Ant Design Vue standalone projects install,
@@ -689,7 +683,7 @@ downloadWorkspaceFile({
 ### 10.1 Scope / Trigger
 
 Apply this contract when changing RuntimeHost messages, Preview lifecycle,
-Renderer error/meta events, Preview Flow dispatch, or state restoration across
+Renderer error/meta notifications, Data request transport, or state restoration across
 an iframe reload, adapter load, project/page switch, or Design revision.
 
 ### 10.2 Signatures
@@ -697,7 +691,7 @@ an iframe reload, adapter load, project/page switch, or Design revision.
 ```ts
 interface RuntimeHostMessageBase {
   channel: 'mx-config-form-runtime-host'
-  version: 4
+  version: 6
   hostId: string
   projectId: string
   pageId: string
@@ -731,8 +725,8 @@ interface PreviewRuntimeIdentity {
   one atomic runtime snapshot; values, touched, and validation cannot be sent
   or restored independently.
 - Runtime submit emits one atomic `submitResult` payload with `success` or
-  `invalid` status. Only a successful result is followed by the semantic
-  `submit` event used by Flow; validation failure never dispatches `form.submit`.
+  `invalid` status. A successful form-level submit notification is separate from
+  the result snapshot; neither message dispatches an action or component event.
 - Adapter loading and Runtime compilation are asynchronous. The iframe retains
   the state payload with the highest accepted sequence and, after the Renderer
   mounts, restores that payload rather than the older payload captured by the
@@ -743,13 +737,13 @@ interface PreviewRuntimeIdentity {
 - Restoring values, touched, or validation that are already equal is a no-op.
   In particular, do not call `setValues` or `setErrors` for an echoed snapshot,
   because both invalidate in-flight validation generations.
-- `PreviewSession` owns values, touched, validation, Flow projection, Abort
-  lifecycle, and a bounded 200-event trace. `field.change` writes the event's
-  values before dispatch so Flow input resolution observes the new field value.
+- `PreviewSession` owns values, touched, validation, submission state, and
+  compatible field-contract reconciliation. Field changes install their latest
+  values before publishing the explicit form-state notification.
 - On a same-scope revision, Preview keeps state only for fields whose
   `nodeId + component + contractVersion + fingerprint` contract is unchanged.
   Project, page, adapter, removed field, or changed contract resets the affected
-  state. Runtime events from a stale host or revision are ignored.
+  state. Runtime messages from a stale host or revision are ignored.
 - `PreviewSession.lastSubmission` is transient, carries the accepted revision
   key, and is cleared on scope changes, revision changes, compile failures, or
   explicit user clearing. Clearing the result never resets Preview values.
@@ -764,8 +758,8 @@ interface PreviewRuntimeIdentity {
 | Older restore finishes after newer restore starts | Older restore is a no-op; callback suppression remains active |
 | Parent echoes an identical snapshot | No Renderer value/error/meta mutation |
 | Field contract changes at the same page | Reset that field to its new default and remove touched/errors |
-| Preview page/project/adapter changes | Reset scope state, trace, mount identity, Flow projection, and async work |
-| `field.change` and Flow run in the same turn | Flow reads the event payload's latest values |
+| Preview page/project/adapter changes | Reset scope state, submission, mount identity, and async work |
+| Field change publishes from the iframe | Parent observes the already-updated values; no component-event payload is forwarded |
 
 ### 10.5 Good / Base / Bad Cases
 
@@ -779,7 +773,7 @@ interface PreviewRuntimeIdentity {
 
 ### 10.6 Tests Required
 
-- Protocol unit tests validate the complete v4 identity, runtime-state and
+- Protocol unit tests validate the complete v6 identity, runtime-state and
   submit-result payloads,
   stale revision, replay, source, and origin.
 - RuntimeHost component tests control adapter resolution and assert a state that
@@ -787,12 +781,12 @@ interface PreviewRuntimeIdentity {
 - RuntimeHost tests send the same state again and assert `setTouched` and
   `setErrors` are not called a second time.
 - PreviewSession tests cover compatible reconciliation, contract changes,
-  project/page/adapter reset, stale hosts, bounded trace, and field-change value
-  ordering before Flow input resolution.
+  project/page/adapter reset, stale hosts, submission cleanup, and field-change
+  value ordering.
 - Headless tests prove `setErrors` invalidates older async validation; Renderer
   tests prove the restored snapshot emits `errorsChange`.
-- Browser tests cover interactive Preview input, close/reopen, component events,
-  validation, submit, page switch, and a clean warning/error console.
+- Browser tests cover interactive Preview input, close/reopen, field state,
+  validation, submit, Data requests, page switch, and a clean warning/error console.
 
 ### 10.7 Wrong vs Correct
 
@@ -1047,10 +1041,9 @@ createPageFromTemplate(
   not delete or roll back the active project.
 - Template instantiation uses one shared pure identity-remap function. Default
   identities retain a readable source prefix and add a UUID. Node, edge, and
-  embedded reaction mappings are keyed by their owning Flow and flow-node
-  scope, so two Flows may legally reuse local ids without collisions. Only
-  formally typed identity references are rewritten; opaque action config is
-  never searched or replaced heuristically.
+  reaction identities are remapped from their formal owning scopes. Only
+  typed identity references are rewritten; opaque business metadata is never
+  searched or replaced heuristically.
 - Provider seeds and instantiated projects/pages are defensively cloned. No
   mutable object may be shared between the provider, preview candidate,
   created instance, or another instantiation.
@@ -1086,8 +1079,8 @@ createPageFromTemplate(
   provider failure, stable sorting, eligibility diagnostics, and seed
   immutability. Boundary tests accept exactly 256 Provider entries and 4096
   seed array items, then reject 257/4097 before deep traversal.
-- Identity tests cover two instances plus two Flows that reuse node, edge, and
-  embedded reaction ids, and verify every typed reference after remapping.
+- Identity tests cover two instances that reuse node and reaction ids, and
+  verify every typed reference after remapping.
 - Component tests cover search/filter/empty recovery, roving selection,
   mobile Details-to-Catalog Escape, focus restoration, ineligibility, and
   stale preview completion order.
@@ -1150,7 +1143,7 @@ preflightProjectDocument(
 
 createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean>
 
-const PAGE_TRANSFER_VERSION = 1 as const
+const PAGE_TRANSFER_VERSION = 2 as const
 
 interface PageTransferDocument {
   kind: 'config-form-page'
@@ -1170,10 +1163,10 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
   `PageTransferDocument` only. Source, bare ProjectPage/PageGraph, Vue, ZIP,
   HTML, JavaScript, Workspace Application,
   old, missing, future, and unknown versions fail closed without shape guessing.
-- Project import accepts exactly Project v4. Page import requires
+- Project import accepts exactly Project v5. Page import requires
   `kind: 'config-form-page'`, current Page transfer `version`, a current
-  Registry subset lock, and a `ProjectPage` whose graph is PageGraph v2. Project v3,
-  Page Model v1, and every other non-current shape are rejected; no import
+  Registry subset lock, and a `ProjectPage` whose graph is PageGraph v3. Project v4,
+  Page transfer v1, PageGraph v2, and every other non-current shape are rejected; no import
   migration record, migration UI, migration parser, or migration callback exists.
 - Processing order is source bytes → `JSON.parse` → iterative structure/key
   guard → exact version gate → current schema → exact adapter/Registry validation →
@@ -1195,8 +1188,8 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
   subset. Adapter/version and each component contract/fingerprint must exactly
   match both the active Registry and corresponding entries in the target
   project lock. Extra or missing subset keys are invalid.
-- Imported project/page/node/field/reaction/Flow/Flow-node/Flow-edge identities
-  are fresh. Only typed references are rewritten. Project resources keep ids,
+- Imported project/page/node/field/reaction identities are fresh. Only typed
+  references are rewritten. Project resources keep ids,
   URIs, integrity, and opaque metadata inside the new project namespace.
 - Fresh identities remain within the Model identifier length limit even when a
   valid source id already occupies the full limit. Production identity
@@ -1214,7 +1207,7 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
   download must not select different revisions. If the selected current Page
   is absent from that pinned snapshot, show an unavailable state and disable
   copy/download rather than exporting an empty file.
-- Current-page JSON export emits `PageTransferDocument` with `version: 1`, never a bare
+- Current-page JSON export emits `PageTransferDocument` with `version: 2`, never a bare
   `ProjectPage`. It derives the Registry subset lock from the same pinned
   project snapshot and selected page used for JSON, Tree, copy, and download.
 
@@ -1223,7 +1216,7 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
 | Condition | Required result |
 | --- | --- |
 | Source exceeds a byte/structure budget or contains an unsafe key | Stable import diagnostic with an escaped JSON path; no adapter load or preview |
-| Project v3 or Page Model v1 is supplied | Reject with `IMPORT_VERSION_UNSUPPORTED` at the version field; no preview or create action |
+| Project v4, Page transfer v1, or PageGraph v2 is supplied | Reject with `IMPORT_VERSION_UNSUPPORTED` at the version field; no preview or create action |
 | Bare ProjectPage/PageGraph or old/future Page transfer schema is supplied | Reject with format/version diagnostic; do not infer or wrap it |
 | Current PageGraph contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
 | Opaque metadata contains a property named `nodesById` | Preserve it without adding to the canonical node count |
@@ -1237,7 +1230,7 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
 ### 13.5 Good / Base / Bad Cases
 
 - Good: analyze a current Page transfer envelope, exact-match its Registry
-  subset, validate the PageGraph v2 4096-node budget, remap bounded identities,
+  subset, validate the PageGraph v3 4096-node budget, remap bounded identities,
   compile the full host candidate, then submit one `page.add` Command.
 - Base: opaque resource metadata contains strings and keys that resemble Model
   identities; preserve it unchanged and exclude it from page/node budgets.

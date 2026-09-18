@@ -22,7 +22,7 @@ import { assertProjectDocument, ProjectRepositoryError } from '@moluoxixi/config
 import { projectManifestKey, projectPageKey, projectResourceKey } from './indexed-db-project-keys'
 
 const PROJECT_MANIFEST_VERSION = 3 as const
-const PROJECT_ENTITY_CODEC_VERSION = 2 as const
+const PROJECT_ENTITY_CODEC_VERSION = 3 as const
 
 export function semanticChecksum(value: unknown): string {
   return `fnv1a:${getConfigFormJsonSemanticHash(value)}`

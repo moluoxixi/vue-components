@@ -1,4 +1,4 @@
-import type { ConfigFormFlowHttpRequestInput, ConfigFormFlowHttpRequestOutput } from '@moluoxixi/config-form-core'
+import type { ConfigFormDataSourceHttpRequestInput, ConfigFormDataSourceHttpRequestOutput } from '@moluoxixi/config-form-core'
 import type { RuntimeHostDataDiagnostic } from '../types/data-rpc'
 import { isRuntimeHostJson } from './json'
 
@@ -8,7 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function isRuntimeHostDataInput(value: unknown): value is ConfigFormFlowHttpRequestInput {
+export function isRuntimeHostDataInput(value: unknown): value is ConfigFormDataSourceHttpRequestInput {
   if (!isRecord(value) || !isRuntimeHostJson(value) || !Object.keys(value).every(key => REQUEST_KEYS.has(key))
     || typeof value.url !== 'string' || !value.url.trim()) {
     return false
@@ -27,7 +27,7 @@ export function isRuntimeHostDataInput(value: unknown): value is ConfigFormFlowH
       typeof item === 'string' || typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item)))))
 }
 
-export function isRuntimeHostDataOutput(value: unknown): value is ConfigFormFlowHttpRequestOutput {
+export function isRuntimeHostDataOutput(value: unknown): value is ConfigFormDataSourceHttpRequestOutput {
   return isRecord(value) && isRuntimeHostJson(value)
     && Object.keys(value).every(key => ['status', 'ok', 'data'].includes(key))
     && Number.isSafeInteger(value.status) && Number(value.status) >= 0 && Number(value.status) <= 599

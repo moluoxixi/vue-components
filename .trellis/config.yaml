@@ -191,6 +191,8 @@ packages:
     path: packages/zod3-to-rule
   config-form-antd-vue:
     path: packages/ConfigForm/antd
+  config-form-compiler:
+    path: packages/ConfigForm/compiler
   config-form-core:
     path: packages/ConfigForm/core
   config-form-designer:
@@ -205,6 +207,8 @@ packages:
     path: packages/ConfigForm/element
   config-form-headless:
     path: packages/ConfigForm/headless
+  config-form-model:
+    path: packages/ConfigForm/model
   config-form-workbench:
     path: packages/ConfigForm/workbench
   playground:
@@ -215,6 +219,8 @@ packages:
     path: packages/ConfigForm/plugin-element-plus
   config-form:
     path: packages/ConfigForm/runtime
+  config-form-vue-backend:
+    path: packages/ConfigForm/vue-backend
   components-playground:
     path: playgrounds/components-playground
   vue-playground:

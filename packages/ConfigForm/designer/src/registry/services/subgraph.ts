@@ -9,7 +9,6 @@ function normalizeNode(node: PageNode | Record<string, unknown>): PageNode {
   return {
     ...structuredClone(node),
     props: structuredClone((node.props as PageNode['props'] | undefined) ?? {}),
-    events: structuredClone((node.events as PageNode['events'] | undefined) ?? {}),
     bindings: structuredClone((node.bindings as PageNode['bindings'] | undefined) ?? {}),
   } as PageNode
 }

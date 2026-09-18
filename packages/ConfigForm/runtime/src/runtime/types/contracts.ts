@@ -1,6 +1,5 @@
 import type {
   ConfigFormDataSourceState,
-  ConfigFormFlowExecutionPlan,
   ConfigFormPageRuntimeConfiguration,
   ConfigFormScopedFieldDefinition,
   ConfigFormScopePath,
@@ -41,7 +40,6 @@ export interface ConfigFormPageRuntimeOptionBinding {
  * Host capabilities such as action/source implementations stay outside this data plan.
  */
 export interface ConfigFormPageRuntimePlan {
-  readonly flows: readonly ConfigFormFlowExecutionPlan[]
   readonly valueSchema: ConfigFormPageRuntimeValueSchema
   readonly runtime: Readonly<ConfigFormPageRuntimeConfiguration>
   readonly optionBindings: readonly ConfigFormPageRuntimeOptionBinding[]

@@ -71,13 +71,14 @@ The export facade keeps generation order and error semantics stable while privat
 - `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
 - `source-page.ts` generates one page's Vue source and delegates layout serialization, Registry lookup, portability
   validation, and dependency collection.
-- `source-portability.ts` recursively validates every nested node, event, binding, action, and source reference before
+- `source-portability.ts` recursively validates every nested node, static prop, binding, and source reference before
   source generation.
 - `source-libraries.ts` recursively collects libraries and rejects conflicting declarations for the same package.
 - `source-registry.ts` centralizes component lookup and retains the public export error wording.
 
-Regression coverage must include invalid nested components/events/bindings/actions/sources, dependencies that appear only
-in child nodes, nested library conflicts, canonical Source snapshots, and byte-stable generated project/page files.
+Regression coverage must include invalid nested components/props/bindings/sources, dependencies that appear only in
+child nodes, nested library conflicts, canonical Source snapshots, generated Data Source execution, and byte-stable
+generated project/page files. Source must not emit handler stubs, action bindings, event metadata, or Flow plans.
 
 ---
 
@@ -192,7 +193,7 @@ function chooseMobileAction(action: MobileAction): void {
 
 Required regression coverage:
 
-- Choosing Flow, Page Manager, or another dialog workspace from the mobile action menu focuses the stable menu trigger
+- Choosing Page Manager, Source, or another dialog workspace from the mobile action menu focuses the stable menu trigger
   before the host event is emitted.
 - Closing the resulting dialog restores focus to that trigger, not `body` or an unmounted menu item.
 - Escape and pointer-close paths share the same restoration behavior.
@@ -202,8 +203,7 @@ Required regression coverage:
 ## Element Plus Inspector Text Controls
 
 Workbench inspector fields that edit user-facing text or JSON must use the
-Element Plus `ElInput` component, including the Flow inspector's event-flow
-name, node ID, action ref, and node config fields. Do not add a parallel native
+Element Plus `ElInput` component. Do not add a parallel native
 `input`/`textarea` border or focus rule for those controls: Element Plus owns
 the wrapper, focus state, and `--el-input-*` theme tokens. Feature-specific
 text-area behavior belongs on `ElInput` props or the component's inner
@@ -211,11 +211,10 @@ text-area behavior belongs on `ElInput` props or the component's inner
 
 Required regression coverage:
 
-- Flow inspector text fields render the Element Plus wrapper and inner control.
-- The event-flow name uses the same wrapper/focus structure as other Workbench
-  inspector text controls in both light and dark themes.
-- No feature stylesheet targets native Flow inspector text controls with a
-  competing border or focus treatment.
+- Inspector text/JSON fields render the Element Plus wrapper and inner control.
+- The wrapper/focus structure remains consistent in both light and dark themes.
+- No feature stylesheet targets native Inspector text controls with a competing
+  border or focus treatment.
 
 ---
 
@@ -250,7 +249,7 @@ Required regression coverage:
 
 Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses
 `@axe-core/playwright` with WCAG 2 A/AA and WCAG 2.1 A/AA tags against the initial template dialog, desktop dark and
-light themes, the 390px Inspector, Flow dialog, and Source export dialog. Do not disable a rule or exclude a component
+light themes, the 390px Inspector, Preview dialog, and Source export dialog. Do not disable a rule or exclude a component
 to make this gate pass.
 
 Theme tests run immediately after the theme control is activated. A foreground may not switch instantly while its
@@ -326,6 +325,88 @@ Correct:
 
 ```vue
 <ElSegmented v-if="isMobile" class="mobile-only" />
+```
+
+---
+
+## Scenario: JSON Value Boundaries And Vue Prop Casting
+
+### 1. Scope / Trigger
+
+Apply this contract when Workbench passes reactive project state into Model/Core
+services or when a controlled editor prop accepts multiple JSON primitive kinds.
+
+### 2. Signatures
+
+```ts
+cloneWorkbenchJson<T>(value: T): T
+
+createWorkbenchDataTestContext(
+  graph: PageGraph | undefined,
+  values: Record<string, unknown>,
+): ConfigFormValueContext
+
+modelValue: {
+  type: null as unknown as PropType<DataValueEditorProps['modelValue']>,
+}
+```
+
+### 3. Contracts
+
+- Clone reactive graph/value inputs through `cloneWorkbenchJson` before passing
+  them to schema derivation or other APIs that require plain JSON data. Do not
+  call native `structuredClone` directly on a Vue proxy.
+- A controlled prop whose valid values include `''`, `false`, `0`, `null`,
+  objects, and arrays disables Vue runtime type casting with `type: null` while
+  retaining its compile-time `PropType`. Do not generate a runtime union that
+  contains `Boolean`: Vue may cast a present empty string to `true` before the
+  child component reads it.
+- The parent remains the source of truth. The editor emits the exact selected
+  JSON value and must preserve that value after the controlled prop is written
+  back.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Reactive `PageGraph` or values reach a test/runtime boundary | Convert them to plain JSON through `cloneWorkbenchJson` |
+| Native structured clone rejects a proxy or host object | Use the helper's deterministic JSON fallback |
+| User selects the text kind | Emit `''`; after parent write-back, render the text input |
+| User selects the boolean kind | Emit `false`; render the boolean control |
+| Runtime prop generation places `Boolean` before other union kinds | Reject the declaration and use a cast-free runtime prop |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a reactive page graph is cloned to plain data before value-schema
+  derivation, and an empty text literal stays `''` through controlled write-back.
+- Base: non-reactive JSON inputs clone without semantic changes.
+- Bad: pass a Vue proxy directly to `structuredClone`, or declare the value prop
+  as `[Boolean, Number, String, Object, Array]` and silently turn `''` into `true`.
+
+### 6. Tests Required
+
+- Unit coverage passes reactive graph/value inputs to
+  `createWorkbenchDataTestContext` and asserts field resolution without a
+  `DataCloneError`.
+- Component coverage selects the text kind, asserts `update:modelValue` emits
+  `''`, writes `''` back, and proves the text input renders instead of a switch.
+- Browser coverage uses a real Element Plus option click and proves a
+  variable-backed request can be configured and executed in Preview.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+deriveProjectPageValueSchema(structuredClone(graph))
+modelValue: [Boolean, Number, String, Object, Array]
+```
+
+Correct:
+
+```ts
+deriveProjectPageValueSchema(cloneWorkbenchJson(graph))
+modelValue: { type: null as unknown as PropType<DataValueEditorProps['modelValue']> }
 ```
 
 ---

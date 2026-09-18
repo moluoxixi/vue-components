@@ -2,10 +2,7 @@ import type {
   DesignerDefaultValueKind,
   DesignerPropertySetterDefinition,
 } from '@moluoxixi/config-form-designer'
-import {
-  AntdChoiceDefaultSetter,
-  AntdOptionSourceSetter,
-} from '../components'
+import { AntdChoiceDefaultSetter } from '../components'
 
 interface NumericSetterConstraints {
   min?: number
@@ -31,13 +28,6 @@ export const placeholderSetter = propSetter('placeholder', 'Placeholder', 'text'
 export const allowClearSetter = propSetter('allowClear', 'Allow clear', 'boolean')
 export const disabledSetter = propSetter('disabled', 'Disabled', 'boolean')
 export const optionsSetter = propSetter('options', 'Static options', 'options')
-export const optionSourceSetter: DesignerPropertySetterDefinition = {
-  key: 'optionSource',
-  label: 'Option source',
-  path: ['props', 'optionSource'],
-  control: 'custom',
-  component: AntdOptionSourceSetter,
-}
 
 export function choiceDefaultValueSetter(
   valueKind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>,

@@ -1,10 +1,9 @@
 import type {
   ConfigFormDataSourceHost,
-  ConfigFormFlowHttpRequestInput,
-  ConfigFormFlowHttpRequestOutput,
+  ConfigFormDataSourceHttpRequestInput,
+  ConfigFormDataSourceHttpRequestOutput,
 } from '@moluoxixi/config-form-core'
-import type { RuntimeHostActionIdentity } from './action-rpc'
-import type { RuntimeHostMessageBase } from './protocol'
+import type { RuntimeHostIdentity, RuntimeHostMessageBase } from './protocol'
 
 export interface RuntimeHostDataDiagnostic {
   code: string
@@ -15,7 +14,7 @@ export interface RuntimeHostDataDiagnostic {
 export interface RuntimeHostDataRequestMessage extends RuntimeHostMessageBase {
   type: 'dataRequest'
   requestId: string
-  input: ConfigFormFlowHttpRequestInput
+  input: ConfigFormDataSourceHttpRequestInput
 }
 
 export interface RuntimeHostDataCancelMessage extends RuntimeHostMessageBase {
@@ -24,7 +23,7 @@ export interface RuntimeHostDataCancelMessage extends RuntimeHostMessageBase {
 }
 
 export type RuntimeHostDataResultMessage = RuntimeHostMessageBase & { type: 'dataResult', requestId: string } & (
-  | { success: true, output: ConfigFormFlowHttpRequestOutput, diagnostic?: never }
+  | { success: true, output: ConfigFormDataSourceHttpRequestOutput, diagnostic?: never }
   | { success: false, diagnostic: RuntimeHostDataDiagnostic, output?: never }
 )
 
@@ -32,7 +31,7 @@ export type RuntimeHostDataPayload<T> = T extends RuntimeHostMessageBase ? Omit<
 
 export interface RuntimeHostDataProxyOptions {
   getBase: () => RuntimeHostMessageBase
-  isCurrent: (identity: RuntimeHostActionIdentity) => boolean
+  isCurrent: (identity: RuntimeHostIdentity) => boolean
   postRequest: (message: RuntimeHostDataPayload<RuntimeHostDataRequestMessage>) => void
   postCancel: (message: RuntimeHostDataPayload<RuntimeHostDataCancelMessage>) => void
   maxPending?: number
@@ -49,7 +48,7 @@ export interface RuntimeHostDataProxy {
 
 export interface RuntimeHostDataExecutorOptions {
   getHost: () => ConfigFormDataSourceHost | undefined
-  isCurrent: (identity: RuntimeHostActionIdentity) => boolean
+  isCurrent: (identity: RuntimeHostIdentity) => boolean
   postResult: (message: RuntimeHostDataPayload<RuntimeHostDataResultMessage>) => void
   maxPending?: number
   defaultDeadlineMs?: number

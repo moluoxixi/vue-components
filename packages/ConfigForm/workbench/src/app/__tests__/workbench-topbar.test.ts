@@ -97,28 +97,6 @@ describe('workbench topbar', () => {
     wrapper.unmount()
   })
 
-  it('does not expose a global flow workspace action', async () => {
-    const wrapper = mount(WorkbenchTopbar, {
-      attachTo: document.body,
-      props: {
-        project,
-        currentPage,
-        localeId: 'en-US',
-        paletteFamily: 'ink',
-        statusLabel: 'Saved locally',
-        themePreference: 'system',
-      },
-    })
-
-    const trigger = wrapper.get('button[aria-label="More actions"]')
-    await trigger.trigger('click')
-    expect(overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').some(
-      item => item.text().includes('Event flow orchestration'),
-    )).toBe(false)
-    expect(wrapper.emitted('openFlow')).toBeUndefined()
-    wrapper.unmount()
-  })
-
   it('keeps responsive overflow status and disabled command explanations on one command surface', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
@@ -165,14 +143,14 @@ describe('workbench topbar', () => {
     })
 
     try {
-      const flow = wrapper.get('button[aria-label="New page"]')
-      ;(flow.element as HTMLButtonElement).focus()
+      const newPageButton = wrapper.get('button[aria-label="New page"]')
+      ;(newPageButton.element as HTMLButtonElement).focus()
       await vi.advanceTimersByTimeAsync(400)
       await nextTick()
       const tooltip = overlayRoot().get('.workbench-command-tooltip')
       expect(tooltip.text()).toBe('New page')
       expect(tooltip.attributes('role')).toBe('tooltip')
-      expect(flow.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
+      expect(newPageButton.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
     }
     finally {
       wrapper.unmount()

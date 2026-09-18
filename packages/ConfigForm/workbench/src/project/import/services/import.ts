@@ -201,7 +201,6 @@ function projectSummary(document: ProjectDocument) {
   const pages = Object.values(document.pagesById)
   return {
     adapter: document.registryLock.adapter as WorkbenchAdapterId,
-    flowCount: pages.reduce((count, page) => count + (page.flows?.length ?? 0), 0),
     name: document.name,
     nodeCount: pages.reduce((count, page) => count + Object.keys(page.graph.nodesById).length, 0),
     pageCount: pages.length,
@@ -215,7 +214,6 @@ function projectSummary(document: ProjectDocument) {
 function pageSummary(page: ProjectPage, adapter: WorkbenchAdapterId) {
   return {
     adapter,
-    flowCount: page.flows?.length ?? 0,
     name: page.name,
     nodeCount: Object.keys(page.graph.nodesById).length,
     pageCount: 1,

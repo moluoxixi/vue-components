@@ -42,7 +42,6 @@ export interface ConfigImportDiagnostic {
 
 export interface ConfigImportSummary {
   adapter: WorkbenchAdapterId
-  flowCount: number
   name: string
   nodeCount: number
   pageCount: number

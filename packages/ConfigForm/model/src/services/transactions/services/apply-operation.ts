@@ -1,6 +1,5 @@
 import type { ProjectDocument, ProjectOperation } from '../../../types'
 import type { OperationResult } from '../types'
-import { applyFlowOperation } from './flow-operation'
 import { applyNodeOperation } from './node-operation'
 import { applyProjectPageOperation } from './project-page-operation'
 
@@ -19,7 +18,6 @@ export function applyOperation(document: ProjectDocument, operation: ProjectOper
       return applyProjectPageOperation(document, operation)
     case 'node.bindings':
     case 'node.config.remove':
-    case 'node.events':
     case 'node.insert':
     case 'node.move':
     case 'node.placement':
@@ -27,9 +25,5 @@ export function applyOperation(document: ProjectDocument, operation: ProjectOper
     case 'node.remove':
     case 'node.settings':
       return applyNodeOperation(document, operation)
-    case 'flow.add':
-    case 'flow.remove':
-    case 'flow.update':
-      return applyFlowOperation(document, operation)
   }
 }

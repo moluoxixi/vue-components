@@ -28,14 +28,11 @@ export function collectValidationPlan(
       plan.pageIds.add(operation.pageId)
       return
     case 'node.props':
-    case 'node.events':
     case 'node.bindings':
     case 'node.placement': {
       const registryNodeIds = plan.registryNodeIdsByPage.get(operation.pageId) ?? new Set<NodeId>()
       registryNodeIds.add(operation.nodeId)
       plan.registryNodeIdsByPage.set(operation.pageId, registryNodeIds)
-      if (operation.type === 'node.events')
-        plan.pageIds.add(operation.pageId)
       if (operation.type === 'node.placement')
         addValidationNode(plan.registryPlacementIdsByPage, operation.pageId, operation.nodeId)
       return
@@ -62,12 +59,6 @@ export function collectValidationPlan(
       return
     case 'node.remove':
       plan.pageIds.add(operation.pageId)
-      break
-    case 'flow.add':
-    case 'flow.update':
-    case 'flow.remove':
-      plan.pageIds.add(operation.pageId)
-      plan.registryPageIds.add(operation.pageId)
       break
     case 'node.move':
       if (result.validatePageContent)

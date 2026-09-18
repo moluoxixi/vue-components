@@ -55,7 +55,6 @@ if (!('kind' in snapshot)) {
 - `services/compile/services/project.ts`：完整项目与单页公开编译 facade。
 - `services/compile/services/page.ts`：完整/增量 page compilation 与结构共享。
 - `services/compile/services/node.ts`：节点递归和 Canonical placement。
-- `services/compile/services/flows.ts`：Flow plan 与组件事件能力诊断。
 - `services/compile/services/coordinator.ts`：committed/draft cache、LRU、change-set 与 rebind。
 - `services/compile/validation/`：Registry lock 精确校验。
 
@@ -66,13 +65,14 @@ if (!('kind' in snapshot)) {
 - 输入必须是当前 `ProjectSnapshot` 或 `ProjectDraftSnapshot`，以及当前 Registry snapshot。
 - committed 与 draft 使用不同 identity/cache key；draft 不能进入 committed history 或 persistence。
 - Canonical IR、page compilation 和诊断顺序保持确定性。
+- Canonical IR 只包含结构、属性、bindings、validation、reactions、Data 与布局，不包含组件事件元数据或 Flow plan。
 - coordinator 的 LRU 命中会刷新最近使用顺序；`maxCachedPages` 必须是正整数。
 - Registry lock 或组件 capability 不匹配时编译失败，不静默修复输入。
 
 完整跨包架构见 [ConfigForm README](../README.md)。
 
-## 独立事件源码
+## 独立 Runtime 源码
 
-`getConfigFormRuntimeSources()` 返回构建时收集的 Core `flow/expression/reaction/json` TypeScript 源码及完整相对导入闭包。Source backend 将这些文件写入导出工程的 `src/runtime`，页面只生成实例级适配器，因此导出无需安装 ConfigForm，也无需维护第二套解释器。
+`getConfigFormRuntimeSources()` 返回构建时收集的 Core、Headless 与 Vue Runtime 源码及完整相对导入闭包。Source backend 将这些文件写入导出工程的 `src/runtime`，页面只生成实例级适配器，因此导出无需安装 ConfigForm，也无需维护第二套解释器。
 
-节点 `events` 中的动作列表与页面 `flows` 都编译为 Canonical Flow plans，预览与 Source 使用同一监听投影。当前编译器版本为 `4.0.0`。
+代码态组件 listener 由宿主直接写入 Runtime config 的 `props.onX`，不进入 Canonical IR 或 Source 序列化。当前 Canonical IR 版本为 `4`，编译器版本为 `5.0.0`。

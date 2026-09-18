@@ -41,7 +41,6 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
         label: 'Name',
         defaultValue: '',
         props: { placeholder: 'Enter your name' },
-        events: {},
         bindings: {},
       },
       'profile-role': {
@@ -58,7 +57,6 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
           ],
           placeholder: 'Select a role',
         },
-        events: {},
         bindings: {},
       },
       'profile-active': {
@@ -69,7 +67,6 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
         label: 'Active',
         defaultValue: true,
         props: {},
-        events: {},
         bindings: {},
       },
     },

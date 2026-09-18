@@ -8,8 +8,7 @@ import type {
 import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { collectSourceActionBindings } from '../export/services/source-action-bindings'
-import { createStandaloneFlowRuntimeSource } from '../export/services/source-flow'
+import { createStandaloneDataSourceRequestSource } from '../export/services/source-data'
 import { collectSourceLibraries } from '../export/services/source-libraries'
 import { appSource, standalonePageRuntimeSource } from '../export/services/source-page'
 import { assertPortableNode } from '../export/services/source-portability'
@@ -35,7 +34,6 @@ function definition(library: CanonicalSourceLibraryBinding | null = baseLibrary)
       tag: 'ProviderInput',
     },
     bindings: [{ name: 'value', trigger: 'update:modelValue', valueProp: 'modelValue' }],
-    events: [{ name: 'change' }],
   }
 }
 
@@ -43,9 +41,7 @@ function field(overrides: Partial<StandaloneSourceNode> = {}): StandaloneSourceN
   return {
     bindings: {},
     component: 'provider.input',
-    events: {},
     field: 'name',
-    flowEvents: [],
     id: 'name',
     kind: 'field',
     placement: {},
@@ -61,17 +57,13 @@ function registry(entries: Record<string, StandaloneSourceComponentDefinition> =
 }
 
 describe('standalone source portability', () => {
-  it('accepts registered events and bindings recursively', () => {
+  it('accepts registered bindings recursively', () => {
     const child = field({
       bindings: { value: { source: 'sourceField' } },
-      events: { change: [{ action: 'notify' }] },
-      flowEvents: ['change'],
     })
     const layout: StandaloneSourceNode = {
       bindings: {},
       component: 'provider.layout',
-      events: {},
-      flowEvents: [],
       id: 'layout',
       kind: 'layout',
       placement: {},
@@ -93,13 +85,11 @@ describe('standalone source portability', () => {
     const layout: StandaloneSourceNode = {
       bindings: {},
       component: 'provider.layout',
-      events: {},
-      flowEvents: [],
       id: 'layout',
       kind: 'layout',
       placement: {},
       props: {},
-      slots: { default: [field({ events: { missing: [] } })] },
+      slots: { default: [field({ bindings: { missing: { source: 'field' } } })] },
     }
     const sourceRegistry = registry({
       'provider.input': definition(),
@@ -109,14 +99,11 @@ describe('standalone source portability', () => {
       },
     })
 
-    expect(() => assertPortableNode(layout, sourceRegistry)).toThrow('uses unregistered event "missing"')
+    expect(() => assertPortableNode(layout, sourceRegistry)).toThrow('uses unregistered binding "missing"')
   })
 
   it.each([
     [field({ component: 'missing.input' }), 'Component "missing.input" is not registered'],
-    [field({ events: { missing: [] } }), 'uses unregistered event "missing"'],
-    [field({ events: { change: [{ action: ' ' }] } }), 'contains an invalid action ref'],
-    [field({ flowEvents: ['missing'] }), 'Flow uses unregistered event "missing"'],
     [field({ bindings: { missing: { source: 'field' } } }), 'uses unregistered binding "missing"'],
     [field({ bindings: { value: { source: ' ' } } }), 'contains an invalid source ref'],
   ])('rejects non-portable node contract %#', (node, message) => {
@@ -130,8 +117,6 @@ describe('standalone source libraries', () => {
     const layout: StandaloneSourceNode = {
       bindings: {},
       component: 'provider.layout',
-      events: {},
-      flowEvents: [],
       id: 'layout',
       kind: 'layout',
       placement: {},
@@ -157,8 +142,6 @@ describe('standalone source libraries', () => {
     const layout: StandaloneSourceNode = {
       bindings: {},
       component: 'provider.layout',
-      events: {},
-      flowEvents: [],
       id: 'layout',
       kind: 'layout',
       placement: {},
@@ -205,8 +188,6 @@ describe('standalone source configuration text', () => {
       kind: 'layout',
       component: 'provider.section',
       props: { title: text },
-      events: {},
-      flowEvents: [],
       bindings: {},
       placement: {},
       slots: { default: [field({ label: text, defaultValue: text, props: { placeholder: text }, validateOn: ['submit'] })] },
@@ -214,21 +195,14 @@ describe('standalone source configuration text', () => {
     const load = await createGeneratedModuleLoader({
       ...Object.fromEntries(Object.entries(getConfigFormRuntimeSources()).map(([path, source]) => [`src/runtime/${path}`, source])),
       'src/runtime/source-page.ts': standalonePageRuntimeSource(),
-      'src/pages/home/flows.ts': createStandaloneFlowRuntimeSource([]),
+      'src/data/index.ts': createStandaloneDataSourceRequestSource(),
       'src/pages/home/validation.ts': createStandaloneValidationRuntimeSource(root),
-      'src/actions/index.ts': collectSourceActionBindings([], {
-        adapter: 'test',
-        adapterVersion: '1',
-        registryFingerprint: 'test',
-        resolveBinding: () => undefined,
-      }).module,
       'src/pages/home/Page.vue': appSource({
         id: 'home',
         name: text,
         route: '/',
         root,
         form: {},
-        flowPlans: [],
         runtime: { variables: [], dataSources: [] },
         scopedFields: [{ nodeId: 'name', field: 'name', defaultValue: text }],
         valueScopes: [],

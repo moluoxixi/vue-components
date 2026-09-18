@@ -1,4 +1,3 @@
-import type { ConfigFormFlowReactionNodeConfig } from '@moluoxixi/config-form-core'
 import type { ProjectDocument, ProjectPage } from '@moluoxixi/config-form-model'
 import type { ProjectIdentityFactory } from '..'
 import {
@@ -19,6 +18,7 @@ import {
   MAX_IMPORT_PAGES,
   MAX_IMPORT_SOURCE_BYTES,
   MAX_IMPORT_STRUCTURE_ENTRIES,
+  PAGE_TRANSFER_VERSION,
   parseConfigImportPayload,
   parseConfigImportSource,
   prepareConfigImport,
@@ -57,24 +57,6 @@ function pageIdentityReverse(source: ProjectPage, imported: ProjectPage): Map<st
     importedNodes[index]!.reactions ?? [],
   ))
 
-  const sourceFlows = source.flows ?? []
-  const importedFlows = imported.flows ?? []
-  addIdentityPairs(reverse, sourceFlows, importedFlows)
-  sourceFlows.forEach((flow, flowIndex) => {
-    const importedFlow = importedFlows[flowIndex]!
-    addIdentityPairs(reverse, flow.nodes, importedFlow.nodes)
-    addIdentityPairs(reverse, flow.edges, importedFlow.edges)
-    flow.nodes.forEach((node, nodeIndex) => {
-      const importedNode = importedFlow.nodes[nodeIndex]!
-      const sourceReactions = node.type === 'reaction' && node.config
-        ? (node.config as unknown as ConfigFormFlowReactionNodeConfig).reactions
-        : []
-      const importedReactions = importedNode.type === 'reaction' && importedNode.config
-        ? (importedNode.config as unknown as ConfigFormFlowReactionNodeConfig).reactions
-        : []
-      addIdentityPairs(reverse, sourceReactions, importedReactions)
-    })
-  })
   return reverse
 }
 
@@ -124,7 +106,7 @@ function pageTransfer(project: ProjectDocument, page: ProjectPage) {
   const components = Object.fromEntries([...keys].map(key => [key, project.registryLock.components[key]!]))
   return {
     kind: 'config-form-page' as const,
-    version: 1 as const,
+    version: PAGE_TRANSFER_VERSION,
     registryLock: {
       adapter: project.registryLock.adapter,
       version: project.registryLock.version,
@@ -251,7 +233,6 @@ describe('config model JSON import', () => {
       component: sourceNode.component,
       kind: 'layout',
       props: structuredClone(sourceNode.props),
-      events: structuredClone(sourceNode.events),
       bindings: structuredClone(sourceNode.bindings),
       slots: {},
     }
@@ -281,7 +262,7 @@ describe('config model JSON import', () => {
       success: false,
       diagnostics: [{ code: 'IMPORT_FORMAT_UNSUPPORTED', path: '$.kind' }],
     })
-    expect(parseConfigImportPayload({ ...project, version: 3 }, 'project')).toMatchObject({
+    expect(parseConfigImportPayload({ ...project, version: 4 }, 'project')).toMatchObject({
       success: false,
       diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
     })
@@ -300,7 +281,7 @@ describe('config model JSON import', () => {
       diagnostics: [{ code: 'IMPORT_FORMAT_UNSUPPORTED', path: '$.kind' }],
     })
     const transfer = pageTransfer(project, project.pagesById[project.homePageId]!)
-    expect(parseConfigImportPayload({ ...transfer, version: 2 }, 'page')).toMatchObject({
+    expect(parseConfigImportPayload({ ...transfer, version: 1 }, 'page')).toMatchObject({
       success: false,
       diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
     })

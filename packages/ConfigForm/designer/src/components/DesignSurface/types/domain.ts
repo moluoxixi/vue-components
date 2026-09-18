@@ -1,4 +1,3 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ComponentContract, FormSettings, ModelDiagnostic, PageGraph, PageNode, ProjectCommand, ProjectHistorySummary } from '@moluoxixi/config-form-model'
 import type { DesignCommandPreview, DesignerDiagnostic, DesignerDropTarget } from '../../../graph'
 import type { DesignerMaterialDefinition } from '../../../registry'
@@ -37,5 +36,4 @@ export interface DesignerPropertiesScope {
   material: DesignerMaterialDefinition | undefined
   diagnostics: DesignerDiagnostic[]
   componentDefinition: ComponentContract | undefined
-  flows: ConfigFormFlow[]
 }

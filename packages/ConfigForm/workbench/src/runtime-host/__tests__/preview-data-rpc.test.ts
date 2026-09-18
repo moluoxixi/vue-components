@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { ConfigFormDataSourceHost, ConfigFormFlowHttpRequestOutput } from '@moluoxixi/config-form-core'
+import type { ConfigFormDataSourceHost, ConfigFormDataSourceHttpRequestOutput } from '@moluoxixi/config-form-core'
 import type { RuntimeHostMessageBase, RuntimeHostSyncMessage } from '../types'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -12,8 +12,13 @@ afterEach(() => vi.restoreAllMocks())
 async function frameBridge(host?: ConfigFormDataSourceHost) {
   const fixture = compileDataFixture()
   const wrapper = mount(PreviewRuntimeHostFrame, { props: {
-    adapter: 'element-plus', compilation: fixture.compilation, locale: 'en-US',
-    revision: '1', runtimeSessionKey: 'session', title: 'Preview', dataSourceHost: host,
+    adapter: 'element-plus',
+    compilation: fixture.compilation,
+    locale: 'en-US',
+    revision: '1',
+    runtimeSessionKey: 'session',
+    title: 'Preview',
+    dataSourceHost: host,
     runtimeState: { fields: [], values: {}, touched: [], validation: {} },
     reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
   } })
@@ -51,7 +56,7 @@ async function frameBridge(host?: ConfigFormDataSourceHost) {
   return { wrapper, proxy, results, dispatch, sync, source, request: proxy.getDataSourceHost().request! }
 }
 
-describe('Preview frame request RPC wiring', () => {
+describe('preview frame request RPC wiring', () => {
   it('advertises only the explicit request capability and validates the frame source, origin and identity', async () => {
     const request = vi.fn(async () => ({ ok: true, status: 200, data: ['A'] }))
     const rpc = await frameBridge({ request })
@@ -75,7 +80,7 @@ describe('Preview frame request RPC wiring', () => {
   })
 
   it.each(['revision', 'reload', 'unmount', 'host'] as const)('aborts the trusted host on %s and ignores late completion', async (change) => {
-    let resolve!: (value: ConfigFormFlowHttpRequestOutput) => void
+    let resolve!: (value: ConfigFormDataSourceHttpRequestOutput) => void
     const request = vi.fn<NonNullable<ConfigFormDataSourceHost['request']>>(() => new Promise(done => resolve = done))
     const rpc = await frameBridge({ request })
     const pending = rpc.request({ url: '/choices' }, new AbortController().signal).catch(error => error)

@@ -53,7 +53,7 @@
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-headless": "^0.2.6",
+    "@moluoxixi/config-form-headless": "^0.3.0",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
@@ -71,11 +71,7 @@
     "sass": "catalog:dev",
     "unplugin-dts": "catalog:dev",
     "@moluoxixi/config-form-compiler": "workspace:*",
-    "@moluoxixi/config-form-designer": "workspace:*",
-    "@moluoxixi/config-form-designer-antd-vue": "workspace:*",
-    "@moluoxixi/config-form-designer-element-plus": "workspace:*",
     "@moluoxixi/config-form-model": "workspace:*",
-    "@moluoxixi/config-form-vue-backend": "workspace:*",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",

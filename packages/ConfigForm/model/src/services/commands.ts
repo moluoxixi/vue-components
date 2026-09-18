@@ -9,7 +9,6 @@ import type {
   ProjectCommandAction,
   ProjectCommandResolution,
   ProjectDocument,
-  ProjectFlowSettings,
   ProjectNodePatch,
   ProjectNodePatchKey,
   ProjectOperation,
@@ -62,13 +61,6 @@ function requireNode(document: ProjectDocument, pageId: string, nodeId: string):
   if (!node)
     invalid('PROJECT_NODE_UNKNOWN', `Node does not exist: ${nodeId}`, pageId, nodeId)
   return node
-}
-
-function requireFlow(document: ProjectDocument, pageId: string, flowId: string) {
-  const flow = requirePage(document, pageId).flows?.find(candidate => candidate.id === flowId)
-  if (!flow)
-    invalid('PROJECT_FLOW_UNKNOWN', `Flow does not exist: ${flowId}`, pageId)
-  return flow
 }
 
 function settingsForNode(node: PageNode): PageNodeSettings {
@@ -314,47 +306,6 @@ function duplicateNodeOperation(
   }
 }
 
-function updateFlowSettings(
-  document: ProjectDocument,
-  pageId: string,
-  flowId: string,
-  settings: ProjectFlowSettings,
-): ProjectOperation {
-  const flow = clone(requireFlow(document, pageId, flowId))
-  flow.name = settings.name
-  flow.trigger = clone(settings.trigger)
-  if (settings.concurrency === undefined)
-    delete flow.concurrency
-  else
-    flow.concurrency = settings.concurrency
-  if (settings.errorPolicy === undefined)
-    delete flow.errorPolicy
-  else
-    flow.errorPolicy = clone(settings.errorPolicy)
-  return { type: 'flow.update', pageId, flowId, flow }
-}
-
-function replaceFlowOperations(
-  document: ProjectDocument,
-  action: Extract<ProjectCommandAction, { type: 'flow.replaceAll' }>,
-): ProjectOperation[] {
-  const previous = requirePage(document, action.pageId).flows ?? []
-  const next = action.flows ?? []
-  return [
-    ...[...previous].reverse().map(flow => ({
-      type: 'flow.remove' as const,
-      pageId: action.pageId,
-      flowId: flow.id,
-    })),
-    ...next.map((flow, index) => ({
-      type: 'flow.add' as const,
-      pageId: action.pageId,
-      flow: clone(flow),
-      index,
-    })),
-  ]
-}
-
 function resolveAction(document: ProjectDocument, action: ProjectCommandAction): ProjectOperation[] {
   switch (action.type) {
     case 'operation.apply':
@@ -384,43 +335,6 @@ function resolveAction(document: ProjectDocument, action: ProjectCommandAction):
     }
     case 'node.duplicate':
       return [duplicateNodeOperation(document, action)]
-    case 'flow.settings':
-      return [updateFlowSettings(document, action.pageId, action.flowId, action.settings)]
-    case 'flow.node': {
-      const flow = clone(requireFlow(document, action.pageId, action.flowId))
-      const index = flow.nodes.findIndex(node => node.id === action.nodeId)
-      if (index < 0) {
-        invalid(
-          'PROJECT_FLOW_NODE_UNKNOWN',
-          `Flow node does not exist: ${action.nodeId}`,
-          action.pageId,
-          action.nodeId,
-        )
-      }
-      if (action.node.id !== action.nodeId) {
-        invalid(
-          'PROJECT_FLOW_NODE_ID_CHANGE_INVALID',
-          `Flow node update cannot change its id from ${action.nodeId} to ${action.node.id}.`,
-          action.pageId,
-          action.nodeId,
-        )
-      }
-      flow.nodes[index] = clone(action.node)
-      return [{ type: 'flow.update', pageId: action.pageId, flowId: action.flowId, flow }]
-    }
-    case 'flow.edges': {
-      const flow = clone(requireFlow(document, action.pageId, action.flowId))
-      flow.edges = clone(action.edges)
-      return [{ type: 'flow.update', pageId: action.pageId, flowId: action.flowId, flow }]
-    }
-    case 'flow.graph': {
-      const flow = clone(requireFlow(document, action.pageId, action.flowId))
-      flow.nodes = clone(action.nodes)
-      flow.edges = clone(action.edges)
-      return [{ type: 'flow.update', pageId: action.pageId, flowId: action.flowId, flow }]
-    }
-    case 'flow.replaceAll':
-      return replaceFlowOperations(document, action)
   }
 }
 

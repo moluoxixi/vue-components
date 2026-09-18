@@ -17,12 +17,11 @@ export const CONFIG_FORM_VALUE_MAX_DEPTH = 32
 export const CONFIG_FORM_VALUE_MAX_VISITS = 10_000
 
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
-const REFERENCE_ROOTS: ReadonlyMap<string, 'field' | 'variable' | 'output'> = new Map([
+const REFERENCE_ROOTS: ReadonlyMap<string, 'field' | 'variable'> = new Map([
   ['$fields', 'field'],
   ['$variables', 'variable'],
-  ['$outputs', 'output'],
 ])
-const REFERENCE_KINDS = new Set(['literal', 'field', 'variable', 'event', 'output', 'expression'])
+const REFERENCE_KINDS = new Set(['literal', 'field', 'variable', 'event', 'expression'])
 const FIELD_SCOPES = new Set<ConfigFormValueReferenceScope>(['current', 'parent', 'root'])
 
 interface TraversalState {
@@ -31,7 +30,7 @@ interface TraversalState {
 }
 
 interface ExpressionReference {
-  kind: 'field' | 'variable' | 'output'
+  kind: 'field' | 'variable'
   id: string
 }
 
@@ -44,7 +43,6 @@ interface ExpressionAnalysis {
 interface NormalizedRemap {
   fields: ReadonlyMap<string, string>
   variables: ReadonlyMap<string, string>
-  outputs: ReadonlyMap<string, string>
 }
 
 export class ConfigFormValueReferenceError extends Error {
@@ -72,7 +70,7 @@ export function resolveConfigFormValueInput(
   ))
 }
 
-/** Lists stable field, variable, and action-output identities in traversal order. */
+/** Lists stable field and variable identities in traversal order. */
 export function collectConfigFormValueReferences(
   input: ConfigFormValueInput,
 ): ConfigFormValueReferenceCollectionEntry[] {
@@ -262,18 +260,6 @@ function parseReference(
           kind,
           path: readReferencePath(values.get('path'), state, appendProperty(path, 'path'), depth + 1),
         }
-      case 'output': {
-        assertReferenceKeys(entries, ['kind', 'stepId'], path, ['path'])
-        const hasPath = values.has('path')
-        const pathValue = values.get('path')
-        return {
-          kind,
-          stepId: readIdentity(values.get('stepId'), state, appendProperty(path, 'stepId'), depth + 1),
-          ...(hasPath
-            ? { path: readReferencePath(pathValue, state, appendProperty(path, 'path'), depth + 1) }
-            : {}),
-        }
-      }
       case 'expression': {
         assertReferenceKeys(entries, ['kind', 'source'], path)
         const source = values.get('source')
@@ -321,13 +307,6 @@ function resolveReference(
         throw missingReference('event', reference.path.join('.'), path)
       return cloneResolvedValue(resolution.value, state, path, depth)
     }
-    case 'output': {
-      const output = readContextIdentity(context.outputs, reference.stepId, 'output', path)
-      const resolution = readPath(output, reference.path ?? [])
-      if (!resolution.found)
-        throw missingReference('output', reference.stepId, path)
-      return cloneResolvedValue(resolution.value, state, path, depth)
-    }
     case 'expression':
       return resolveExpression(reference.source, context, state, path, depth)
   }
@@ -343,7 +322,6 @@ function resolveExpression(
   const analysis = analyzeExpression(source, path, state)
   const fields: Record<string, unknown> = Object.create(null)
   const variables: Record<string, unknown> = Object.create(null)
-  const outputs: Record<string, unknown> = Object.create(null)
   const resolved = new Set<string>()
 
   for (const reference of analysis.references) {
@@ -359,17 +337,9 @@ function resolveExpression(
         depth,
       )
     }
-    else if (reference.kind === 'variable') {
+    else {
       variables[reference.id] = cloneResolvedValue(
         readContextIdentity(context.variables, reference.id, 'variable', path),
-        state,
-        path,
-        depth,
-      )
-    }
-    else {
-      outputs[reference.id] = cloneResolvedValue(
-        readContextIdentity(context.outputs, reference.id, 'output', path),
         state,
         path,
         depth,
@@ -389,7 +359,6 @@ function resolveExpression(
     value = evaluateConfigFormExpression(analysis.ast, {
       $event: event,
       $fields: fields,
-      $outputs: outputs,
       $variables: variables,
     })
   }
@@ -418,9 +387,6 @@ function collectReference(
     case 'variable':
       target.push({ kind: 'variable', id: reference.variableId, path })
       break
-    case 'output':
-      target.push({ kind: 'output', id: reference.stepId, path })
-      break
     case 'expression':
       analyzeExpression(reference.source, path, state).references.forEach((item) => {
         if (item.kind === 'field')
@@ -446,8 +412,6 @@ function remapReference(
       return { ...reference, nodeId: maps.fields.get(reference.nodeId) ?? reference.nodeId }
     case 'variable':
       return { ...reference, variableId: maps.variables.get(reference.variableId) ?? reference.variableId }
-    case 'output':
-      return { ...reference, stepId: maps.outputs.get(reference.stepId) ?? reference.stepId }
     case 'expression': {
       const analysis = analyzeExpression(reference.source, path, state)
       const transformed = remapExpressionNode(analysis.ast, maps)
@@ -718,7 +682,7 @@ function resolveField(
 function readContextIdentity(
   source: Readonly<Record<string, unknown>> | undefined,
   id: string,
-  kind: 'field' | 'variable' | 'output',
+  kind: 'field' | 'variable',
   path: string,
 ): unknown {
   if (source === undefined || !Object.hasOwn(source, id))
@@ -792,7 +756,7 @@ function normalizeRemap(input: ConfigFormValueReferenceRemap): NormalizedRemap {
   if (prototype !== Object.prototype && prototype !== null)
     throw new ConfigFormValueReferenceError('CONFIG_FORM_VALUE_REMAP_INVALID', 'Reference remap must be a plain object.', '$maps')
   const entries = readDataEntries(input, '$maps')
-  const allowed = new Set(['fields', 'variables', 'outputs'])
+  const allowed = new Set(['fields', 'variables'])
   for (const [key] of entries) {
     if (!allowed.has(key))
       throw new ConfigFormValueReferenceError('CONFIG_FORM_VALUE_REMAP_INVALID', `Unknown remap key: ${key}.`, appendProperty('$maps', key))
@@ -800,7 +764,6 @@ function normalizeRemap(input: ConfigFormValueReferenceRemap): NormalizedRemap {
   const values = new Map(entries)
   return {
     fields: normalizeIdMap(values.get('fields'), '$maps.fields'),
-    outputs: normalizeIdMap(values.get('outputs'), '$maps.outputs'),
     variables: normalizeIdMap(values.get('variables'), '$maps.variables'),
   }
 }
@@ -908,7 +871,7 @@ function readDataEntries(value: object, path: string): Array<[string, unknown]> 
 function assertContext(context: ConfigFormValueContext): void {
   if (typeof context !== 'object' || context === null || Array.isArray(context))
     throw invalidInput('Value context must be an object.', '$context')
-  for (const key of ['fields', 'variables', 'outputs'] as const) {
+  for (const key of ['fields', 'variables'] as const) {
     const value = context[key]
     if (value !== undefined && (typeof value !== 'object' || value === null || Array.isArray(value)))
       throw invalidInput(`Value context ${key} must be an object.`, `$context.${key}`)
@@ -922,8 +885,6 @@ function expressionRootMap(name: string, maps: NormalizedRemap): ReadonlyMap<str
     return maps.fields
   if (name === '$variables')
     return maps.variables
-  if (name === '$outputs')
-    return maps.outputs
   return undefined
 }
 

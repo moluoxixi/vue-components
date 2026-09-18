@@ -1,16 +1,8 @@
 import type {
-  ConfigFormFlow,
-  ConfigFormFlowTrigger,
-} from '@moluoxixi/config-form-core'
-import type {
   ComponentContract,
   ProjectDocument,
   ProjectOperation,
 } from '@moluoxixi/config-form-model'
-import {
-  CONFIG_FORM_FLOW_TRIGGER_KINDS,
-  CONFIG_FORM_FLOW_VERSION,
-} from '@moluoxixi/config-form-core'
 import {
   applyProjectTransaction,
   createComponentContractRegistry,
@@ -18,14 +10,26 @@ import {
   createProjectDraftSnapshotFromTransaction,
   createProjectSnapshot,
   createRegistryContractSnapshot,
+  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
+  CANONICAL_PROJECT_IR_VERSION,
   compileCanonicalPage,
   compileCanonicalProject,
+  CONFIG_FORM_COMPILER_VERSION,
   createCompileCoordinator,
 } from '../index'
+
+interface LegacyCompilerSnapshot {
+  document: {
+    pagesById: Record<string, {
+      flows?: unknown[]
+      graph: { nodesById: Record<string, { events?: Record<string, unknown> }> }
+    }>
+  }
+}
 
 const contracts: ComponentContract[] = [
   {
@@ -36,7 +40,6 @@ const contracts: ComponentContract[] = [
       { key: 'clearable', path: ['props', 'clearable'] },
       { key: 'placeholder', path: ['props', 'placeholder'] },
     ],
-    events: [{ name: 'change' }, { name: 'update:modelValue' }],
     bindings: [{ name: 'model', valueProp: 'modelValue', trigger: 'update:modelValue' }],
     slots: [],
     allowedParents: [],
@@ -47,7 +50,6 @@ const contracts: ComponentContract[] = [
     version: '1',
     kind: 'layout',
     props: [],
-    events: [],
     bindings: [],
     slots: [{ name: 'default', accepts: ['field', 'layout'] }],
     allowedParents: [],
@@ -71,19 +73,8 @@ function fixture() {
         id: 'home',
         name: 'Home',
         route: '/',
-        flows: [{
-          version: CONFIG_FORM_FLOW_VERSION,
-          id: 'mounted',
-          name: 'Mounted',
-          trigger: { kind: 'page.mount' },
-          nodes: [
-            { id: 'trigger', type: 'trigger', position: { x: 10, y: 20 } },
-            { id: 'success', type: 'success', position: { x: 200, y: 20 } },
-          ],
-          edges: [{ id: 'edge', source: 'trigger', target: 'success' }],
-        }],
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: { title: 'Profile' },
           form: { columns: 24 },
           root: [{ nodeId: 'section', placement: {} }],
@@ -93,7 +84,6 @@ function fixture() {
               component: 'layout.section',
               kind: 'layout',
               props: {},
-              events: {},
               bindings: {},
               slots: { default: [{ nodeId: 'name', placement: { span: 12 } }] },
             },
@@ -104,7 +94,6 @@ function fixture() {
               field: 'name',
               label: 'Name',
               props: { placeholder: 'Your name' },
-              events: { change: [{ action: 'track' }] },
               bindings: { model: { source: 'profile.name' } },
             },
           },
@@ -141,34 +130,6 @@ function addPage(document: ProjectDocument, sourceId: string, pageId: string): v
   }
 }
 
-function synchronousFlow(id: string, trigger: ConfigFormFlowTrigger): ConfigFormFlow {
-  return {
-    version: CONFIG_FORM_FLOW_VERSION,
-    id,
-    name: id,
-    trigger,
-    nodes: [
-      { id: 'trigger', type: 'trigger' },
-      {
-        id: 'reaction',
-        type: 'reaction',
-        config: {
-          reactions: [{
-            id: `${id}-reaction`,
-            when: { kind: 'literal', value: true },
-            then: [{ kind: 'setValue', target: 'name', value: { kind: 'literal', value: id } }],
-          }],
-        },
-      },
-      { id: 'end', type: 'end' },
-    ],
-    edges: [
-      { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
-      { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
-    ],
-  }
-}
-
 describe('canonical project compiler', () => {
   it('compiles one deterministic immutable IR for runtime and source backends', () => {
     const input = fixture()
@@ -179,6 +140,8 @@ describe('canonical project compiler', () => {
       return
     const { compilation } = result
     const page = compilation.ir.pagesById.home!
+    expect(compilation.ir.version).toBe(CANONICAL_PROJECT_IR_VERSION)
+    expect(compilation.key.compilerVersion).toBe(CONFIG_FORM_COMPILER_VERSION)
     expect(page.nodesById.section).toMatchObject({
       component: 'layout.section',
       props: { gap: 12 },
@@ -194,13 +157,9 @@ describe('canonical project compiler', () => {
       placement: { parentId: 'section', slot: 'default', props: { span: 12 } },
       subtreeHash: expect.any(String),
     })
-    expect(page.flows[0]?.plan).toMatchObject({
-      flowId: 'mounted',
-      trigger: { kind: 'page.mount' },
-      topologicalOrder: ['trigger', 'success'],
-    })
-    expect(page.flows[0]?.plan).not.toHaveProperty('revision')
-    expect(page.flows[0]?.plan.nodes[0]).not.toHaveProperty('position')
+    expect(page).not.toHaveProperty('flows')
+    expect(page.nodesById.name).not.toHaveProperty('events')
+    expect(page.nodesById.name).not.toHaveProperty('flowEvents')
     expect(compilation.key).toBe(compilation.ir.identity)
     expect(compilation.key.contentHash).toBe(input.snapshot.contentHash)
     expect(compilation.key.registryFingerprint).toBe(compilation.registry.fingerprint)
@@ -212,128 +171,15 @@ describe('canonical project compiler', () => {
     expect(repeated).toEqual(result)
   })
 
-  it('compiles component event triggers against the same page Registry contract', () => {
+  it('rejects legacy event and Flow fields at the compiler ingress', () => {
     const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows![0]!.trigger = {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'change',
-      }
-    })
+    const nodeEvents = structuredClone(input.snapshot) as unknown as LegacyCompilerSnapshot
+    nodeEvents.document.pagesById.home!.graph.nodesById.name!.events = {}
+    expect(compileCanonicalProject({ ...input, snapshot: nodeEvents }).success).toBe(false)
 
-    const result = compileCanonicalProject(input)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.compilation.ir.pagesById.home?.flows[0]?.plan.trigger).toEqual({
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'change',
-      })
-      expect(result.compilation.ir.pagesById.home?.nodesById.name?.flowEvents).toEqual(['change'])
-    }
-
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows![0]!.trigger = {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'hover',
-      }
-    })
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_TRIGGER_EVENT_UNKNOWN', nodeId: 'name' }],
-    })
-  })
-
-  it('rejects duplicated declarative and Flow reaction ownership', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.graph.nodesById.name!.reactions = [{
-        id: 'declarative-placeholder',
-        when: { kind: 'literal', value: true },
-        then: [{
-          kind: 'setProps',
-          target: 'name',
-          props: { placeholder: { kind: 'literal', value: 'Declarative' } },
-        }],
-      }]
-      document.pagesById.home!.flows = [{
-        version: CONFIG_FORM_FLOW_VERSION,
-        id: 'duplicate-placeholder',
-        name: 'Duplicate placeholder',
-        trigger: { kind: 'page.mount' },
-        nodes: [
-          { id: 'trigger', type: 'trigger' },
-          {
-            id: 'reaction',
-            type: 'reaction',
-            config: {
-              reactions: [{
-                id: 'flow-placeholder',
-                when: { kind: 'literal', value: true },
-                then: [{
-                  kind: 'setProps',
-                  target: 'name',
-                  props: { placeholder: { kind: 'literal', value: 'Flow' } },
-                }],
-              }],
-            },
-          },
-          { id: 'end', type: 'end' },
-        ],
-        edges: [
-          { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
-          { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
-        ],
-      }]
-    })
-
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_REACTION_CAPABILITY_CONFLICT' }],
-    })
-  })
-
-  it('diagnoses synchronous Flow updates that duplicate bindings', () => {
-    const bindingEvent = fixture()
-    updateSnapshot(bindingEvent, (document) => {
-      document.pagesById.home!.flows = [synchronousFlow('binding-sync', {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'update:modelValue',
-      })]
-    })
-    expect(compileCanonicalProject(bindingEvent)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_BINDING_REACTION_REDUNDANT', nodeId: 'name' }],
-    })
-
-    updateSnapshot(bindingEvent, (document) => {
-      const flow = document.pagesById.home!.flows![0]!
-      flow.nodes.splice(1, 1, { id: 'action', type: 'action', ref: 'notify', config: {} })
-      flow.edges = [
-        { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
-        { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-      ]
-    })
-    expect(compileCanonicalProject(bindingEvent).success).toBe(true)
-  })
-
-  it('keeps editor-only flow positions out of runtime IR identity', () => {
-    const first = fixture()
-    const second = fixture()
-    updateSnapshot(second, (document) => {
-      document.pagesById.home!.flows![0]!.nodes[0]!.position = { x: 999, y: 999 }
-    })
-
-    const left = compileCanonicalProject(first)
-    const right = compileCanonicalProject(second)
-    expect(left.success && right.success).toBe(true)
-    if (!left.success || !right.success)
-      return
-    expect(left.compilation.ir.identity.contentHash).not.toBe(right.compilation.ir.identity.contentHash)
-    expect(left.compilation.ir.identity.irHash).toBe(right.compilation.ir.identity.irHash)
+    const pageFlows = structuredClone(input.snapshot) as unknown as LegacyCompilerSnapshot
+    pageFlows.document.pagesById.home!.flows = []
+    expect(compileCanonicalProject({ ...input, snapshot: pageFlows }).success).toBe(false)
   })
 
   it('compiles transient design drafts without publishing a committed edit version', () => {
@@ -381,7 +227,6 @@ describe('canonical project compiler', () => {
     updateSnapshot(second, (document) => {
       addPage(document, 'home', 'settings')
       document.pagesById.settings!.name = 'Changed elsewhere'
-      document.pagesById.home!.flows![0]!.nodes[0]!.position = { x: 500, y: 500 }
     })
 
     const expandedRegistry = createComponentContractRegistry([
@@ -391,7 +236,6 @@ describe('canonical project compiler', () => {
         version: '99',
         kind: 'field',
         props: [],
-        events: [],
         bindings: [],
         slots: [],
         allowedParents: [],
@@ -536,7 +380,6 @@ describe('canonical project compiler', () => {
       kind: 'field',
       field: 'other',
       props: { placeholder: 'Unchanged' },
-      events: {},
       bindings: {},
     }
     const section = initialDocument.pagesById.home!.graph.nodesById.section!
@@ -644,7 +487,6 @@ describe('canonical project compiler', () => {
       kind: 'field',
       field: 'other',
       props: {},
-      events: {},
       bindings: {},
     }
     document.pagesById.home!.graph.root.push({ nodeId: 'other', placement: {} })
@@ -713,7 +555,6 @@ describe('canonical project compiler', () => {
       kind: 'field',
       field: 'other',
       props: {},
-      events: {},
       bindings: {},
     }
     if (location === 'root') {
@@ -812,7 +653,6 @@ describe('canonical project compiler', () => {
         kind: 'field',
         field: 'other',
         props: {},
-        events: {},
         bindings: {},
       }
       section.slots.default!.push({ nodeId: 'other', placement: {} })
@@ -909,7 +749,6 @@ describe('canonical project compiler', () => {
       kind: 'field',
       field: 'other',
       props: {},
-      events: {},
       bindings: {},
     }
     graph.root.push({ nodeId: 'other', placement: {} })
@@ -962,7 +801,7 @@ describe('canonical project compiler', () => {
       page.route = `/nul-${index}`
       page.graph.root = [{ nodeId, placement: {} }]
       page.graph.nodesById = {
-        [nodeId]: { id: nodeId, component: 'element.input', kind: 'field', field: 'value', props: {}, events: {}, bindings: {} },
+        [nodeId]: { id: nodeId, component: 'element.input', kind: 'field', field: 'value', props: {}, bindings: {} },
       }
     })
     const initial = createProjectSnapshot(document, 1)
@@ -995,45 +834,6 @@ describe('canonical project compiler', () => {
       expect(full.success).toBe(true)
       expect(coordinator.compilePage(pageId)).toEqual(full)
     })
-  })
-
-  it('invalidates the exact Runtime node when a Flow component event target changes', () => {
-    const input = fixture()
-    const coordinator = createCompileCoordinator({ registry: input.registry })
-    coordinator.acceptSnapshot(input.snapshot)
-    const before = coordinator.compilePage('home')
-    expect(before.success).toBe(true)
-    if (!before.success)
-      return
-    const mutableDocument = structuredClone(input.snapshot.document) as ProjectDocument
-    const flow = mutableDocument.pagesById.home!.flows![0]!
-    flow.trigger = { kind: 'component.event', nodeId: 'name', event: 'change' }
-    const applied = applyProjectTransaction(input.snapshot.document as ProjectDocument, {
-      id: 'change-flow-trigger',
-      label: 'Change flow trigger',
-      operations: [{ type: 'flow.update', pageId: 'home', flowId: flow.id, flow }],
-    })
-    expect(applied.success && applied.changed).toBe(true)
-    if (!applied.success || !applied.changed)
-      return
-    expect(applied.changedNodeChanges).toContainEqual({
-      kind: 'content',
-      pageId: 'home',
-      nodeId: 'name',
-    })
-    const next = createProjectSnapshot(applied.document, 2)
-    coordinator.acceptSnapshot(next, {
-      project: applied.changedProject,
-      pageIds: applied.changedPageIds,
-      nodeIds: applied.changedNodeIds,
-      nodeChanges: applied.changedNodeChanges,
-    })
-    const after = coordinator.compilePage('home')
-    expect(after.success).toBe(true)
-    if (!after.success)
-      return
-    expect(after.compilation.page.nodesById.name?.flowEvents).toEqual(['change'])
-    expect(after.compilation.page.nodesById.name).not.toBe(before.compilation.page.nodesById.name)
   })
 
   it('keeps draft page programs isolated from the committed page cache', () => {
@@ -1105,7 +905,6 @@ describe('canonical project compiler', () => {
         version: '99',
         kind: 'field',
         props: [],
-        events: [],
         bindings: [],
         slots: [],
         allowedParents: [],
@@ -1133,55 +932,5 @@ describe('canonical project compiler', () => {
       success: false,
       diagnostics: [{ code: 'COMPILER_COMPONENT_UNKNOWN', nodeId: 'name' }],
     })
-  })
-})
-
-describe('event product compilation', () => {
-  it.each(CONFIG_FORM_FLOW_TRIGGER_KINDS)('preserves the %s lifecycle, node policy and blocked outcome', (kind) => {
-    const input = fixture()
-    const policy = {
-      when: { kind: 'literal' as const, value: true },
-      stopWhen: { kind: 'literal' as const, value: false },
-      onError: 'continue' as const,
-      timeoutMs: 0,
-    }
-    updateSnapshot(input, (document) => {
-      const candidate = synchronousFlow('policy', kind === 'component.event'
-        ? { kind, nodeId: 'name', event: 'change' }
-        : { kind })
-      candidate.nodes[1]!.policy = policy
-      candidate.nodes[2]!.type = 'blocked'
-      candidate.errorPolicy = { onError: 'failure', timeoutMs: 0 }
-      document.pagesById.home!.flows = [candidate]
-    })
-    const result = compileCanonicalProject(input)
-    expect(result.success).toBe(true)
-    if (!result.success)
-      return
-    const plan = result.compilation.ir.pagesById.home!.flows.find(item => item.plan.flowId === 'policy')!.plan
-    expect(plan.trigger.kind).toBe(kind)
-    expect(plan.errorPolicy?.timeoutMs).toBe(0)
-    expect(plan.nodes.find(node => node.id === 'reaction')?.policy).toEqual(policy)
-    expect(plan.nodes.find(node => node.id === 'end')?.type).toBe('blocked')
-    expect(JSON.parse(JSON.stringify(plan))).toEqual(plan)
-  })
-
-  it('invalidates runtime identity when execution policy changes', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows = [synchronousFlow('policy', { kind: 'form.beforeSubmit' })]
-    })
-    const before = compileCanonicalProject(input)
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows![0]!.nodes[1]!.policy = { timeoutMs: 0, stopWhen: { kind: 'literal', value: true } }
-    })
-    const after = compileCanonicalProject(input)
-    expect(before.success && after.success).toBe(true)
-    if (before.success && after.success) {
-      const original = before.compilation.ir.pagesById.home!.flows[0]!
-      const changed = after.compilation.ir.pagesById.home!.flows[0]!
-      expect(changed.semanticHash).not.toBe(original.semanticHash)
-      expect(changed.plan).not.toEqual(original.plan)
-    }
   })
 })

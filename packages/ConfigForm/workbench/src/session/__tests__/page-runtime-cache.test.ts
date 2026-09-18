@@ -55,7 +55,6 @@ function success(pageId: string): VueRuntimeCompileResult {
       renderer: {
         fields: [],
         plan: {
-          flows: [],
           valueSchema: { valueScopes: [], scopedFields: [] },
           runtime: { variables: [], dataSources: [] },
           optionBindings: [],

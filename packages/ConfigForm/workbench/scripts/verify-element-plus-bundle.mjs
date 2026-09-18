@@ -33,13 +33,14 @@ const forbidden = [
   /element-plus\/es\/components\/[a-z0-9-]+\/style\/css/,
 ]
 const sourceFiles = []
+const nonProductionDirectories = new Set(['__integration__', '__tests__'])
 
 function collect(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = resolve(directory, entry.name)
-    if (entry.isDirectory())
+    if (entry.isDirectory() && !nonProductionDirectories.has(entry.name))
       collect(path)
-    else if (/\.(?:css|scss|ts|vue)$/.test(entry.name))
+    else if (!entry.isDirectory() && !/\.test\.ts$/.test(entry.name) && /\.(?:css|scss|ts|vue)$/.test(entry.name))
       sourceFiles.push(path)
   }
 }

@@ -7,7 +7,7 @@ import type {
 } from '../../types'
 import { Database, Play, Plus, Save, Square, Trash2, Variable, X } from '@lucide/vue'
 import { computed } from 'vue'
-import { FlowValueEditor } from '../../../flow'
+import { DataValueEditor } from '../DataValueEditor'
 import { useDataWorkspace } from '../../composables'
 
 const props = defineProps<DataWorkspaceProps>()
@@ -16,7 +16,6 @@ const emit = defineEmits<DataWorkspaceEmits>()
 const {
   DATA_SOURCE_EDITOR_MAX_DURATION_MS,
   METHOD_OPTIONS,
-  NO_OPTIONS,
   RESPONSE_TYPE_OPTIONS,
   addDataSource,
   addDependency,
@@ -32,7 +31,7 @@ const {
   expandedSections,
   kindOptions,
   locale,
-  mappingEventArguments,
+  mappingContextValues,
   referenceFields,
   removeDependency,
   removeSelected,
@@ -188,12 +187,10 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
             <div class="data-section-heading">
               <h3>{{ locale.t('data.initialValue', 'Initial value') }}</h3>
             </div>
-            <FlowValueEditor
+            <DataValueEditor
               :model-value="selectedVariable.initialValue"
               :disabled="readonly"
               :fields="referenceFields"
-              :event-arguments="NO_OPTIONS"
-              :outputs="NO_OPTIONS"
               :variables="selectedVariableCatalog"
               :data-sources="dataSourceCatalog"
               :locale="locale"
@@ -209,14 +206,12 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
               <div class="data-request-grid">
                 <div class="data-field">
                   <span>{{ locale.t('data.method', 'Method') }}</span>
-                  <FlowValueEditor
+                  <DataValueEditor
                     :model-value="selectedDataSource.request.method ?? 'GET'"
                     control="enum"
                     :options="METHOD_OPTIONS"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -225,14 +220,12 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                 </div>
                 <div class="data-field">
                   <span>{{ locale.t('data.responseType', 'Response type') }}</span>
-                  <FlowValueEditor
+                  <DataValueEditor
                     :model-value="selectedDataSource.request.responseType ?? 'json'"
                     control="enum"
                     :options="RESPONSE_TYPE_OPTIONS"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -241,15 +234,13 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                 </div>
                 <div class="data-field data-field--wide">
                   <span>{{ locale.t('data.url', 'URL') }}</span>
-                  <FlowValueEditor
+                  <DataValueEditor
                     :model-value="selectedDataSource.request.url"
                     control="text"
                     required
                     :invalid="selectedUrlInvalid"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -268,14 +259,12 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                       @change="setOptionalRequestEnabled('headers', Boolean($event))"
                     />
                   </div>
-                  <FlowValueEditor
+                  <DataValueEditor
                     v-if="selectedDataSource.request.headers !== undefined"
                     :model-value="selectedDataSource.request.headers"
                     control="object"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -293,14 +282,12 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                       @change="setOptionalRequestEnabled('query', Boolean($event))"
                     />
                   </div>
-                  <FlowValueEditor
+                  <DataValueEditor
                     v-if="selectedDataSource.request.query !== undefined"
                     :model-value="selectedDataSource.request.query"
                     control="object"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -318,13 +305,11 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                       @change="setOptionalRequestEnabled('body', Boolean($event))"
                     />
                   </div>
-                  <FlowValueEditor
+                  <DataValueEditor
                     v-if="selectedDataSource.request.body !== undefined"
                     :model-value="selectedDataSource.request.body"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -340,12 +325,10 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
               </template>
               <div class="data-dependencies">
                 <div v-for="(dependency, index) in selectedDataSource.dependencies ?? []" :key="index" class="data-dependency-row">
-                  <FlowValueEditor
+                  <DataValueEditor
                     :model-value="dependency"
                     :disabled="readonly"
                     :fields="referenceFields"
-                    :event-arguments="NO_OPTIONS"
-                    :outputs="NO_OPTIONS"
                     :variables="variableCatalog"
                     :data-sources="dataSourceCatalog"
                     :locale="locale"
@@ -426,13 +409,12 @@ defineExpose<DataWorkspaceExpose>({ cancel, confirmClose, save, testDataSource }
                     @change="setMappingEnabled(Boolean($event))"
                   />
                 </div>
-                <FlowValueEditor
+                <DataValueEditor
                   v-if="selectedDataSource.mapping !== undefined"
                   :model-value="selectedDataSource.mapping"
                   :disabled="readonly"
                   :fields="referenceFields"
-                  :event-arguments="mappingEventArguments"
-                  :outputs="NO_OPTIONS"
+                  :context-values="mappingContextValues"
                   :variables="variableCatalog"
                   :data-sources="dataSourceCatalog"
                   :locale="locale"

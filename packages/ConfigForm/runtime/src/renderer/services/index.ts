@@ -1,6 +1,6 @@
-export type { ConfigFormRendererBuiltinActionRef, RendererBuiltinActionHost } from '../types/runtime-actions'
 export { createRendererBindingService, resolveComponent } from './binding'
 export { ConfigFormRenderer } from './component'
+export { createComponentListenerService } from './component-listeners'
 export { projectRendererDesignValueSchema } from './design-value-schema'
 export { createConfigFormRendererExpose } from './expose'
 export { withConfigFormInstall } from './install'
@@ -19,7 +19,4 @@ export {
   mergeAriaTokens,
   toDomId,
 } from './rendering'
-export { ConfigFormRendererActionError, createRendererBuiltinActions, listConfigFormRendererBuiltinActionDescriptors } from './runtime-actions'
-export { createRuntimeFlowEventService } from './runtime-flow-events'
-export { createRendererScopedFlowTransaction } from './scoped-flow-transaction'
 export { initializeRendererVariables } from './variables'

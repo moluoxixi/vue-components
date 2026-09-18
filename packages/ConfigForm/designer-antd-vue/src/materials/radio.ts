@@ -20,7 +20,7 @@ export default defineDesignerMaterialModule({
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
       analyze: s.createAntdVueOptionDiagnostics(),
-      setters: [s.choiceDefaultValueSetter('select'), s.optionSourceSetter, s.optionsSetter, s.disabledSetter],
+      setters: [s.choiceDefaultValueSetter('select'), s.optionsSetter, s.disabledSetter],
       createNode: ({ id, field = 'radio' }) => ({
         id,
         kind: 'field',
@@ -33,7 +33,7 @@ export default defineDesignerMaterialModule({
     locale: {
       title: '单选框',
       category: '选择',
-      setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' },
+      setters: { defaultValue: '默认值', options: '静态选项', disabled: '禁用' },
     },
   },
 })

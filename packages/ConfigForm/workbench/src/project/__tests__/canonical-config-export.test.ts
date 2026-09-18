@@ -85,7 +85,7 @@ describe('canonical Config export', () => {
     })).toThrow('does not match the ProjectCompilation Registry identity')
   })
 
-  it('preserves canonical graph props, relation placement, Registry lock, and compiled Flow identity', async () => {
+  it('preserves canonical graph props, relation placement, and Registry lock', async () => {
     const { adapter, compilation } = await fixture((document) => {
       const page = document.pagesById.home!
       page.graph.props = { authoringSurface: 'customer-profile' }
@@ -94,17 +94,6 @@ describe('canonical Config export', () => {
         region: { lane: 'main' },
         span: 7,
       }
-      page.flows = [{
-        version: 1,
-        id: 'positioned-flow',
-        name: 'Positioned flow',
-        trigger: { kind: 'page.mount' },
-        nodes: [
-          { id: 'trigger', position: { x: 13, y: 21 }, type: 'trigger' },
-          { id: 'end', position: { x: 144, y: 89 }, type: 'end' },
-        ],
-        edges: [{ id: 'trigger-end', source: 'trigger', target: 'end' }],
-      }]
     })
     const exported = createCanonicalProjectConfigExport(compilation, adapter.sourceResolver)
     const pageFile = exported.files[normalizeProjectPath('pages/home/form.config.ts')]
@@ -119,11 +108,9 @@ describe('canonical Config export', () => {
     expect(pageFile.content).toContain('placement: {')
     expect(pageFile.content).toContain('basis: "42%"')
     expect(pageFile.content).toContain('lane: "main"')
-    expect(pageFile.content).toContain('flowId: "positioned-flow"')
     expect(pageFile.content).toContain('semanticHash: ')
-    expect(pageFile.content).not.toContain('position: {')
     expect(projectFile.content).toContain('export const pageConfigs = {')
-    expect(projectFile.content).toContain('version: 4')
+    expect(projectFile.content).toContain('version: 5')
     expect(projectFile.content).toContain('registryLock: {')
     expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
     expect(() => parse(projectFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
@@ -147,9 +134,8 @@ describe('canonical standalone Source export', () => {
 
     expect(exported.entry).toBe(normalizeProjectPath('src/main.ts'))
     expect(paths.filter(path => !path.startsWith('src/runtime/'))).toEqual([
-      'src/actions/index.ts',
+      'src/data/index.ts',
       'src/pages/home/Page.vue',
-      'src/pages/home/flows.ts',
       'src/pages/home/validation.ts',
       'index.html',
       'package.json',
@@ -162,7 +148,6 @@ describe('canonical standalone Source export', () => {
       'vite.config.ts',
     ])
     expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/i)
-    expect(paths).toContain('src/runtime/flow/services/runtime.ts')
     expect(paths).toContain('src/runtime/expression/services/evaluate.ts')
 
     const runtimeSources = getConfigFormRuntimeSources()
@@ -231,12 +216,10 @@ describe('canonical standalone Source export', () => {
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
 
     expect(Object.keys(exported.files).filter(path => !path.startsWith('src/runtime/'))).toEqual([
-      'src/actions/index.ts',
+      'src/data/index.ts',
       'src/pages/home/Page.vue',
-      'src/pages/home/flows.ts',
       'src/pages/home/validation.ts',
       'src/pages/secondary/Page.vue',
-      'src/pages/secondary/flows.ts',
       'src/pages/secondary/validation.ts',
       'index.html',
       'package.json',
@@ -262,56 +245,6 @@ describe('canonical standalone Source export', () => {
       ...adapter.sourceResolver,
       registryFingerprint: 'fnv1a:stale',
     })).toThrow('does not match the ProjectCompilation Registry identity')
-  })
-
-  it('binds only node events used by actions or canonical Flow listeners', async () => {
-    const { adapter, compilation } = await fixture((document, activeAdapter) => {
-      const page = document.pagesById.home!
-      document.registryLock.components['element.tabs'] = structuredClone(
-        activeAdapter.componentRegistry.lock.components['element.tabs']!,
-      )
-      document.registryLock.components['element.collapse'] = structuredClone(
-        activeAdapter.componentRegistry.lock.components['element.collapse']!,
-      )
-      page.graph.root.push(
-        { nodeId: 'event-tabs', placement: {} },
-        { nodeId: 'idle-collapse', placement: {} },
-      )
-      page.graph.nodesById['event-tabs'] = {
-        id: 'event-tabs',
-        component: 'element.tabs',
-        kind: 'layout',
-        props: {},
-        events: {},
-        bindings: {},
-        slots: { default: [] },
-      }
-      page.graph.nodesById['idle-collapse'] = {
-        id: 'idle-collapse',
-        component: 'element.collapse',
-        kind: 'layout',
-        props: {},
-        events: {},
-        bindings: {},
-        slots: { default: [] },
-      }
-      page.flows = [{
-        version: 1,
-        id: 'tab-change-flow',
-        name: 'Tab change',
-        trigger: { kind: 'component.event', nodeId: 'event-tabs', event: 'tab-change' },
-        nodes: [
-          { id: 'trigger', type: 'trigger' },
-          { id: 'end', type: 'end' },
-        ],
-        edges: [{ id: 'trigger-end', source: 'trigger', target: 'end', condition: 'next' }],
-      }]
-    })
-    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const { wrapper, load } = await generatedPage(exported)
-    const fields = wrapper.findComponent(load('src/runtime/vue/renderer/index.ts').ConfigFormRenderer).props('fields')
-    expect(fields.find((node: { id: string }) => node.id === 'event-tabs')).toMatchObject({ eventNames: ['tab-change'] })
-    expect(fields.find((node: { id: string }) => node.id === 'idle-collapse')).not.toHaveProperty('eventNames')
   })
 
   it('executes required, RuleSet, custom-validator, and validateOn semantics in generated source', async () => {
@@ -378,7 +311,6 @@ describe('canonical standalone Source export', () => {
         component: 'element.section',
         kind: 'layout',
         props: { title: 'Responsive section' },
-        events: {},
         bindings: {},
         slots: { default: [] },
       }

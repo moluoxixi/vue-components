@@ -1,5 +1,5 @@
 import type { FieldNode, PageGraph } from '@moluoxixi/config-form-model'
-import { defineDesignerFieldMaterial } from '@moluoxixi/config-form-designer'
+import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
 import { pageGraphSchema } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
@@ -49,7 +49,7 @@ const expectedKeys = [
 
 function graphForRootMaterials(): PageGraph {
   const registry = createAntdVueDesignerRegistry()
-  const graph: PageGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: PageGraph = { version: 3, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -76,7 +76,6 @@ function fieldNode(component: string, field: string): FieldNode {
     component,
     field,
     props: {},
-    events: {},
     bindings: {},
   }
 }
@@ -142,7 +141,7 @@ describe('ant design vue designer materials', () => {
     })
   })
 
-  it('publishes complete source, binding, event, and property-control metadata', () => {
+  it('publishes source and binding metadata without event authoring capabilities', () => {
     const registry = createAntdVueDesignerRegistry()
     expect(registry.listMaterials().every(material => !!material.source)).toBe(true)
     expect(registry.getMaterial('antd.date')?.source?.tag).toBe('a-date-picker')
@@ -155,15 +154,11 @@ describe('ant design vue designer materials', () => {
       valueProp: 'checked',
       trigger: 'update:checked',
     })
-    expect(registry.getMaterial('antd.search')?.events).toEqual([
-      { name: 'search', title: 'Search' },
-    ])
-    expect(registry.getMaterial('antd.tabs')?.events).toEqual([
-      { name: 'change', title: 'Active tab change' },
-    ])
-    expect(registry.getMaterial('antd.collapse')?.events).toEqual([
-      { name: 'change', title: 'Expanded items change' },
-    ])
+    expect(registry.listMaterials().every(material => !Object.hasOwn(material, 'events'))).toBe(true)
+    expect(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.contracts.every(contract => !Object.hasOwn(contract, 'events'))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).every(setter => isDesignerSetterPathAllowed(setter.path))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path.join('.') === 'props.optionSource')).toBe(false)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path[0] === 'valueScope')).toBe(false)
     expect(Object.keys(registry.propertyControls)).toEqual([])
   })
 

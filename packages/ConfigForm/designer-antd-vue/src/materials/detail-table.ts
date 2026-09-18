@@ -16,10 +16,6 @@ export default defineDesignerMaterialModule({
       runtime: { component: s.AntdSection },
       setters: [
         s.propSetter('title', 'Title', 'text'),
-        { key: 'scopeField', label: 'Array key', path: ['valueScope', 'field'], control: 'text' },
-        { key: 'itemKey', label: 'Row identity key', path: ['valueScope', 'itemKey'], control: 'text' },
-        { key: 'minItems', label: 'Minimum rows', path: ['valueScope', 'minItems'], control: 'number', min: 0, step: 1 },
-        { key: 'maxItems', label: 'Maximum rows', path: ['valueScope', 'maxItems'], control: 'number', min: 0, step: 1 },
         s.propSetter('arrayDisplay', 'Display', 'select', [{ label: 'List', value: 'list' }, { label: 'Table', value: 'table' }]),
         s.propSetter('readonly', 'Read only', 'boolean'),
         s.disabledSetter,
@@ -39,10 +35,6 @@ export default defineDesignerMaterialModule({
       category: '布局',
       setters: {
         title: '标题',
-        scopeField: '数组字段名',
-        itemKey: '行业务主键',
-        minItems: '最少行数',
-        maxItems: '最多行数',
         arrayDisplay: '展示方式',
         readonly: '只读',
         disabled: '禁用',

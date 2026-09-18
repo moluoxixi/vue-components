@@ -10,14 +10,14 @@ import { computed, defineComponent, useAttrs, useId, useTemplateRef } from 'vue'
 import {
   useDesignInteractionGuard,
   useRendererController,
-  useRendererEvents,
+  useRendererDataLifecycle,
   useRendererLayout,
   useRuntimeEditorBridge,
 } from './composables'
 import { createRendererBindingService } from './services/binding'
+import { createComponentListenerService } from './services/component-listeners'
 import { createBem } from './services/rendering'
 import { createRendererPipeline } from './services/renderer-pipeline'
-import { createRuntimeFlowEventService } from './services/runtime-flow-events'
 
 defineOptions({
   name: 'ConfigFormRenderer',
@@ -44,15 +44,13 @@ const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 
 let controller: RendererControllerState<TValues>
-const events = useRendererEvents({ props, emit, controller: () => controller })
+const dataLifecycle = useRendererDataLifecycle({ props, emit, controller: () => controller })
 controller = useRendererController({
   emit,
   props,
-  onDiagnostic: events.controllerDiagnostic,
-  onScopeInvalidated: events.cancelScope,
-  onLifecycle: events.lifecycle,
-  reactionProjection: events.projection,
-  shouldRunLifecycle: events.hasLifecycle,
+  onScopeInvalidated: dataLifecycle.cancelScope,
+  onLifecycle: dataLifecycle.lifecycle,
+  shouldRunLifecycle: dataLifecycle.hasLifecycle,
 })
 const { meta, model, resetFields, submit } = controller
 const editorBridge = useRuntimeEditorBridge({ props })
@@ -60,12 +58,8 @@ const designGuard = useDesignInteractionGuard({
   formRef,
   mode: () => props.mode,
 })
-const flowEvents = createRuntimeFlowEventService({
-  emitRuntimeEvent: events.componentEvent,
-  eventNames: events.eventNames,
-  onError: diagnostic => emit('flowError', diagnostic),
+const componentListeners = createComponentListenerService({
   mode: () => props.mode,
-  shouldIntercept: editorBridge.shouldInterceptEditorEvent,
 })
 const binding = createRendererBindingService(props)
 const {
@@ -78,13 +72,13 @@ const renderLayout = createRendererPipeline({
   activePresentationLayout,
   bem,
   binding,
-  cancelScope: events.cancelScope,
+  cancelScope: dataLifecycle.cancelScope,
+  componentListeners,
   controller,
   designGuard,
   editorBridge,
-  flowEvents,
   formId,
-  getOptionState: events.data.getOptionState,
+  getOptionState: dataLifecycle.data.getOptionState,
   props,
   responsiveLabelWidths,
   responsiveLayouts,
@@ -112,7 +106,7 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
   clearInstanceValidate: controller.clearInstanceValidate,
   clearValidate: controller.clearValidate,
   duplicateRow: controller.duplicateRow,
-  getDataSourceState: events.data.getDataSourceState,
+  getDataSourceState: dataLifecycle.data.getDataSourceState,
   getErrors: controller.getErrors,
   getFieldMeta: controller.getFieldMeta,
   getInstanceErrors: controller.getInstanceErrors,
@@ -121,16 +115,16 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
   getInstanceValue: controller.getInstanceValue,
   getIssues: controller.getIssues,
   getMeta: controller.getMeta,
-  getOptionState: events.data.getOptionState,
+  getOptionState: dataLifecycle.data.getOptionState,
   getValidating: controller.getValidating,
   getValue: controller.getValue,
   getValues: controller.getValues,
-  getVariables: events.data.getVariables,
+  getVariables: dataLifecycle.data.getVariables,
   insertRow: controller.insertRow,
   isInstanceValidating: controller.isInstanceValidating,
   listFieldInstances: controller.listFieldInstances,
   listRows: controller.listRows,
-  loadDataSource: (sourceId, options) => events.data.loadDataSource(sourceId, options),
+  loadDataSource: (sourceId, options) => dataLifecycle.data.loadDataSource(sourceId, options),
   moveRow: controller.moveRow,
   removeRow: controller.removeRow,
   resetFields: controller.resetFields,

@@ -1,5 +1,9 @@
 import type { RuntimeHostSyncMessage } from '..'
-import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
+import {
+  CANONICAL_PROJECT_IR_VERSION,
+  compileCanonicalPage,
+  CONFIG_FORM_COMPILER_VERSION,
+} from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
@@ -99,6 +103,77 @@ describe('runtime host protocol', () => {
     expect(cloned.compilation.page.nodesById).not.toBe(message.compilation.page.nodesById)
   })
 
+  it('rejects stale, future, missing, and mixed compilation contracts', async () => {
+    const message = await syncMessage()
+    const withKey = (key: Record<string, unknown>) => ({
+      ...message,
+      compilation: { ...message.compilation, key },
+    })
+
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      irVersion: CANONICAL_PROJECT_IR_VERSION - 1,
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      irVersion: CANONICAL_PROJECT_IR_VERSION + 1,
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      irVersion: undefined,
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      compilerVersion: '4.0.0',
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      compilerVersion: `${CONFIG_FORM_COMPILER_VERSION}-future`,
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage(withKey({
+      ...message.compilation.key,
+      compilerVersion: undefined,
+    }))).toBe(false)
+    expect(isParentToRuntimeHostMessage({
+      ...message,
+      compilation: {
+        ...message.compilation,
+        page: { ...message.compilation.page, flows: [] },
+      },
+    })).toBe(false)
+
+    const [nodeId] = Object.keys(message.compilation.page.nodesById)
+    const node = nodeId ? message.compilation.page.nodesById[nodeId] : undefined
+    expect(node).toBeDefined()
+    expect(isParentToRuntimeHostMessage({
+      ...message,
+      compilation: {
+        ...message.compilation,
+        page: {
+          ...message.compilation.page,
+          nodesById: {
+            ...message.compilation.page.nodesById,
+            [nodeId!]: { ...node, events: {} },
+          },
+        },
+      },
+    })).toBe(false)
+  })
+
+  it('rejects stale, future, and missing outer protocol versions', async () => {
+    const message = await syncMessage()
+    const child = childMessage(message, { type: 'ready' })
+
+    for (const version of [
+      RUNTIME_HOST_PROTOCOL_VERSION - 1,
+      RUNTIME_HOST_PROTOCOL_VERSION + 1,
+      undefined,
+    ]) {
+      expect(isParentToRuntimeHostMessage({ ...message, version })).toBe(false)
+      expect(isRuntimeHostToParentMessage({ ...child, version })).toBe(false)
+    }
+  })
+
   it('accepts design canvas and drag-visual syncs only with a complete design contract', async () => {
     const message = await designSyncMessage()
 
@@ -175,7 +250,7 @@ describe('runtime host protocol', () => {
     }))).toBe(false)
   })
 
-  it('rejects malformed adapters, page identities, and runtime event payloads', async () => {
+  it('rejects malformed adapters and page identities', async () => {
     const message = await syncMessage()
     expect(isParentToRuntimeHostMessage({ ...message, adapter: 'unknown' })).toBe(false)
     expect(isParentToRuntimeHostMessage({
@@ -185,22 +260,6 @@ describe('runtime host protocol', () => {
         page: { ...message.compilation.page, id: 'other-page' },
       },
     })).toBe(false)
-    expect(isRuntimeHostToParentMessage({
-      ...message,
-      type: 'runtimeEvent',
-      payload: { event: 'change' },
-    })).toBe(false)
-    expect(isRuntimeHostToParentMessage({
-      channel: RUNTIME_HOST_CHANNEL,
-      version: RUNTIME_HOST_PROTOCOL_VERSION,
-      hostId: message.hostId,
-      projectId: message.projectId,
-      pageId: message.pageId,
-      sequence: 2,
-      revision: message.revision,
-      type: 'runtimeEvent',
-      payload: { event: 'change', nodeId: 'name', scope: [], args: ['Ada'], values: { name: 'Ada' } },
-    })).toBe(true)
   })
 
   it('validates atomic runtime state and rejects mixed host identities', async () => {
@@ -247,75 +306,6 @@ describe('runtime host protocol', () => {
     expect(isParentToRuntimeHostMessage(childMessage(message, { type: 'submit', requestId: 'submit-1' }))).toBe(true)
     expect(isRuntimeHostToParentMessage(childMessage(message, { type: 'submit', values: {} }))).toBe(false)
     expect(isRuntimeHostToParentMessage({ ...base, payload: { ...(base.payload as object), requestId: undefined } })).toBe(false)
-  })
-
-  it('validates JSON-only action request/result payloads and allows omitted action input', async () => {
-    const message = await syncMessage()
-    const context = {
-      event: { trigger: { kind: 'page.mount' }, args: [] },
-      flow: {
-        runtimeVersion: 2,
-        version: 1,
-        id: 'flow-a',
-        name: 'Flow A',
-        trigger: { kind: 'page.mount' },
-      },
-      node: {
-        id: 'action-a',
-        type: 'action',
-        ref: 'host.save',
-        config: {},
-        incoming: [],
-        outgoing: [],
-      },
-      outputs: {},
-      revision: 1,
-      runId: 'run-a',
-      values: { name: 'Ada' },
-    }
-    const request = childMessage(message, {
-      type: 'actionRequest',
-      requestId: 'request-a',
-      ref: 'host.save',
-      context,
-    })
-
-    expect(isRuntimeHostToParentMessage(structuredClone(request))).toBe(true)
-    expect(isRuntimeHostToParentMessage({ ...request, input: { nested: [1, true, null] } })).toBe(true)
-    expect(isRuntimeHostToParentMessage({ ...request, input: () => undefined })).toBe(false)
-    expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, form: {} } })).toBe(false)
-    expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, scope: [{ scopeId: 'rows', rowId: 'row-1' }] } } })).toBe(true)
-    for (const scope of [null, [{ scopeId: '__proto__', rowId: 'row-1' }], [{ scopeId: 'rows', rowId: 'constructor' }], [{ scopeId: 'rows', rowId: 'one' }, { scopeId: 'rows', rowId: 'two' }], Array.from({ length: 33 }, (_, index) => ({ scopeId: `rows-${index}`, rowId: 'one' }))])
-      expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, scope } } })).toBe(false)
-    for (const unsafe of ['__proto__', 'prototype', 'constructor']) {
-      const extra = JSON.parse(`{"${unsafe}":0}`)
-      expect(isRuntimeHostToParentMessage({ ...request, extra })).toBe(false)
-      expect(isRuntimeHostToParentMessage({ ...request, context: { ...context, event: { ...context.event, extra } } })).toBe(false)
-    }
-
-    const result = childMessage(message, {
-      type: 'actionResult',
-      requestId: 'request-a',
-      success: true,
-      output: { accepted: true },
-      valuePatch: { remove: ['oldName'], set: { name: 'Grace' } },
-    })
-    expect(isParentToRuntimeHostMessage(structuredClone(result))).toBe(true)
-    expect(isParentToRuntimeHostMessage({
-      ...result,
-      valuePatch: { remove: ['name'], set: { name: 'Grace' } },
-    })).toBe(false)
-    expect(isParentToRuntimeHostMessage({
-      ...result,
-      valuePatch: { remove: [], set: { name: new Date() } },
-    })).toBe(false)
-    expect(isParentToRuntimeHostMessage({
-      ...result,
-      success: false,
-      output: undefined,
-      valuePatch: undefined,
-      diagnostic: { code: 'HOST_REJECTED', message: 'Rejected', path: 'input.name' },
-    })).toBe(true)
   })
 
   it('accepts messages only from the expected source, origin, and session', async () => {
@@ -400,11 +390,8 @@ describe('runtime host protocol', () => {
       expect(accepts({ ...state, values })).toBe(false)
     expect(accepts({ ...state, validation: { 'opaque-key': Array.from({ length: 129 }).fill('error') } })).toBe(false)
     expect(accepts({ ...state, fields: [{ ...field, scope: [] }] })).toBe(false)
-    expect(accepts({ ...state,
-      values: { rows: [{ 'a.b': 1 }, { other: 2 }] },
-      fields: [field, { ...field, nodeId: 'other', instanceKey: 'other-key', valuePath: ['rows', 1, 'other'] }],
-    })).toBe(false)
-    expect(accepts({ fields: [], values: { sparse: new Array(10_001) }, touched: [], validation: {} })).toBe(false)
+    expect(accepts({ ...state, values: { rows: [{ 'a.b': 1 }, { other: 2 }] }, fields: [field, { ...field, nodeId: 'other', instanceKey: 'other-key', valuePath: ['rows', 1, 'other'] }] })).toBe(false)
+    expect(accepts({ fields: [], values: { sparse: Array.from({ length: 10_001 }) }, touched: [], validation: {} })).toBe(false)
     let deep: unknown = 1
     for (let depth = 0; depth < 66; depth += 1)
       deep = { nested: deep }

@@ -22,7 +22,6 @@ export const componentContractSchema: z.ZodType<ComponentContract> = z.object({
     valueKind: z.string().trim().min(1).optional(),
     required: z.boolean().optional(),
   }).strict()),
-  events: z.array(z.object({ name: memberNameSchema }).strict()),
   bindings: z.array(z.object({
     name: memberNameSchema,
     valueProp: memberNameSchema,

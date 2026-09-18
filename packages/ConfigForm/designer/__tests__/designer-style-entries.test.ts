@@ -84,10 +84,9 @@ describe('designer component Sass entries', () => {
       'src/components/DesignerPropertyPanel/components/DesignerResponsiveSettings/style',
       'src/components/DesignerPropertyPanel/components/DesignerBreakpointLayoutSettings/style',
       'src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter/style',
-      'src/components/DesignerPropertyPanel/components/DesignerConditionSetter/style',
-      'src/components/DesignerPropertyPanel/components/DesignerReactionSetter/style',
       'src/components/DesignerPropertyPanel/components/DesignerOptionsSetter/style',
       'src/components/DesignerPropertyPanel/components/DesignerValidationSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerValidateOnSetter/style',
     ]
 
     for (const directory of styleDirectories) {

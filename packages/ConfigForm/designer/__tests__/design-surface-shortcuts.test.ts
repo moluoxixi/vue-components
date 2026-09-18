@@ -26,14 +26,13 @@ const componentRegistry = createComponentContractRegistry([{
   version: '1',
   kind: 'field',
   props: [],
-  events: [],
   bindings: [],
   slots: [],
   allowedParents: [],
   defaults: {},
 }], { adapter: 'test', version: '1' })
 const graph: PageGraph = {
-  version: 2,
+  version: 3,
   props: {},
   form: {},
   root: [
@@ -47,7 +46,6 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'first',
       props: {},
-      events: {},
       bindings: {},
     },
     second: {
@@ -56,7 +54,6 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'second',
       props: {},
-      events: {},
       bindings: {},
     },
   },

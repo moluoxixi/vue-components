@@ -1,5 +1,5 @@
 import type { PageGraph, RegistryContractComponentSnapshot, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
-import type { CanonicalFlowIR, CanonicalNodeIR, SemanticCompilerDiagnostic, SemanticCompilerEnvironment } from '../../../types'
+import type { CanonicalNodeIR, SemanticCompilerDiagnostic, SemanticCompilerEnvironment } from '../../../types'
 
 export interface CompilePageContext {
   pageId: string
@@ -7,7 +7,6 @@ export interface CompilePageContext {
   registry: ReadonlyMap<string, RegistryContractComponentSnapshot>
   diagnostics: SemanticCompilerDiagnostic[]
   nodesById: Record<string, CanonicalNodeIR>
-  flowEvents: ReadonlyMap<string, readonly string[]>
 }
 
 export interface PreparedCompilerContext {
@@ -16,6 +15,3 @@ export interface PreparedCompilerContext {
   environmentHash: string
   registry: RegistryContractSnapshot
 }
-
-export type CompiledFlowEvents = ReadonlyMap<string, readonly string[]>
-export type CompiledFlows = readonly CanonicalFlowIR[]

@@ -7,6 +7,7 @@ import {
   createComponentContractRegistry,
   createProjectSnapshot,
   createRegistryContractSnapshot,
+  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
@@ -22,7 +23,6 @@ const contracts: ComponentContract[] = [
     version: '1',
     kind: 'layout',
     props: [],
-    events: [],
     bindings: [],
     slots: [{ name: 'default', accepts: ['field', 'layout'] }],
     allowedParents: [],
@@ -33,7 +33,6 @@ const contracts: ComponentContract[] = [
     version: '1',
     kind: 'field',
     props: [],
-    events: [],
     bindings: [],
     slots: [],
     allowedParents: [],
@@ -69,7 +68,7 @@ function fixture() {
           }],
         },
         graph: {
-          version: 2,
+          version: PAGE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [
@@ -89,7 +88,6 @@ function fixture() {
                 maxItems: 20,
               },
               props: {},
-              events: {},
               bindings: {},
               slots: {
                 default: [
@@ -105,7 +103,6 @@ function fixture() {
               field: 'sku',
               defaultValue: '',
               props: {},
-              events: {},
               bindings: {},
             },
             address: {
@@ -114,7 +111,6 @@ function fixture() {
               kind: 'layout',
               valueScope: { kind: 'object', field: 'address' },
               props: {},
-              events: {},
               bindings: {},
               slots: { default: [{ nodeId: 'city', placement: {} }] },
             },
@@ -124,7 +120,6 @@ function fixture() {
               kind: 'field',
               field: 'city',
               props: {},
-              events: {},
               bindings: {},
             },
             country: {
@@ -138,7 +133,6 @@ function fixture() {
                 params: { tenant: { $ref: { kind: 'variable', variableId: 'tenant' } } },
               },
               props: {},
-              events: {},
               bindings: {},
             },
           },

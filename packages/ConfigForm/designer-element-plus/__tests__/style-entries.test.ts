@@ -83,7 +83,6 @@ describe('element Plus designer component Sass entries', () => {
       'element-radio-field',
       'element-select-field',
       'element-option-state',
-      'element-option-source-setter',
       'element-choice-default-setter',
       'element-default-value-setter',
     ]) {
@@ -98,7 +97,6 @@ describe('element Plus designer component Sass entries', () => {
       'ElementRadioField',
       'ElementSelectField',
       'ElementOptionState',
-      'ElementOptionSourceSetter',
       'ElementChoiceDefaultSetter',
       'ElementDefaultValueSetter',
     ]) {

@@ -37,13 +37,12 @@ function field(id: string) {
     kind: 'field' as const,
     field: id,
     props: {},
-    events: {},
     bindings: {},
   }
 }
 
 const graph: PageGraph = {
-  version: 2,
+  version: 3,
   props: {},
   form: {},
   root: [
@@ -58,7 +57,6 @@ const graph: PageGraph = {
       component: 'test.section',
       kind: 'layout',
       props: {},
-      events: {},
       bindings: {},
       slots: { default: [{ nodeId: 'nested', placement: {} }] },
     },

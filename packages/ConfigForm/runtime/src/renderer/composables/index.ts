@@ -1,6 +1,6 @@
 export { useDesignInteractionGuard } from './use-design-interaction-guard'
 export { useRendererController } from './use-renderer-controller'
 export { useRendererData } from './use-renderer-data'
-export { useRendererEvents } from './use-renderer-events'
+export { useRendererDataLifecycle } from './use-renderer-data-lifecycle'
 export { useRendererLayout } from './use-renderer-layout'
 export { useRuntimeEditorBridge } from './use-runtime-editor-bridge'

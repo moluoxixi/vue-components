@@ -1,3 +1,4 @@
+import { PAGE_GRAPH_VERSION, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { normalizeProjectPath } from '..'
@@ -24,13 +25,13 @@ describe('project templates', () => {
     expect(element.registryLock.adapter).toBe('element-plus')
     expect(antd.registryLock.adapter).toBe('antd-vue')
     expect(element).toMatchObject({
-      version: 4,
+      version: PROJECT_DOCUMENT_VERSION,
       id: 'element-profile-fixture',
       homePageId: 'home',
       pageOrder: ['home'],
     })
     expect(element.pagesById.home?.graph).toMatchObject({
-      version: 2,
+      version: PAGE_GRAPH_VERSION,
       form: {
         gap: '16px',
         labelWidth: 120,
@@ -41,7 +42,7 @@ describe('project templates', () => {
       },
     })
     expect(Object.values(element.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
+      expect.objectContaining({ component: 'element.input', bindings: {} }),
     ]))
     expect(Object.keys(element.pagesById.home!.graph.nodesById)).toEqual([
       'profile-name-node-1',

@@ -36,19 +36,9 @@ export interface CanonicalSourceComponentBinding {
   valueProp?: string
 }
 
-/** Trusted host registration only; executable source is never stored in ProjectDocument. */
-export interface CanonicalSourceActionBinding {
-  exportName: string
-  module:
-    | { kind: 'package', specifier: string, packageName: string, version: string }
-    | { kind: 'file', path: string, content: string }
-  dependencies?: Record<string, string>
-}
-
 export interface CanonicalSourceBindingResolver {
   adapter: string
   adapterVersion: string
   registryFingerprint: string
   resolveBinding: (component: string) => CanonicalSourceComponentBinding | undefined
-  resolveAction?: (ref: string) => CanonicalSourceActionBinding | undefined
 }

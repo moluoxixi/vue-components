@@ -4,6 +4,7 @@ import {
   applyProjectDraftTransaction,
   applyProjectTransaction,
   createComponentContractRegistry,
+  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
 } from '../index'
 
@@ -12,7 +13,6 @@ const inputContract: ComponentContract = {
   version: '1',
   kind: 'field',
   props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
-  events: [],
   bindings: [],
   slots: [],
   allowedParents: [],
@@ -31,7 +31,6 @@ function largeProject(nodeCount: number): { document: ProjectDocument, registry:
     kind: 'field' as const,
     field: `field_${index}`,
     props: { placeholder: `Field ${index}` },
-    events: {},
     bindings: {},
   }]))
   return {
@@ -48,7 +47,7 @@ function largeProject(nodeCount: number): { document: ProjectDocument, registry:
           name: 'Home',
           route: '/',
           graph: {
-            version: 2,
+            version: PAGE_GRAPH_VERSION,
             props: {},
             form: {},
             root: nodeIds.map(nodeId => ({ nodeId, placement: {} })),
@@ -171,7 +170,6 @@ describePerformance('project model production performance budgets', () => {
                 kind: 'field',
                 field: `warmup_candidate_${index}`,
                 props: { placeholder: 'Warmup' },
-                events: {},
                 bindings: {},
               },
             },
@@ -197,7 +195,6 @@ describePerformance('project model production performance budgets', () => {
                 kind: 'field',
                 field: `candidate_${index}`,
                 props: { placeholder: 'Candidate' },
-                events: {},
                 bindings: {},
               },
             },

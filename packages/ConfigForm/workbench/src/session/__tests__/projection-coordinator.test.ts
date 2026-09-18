@@ -19,7 +19,7 @@ function success(snapshot: PageProjectionInput): VueRuntimeCompileResult {
     success: true,
     artifact: {
       compilationKey: {
-        irVersion: 3,
+        irVersion: 4,
         projectId: snapshot.projectId,
         pageId: snapshot.pageId,
         registryAdapter: snapshot.adapter,
@@ -40,7 +40,6 @@ function success(snapshot: PageProjectionInput): VueRuntimeCompileResult {
         labelPosition: 'top',
         readonly: false,
         plan: {
-          flows: [],
           valueSchema: { valueScopes: [], scopedFields: [] },
           runtime: { variables: [], dataSources: [] },
           optionBindings: [],

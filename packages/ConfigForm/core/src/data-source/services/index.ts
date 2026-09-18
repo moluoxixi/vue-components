@@ -4,3 +4,4 @@ export {
   ConfigFormDataSourceError,
   createConfigFormDataSourceRuntime,
 } from './runtime'
+export { cloneConfigFormDataValue, ConfigFormDataValueError } from './value'

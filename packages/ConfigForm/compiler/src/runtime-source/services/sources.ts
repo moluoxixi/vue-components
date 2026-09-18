@@ -25,16 +25,14 @@ const WORKSPACE_TARGETS: Readonly<Record<string, string>> = Object.freeze({
   '@moluoxixi/config-form-headless': 'headless',
 })
 
-const coreEntry = `export * from './expression'
+const coreEntry = `export * from './data-source'
+export * from './expression'
 export * from './field'
-export * from './flow'
-export * from './flow-authoring'
 export * from './json'
 export * from './layout'
 export * from './module-registry'
 export * from './reaction'
 export * from './value-reference'
-export * from './data-source'
 export * from './value-scope'
 `
 

@@ -116,7 +116,6 @@ export function useRuntimeHostDesignGeometry(options: {
         'role': 'presentation',
       }
     },
-    interceptEvent: () => true,
   }
 
   const stageStyle = computed<CSSProperties | undefined>(() => {

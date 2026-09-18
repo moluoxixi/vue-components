@@ -122,28 +122,6 @@ function validatePageAgainstRegistry(page: ProjectPage, registry: ComponentContr
     if (contract.allowedParents.length > 0)
       invalid('PROJECT_COMPONENT_PARENT_INVALID', `Component ${node.component} requires a registered parent slot.`, page.id, node.id)
   })
-  validatePageFlowTriggers(page, registry)
-}
-
-function validatePageFlowTriggers(page: ProjectPage, registry: ComponentContractRegistry): void {
-  for (const flow of page.flows ?? []) {
-    if (flow.trigger.kind !== 'component.event')
-      continue
-    const nodeId = flow.trigger.nodeId
-    const eventName = flow.trigger.event
-    const node = nodeId ? page.graph.nodesById[nodeId] : undefined
-    if (!node)
-      invalid('PROJECT_FLOW_TRIGGER_NODE_UNKNOWN', `Flow trigger node does not exist: ${nodeId ?? '<missing>'}`, page.id, nodeId)
-    const contract = requireComponentContract(registry, page, node)
-    if (!eventName || !contract.events.some(event => event.name === eventName)) {
-      invalid(
-        'PROJECT_FLOW_TRIGGER_EVENT_UNKNOWN',
-        `Event is not registered for ${node.component}: ${eventName ?? '<missing>'}`,
-        page.id,
-        node.id,
-      )
-    }
-  }
 }
 
 function requireComponentContract(
@@ -167,10 +145,6 @@ function validateNodeContract(page: ProjectPage, node: PageNode, contract: Compo
   const unknownProp = Object.keys(node.props).find(key => !allowedProps.has(key))
   if (unknownProp)
     invalid('PROJECT_COMPONENT_PROP_UNKNOWN', `Property is not registered for ${node.component}: ${unknownProp}`, page.id, node.id)
-  const eventNames = new Set(contract.events.map(event => event.name))
-  const unknownEvent = Object.keys(node.events).find(name => !eventNames.has(name))
-  if (unknownEvent)
-    invalid('PROJECT_COMPONENT_EVENT_UNKNOWN', `Event is not registered for ${node.component}: ${unknownEvent}`, page.id, node.id)
   const bindingNames = new Set(contract.bindings.map(binding => binding.name))
   const unknownBinding = Object.keys(node.bindings).find(name => !bindingNames.has(name))
   if (unknownBinding)

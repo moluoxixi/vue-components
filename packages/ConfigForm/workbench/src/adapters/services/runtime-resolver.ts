@@ -9,7 +9,6 @@ function toFieldNode(node: CanonicalRuntimeFieldNode): FieldNode {
     kind: 'field',
     field: node.field,
     props: structuredClone(node.configuredProps) as FieldNode['props'],
-    events: structuredClone(node.events) as FieldNode['events'],
     bindings: structuredClone(node.bindings) as FieldNode['bindings'],
     ...(node.extensions ? { extensions: structuredClone(node.extensions) as FieldNode['extensions'] } : {}),
     ...(node.conditions ? { conditions: structuredClone(node.conditions) as FieldNode['conditions'] } : {}),

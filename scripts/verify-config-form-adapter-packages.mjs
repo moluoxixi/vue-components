@@ -97,10 +97,8 @@ const adapters = [
   {
     directory: 'designer-antd-vue',
     exports: [
-      'ANTD_VUE_DESIGNER_COMPONENTS',
       'ANTD_VUE_DESIGNER_MATERIALS',
       'ANTD_VUE_DESIGNER_MATERIAL_REGISTRY',
-      'ANTD_VUE_DESIGNER_PROPERTY_CONTROLS',
       'ANTD_VUE_DESIGNER_ZH_CN',
       'ANTD_VUE_OPTION_RESOLVER_KEY',
       'antdVueDesignerRegistryLayer',
@@ -129,7 +127,6 @@ const adapters = [
   {
     directory: 'designer-element-plus',
     exports: [
-      'ELEMENT_PLUS_DESIGNER_COMPONENTS',
       'ELEMENT_PLUS_DESIGNER_MATERIALS',
       'ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY',
       'ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS',
@@ -315,6 +312,8 @@ function verifyRuntimePackage() {
       'createConfigFormRendererExpose',
       'defineField',
       'defineFields',
+      'initializeRendererVariables',
+      'projectRendererDesignValueSchema',
       'resolveConfigFormFieldLayout',
       'resolveConfigFormLayout',
       'resolveConfigFormNodeSpan',
@@ -338,6 +337,8 @@ function verifyRuntimePackage() {
       import {
         ConfigFormRenderer,
         createConfigFormRendererExpose,
+        initializeRendererVariables,
+        projectRendererDesignValueSchema,
         resolveConfigFormFieldLayout,
         resolveConfigFormLayout,
         resolveConfigFormNodeSpan,
@@ -373,8 +374,10 @@ function verifyRuntimePackage() {
         components,
         createConfigFormRendererExpose,
         fieldLayout,
+        initializeRendererVariables,
         layout,
         nodeSpan,
+        projectRendererDesignValueSchema,
         withConfigFormInstall,
       ]
       const typedRenderer: ConfigFormRendererComponent = ConfigFormRenderer

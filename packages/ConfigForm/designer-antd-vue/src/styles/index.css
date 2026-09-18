@@ -145,7 +145,6 @@
   animation: mx-antd-designer-spin 800ms linear infinite;
 }
 
-.mx-antd-designer-option-source,
 .mx-antd-designer-choice-default {
   display: grid;
   gap: 6px;

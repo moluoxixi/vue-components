@@ -23,6 +23,11 @@ import type {
   VueRuntimeDiagnostic,
   VueRuntimeRendererConfig,
 } from '../types'
+import {
+  CANONICAL_PROJECT_IR_VERSION,
+  CONFIG_FORM_COMPILER_VERSION,
+  hasOnlyCurrentCanonicalPageKeys,
+} from '@moluoxixi/config-form-compiler'
 import { evaluateConfigFormReactionCondition } from '@moluoxixi/config-form-core'
 import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
 import { getRuntimeNodeFragmentCache } from '../state'
@@ -31,6 +36,52 @@ import { createVueRuntimeDiagnostic, hasVueRuntimeErrors } from '../utils'
 type CanonicalRuntimeCondition = NonNullable<
   NonNullable<CanonicalRuntimeNode['conditions']>[keyof NonNullable<CanonicalRuntimeNode['conditions']>]
 >
+
+function compilationContractDiagnostics(
+  compilation: CompileCanonicalPageRuntimeInput['compilation'],
+): VueRuntimeDiagnostic[] {
+  const pageScoped = 'page' in compilation
+  const irVersion = pageScoped ? compilation.key.irVersion : compilation.ir.version
+  const diagnostics: VueRuntimeDiagnostic[] = []
+  if (irVersion !== CANONICAL_PROJECT_IR_VERSION) {
+    diagnostics.push(createVueRuntimeDiagnostic(
+      'VUE_RUNTIME_IR_VERSION_UNSUPPORTED',
+      `Unsupported Canonical IR version: ${String(irVersion)}. Expected ${CANONICAL_PROJECT_IR_VERSION}.`,
+      pageScoped ? ['key', 'irVersion'] : ['ir', 'version'],
+    ))
+  }
+  const compilerVersions = [
+    { path: ['key', 'compilerVersion'], value: compilation.key.compilerVersion },
+    ...(!pageScoped
+      ? [{ path: ['ir', 'identity', 'compilerVersion'], value: compilation.ir.identity.compilerVersion }]
+      : []),
+  ]
+  for (const { path, value } of compilerVersions) {
+    if (value !== CONFIG_FORM_COMPILER_VERSION) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED',
+        `Unsupported compiler version: ${String(value)}. Expected ${CONFIG_FORM_COMPILER_VERSION}.`,
+        path,
+      ))
+    }
+  }
+  const pages = pageScoped
+    ? [{ page: compilation.page, path: ['page'] }]
+    : Object.entries(compilation.ir.pagesById).map(([pageId, page]) => ({
+        page,
+        path: ['ir', 'pagesById', pageId],
+      }))
+  for (const { page, path } of pages) {
+    if (!hasOnlyCurrentCanonicalPageKeys(page)) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED',
+        'Canonical page contains fields outside the current IR contract.',
+        path,
+      ))
+    }
+  }
+  return diagnostics
+}
 
 function compileCondition(condition: CanonicalRuntimeCondition) {
   const executable = structuredClone(condition) as ConfigFormReactionCondition
@@ -133,7 +184,6 @@ function cloneNodeMetadata(
   node: CanonicalRuntimeNode,
 ): Record<string, unknown> | undefined {
   const lowCodeMetadata = {
-    ...(Object.keys(node.events).length > 0 ? { events: structuredClone(node.events) } : {}),
     ...(Object.keys(node.bindings).length > 0 ? { bindings: structuredClone(node.bindings) } : {}),
   }
   const extensions = {
@@ -146,13 +196,11 @@ function cloneNodeMetadata(
 function compileNodeBase(
   node: CanonicalRuntimeNode,
   binding: VueRuntimeComponentBinding,
-  runtimeFlowEvents?: readonly string[],
 ) {
   const span = node.placement.props.span
   const extensions = cloneNodeMetadata(node)
   return {
     id: node.id,
-    ...(runtimeFlowEvents?.length ? { eventNames: [...runtimeFlowEvents] } : {}),
     component: binding.component,
     props: structuredClone(node.props) as Record<string, unknown>,
     ...(extensions ? { extensions } : {}),
@@ -171,7 +219,6 @@ function compileField(
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
-  runtimeFlowEvents?: readonly string[],
 ): ConfigFormRendererField {
   const validation = compileValidation(node, path, resolver, diagnostics)
   diagnoseDefaultRules(node, path, validation, diagnostics)
@@ -180,7 +227,7 @@ function compileField(
     : validation?.required
 
   return {
-    ...compileNodeBase(node, binding, runtimeFlowEvents),
+    ...compileNodeBase(node, binding),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined
@@ -252,11 +299,9 @@ function compileNode(
     ))
     return undefined
   }
-  const nodeFlowEvents = node.flowEvents
-  const flowEventsKey = (nodeFlowEvents ?? []).join('\u0000')
   const fragmentCache = getRuntimeNodeFragmentCache(resolver)
   const cached = fragmentCache.get(node as object)
-  if (cached && cached.flowEventsKey === flowEventsKey) {
+  if (cached) {
     diagnostics.push(...cached.diagnostics)
     return cached.node
   }
@@ -295,11 +340,10 @@ function compileNode(
   }
 
   if (node.kind === 'field') {
-    const compiled = compileField(node, binding, path, resolver, diagnostics, nodeFlowEvents)
+    const compiled = compileField(node, binding, path, resolver, diagnostics)
     if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
       fragmentCache.set(node as object, {
         diagnostics: diagnostics.slice(diagnosticStart),
-        flowEventsKey,
         node: compiled,
       })
     }
@@ -319,14 +363,13 @@ function compileNode(
     }),
   ]))
   const compiled = {
-    ...compileNodeBase(node, binding, nodeFlowEvents),
+    ...compileNodeBase(node, binding),
     ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
     slots,
   }
   if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
     fragmentCache.set(node as object, {
       diagnostics: diagnostics.slice(diagnosticStart),
-      flowEventsKey,
       node: compiled,
     })
   }
@@ -340,7 +383,6 @@ function pageRuntimePlan(page: CanonicalRuntimePage): ConfigFormPageRuntimePlan 
       : [])
     .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
   return Object.freeze({
-    flows: Object.freeze(page.flows.map(flow => flow.plan)),
     optionBindings: Object.freeze(optionBindings),
     runtime: Object.freeze(structuredClone(page.runtime ?? { dataSources: [], variables: [] })),
     valueSchema: Object.freeze({
@@ -379,6 +421,10 @@ export function compileCanonicalPageRuntime(
   resolver: VueRuntimeBindingResolver,
 ): VueRuntimeCompileResult {
   const { compilation } = input
+  const contractDiagnostics = compilationContractDiagnostics(compilation)
+  if (contractDiagnostics.length > 0)
+    return { success: false, diagnostics: contractDiagnostics }
+
   const pageScoped = 'page' in compilation
   const pageId = pageScoped ? compilation.key.pageId : input.pageId
   if (!pageId) {

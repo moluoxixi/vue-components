@@ -1,29 +1,19 @@
-import type {
-  ConfigFormRendererExpose,
-  ConfigFormRuntimeEventPayload,
-} from '@moluoxixi/config-form'
+import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 import type {
   ConfigFormDataSourceHost,
-  ConfigFormFlowActionRegistry,
-  ConfigFormFlowDiagnostic,
-  ConfigFormFlowDispatchResult,
-  ConfigFormFlowTraceEvent,
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
 import type { ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
 import type { VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
 import type {
-  RuntimeHostActionIdentity,
-  RuntimeHostActionProxyController,
-  RuntimeHostActionResultMessage,
   RuntimeHostFieldInstance,
+  RuntimeHostIdentity,
   RuntimeHostMessageBase,
   RuntimeHostRuntimeStatePayload,
   RuntimeHostSubmitResultPayload,
   RuntimeHostSyncMessage,
   RuntimeHostToParentPayload,
 } from '../types'
-import { snapshotConfigFormEventArgs } from '@moluoxixi/config-form-core'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
 import { nextTick, onBeforeUnmount, onErrorCaptured, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 import { loadWorkbenchRuntimeAdapter } from '../../adapters'
@@ -31,7 +21,6 @@ import { collectCompiledPreviewContracts, emptyPreviewContracts, remapPreviewFie
 import { cloneWorkbenchJson } from '../../utils'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
 import { acceptsRuntimeHostMessageEvent, isParentToRuntimeHostMessage } from '../schemas'
-import { createRuntimeHostActionProxy } from '../services/action-rpc'
 import { createRuntimeHostDataProxy } from '../services/data-rpc'
 
 interface RuntimeHostGeometryPort {
@@ -39,19 +28,10 @@ interface RuntimeHostGeometryPort {
   sync: () => Promise<void>
 }
 
-const blockingFlowStatuses = new Set<ConfigFormFlowDispatchResult['status']>([
-  'aborted',
-  'blocked',
-  'failure',
-  'stale',
-  'timeout',
-])
-
 export function useRuntimeHostProtocol() {
   const renderer = useTemplateRef<ConfigFormRendererExpose<Record<string, unknown>>>('renderer')
   const active = shallowRef<VueRuntimeCompileSuccess>()
   const fallback = shallowRef<VueRuntimeCompileSuccess>()
-  const flowActions = shallowRef<ConfigFormFlowActionRegistry>()
   const dataSourceHost = shallowRef<ConfigFormDataSourceHost>()
   const modelValue = ref<Record<string, unknown>>({})
   const reactionProjection = ref<ConfigFormReactionProjection<Record<string, unknown>>>({
@@ -85,7 +65,6 @@ export function useRuntimeHostProtocol() {
   let submitRequestToken = 0
   let activeSubmitToken: number | undefined
   let submittedValues: Record<string, unknown> | undefined
-  let latestSubmitFlowStatus: ConfigFormFlowDispatchResult['status'] | undefined
   let acceptedSync = false
   let latestRuntimeState: RuntimeHostRuntimeStatePayload = {
     fields: [],
@@ -98,7 +77,7 @@ export function useRuntimeHostProtocol() {
     sync: async () => {},
   }
 
-  function identity(): RuntimeHostActionIdentity {
+  function identity(): RuntimeHostIdentity {
     return {
       hostId,
       pageId: currentPageId,
@@ -137,18 +116,6 @@ export function useRuntimeHostProtocol() {
       ...message,
     }, targetOrigin)
   }
-
-  const actionProxy: RuntimeHostActionProxyController = createRuntimeHostActionProxy({
-    getBase: baseMessage,
-    isCurrent: next => next.hostId === hostId
-      && next.projectId === currentProjectId
-      && next.pageId === currentPageId
-      && next.revision === currentRevision
-      && runtimeMode.value === 'preview',
-    postCancel: message => postMessage(message as RuntimeHostToParentPayload),
-    postRequest: message => postMessage(message as RuntimeHostToParentPayload),
-  })
-  flowActions.value = actionProxy.registry
 
   const dataProxy = createRuntimeHostDataProxy({
     getBase: baseMessage,
@@ -252,7 +219,6 @@ export function useRuntimeHostProtocol() {
       || currentCompilationKey !== JSON.stringify(message.compilation.key)
     if (identityChanged)
       acceptedSync = false
-    actionProxy.cancelAll(new Error('Runtime structural sync invalidated pending actions.'), true)
     dataProxy.cancelAll(new Error('Runtime structural sync invalidated pending data requests.'), true)
     latestSyncSequence = message.sequence
     const syncSequence = message.sequence
@@ -260,7 +226,6 @@ export function useRuntimeHostProtocol() {
     activeSubmitToken = undefined
     submitInFlight = false
     submittedValues = undefined
-    latestSubmitFlowStatus = undefined
     const nextCompilationKey = JSON.stringify(message.compilation.key)
     const sessionChanged = currentRuntimeSession !== message.runtimeSessionKey
     currentProjectId = message.projectId
@@ -376,10 +341,6 @@ export function useRuntimeHostProtocol() {
       dataProxy.acceptResult(message)
       return
     }
-    if (message.type === 'actionResult') {
-      actionProxy.acceptResult(message as RuntimeHostActionResultMessage)
-      return
-    }
     if (message.type === 'state') {
       if (message.sequence <= latestStateSequence || (runtimeMode.value === 'preview' && acceptedSync))
         return
@@ -410,7 +371,6 @@ export function useRuntimeHostProtocol() {
     activeSubmitToken = requestToken
     submitInFlight = true
     submittedValues = undefined
-    latestSubmitFlowStatus = undefined
     void currentRenderer.submit()
       .then((valid) => {
         if (!isCurrentSubmit(requestToken, requestIdentity))
@@ -419,13 +379,9 @@ export function useRuntimeHostProtocol() {
         const hasSubmittedEvent = submittedValues !== undefined
         const status: RuntimeHostSubmitResultPayload['status'] = valid && hasSubmittedEvent
           ? 'success'
-          : latestSubmitFlowStatus === 'blocked'
-            ? 'blocked'
-            : latestSubmitFlowStatus && blockingFlowStatuses.has(latestSubmitFlowStatus)
-              ? 'failure'
-              : !valid
-                  ? 'invalid'
-                  : 'failure'
+          : !valid
+              ? 'invalid'
+              : 'failure'
         const result: RuntimeHostSubmitResultPayload = {
           status,
           requestId: message.requestId,
@@ -451,7 +407,6 @@ export function useRuntimeHostProtocol() {
         activeSubmitToken = undefined
         submitInFlight = false
         submittedValues = undefined
-        latestSubmitFlowStatus = undefined
       })
   }
 
@@ -505,51 +460,6 @@ export function useRuntimeHostProtocol() {
     })
   }
 
-  function runtimeEvent(payload: ConfigFormRuntimeEventPayload<Record<string, unknown>>): void {
-    if (runtimeMode.value !== 'preview' || !acceptedSync || applyingParentStateDepth > 0)
-      return
-    try {
-      const node = payload.metadata.node
-      const scope = payload.scope ?? payload.metadata.scope ?? []
-      const instance = renderer.value?.listFieldInstances(payload.metadata.nodeId)
-        .find(instance => sameJsonValue(instance.address.scope, scope))
-      if (node && 'field' in node && !instance)
-        return
-      postMessage({
-        type: 'runtimeEvent',
-        payload: {
-          event: payload.event,
-          nodeId: payload.metadata.nodeId,
-          scope: cloneWorkbenchJson([...scope]),
-          ...(instance ? { instanceKey: instance.instanceKey, valuePath: [...instance.valuePath] } : {}),
-          args: snapshotConfigFormEventArgs(payload.args),
-          ...(node && 'field' in node ? { field: node.field } : {}),
-          values: cloneWorkbenchJson(modelValue.value),
-        },
-      })
-    }
-    catch (error) {
-      reportError('RUNTIME_EVENT_PAYLOAD_INVALID', error)
-    }
-  }
-
-  function flowTrace(trace: ConfigFormFlowTraceEvent): void {
-    if (runtimeMode.value === 'preview')
-      postMessage({ type: 'flowTrace', payload: cloneWorkbenchJson(trace) })
-  }
-
-  function flowError(diagnostic: ConfigFormFlowDiagnostic): void {
-    if (runtimeMode.value === 'preview')
-      postMessage({ type: 'flowError', payload: cloneWorkbenchJson(diagnostic) })
-  }
-
-  function flowResult(result: ConfigFormFlowDispatchResult): void {
-    if (submitInFlight)
-      latestSubmitFlowStatus = result.status
-    if (runtimeMode.value === 'preview')
-      postMessage({ type: 'flowResult', payload: cloneWorkbenchJson(result) })
-  }
-
   onErrorCaptured((error, _instance, info) => {
     reportError('RUNTIME_RENDER_FAILED', `${error instanceof Error ? error.message : String(error)} (${info})`)
     if (fallback.value) {
@@ -566,7 +476,6 @@ export function useRuntimeHostProtocol() {
     activeSubmitToken = undefined
     latestSyncSequence += 1
     latestStateSequence += 1
-    actionProxy.dispose()
     dataProxy.dispose()
     window.removeEventListener('message', handleMessage)
   })
@@ -576,10 +485,6 @@ export function useRuntimeHostProtocol() {
     dataSourceHost,
     design,
     fieldChange,
-    flowActions,
-    flowError,
-    flowResult,
-    flowTrace,
     modelValue,
     namespace,
     postMessage,
@@ -587,7 +492,6 @@ export function useRuntimeHostProtocol() {
     reactionProjection,
     renderer,
     runtimeError,
-    runtimeEvent,
     runtimeMode,
     runtimeSessionKey,
     setGeometryPort,

@@ -151,7 +151,7 @@ function updateNumber(row: OptionDraft, value: number | undefined): void {
           <ElOption :value="false" :label="locale.t('value.false', 'False')" />
         </ElSelect>
         <ElInputNumber v-else-if="row.valueType === 'number'" :model-value="typeof row.value === 'number' ? row.value : 0" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumber(row, $event)" />
-        <ElInput v-else :model-value="typeof row.value === 'string' ? row.value : ''" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :placeholder="locale.t('condition.valuePlaceholder', 'Value')" :disabled="disabled" @update:model-value="updateTextValue(row, $event)" @blur="commit" />
+        <ElInput v-else :model-value="typeof row.value === 'string' ? row.value : ''" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :placeholder="locale.t('options.valuePlaceholder', 'Value')" :disabled="disabled" @update:model-value="updateTextValue(row, $event)" @blur="commit" />
       </div>
     </div>
     <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRow">

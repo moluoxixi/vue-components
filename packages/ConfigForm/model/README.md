@@ -37,7 +37,7 @@ console.log(result.document, result.inverse, result.changedPageIds)
 ## 主要入口
 
 - `schemas/`：当前版本文档、PageGraph、Registry snapshot 和 transfer 格式的解析/断言。
-- `services/transactions/`：事务编排、project/page/node/flow operation、图变更、校验和 change-set。
+- `services/transactions/`：事务编排、project/page/node operation、图变更、校验和 change-set。
 - `services/commands.ts`：把语义编辑命令解析为 transaction。
 - `services/engine.ts`、`history.ts`：编辑快照、undo/redo 与命令时间线。
 - `services/repository.ts`：项目持久化接口、内存仓库和提交元数据。
@@ -48,6 +48,8 @@ console.log(result.document, result.inverse, result.changedPageIds)
 ## 当前合同
 
 - 只接受当前 `version`，不迁移旧文档或保留兼容别名。
+- 当前版本为 `ProjectDocument 5`、`PageGraph 3`、`Registry snapshot 2`；旧、未来、缺失或混合版本全部 fail closed。
+- PageGraph 节点不保存 `events`，ProjectPage 不保存 `flows`，Registry 组件合同不声明事件元数据。
 - `editVersion` 表示本地编辑进度；repository revision 表示持久化 CAS 状态，两者不能混用。
 - Registry adapter、版本、fingerprint、组件 key 和组件合同必须精确匹配。
 - `ProjectSnapshot` 才能进入历史和持久化；`ProjectDraftSnapshot` 只用于候选编译与预览。

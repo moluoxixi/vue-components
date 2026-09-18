@@ -1,7 +1,3 @@
-import type {
-  ConfigFormFlowHttpRequestInput,
-  ConfigFormFlowHttpRequestOutput,
-} from '../../flow'
 import type { ConfigFormJsonValue } from '../../json'
 import type {
   ConfigFormValueContext,
@@ -10,6 +6,8 @@ import type {
 import type {
   ConfigFormDataSourceDefinition,
   ConfigFormDataSourceDiagnostic,
+  ConfigFormDataSourceHttpRequestInput,
+  ConfigFormDataSourceHttpRequestOutput,
   ConfigFormDataSourceLoadOptions,
   ConfigFormDataSourceRequestDefinition,
   ConfigFormDataSourceRuntime,
@@ -202,7 +200,7 @@ export function createConfigFormDataSourceRuntime(
     }
 
     let context: ConfigFormValueContext
-    let request: ConfigFormFlowHttpRequestInput
+    let request: ConfigFormDataSourceHttpRequestInput
     let dependencyKey: string
     try {
       context = readValueContext(normalizedOptions, loadOptions)
@@ -293,7 +291,7 @@ export function createConfigFormDataSourceRuntime(
           'host.request',
         )
       }
-      const hostInput = cloneConfigFormJsonValue(request as unknown as ConfigFormJsonValue) as unknown as ConfigFormFlowHttpRequestInput
+      const hostInput = cloneConfigFormJsonValue(request as unknown as ConfigFormJsonValue) as unknown as ConfigFormDataSourceHttpRequestInput
       const hostPromise = Promise.resolve(requestHost(hostInput, run.controller.signal))
       const rawResponse = await Promise.race([hostPromise, run.cancellation])
       const response = validateResponse(rawResponse, `${source.definitionPath}.response`)
@@ -597,16 +595,16 @@ function readValueContext(
   }
 }
 
-function validateResolvedRequest(value: unknown, path: string): ConfigFormFlowHttpRequestInput {
+function validateResolvedRequest(value: unknown, path: string): ConfigFormDataSourceHttpRequestInput {
   assertPlainRecord(value, path)
   assertKnownKeys(value, REQUEST_KEYS, path)
   if (typeof value.url !== 'string' || value.url.trim().length === 0)
     throw inputError('Resolved request url must be a non-empty string.', `${path}.url`)
-  const result: ConfigFormFlowHttpRequestInput = { url: value.url }
+  const result: ConfigFormDataSourceHttpRequestInput = { url: value.url }
   if (value.method !== undefined) {
     if (typeof value.method !== 'string' || !HTTP_METHODS.has(value.method))
       throw inputError('Resolved request method is invalid.', `${path}.method`)
-    result.method = value.method as ConfigFormFlowHttpRequestInput['method']
+    result.method = value.method as ConfigFormDataSourceHttpRequestInput['method']
   }
   if (value.headers !== undefined)
     result.headers = validateHeaders(value.headers, `${path}.headers`)
@@ -617,7 +615,7 @@ function validateResolvedRequest(value: unknown, path: string): ConfigFormFlowHt
   if (value.responseType !== undefined) {
     if (typeof value.responseType !== 'string' || !RESPONSE_TYPES.has(value.responseType))
       throw inputError('Resolved request responseType is invalid.', `${path}.responseType`)
-    result.responseType = value.responseType as ConfigFormFlowHttpRequestInput['responseType']
+    result.responseType = value.responseType as ConfigFormDataSourceHttpRequestInput['responseType']
   }
   return result
 }
@@ -648,7 +646,7 @@ function validateQuery(value: unknown, path: string): Record<string, string | nu
   return result
 }
 
-function validateResponse(value: ConfigFormFlowHttpRequestOutput, path: string): ConfigFormFlowHttpRequestOutput {
+function validateResponse(value: ConfigFormDataSourceHttpRequestOutput, path: string): ConfigFormDataSourceHttpRequestOutput {
   assertPlainRecord(value, path)
   if (!Number.isInteger(value.status) || value.status < 0)
     throw new ConfigFormDataSourceError('CONFIG_FORM_DATA_SOURCE_RESPONSE_INVALID', 'Response status must be a non-negative integer.', `${path}.status`)
@@ -686,12 +684,12 @@ function cloneRuntimeData(value: unknown, path: string): unknown {
 
 function mappingContext(
   context: ConfigFormValueContext,
-  response: ConfigFormFlowHttpRequestOutput,
+  response: ConfigFormDataSourceHttpRequestOutput,
 ): ConfigFormValueContext {
   return {
+    // `$event` is the current HTTP response payload for Data mapping only.
     event: cloneRuntimeData(response, '$event'),
     fields: context.fields,
-    outputs: context.outputs,
     resolveField: context.resolveField,
     variables: context.variables,
   }

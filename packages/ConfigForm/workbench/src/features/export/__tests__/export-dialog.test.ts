@@ -2,7 +2,7 @@
 
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { createProjectSnapshot, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { ExportDialog } from '..'
@@ -60,11 +60,11 @@ describe('export dialog', () => {
 
     await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
     await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain('"version": 4')
+    expect(root.get('.config-json-view').text()).toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
     await root.findAll('.el-segmented__item').find(item => item.text().includes('Current page'))!.trigger('click')
     await flushPromises()
     expect(root.get('.config-json-view').text()).toContain('"graph"')
-    expect(root.get('.config-json-view').text()).not.toContain('"version": 4')
+    expect(root.get('.config-json-view').text()).not.toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
 
     await wrapper.setProps({ currentPageId: 'missing-page' })
     await flushPromises()

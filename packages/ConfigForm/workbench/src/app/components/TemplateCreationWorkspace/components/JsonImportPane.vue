@@ -327,7 +327,6 @@ onBeforeUnmount(() => {
               <div><dt>{{ locale.t('template.adapter', 'Adapter') }}</dt><dd>{{ prepared.summary.adapter }}</dd></div>
               <div><dt>{{ locale.t('import.pages', 'Pages') }}</dt><dd>{{ prepared.summary.pageCount }}</dd></div>
               <div><dt>{{ locale.t('import.nodes', 'Nodes') }}</dt><dd>{{ prepared.summary.nodeCount }}</dd></div>
-              <div><dt>Flows</dt><dd>{{ prepared.summary.flowCount }}</dd></div>
               <div><dt>{{ locale.t('import.resources', 'Resources') }}</dt><dd>{{ prepared.summary.resourceCount }}</dd></div>
               <div><dt>PageGraph</dt><dd>v{{ prepared.summary.pageGraphVersion }}</dd></div>
               <div v-if="prepared.summary.version"><dt>{{ locale.t('import.version', 'Project version') }}</dt><dd>v{{ prepared.summary.version }}</dd></div>

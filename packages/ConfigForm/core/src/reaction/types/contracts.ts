@@ -64,7 +64,7 @@ export interface ConfigFormReaction {
 }
 
 export interface ConfigFormReactionEvaluateOptions {
-  /** Flow execution opts into strict errors; synchronous form reactions remain tolerant by default. */
+  /** Callers may opt into strict errors; synchronous form reactions remain tolerant by default. */
   strict?: boolean
   /** Read-only expression roots that must not be copied into projected form values. */
   scope?: Record<string, unknown>

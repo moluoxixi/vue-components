@@ -22,5 +22,12 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "产品方向已改为 Runtime-first；事件编辑、事件转发与事件编排从主产品完整删除。原任务仅保留历史证据，未完成验收不视为已交付。"
+    }
+  }
 }

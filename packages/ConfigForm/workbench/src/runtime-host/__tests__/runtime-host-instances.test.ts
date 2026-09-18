@@ -13,7 +13,7 @@ const adapter = vi.hoisted(() => ({ load: vi.fn() }))
 vi.mock('../../adapters', () => ({ loadWorkbenchRuntimeAdapter: adapter.load }))
 
 describe('real RuntimeHost instance bridge', () => {
-  it('keeps live row identities, mirrors scoped events, and restores metadata onto fresh Renderer row IDs', async () => {
+  it('keeps live row identities, mirrors scoped field changes, and restores metadata onto fresh Renderer row IDs', async () => {
     const fixture = compileScopedFixture()
     adapter.load.mockResolvedValue({ runtimeResolver: fixture.resolver })
     const session = createPreviewSession()
@@ -32,8 +32,6 @@ describe('real RuntimeHost instance bridge', () => {
         session.handleRuntimeState({ ...message, state: message.payload })
       if (message.type === 'fieldChange')
         session.handleFieldChange({ ...message, ...message.payload })
-      if (message.type === 'runtimeEvent')
-        session.handleRuntimeEvent({ ...message, ...message.payload })
     })
     const wrapper = mount(RuntimeHostApp)
     let sequence = 0
@@ -78,12 +76,6 @@ describe('real RuntimeHost instance bridge', () => {
       await flushPromises()
       expect(session.values.value.billing).toMatchObject({ name: 'Billing edited' })
       expect(messages.filter(message => message.type === 'fieldChange').at(-1)).toMatchObject({ payload: {
-        nodeId: 'billing-name',
-        scope: [],
-        valuePath: ['billing', 'name'],
-        instanceKey: expect.any(String),
-      } })
-      expect(messages.filter(message => message.type === 'runtimeEvent').at(-1)).toMatchObject({ payload: {
         nodeId: 'billing-name',
         scope: [],
         valuePath: ['billing', 'name'],

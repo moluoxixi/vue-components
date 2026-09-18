@@ -56,7 +56,6 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
 }
 const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
 const generatedTypeTemplateFiles = new Set([
-  'workbench/src/project/export/services/source-flow.ts',
   'workbench/src/project/export/services/source-validation.ts',
 ])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
@@ -154,10 +153,6 @@ describe('workbench production architecture boundary', () => {
       })
 
     expect(violations).toEqual([])
-
-    const flowWorkspace = readFileSync(new URL('../../features/flow/components/FlowWorkspace/index.vue', import.meta.url), 'utf8')
-    expect(flowWorkspace).not.toContain('.flow-inspector input')
-    expect(flowWorkspace).not.toContain('.flow-inspector textarea')
   })
 
   it('keeps ProjectEditorSession as the only production editing owner', () => {
@@ -200,7 +195,6 @@ describe('workbench production architecture boundary', () => {
       ['remap', 'Template', 'Page', 'Identity'].join(''),
       ['Runtime', 'Surface'].join(''),
       ['IMPORT', 'COMPONENT', 'MIGRATION', 'FAILED'].join('_'),
-      ['IMPORT', 'FLOW', 'OWNERSHIP', 'AMBIGUOUS'].join('_'),
       ['antd', 'Config', 'Form'].join(''),
       ['schema', 'Version'].join(''),
       ['protocol', 'Version'].join(''),
@@ -223,25 +217,57 @@ describe('workbench production architecture boundary', () => {
         && !normalized.endsWith('.test.ts')
         && !normalized.endsWith('.md')
     }).concat(join(repositoryRoot, 'scripts', 'verify-config-form-adapter-packages.mjs'))
+    const removedDomainTokens = [
+      ['Config', 'Form', 'Flow'].join(''),
+      ['Config', 'Form', 'Runtime', 'Event'].join(''),
+      ['Registered', 'Event', 'Action'].join(''),
+      ['Flow', 'Value', 'Editor'].join(''),
+      ['Page', 'Flow', 'Engine'].join(''),
+      ['create', 'Config', 'Form', 'Event', 'Runtime'].join(''),
+      ['runtime', 'Event'].join(''),
+      ['component', 'Event'].join(''),
+      ['forward', 'Events'].join(''),
+      ['on', 'Runtime', 'Event'].join(''),
+      ['intercept', 'Event'].join(''),
+      ['event', 'Names'].join(''),
+      ['flow', 'Events'].join(''),
+      ['flow', 'Actions'].join(''),
+      ['flow', 'Result'].join(''),
+      ['flow', 'Error'].join(''),
+      ['flow', 'Trace'].join(''),
+      ['load', 'From', 'Action'].join(''),
+      ['@vue', 'flow/core'].join('-'),
+    ]
+    const removedDomainFiles = [
+      ...productionFiles,
+      join(repositoryRoot, 'pnpm-workspace.yaml'),
+      join(repositoryRoot, 'pnpm-lock.yaml'),
+    ]
     const symbolHits = productionFiles.flatMap((path) => {
       const source = readFileSync(path, 'utf8')
       return forbiddenSymbols
         .filter(symbol => new RegExp(`\\b${symbol}\\b`).test(source))
         .map(symbol => `${relative(configFormRoot, path)}: ${symbol}`)
     })
+    const removedDomainHits = removedDomainFiles.flatMap((path) => {
+      const source = readFileSync(path, 'utf8')
+      return removedDomainTokens
+        .filter(token => source.includes(token))
+        .map(token => `${relative(repositoryRoot, path)}: ${token}`)
+    })
     const removedPaths = [
       'antd/src/bindings.ts',
       'antd/src/components.ts',
       'antd/src/styles.scss',
-      'core/src/flow/hash.ts',
-      'core/src/flow/interpreter.ts',
-      'core/src/flow/plan.ts',
-      'core/src/flow/types.ts',
       'core/src/json.ts',
       'core/src/module-registry.ts',
       'core/src/reaction-config.ts',
       'core/src/reaction.ts',
       'core/src/types.ts',
+      'core/src/flow',
+      'core/src/flow-authoring',
+      'compiler/src/services/compile/services/flows.ts',
+      'compiler/src/utils/flow.ts',
       'element/src/components.ts',
       'element/src/styles.scss',
       'runtime/src/renderer/ConfigFormRenderer.vue',
@@ -250,6 +276,11 @@ describe('workbench production architecture boundary', () => {
       'runtime/src/renderer/layout.ts',
       'runtime/src/renderer/responsive.ts',
       'runtime/src/renderer/types.ts',
+      'runtime/src/renderer/composables/use-renderer-events.ts',
+      'runtime/src/renderer/services/flow-value-context.ts',
+      'runtime/src/renderer/services/runtime-actions.ts',
+      'runtime/src/renderer/services/runtime-flow-events.ts',
+      'runtime/src/renderer/services/scoped-flow-transaction.ts',
       'runtime/src/renderer-entry.ts',
       'runtime/src/composables/useForm.ts',
       'workbench/src/project/export/archive.ts',
@@ -263,9 +294,17 @@ describe('workbench production architecture boundary', () => {
       'workbench/src/project/templates/create-template.ts',
       'workbench/src/project/templates/service.ts',
       'workbench/src/project/templates/types.ts',
+      'workbench/e2e/flow-helpers.ts',
+      'workbench/src/features/flow',
+      'workbench/src/flow',
+      'workbench/src/project/export/services/source-action-bindings.ts',
+      'workbench/src/project/export/services/source-flow.ts',
+      'workbench/src/runtime-host/services/action-rpc.ts',
+      'workbench/src/runtime-host/types/action-rpc.ts',
     ]
 
     expect(symbolHits).toEqual([])
+    expect(removedDomainHits).toEqual([])
     expect(removedPaths.filter(path => existsSync(join(configFormRoot, path)))).toEqual([])
   })
 
@@ -594,14 +633,12 @@ describe('workbench production architecture boundary', () => {
     expect(controllerOrchestration).not.toContain('lastRuntimePreview')
     expect(controllerOrchestration).not.toContain('reconcilePreviewModel')
     expect(controllerOrchestration).not.toContain('projectionCoordinator')
-    expect(controllerOrchestration).not.toContain('pageFlowEngine')
     expect(previewSession).toContain('createPageProjectionCoordinator')
     expect(previewSession).toContain('lastReadyPreview')
     expect(previewSession).toContain('handleRuntimeMounted')
     expect(previewSession).toContain('handleRuntimeState')
     expect(previewSession).toContain('const touched = shallowRef')
     expect(previewSession).toContain('const validation = shallowRef')
-    expect(previewSession).toContain('const trace = shallowRef')
   })
 
   it('keeps transient chrome state inside the UI Store', () => {
@@ -616,7 +653,6 @@ describe('workbench production architecture boundary', () => {
       'previewViewport',
       'pageManagerOpen',
       'exportPreviewMode',
-      'flowWorkspaceOpen',
       'appearanceDrawerOpen',
       'themePreference',
       'paletteFamily',
@@ -649,40 +685,5 @@ describe('workbench production architecture boundary', () => {
     expect(shell).not.toContain('templatePickerOpen')
     expect(shell).not.toContain('builtInTemplateCatalogProvider')
     expect(uiStore).not.toContain('templatePickerOpen')
-  })
-
-  it('keeps preview Flow transaction ownership inside the iframe renderer', () => {
-    const previewSession = readFileSync(new URL('../../session/services/preview.ts', import.meta.url), 'utf8')
-    const previewFrame = readFileSync(new URL('../components/PreviewRuntimeHostFrame/index.vue', import.meta.url), 'utf8')
-    const runtimeHost = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
-    const runtimeProtocol = readFileSync(new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url), 'utf8')
-    const parentOwnership = `${previewSession}\n${previewFrame}`
-
-    for (const token of ['createWorkbenchPageFlowEngine', 'createConfigFormEventRuntime', 'flowEngine.dispatch'])
-      expect(parentOwnership).not.toContain(token)
-    expect(previewSession).toContain('flowProjectionMirror')
-    expect(previewSession).toContain('handleRuntimeState')
-    expect(previewSession).toContain('handleFlowResult')
-    expect(runtimeHost.match(/<ConfigFormRenderer\b/g)).toHaveLength(1)
-    expect(runtimeHost).toContain(':model="model"')
-    expect(runtimeHost).toContain(':flow-actions="runtimeMode === \'preview\' ? flowActions : undefined"')
-    expect(runtimeProtocol).toContain('createRuntimeHostActionProxy')
-    expect(runtimeProtocol).toContain('flowActions.value = actionProxy.registry')
-    expect(runtimeProtocol).not.toContain('createWorkbenchPageFlowEngine')
-    expect(runtimeProtocol).not.toContain('createConfigFormEventRuntime')
-    expect(previewFrame).toContain('createRuntimeHostActionExecutor')
-    expect(previewFrame).toContain('getRegistry: () => props.flowActions')
-  })
-
-  it('uses Flow as the only normal Workbench editor for registered component events', () => {
-    const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
-    const dialog = readFileSync(new URL('../../features/flow/index.vue', import.meta.url), 'utf8')
-
-    expect(shell).not.toContain('event-editor')
-    expect(shell).toContain('@configure-event="showComponentEventFlow"')
-    expect(shell).toContain('@configure-flow="showFlowDialog"')
-    expect(shell).not.toContain('@open-flow="showFlowDialog()"')
-    expect(shell).not.toContain('@model-operation')
-    expect(dialog).toContain(':initial-trigger="initialTrigger"')
   })
 })

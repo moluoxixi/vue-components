@@ -1,0 +1,9 @@
+{"file":".trellis/spec/directory-structure.md","reason":"约束跨包目录职责、barrel 清理与架构测试。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"约束 ConfigForm 架构事实入口与 current-contract-only 硬切。"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"约束 Runtime-first 产品边界、宿主 listener、Designer Lite、序列化与未来扩展准入。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"约束 Registry snapshot、组件合同和 material 投影，删除 events 时保留 bindings。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"约束 Designer 命令、检查器、撤销重做与 Workbench 连接。"}
+{"file":".trellis/spec/config-form-designer/frontend/designer-structure.md","reason":"约束 Designer 组件结构、公共边界与高级作者 UI 删除。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"确保 Runtime 状态、代码态 listener、表单 API、reaction 与 Data 生命周期在删除 Flow 后仍正确。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"约束 Workbench internal 定位、Preview/Source 收敛及事件系统完整删除。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"指导跨 Model、Registry、Compiler、Backend、Runtime、Designer、Workbench 的原子合同变更。"}

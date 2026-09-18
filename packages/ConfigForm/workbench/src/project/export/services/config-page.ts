@@ -4,17 +4,6 @@ import type { CanonicalSourceBindingResolver, ConfigRuntimeBindingRequirement } 
 import { createConfigFormValueScopeStore } from '@moluoxixi/config-form-core'
 import { formatStaticValue } from '../utils'
 
-// These actions are owned by ConfigFormRenderer, not the business action registry.
-const RENDERER_ACTION_REFS = new Set([
-  'builtin.field.set',
-  'builtin.variable.set',
-  'builtin.field.state',
-  'builtin.form.validate',
-  'builtin.form.submit',
-  'builtin.form.reset',
-  'builtin.dataSource.load',
-])
-
 function staticData(value: unknown, path: string): string {
   return formatStaticValue(value, 0, path)
     .replace(/</g, '\\u003c')
@@ -56,20 +45,6 @@ function requiredPageBindings(
       })
     }
   }
-  page.flows.forEach(({ plan }, flowIndex) => {
-    plan.nodes.forEach((node, nodeIndex) => {
-      if (node.type === 'action' && node.ref && !RENDERER_ACTION_REFS.has(node.ref)) {
-        required.push({
-          kind: 'action',
-          ref: node.ref,
-          pageId: page.id,
-          flowId: plan.flowId,
-          nodeId: node.id,
-          path: ['flows', flowIndex, 'plan', 'nodes', nodeIndex, 'ref'],
-        })
-      }
-    })
-  })
   page.runtime?.dataSources.forEach((source, index) => {
     required.push({
       kind: 'dataSource',
@@ -90,7 +65,6 @@ export function configPageSource(
   const page = structuredClone(pageCompilation.page) as CanonicalPageIR
   // Only execution data is projected here. Vue backend owns all renderer lowering.
   const plan: ConfigFormPageRuntimePlan = {
-    flows: page.flows.map(flow => flow.plan),
     valueSchema: { scopedFields: page.scopedFields, valueScopes: page.valueScopes },
     runtime: page.runtime ?? { dataSources: [], variables: [] },
     optionBindings: Object.values(page.nodesById)
@@ -104,7 +78,7 @@ export function configPageSource(
   const requiredBindings = requiredPageBindings(page, resolver)
   return `import type { ConfigFormPageRuntimePlan } from '@moluoxixi/config-form'
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormDataSourceHost, ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
+import type { ConfigFormDataSourceHost } from '@moluoxixi/config-form-core'
 import type { VueRuntimeBindingResolver, VueRuntimeDiagnostic, VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
 
@@ -115,18 +89,16 @@ export interface RuntimeBindingResolver extends VueRuntimeBindingResolver {
 }
 
 export interface RuntimeBindingRequirement {
-  kind: 'component' | 'validator' | 'action' | 'dataSource'
+  kind: 'component' | 'validator' | 'dataSource'
   ref: string
   pageId: string
   path: Array<string | number>
   nodeId?: string
-  flowId?: string
   sourceId?: string
 }
 
-export type RuntimeDiagnostic = VueRuntimeDiagnostic & { pageId: string, flowId?: string, sourceId?: string }
+export type RuntimeDiagnostic = VueRuntimeDiagnostic & { pageId: string, sourceId?: string }
 export interface RuntimeHostBindings {
-  flowActions?: ConfigFormFlowActionRegistry
   dataSourceHost?: ConfigFormDataSourceHost
 }
 export type RuntimeRendererConfig = VueRuntimeRendererConfig & RuntimeHostBindings & {
@@ -158,7 +130,7 @@ export function createRendererConfig(
   resolver: RuntimeBindingResolver,
   host: RuntimeHostBindings = {},
 ): RuntimeRendererConfig {
-  const { flowActions, dataSourceHost } = host
+  const { dataSourceHost } = host
   const pageId = pageCompilation.key.pageId
   if (
     resolver.adapter !== registryIdentity.adapter
@@ -176,17 +148,6 @@ export function createRendererConfig(
   const result = compileCanonicalPageRuntime({ compilation: pageCompilation }, resolver)
   const diagnostics: RuntimeDiagnostic[] = result.diagnostics.map(item => ({ ...item, pageId }))
   for (const binding of requiredBindings) {
-    if (binding.kind === 'action' && typeof flowActions?.get(binding.ref)?.execute !== 'function') {
-      diagnostics.push({
-        code: 'CONFIG_RUNTIME_ACTION_BINDING_UNAVAILABLE',
-        message: 'Runtime action binding is unavailable: ' + binding.ref,
-        path: binding.path,
-        severity: 'error',
-        pageId,
-        nodeId: binding.nodeId,
-        flowId: binding.flowId,
-      })
-    }
     if (binding.kind === 'dataSource' && typeof dataSourceHost?.request !== 'function') {
       diagnostics.push({
         code: 'CONFIG_RUNTIME_DATA_SOURCE_HOST_MISSING',
@@ -203,7 +164,6 @@ export function createRendererConfig(
   return {
     ...result.artifact.renderer,
     defaultValues: structuredClone(initialValues),
-    ...(flowActions ? { flowActions } : {}),
     ...(dataSourceHost ? { dataSourceHost } : {}),
   }
 }

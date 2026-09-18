@@ -1,12 +1,12 @@
-import type { ComputedRef } from 'vue'
 import type {
   PageGraph,
   ProjectDocument,
   ProjectRepository,
   ProjectSummary,
 } from '@moluoxixi/config-form-model'
+import type { ComputedRef } from 'vue'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
-import type { FlowReferenceField, FlowSourceCatalog } from '../../features/flow'
+import type { DataReferenceField } from '../../features/data'
 import type {
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
@@ -25,9 +25,7 @@ import {
   findDesignNode,
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
-import { ElMessageBox } from 'element-plus'
 import { computed, ref, shallowRef } from 'vue'
-import { collectFlowEventTargets } from '../../flow'
 import {
   createWorkbenchLocaleOptions,
 } from '../../locale'
@@ -67,28 +65,7 @@ export function createWorkbenchController(
     () => window.location.href,
   )
   const dataSourceHost = { request: requestDataSource }
-  const previewSession = createWorkbenchPreviewSession({
-    onNotify: ui.notify,
-    onRequest,
-    onOpenUrl: (url, target) => { window.open(url, target, 'noopener') },
-    onConfirm: async (input) => {
-      try {
-        await ElMessageBox.confirm(input.message, input.title ?? workbenchLocale.value.t('action.confirm', 'Confirm'), {
-          appendTo: '#workbench-overlays',
-          confirmButtonText: input.confirmText,
-          cancelButtonText: input.cancelText,
-          distinguishCancelAndClose: true,
-        })
-        return true
-      }
-      catch (cause) {
-        if (cause === 'cancel' || cause === 'close')
-          return false
-        throw cause
-      }
-    },
-    onDiagnostic: diagnostic => ui.notify(diagnostic.message),
-  })
+  const previewSession = createWorkbenchPreviewSession()
   const previewProjection = previewSession.projection
   const designSession = createWorkbenchDesignSession({
     getAdapter: () => currentAdapter.value,
@@ -180,14 +157,8 @@ export function createWorkbenchController(
     }
     return [...new Set(fields)]
   })
-  const flowEventTargets = computed(() => collectFlowEventTargets(
-    currentGraph.value,
-    currentAdapter.value?.componentRegistry,
-    currentAdapter.value?.designerRegistry,
-    { valueChange: workbenchLocale.value.t('flow.trigger.valueChange', 'Value change') },
-  ))
-  const flowReferenceFields = computed<FlowReferenceField[]>(() => {
-    const fields: FlowReferenceField[] = []
+  const dataReferenceFields = computed<DataReferenceField[]>(() => {
+    const fields: DataReferenceField[] = []
     if (currentGraph.value) {
       walkDesignGraph(currentGraph.value, ({ node }) => {
         if (node.kind === 'field')
@@ -196,10 +167,6 @@ export function createWorkbenchController(
     }
     return fields
   })
-  const flowSourceCatalog = computed<FlowSourceCatalog>(() => ({
-    variables: currentPage.value?.runtime?.variables.map(variable => ({ value: variable.id, label: variable.name })) ?? [],
-    dataSources: currentPage.value?.runtime?.dataSources.map(source => ({ value: source.id, label: source.name })) ?? [],
-  }))
   const dataTestContext = computed(() => createWorkbenchDataTestContext(currentGraph.value, previewSession.values.value))
 
   function getCurrentAdapterId(): WorkbenchAdapterId {
@@ -369,12 +336,10 @@ export function createWorkbenchController(
     requestDataSource,
     discardRecoveryDraft: persistenceCommands.discardRecoveryDraft,
     designerFieldNames,
-    flowEventTargets,
-    flowReferenceFields,
-    flowSourceCatalog,
+    dataReferenceFields,
     designerLayers,
     dirty,
-    executeFlowCommand: projectBinding.executeProjectCommand,
+    executeProjectCommand: projectBinding.executeProjectCommand,
     getCurrentAdapterId,
     handlePageAction: pageCommands.handlePageAction,
     inspectProjectVersion: persistenceCommands.inspectProjectVersion,

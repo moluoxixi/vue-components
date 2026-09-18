@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { TemplateCreationTarget } from '../project'
@@ -22,7 +21,6 @@ import {
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { listWorkbenchFlowActionDescriptors } from '../flow'
 import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
@@ -35,7 +33,6 @@ import {
 defineProps<WorkbenchShellProps>()
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
-const FlowDialog = defineAsyncComponent(() => import('../features/flow').then(module => module.FlowDialog))
 const DataDialog = defineAsyncComponent(() => import('../features/data').then(module => module.DataDialog))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.PageManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
@@ -60,12 +57,10 @@ const {
   dataSourceHost,
   modelRevision,
   requestDataSource,
-  flowEventTargets,
-  flowReferenceFields,
-  flowSourceCatalog,
+  dataReferenceFields,
   designerLayers,
   dirty,
-  executeFlowCommand,
+  executeProjectCommand,
   getCurrentAdapterId,
   handlePageAction,
   localeOptions,
@@ -91,17 +86,8 @@ const {
   selectedIds: selectedDesignerIds,
 } = designSession
 const {
-  actions: previewFlowActions,
-  flowDiagnostics: previewFlowDiagnostics,
-  handleFlowError: handlePreviewFlowError,
-  handleFlowProjection: handlePreviewFlowProjection,
-  handleFlowResult: handlePreviewFlowResult,
-  handleFlowTrace: handlePreviewFlowTrace,
-  trace: previewFlowTrace,
-  flowProjection: previewFlowProjection,
   getCompilation: getPreviewCompilation,
   handleFieldChange: handlePreviewFieldChange,
-  handleRuntimeEvent: handlePreviewRuntimeEvent,
   handleRuntimeMounted: handlePreviewRuntimeMounted,
   handleRuntimeReady: handlePreviewRuntimeReady,
   handleRuntimeState: handlePreviewRuntimeState,
@@ -112,7 +98,12 @@ const {
   projection: previewProjection,
   runtimeState: previewRuntimeState,
 } = previewSession
-const flowActionDescriptors = computed(() => listWorkbenchFlowActionDescriptors(previewFlowActions))
+const previewReactionProjection = computed(() => ({
+  props: {},
+  states: {},
+  validate: [],
+  values: previewRuntimeState.value.values,
+}))
 const {
   capture: captureExportSnapshotInput,
   getCompilation: getCurrentExportCompilation,
@@ -120,23 +111,18 @@ const {
 const {
   clearNotice,
   closeExportPreview,
-  closeFlowWorkspace,
   closeDataWorkspace,
   dataDialogLoaded,
   dataWorkspaceOpen,
   closePageManager,
   exportDialogLoaded,
   exportPreviewMode,
-  flowDialogLoaded,
-  flowInitialTrigger,
-  flowWorkspaceOpen,
   localeId,
   message,
   mobileStudioView,
   notice,
   openExportPreview,
   openAppearanceDrawer,
-  openFlowWorkspace,
   openDataWorkspace,
   openPageManager,
   pageManagerLoaded,
@@ -237,30 +223,6 @@ function showExportDialog(mode: 'source' | 'config'): void {
   openExportPreview(mode)
 }
 
-// The flow dialog is unmounted as soon as it closes, so the opener has to be captured
-// before opening and restored by the owner instead of by the dialog itself. Element Plus
-// only restores focus for the Escape path, not when an in-dialog action closes the dialog.
-let flowReturnFocus: HTMLElement | undefined
-
-function showFlowDialog(trigger: ConfigFormFlowTrigger): void {
-  flowReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
-  openFlowWorkspace(trigger)
-}
-
-function closeFlowDialog(): void {
-  const target = flowReturnFocus
-  flowReturnFocus = undefined
-  closeFlowWorkspace()
-  void nextTick(() => {
-    if (target?.isConnected)
-      target.focus()
-  })
-}
-
-function showComponentEventFlow(nodeId: string, eventName: string): void {
-  showFlowDialog({ kind: 'component.event', nodeId, event: eventName })
-}
-
 function showPageManager(): void {
   openPageManager()
 }
@@ -350,7 +312,6 @@ watch(recoveryDrafts, (drafts) => {
             :key="`${currentProject.registryLock.adapter}-${currentPageId}`"
             class="embedded-designer"
             :graph="currentGraph"
-            :flows="currentPage?.flows ?? []"
             :page-id="currentPageId"
             :component-registry="componentRegistry"
             :command-hint="WorkbenchCommandHint"
@@ -361,8 +322,6 @@ watch(recoveryDrafts, (drafts) => {
             :renderer="ConfigFormRenderer"
             :registry="registry"
             workspace-navigation="external"
-            @configure-event="showComponentEventFlow"
-            @configure-flow="showFlowDialog"
             @notice="handleDesignerNotice"
             @selection-set-change="selectedDesignerIds = $event"
            >
@@ -489,26 +448,17 @@ watch(recoveryDrafts, (drafts) => {
         :compilation="getPreviewCompilation()"
         :config-error="configError"
         :data-source-host="dataSourceHost"
-        :flow-actions="previewFlowActions"
-        :flow-diagnostics="previewFlowDiagnostics"
-        :flow-trace="previewFlowTrace"
-        :flows="currentPage?.flows ?? []"
         :locale="localeOptions"
         :runtime-state="previewRuntimeState"
         :last-submission="previewLastSubmission"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
         :projection="previewProjection"
-        :reaction-projection="previewFlowProjection"
+        :reaction-projection="previewReactionProjection"
         :state="previewState"
         @close="togglePreview"
         @error="message = $event instanceof Error ? $event.message : String($event)"
         @field-change="handlePreviewFieldChange"
-        @flow-error="handlePreviewFlowError"
-        @flow-projection="handlePreviewFlowProjection"
-        @flow-result="handlePreviewFlowResult"
-        @flow-trace="handlePreviewFlowTrace"
-        @runtime-event="handlePreviewRuntimeEvent"
         @runtime-mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
         @runtime-state="handlePreviewRuntimeState"
@@ -555,33 +505,17 @@ watch(recoveryDrafts, (drafts) => {
     <DataDialog
       v-if="dataDialogLoaded && dataWorkspaceOpen && currentPage"
       :key="`${currentProject?.id}:${currentPageId}`"
-      :execute="executeFlowCommand"
+      :execute="executeProjectCommand"
       :locale="localeOptions"
       :on-request="requestDataSource"
       :open="dataWorkspaceOpen"
       :page-id="currentPageId"
       :readonly="busy"
-      :reference-fields="flowReferenceFields"
+      :reference-fields="dataReferenceFields"
       :runtime="currentPage.runtime"
       :runtime-revision="modelRevision"
       :test-context="dataTestContext"
       @close="closeDataWorkspace"
-    />
-
-    <FlowDialog
-      v-if="flowDialogLoaded && flowWorkspaceOpen && flowInitialTrigger"
-      :action-descriptors="flowActionDescriptors"
-      :event-targets="flowEventTargets"
-      :execute="executeFlowCommand"
-      :flows="currentPage?.flows ?? []"
-      :initial-trigger="flowInitialTrigger"
-      :locale="localeOptions"
-      :open="flowWorkspaceOpen"
-      :page-id="currentPageId"
-      :readonly="busy"
-      :reference-fields="flowReferenceFields"
-      :source-catalog="flowSourceCatalog"
-      @close="closeFlowDialog"
     />
 
     <ExportDialog

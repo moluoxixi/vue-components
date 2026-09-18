@@ -60,11 +60,6 @@ export interface RuntimeEditorBridgeState<TValues extends ConfigFormValues> {
   ) => ConfigFormRuntimeNodeMetadata<TValues>
   nodeMetadataAttrs: (metadata: ConfigFormRuntimeNodeMetadata<TValues>) => Record<string, unknown>
   registerNodeElement: (metadata: ConfigFormRuntimeNodeMetadata<TValues>, element: unknown) => void
-  shouldInterceptEditorEvent: (
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    event: string,
-    args: unknown[],
-  ) => boolean
 }
 
 export interface RendererBindingService<TValues extends ConfigFormValues> {
@@ -76,26 +71,15 @@ export interface RendererBindingService<TValues extends ConfigFormValues> {
   resolveRegistration: (component: Component | string) => ConfigFormComponentRegistration | undefined
 }
 
-export interface RuntimeFlowEventService<TValues extends ConfigFormValues> {
+export interface ComponentListenerService {
   addListener: (
     target: Record<string, unknown>,
     event: string,
     listener: (...args: unknown[]) => unknown,
-    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
-    runtimeEvent?: string,
   ) => void
-  addRuntimeFlowEventListeners: (
-    target: Record<string, unknown>,
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    runtimeEvents: ReadonlyMap<string, string>,
-    managedListenerKeys: Set<string>,
-  ) => void
-  runtimeFlowEventMap: (node: ConfigFormRendererNode<TValues>) => ReadonlyMap<string, string>
   wrapComponentListeners: (
     target: Record<string, unknown>,
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
     skipKeys?: ReadonlySet<string>,
-    runtimeEvents?: ReadonlyMap<string, string>,
   ) => void
 }
 
@@ -104,10 +88,10 @@ export interface RendererPipelineContext<TValues extends ConfigFormValues> {
   bem: (element: string, modifier?: string) => string
   cancelScope: (scope: ConfigFormScopePath) => void
   binding: RendererBindingService<TValues>
+  componentListeners: ComponentListenerService
   controller: RendererControllerState<TValues>
   designGuard: DesignInteractionGuard
   editorBridge: RuntimeEditorBridgeState<TValues>
-  flowEvents: RuntimeFlowEventService<TValues>
   formId: string
   getOptionState: (address: ConfigFormFieldAddress) => ConfigFormPageRuntimeOptionState | undefined
   props: Readonly<ConfigFormRendererProps<TValues>>

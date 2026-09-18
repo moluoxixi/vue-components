@@ -22,7 +22,6 @@ import { deriveProjectPageValueSchema } from '@moluoxixi/config-form-model'
 import { CANONICAL_PROJECT_IR_VERSION, CONFIG_FORM_COMPILER_VERSION } from '../../../constants'
 import { clone, deepFreeze, semanticHash } from '../../../utils'
 import { validateRegistryLock } from '../validation'
-import { collectFlowEvents, compileFlows } from './flows'
 import { compileNode, compileNodeShallow, resolveCanonicalPlacement } from './node'
 
 export function compilePreparedPage(
@@ -94,7 +93,6 @@ function pageSemanticHash(page: CanonicalPageIR): string {
     props: page.props,
     form: page.form,
     roots: page.rootIds.map(nodeId => [nodeId, page.nodesById[nodeId]?.subtreeHash]),
-    flows: page.flows,
     runtime: page.runtime,
     valueScopes: page.valueScopes,
     scopedFields: page.scopedFields,
@@ -147,11 +145,9 @@ export function compilePageIR(
 ): CanonicalPageIR | undefined {
   const { graph } = page
   const pageId = page.id
-  const flows = compileFlows(page.flows ?? [], pageId, diagnostics, graph, registry)
-  const flowEvents = collectFlowEvents(flows)
   const valueSchema = deriveProjectPageValueSchema(graph)
   const nodesById: Record<NodeId, CanonicalNodeIR> = Object.create(null)
-  const context: CompilePageContext = { pageId, graph, registry, diagnostics, nodesById, flowEvents }
+  const context: CompilePageContext = { pageId, graph, registry, diagnostics, nodesById }
   graph.root.forEach(item => compileNode(context, item.nodeId, {
     parentId: null,
     slot: null,
@@ -167,7 +163,6 @@ export function compilePageIR(
     form: clone(graph.form),
     rootIds: graph.root.map(item => item.nodeId),
     nodesById,
-    flows,
     valueScopes: valueSchema.valueScopes,
     scopedFields: valueSchema.scopedFields,
     ...(page.runtime === undefined ? {} : { runtime: clone(page.runtime) }),
@@ -211,8 +206,6 @@ function compileIncrementalPageIR(
   previous: PageCompilation['page'],
   changes: readonly ProjectNodeChange[],
 ): CanonicalPageIR | undefined {
-  const flows = compileFlows(page.flows ?? [], page.id, diagnostics, page.graph, registry)
-  const flowEvents = collectFlowEvents(flows)
   const canonicalChanges = changes.filter(affectsCanonicalNodes)
   const nodesById: Record<NodeId, CanonicalNodeIR> = canonicalChanges.length === 0
     ? previous.nodesById as unknown as Record<NodeId, CanonicalNodeIR>
@@ -262,7 +255,6 @@ function compileIncrementalPageIR(
     registry,
     diagnostics,
     nodesById,
-    flowEvents,
   }
   const ordered = [...affected].sort((left, right) => depth(right) - depth(left))
   for (const nodeId of ordered) {
@@ -298,7 +290,6 @@ function compileIncrementalPageIR(
     form: clone(page.graph.form),
     rootIds: page.graph.root.map(item => item.nodeId),
     nodesById,
-    flows,
     valueScopes: valueSchema.valueScopes,
     scopedFields: valueSchema.scopedFields,
     ...(page.runtime === undefined ? {} : { runtime: clone(page.runtime) }),

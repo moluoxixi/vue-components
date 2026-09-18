@@ -22,7 +22,7 @@ const registry = createDesignerRegistry({ materials: [{
 }] })
 
 const emptyGraph: PageGraph = {
-  version: 2,
+  version: 3,
   form: {},
   props: {},
   root: [],
@@ -39,7 +39,6 @@ const populatedGraph: PageGraph = {
       kind: 'field',
       field: 'field',
       props: {},
-      events: {},
       bindings: {},
     },
   },

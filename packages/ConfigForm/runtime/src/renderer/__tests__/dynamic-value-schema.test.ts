@@ -1,4 +1,4 @@
-import type { ConfigFormFieldValidator, ConfigFormValueSchema, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormFieldValidator, ConfigFormValues, ConfigFormValueSchema } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
 import type { ConfigFormPageRuntimePlan } from '../../runtime'
 import type { ConfigFormRendererExpose, ConfigFormRendererNode } from '../types'
@@ -19,7 +19,7 @@ const Input = defineComponent({
   }),
 })
 
-type TestSchema = {
+interface TestSchema {
   scopedFields: ConfigFormValueSchema['scopedFields'][number][]
   valueScopes: ConfigFormValueSchema['valueScopes'][number][]
 }
@@ -45,12 +45,17 @@ function nodes(
 ): ConfigFormRendererNode[] {
   const children = (parentId?: string): ConfigFormRendererNode[] => [
     ...valueSchema.scopedFields.filter(field => field.scopeId === parentId).map(field => ({
-      id: field.nodeId, field: field.field, component: Input,
-      defaultValue: field.defaultValue, props: { placeholder },
+      id: field.nodeId,
+      field: field.field,
+      component: Input,
+      defaultValue: field.defaultValue,
+      props: { placeholder },
       ...(validator ? { validator } : {}),
     })),
     ...valueSchema.valueScopes.filter(scope => scope.parentId === parentId).map(scope => ({
-      id: scope.nodeId, component: 'section', valueScope: { ...scope },
+      id: scope.nodeId,
+      component: 'section',
+      valueScope: { ...scope },
       slots: { default: children(scope.nodeId) },
     })),
   ]
@@ -58,7 +63,7 @@ function nodes(
 }
 
 function plan(valueSchema: ConfigFormValueSchema): ConfigFormPageRuntimePlan {
-  return { flows: [], optionBindings: [], runtime: { dataSources: [], variables: [] }, valueSchema }
+  return { optionBindings: [], runtime: { dataSources: [], variables: [] }, valueSchema }
 }
 
 function initialValues(): ConfigFormValues {
@@ -73,7 +78,9 @@ describe('renderer dynamic value schema', () => {
     const values = shallowRef(initialValues())
     const initial = schema()
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(initial), model: createConfigFormModel(values), plan: plan(initial),
+      fields: nodes(initial),
+      model: createConfigFormModel(values),
+      plan: plan(initial),
     } })
     const api = wrapper.vm as unknown as ConfigFormRendererExpose
     await wrapper.findAll('[data-field="name"] input')[0]!.setValue('Edited')
@@ -112,7 +119,9 @@ describe('renderer dynamic value schema', () => {
   it('preserves both levels of unkeyed row IDs and control elements through props-only and deep-equal plan changes', async () => {
     const initial = schema()
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(initial), model: createConfigFormModel(shallowRef(initialValues())), plan: plan(initial),
+      fields: nodes(initial),
+      model: createConfigFormModel(shallowRef(initialValues())),
+      plan: plan(initial),
     } })
     const rows = wrapper.findAll('[data-row-id]').map(row => row.element)
     const controls = wrapper.findAll('[data-field="name"] input').map(input => input.element)
@@ -135,7 +144,8 @@ describe('renderer dynamic value schema', () => {
     const values = shallowRef<ConfigFormValues>({ title: 'Original', removed: 'Remove' })
     const initial: TestSchema = { scopedFields: [{ nodeId: 'title', field: 'title' }, { nodeId: 'removed', field: 'removed' }], valueScopes: [] }
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(initial), model: createConfigFormModel(values),
+      fields: nodes(initial),
+      model: createConfigFormModel(values),
     } })
     const api = wrapper.vm as unknown as ConfigFormRendererExpose
     await wrapper.get('[data-field="title"] input').setValue('Edited')
@@ -153,7 +163,9 @@ describe('renderer dynamic value schema', () => {
     const values = shallowRef(initialValues())
     const initial = schema()
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(initial), model: createConfigFormModel(values), plan: plan(initial),
+      fields: nodes(initial),
+      model: createConfigFormModel(values),
+      plan: plan(initial),
     } })
     const api = wrapper.vm as unknown as ConfigFormRendererExpose
     const old = api.listFieldInstances('item-name')[0]!
@@ -198,12 +210,16 @@ describe('renderer dynamic value schema', () => {
 
   it('updates validating DOM from false to true to false without any value, touched or error change', async () => {
     let finish!: (result: undefined) => void
-    const validator = vi.fn<ConfigFormFieldValidator<ConfigFormValues>>(() => new Promise(resolve => { finish = resolve }))
+    const validator = vi.fn<ConfigFormFieldValidator<ConfigFormValues>>(() => new Promise((resolve) => {
+      finish = resolve
+    }))
     const valueSchema: TestSchema = { scopedFields: [{ nodeId: 'title', field: 'title' }], valueScopes: [] }
     const onErrorsChange = vi.fn()
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(valueSchema, 'Title', validator), model: createConfigFormModel(shallowRef({ title: 'Original' })),
-      plan: plan(valueSchema), onErrorsChange,
+      fields: nodes(valueSchema, 'Title', validator),
+      model: createConfigFormModel(shallowRef({ title: 'Original' })),
+      plan: plan(valueSchema),
+      onErrorsChange,
     } })
     const api = wrapper.vm as unknown as ConfigFormRendererExpose
     const field = wrapper.get('[data-field="title"]')
@@ -225,17 +241,24 @@ describe('renderer dynamic value schema', () => {
     let finish!: (result: string) => void
     const validator: ConfigFormFieldValidator<ConfigFormValues> = (_value, _values, context) => {
       signal = context.signal
-      return new Promise(resolve => { finish = resolve })
+      return new Promise((resolve) => {
+        finish = resolve
+      })
     }
     const initial: TestSchema = { scopedFields: [{ nodeId: 'title', field: 'title' }], valueScopes: [] }
     const wrapper = mount(ConfigFormRenderer as Component, { props: {
-      fields: nodes(initial, 'Title', validator), model: createConfigFormModel(shallowRef({ title: 'Original' })), plan: plan(initial),
+      fields: nodes(initial, 'Title', validator),
+      model: createConfigFormModel(shallowRef({ title: 'Original' })),
+      plan: plan(initial),
     } })
     const api = wrapper.vm as unknown as ConfigFormRendererExpose
     const pending = api.validateInstance({ nodeId: 'title', scope: [] })
     await nextTick()
     expect(wrapper.get('[data-field="title"]').attributes('data-validating')).toBe('true')
-    const next: TestSchema = { scopedFields: [{ nodeId: 'new', field: 'new', defaultValue: 'New' }], valueScopes: [] }
+    const next: TestSchema = {
+      scopedFields: [{ nodeId: 'new', field: 'new', defaultValue: 'New' }],
+      valueScopes: [],
+    }
     await wrapper.setProps({ fields: nodes(next), plan: plan(next) })
     expect(signal.aborted).toBe(true)
     await expect(pending).resolves.toBe(false)

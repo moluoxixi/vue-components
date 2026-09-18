@@ -77,7 +77,6 @@ describe('ant design vue designer fields', () => {
       component: 'antd.select',
       field: 'environment',
       props: { optionSource },
-      events: {},
       bindings: {},
     }
     const setter = mount(AntdChoiceDefaultSetter, {

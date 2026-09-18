@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest'
 import { effectScope, ref } from 'vue'
 import { useDesignerCanvasDropTargets } from '../src/components/DesignerCanvas/composables/use-designer-canvas-drop-targets'
 
-const inputNode: PageNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {}, events: {}, bindings: {} }
-const sectionNode: PageNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, events: {}, bindings: {}, slots: { default: [] } }
-const candidate: PageNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, events: {}, bindings: {} }
+const inputNode: PageNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {}, bindings: {} }
+const sectionNode: PageNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, bindings: {}, slots: { default: [] } }
+const candidate: PageNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, bindings: {} }
 
 const graph: PageGraph = {
   version: 1,

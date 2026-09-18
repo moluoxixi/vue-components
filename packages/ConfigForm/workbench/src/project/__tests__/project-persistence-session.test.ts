@@ -215,7 +215,6 @@ describe('projectPersistenceSession', () => {
       kind: 'field' as const,
       field: `perf_${index}`,
       props: {},
-      events: {},
       bindings: {},
     }]))
     let snapshot: ProjectEditorSessionSnapshot = {

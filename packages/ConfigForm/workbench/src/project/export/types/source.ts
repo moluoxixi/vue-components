@@ -1,6 +1,5 @@
 import type { CanonicalFieldDescriptor } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormFlowExecutionPlan,
   ConfigFormPageRuntimeConfiguration,
   ConfigFormReaction,
   ConfigFormScopedFieldDefinition,
@@ -13,7 +12,6 @@ import type {
   FormSettings,
   ModelJsonObject,
   RegisteredBinding,
-  RegisteredEventAction,
   ValidateTrigger,
 } from '@moluoxixi/config-form-model'
 import type { ProjectPath, WorkspaceFile } from '../../types'
@@ -31,8 +29,6 @@ export interface StandaloneSourceNodeBase {
   id: string
   component: string
   props: ModelJsonObject
-  events: Record<string, RegisteredEventAction[]>
-  flowEvents: string[]
   extensions?: ModelJsonObject
   bindings: Record<string, RegisteredBinding>
   placement: ModelJsonObject
@@ -58,7 +54,6 @@ export interface StandaloneSourcePage {
   route: string
   form: FormSettings
   root: StandaloneSourceNode[]
-  flowPlans: ConfigFormFlowExecutionPlan[]
   runtime: ConfigFormPageRuntimeConfiguration
   scopedFields: ConfigFormScopedFieldDefinition[]
   valueScopes: ConfigFormValueScopeDefinition[]
@@ -70,7 +65,6 @@ export interface StandaloneSourcePage {
 
 export interface StandaloneSourceComponentDefinition {
   binding: CanonicalSourceComponentBinding
-  events: ReadonlyArray<{ name: string }>
   bindings: ReadonlyArray<{ name: string, valueProp: string, trigger: string }>
 }
 

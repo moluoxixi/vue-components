@@ -1,23 +1,10 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormFlowActionRegistry,
-  ConfigFormFlowDiagnostic,
-  ConfigFormFlowTraceEvent,
-  ConfigFormReactionProjection,
-} from '@moluoxixi/config-form-core'
-import type {
-  PreviewRuntimeComponentEvent,
   PreviewRuntimeFieldChangeEvent,
-  PreviewRuntimeFlowDiagnosticEvent,
-  PreviewRuntimeFlowProjectionEvent,
-  PreviewRuntimeFlowResultEvent,
-  PreviewRuntimeFlowTraceEvent,
   RuntimeHostFieldInstance,
   RuntimeHostRuntimeStatePayload,
 } from '../../runtime-host'
 import type {
-  CreatePreviewSessionOptions,
-  CreateWorkbenchPreviewSessionOptions,
   LastReadyPreview,
   PagePreviewProjection,
   PreviewFieldContracts,
@@ -31,11 +18,10 @@ import type {
   PreviewValidationState,
 } from '../types'
 import { computed, ref, shallowRef } from 'vue'
-import { createWorkbenchFlowActionRegistry } from '../../flow'
 import { isRuntimeHostFieldInstance, isRuntimeHostRuntimeState } from '../../runtime-host'
 import { collectPreviewContracts, emptyPreviewContracts, filterPreviewState, matchesPreviewInstance, reconcilePreviewState } from '../../services'
 import { cloneWorkbenchJson } from '../../utils'
-import { PREVIEW_TRACE_LIMIT } from '../constants'
+import { PREVIEW_SESSION_HISTORY_LIMIT } from '../constants'
 import { createPageProjectionCoordinator } from './projection-coordinator'
 
 function scopeKey(input: Pick<PreviewSessionAcceptInput, 'adapter' | 'pageId' | 'projectId'>): string {
@@ -70,43 +56,19 @@ function sameRuntimeFieldState(
   })
 }
 
-function emptyProjection(): ConfigFormReactionProjection<Record<string, unknown>> {
-  return { values: {}, props: {}, states: {}, validate: [] }
-}
-
 function identityKey(identity: PreviewRuntimeIdentity): string {
   return `${identity.hostId}:${identity.projectId}:${identity.pageId}:${identity.revision}`
 }
 
-function traceKey(trace: ConfigFormFlowTraceEvent): string {
-  return [trace.flowId, trace.runId, trace.type, trace.nodeId ?? '', trace.timestamp ?? '', trace.status ?? ''].join(':')
-}
-
-function diagnosticKey(diagnostic: ConfigFormFlowDiagnostic): string {
-  return JSON.stringify([
-    diagnostic.code,
-    diagnostic.message,
-    diagnostic.path ?? '',
-    diagnostic.nodeId ?? '',
-    diagnostic.edgeId ?? '',
-    diagnostic.severity ?? '',
-  ])
-}
-
-export function createPreviewSession(options: CreatePreviewSessionOptions = {}): PreviewSession {
+export function createPreviewSession(): PreviewSession {
   const projectionCoordinator = createPageProjectionCoordinator()
   const values = ref<Record<string, unknown>>({})
   const fields = shallowRef<RuntimeHostFieldInstance[]>([])
   const touched = shallowRef<readonly string[]>([])
   const validation = shallowRef<Readonly<PreviewValidationState>>({})
   const lastSubmission = shallowRef<PreviewSubmission>()
-  const trace = shallowRef<readonly ConfigFormFlowTraceEvent[]>([])
-  const flowDiagnostics = shallowRef<readonly ConfigFormFlowDiagnostic[]>([])
-  const flowProjectionMirror = shallowRef<ConfigFormReactionProjection<Record<string, unknown>>>(emptyProjection())
   const projection = shallowRef<PagePreviewProjection>()
   const revisionKey = computed(() => projection.value?.current.revisionKey ?? '')
-  const flowProjection = computed(() => flowProjectionMirror.value)
-  const actions: ConfigFormFlowActionRegistry = options.actions ?? { get: () => undefined }
   let currentCompilation: PageCompilation | undefined
   let currentScopeKey = ''
   let liveFieldContracts = emptyPreviewContracts()
@@ -182,29 +144,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     updateReadyMirror()
   }
 
-  function appendTrace(event: ConfigFormFlowTraceEvent): void {
-    if (disposed)
-      return
-    const key = traceKey(event)
-    if (trace.value.some(existing => traceKey(existing) === key))
-      return
-    trace.value = [...trace.value, cloneWorkbenchJson(event)].slice(-PREVIEW_TRACE_LIMIT)
-    options.onTrace?.(event)
-  }
-
-  function appendDiagnostic(diagnostic: ConfigFormFlowDiagnostic): void {
-    if (disposed)
-      return
-    const key = diagnosticKey(diagnostic)
-    if (flowDiagnostics.value.some(existing => diagnosticKey(existing) === key))
-      return
-    flowDiagnostics.value = [
-      ...flowDiagnostics.value,
-      cloneWorkbenchJson(diagnostic),
-    ].slice(-PREVIEW_TRACE_LIMIT)
-    options.onDiagnostic?.(diagnostic)
-  }
-
   function matchesCurrentRevision(event: PreviewRuntimeIdentity): boolean {
     const current = projection.value?.current
     return !!current
@@ -248,9 +187,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     }
     if (scopeChanged || revisionChanged) {
       pendingSubmit = undefined
-      trace.value = []
-      flowDiagnostics.value = []
-      flowProjectionMirror.value = emptyProjection()
     }
     currentScopeKey = nextScopeKey
     currentCompilation = input.compilation
@@ -280,22 +216,12 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     updateRuntimeModel(payload.values)
   }
 
-  function handleRuntimeEvent(payload: PreviewRuntimeComponentEvent): void {
-    if (disposed || !isCurrentRuntimeIdentity(payload))
-      return
-    if (payload.field !== undefined && (!isRuntimeHostFieldInstance(payload)
-      || !matchesPreviewInstance(payload, activeFieldContracts(), payload.values))) {
-      return
-    }
-    updateRuntimeModel(payload.values)
-  }
-
   function handleRuntimeMounted(event: PreviewRuntimeIdentity): void {
     if (disposed || !matchesCurrentRevision(event) || retiredHostIds.has(event.hostId))
       return
     if (activeHostId && activeHostId !== event.hostId) {
       retiredHostIds.add(activeHostId)
-      if (retiredHostIds.size > PREVIEW_TRACE_LIMIT)
+      if (retiredHostIds.size > PREVIEW_SESSION_HISTORY_LIMIT)
         retiredHostIds.delete(retiredHostIds.values().next().value!)
     }
     activeHostId = event.hostId
@@ -341,7 +267,7 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
       if (usedSubmitRequests.has(key))
         return
       usedSubmitRequests.add(key)
-      if (usedSubmitRequests.size > PREVIEW_TRACE_LIMIT)
+      if (usedSubmitRequests.size > PREVIEW_SESSION_HISTORY_LIMIT)
         usedSubmitRequests.delete(usedSubmitRequests.values().next().value!)
       pendingSubmit = { key, requestId: event.requestId }
     }
@@ -378,38 +304,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     }
   }
 
-  function handleFlowTrace(event: PreviewRuntimeFlowTraceEvent): void {
-    if (isCurrentRuntimeIdentity(event))
-      appendTrace(event.trace)
-  }
-
-  function handleFlowError(event: PreviewRuntimeFlowDiagnosticEvent): void {
-    if (isCurrentRuntimeIdentity(event))
-      appendDiagnostic(event.diagnostic)
-  }
-
-  function handleFlowProjection(event: PreviewRuntimeFlowProjectionEvent): void {
-    if (isCurrentRuntimeIdentity(event))
-      flowProjectionMirror.value = cloneWorkbenchJson(event.projection)
-  }
-
-  function handleFlowResult(event: PreviewRuntimeFlowResultEvent): void {
-    if (!isCurrentRuntimeIdentity(event))
-      return
-    const result = event.result
-    for (const run of result.results) {
-      if (run.projection)
-        flowProjectionMirror.value = cloneWorkbenchJson(run.projection)
-      run.trace.forEach(appendTrace)
-      run.diagnostics.forEach(appendDiagnostic)
-      if (run.error)
-        appendDiagnostic(run.error)
-    }
-    result.diagnostics.forEach(appendDiagnostic)
-    if (result.error)
-      appendDiagnostic(result.error)
-  }
-
   function reset(reason: unknown): void {
     projectionCoordinator.invalidate(reason)
     currentCompilation = undefined
@@ -427,9 +321,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     touched.value = []
     validation.value = {}
     lastSubmission.value = undefined
-    trace.value = []
-    flowDiagnostics.value = []
-    flowProjectionMirror.value = emptyProjection()
   }
 
   function clear(reason: unknown = 'preview-session-cleared'): void {
@@ -445,15 +336,11 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
   }
 
   return {
-    actions,
-    flowDiagnostics,
-    flowProjection,
     lastSubmission,
     projection,
     revisionKey,
     runtimeState,
     touched,
-    trace,
     validation,
     values,
     accept,
@@ -463,11 +350,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
     getCompilation,
     getRuntimeModel,
     handleFieldChange,
-    handleFlowError,
-    handleFlowProjection,
-    handleFlowResult,
-    handleFlowTrace,
-    handleRuntimeEvent,
     handleRuntimeMounted,
     handleRuntimeReady,
     handleRuntimeState,
@@ -477,12 +359,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions = {}):
   }
 }
 
-export function createWorkbenchPreviewSession(
-  options: CreateWorkbenchPreviewSessionOptions = {},
-): PreviewSession {
-  return createPreviewSession({
-    actions: options.actions ?? createWorkbenchFlowActionRegistry(options),
-    onDiagnostic: options.onDiagnostic,
-    onTrace: options.onTrace,
-  })
+export function createWorkbenchPreviewSession(): PreviewSession {
+  return createPreviewSession()
 }

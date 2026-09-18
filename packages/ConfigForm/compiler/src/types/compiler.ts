@@ -1,4 +1,3 @@
-import type { ConfigFormFlowExecutionPlan } from '@moluoxixi/config-form-core'
 import type {
   ComponentKey,
   ConfigFormFieldOptionSource,
@@ -19,7 +18,6 @@ import type {
   ProjectResourceReference,
   ProjectSnapshot,
   RegisteredBinding,
-  RegisteredEventAction,
   RegistryContractSnapshot,
   SlotName,
   ValidateTrigger,
@@ -76,9 +74,7 @@ interface CanonicalNodeBase {
   placement: CanonicalNodePlacement
   configuredProps: ModelJsonObject
   props: ModelJsonObject
-  events: Record<string, RegisteredEventAction[]>
   bindings: Record<string, RegisteredBinding>
-  flowEvents?: string[]
   extensions?: ModelJsonObject
   conditions?: PageNode['conditions']
   reactions?: PageNode['reactions']
@@ -105,11 +101,6 @@ export interface CanonicalLayoutNodeIR extends CanonicalNodeBase {
 
 export type CanonicalNodeIR = CanonicalFieldNodeIR | CanonicalLayoutNodeIR
 
-export interface CanonicalFlowIR {
-  semanticHash: string
-  plan: ConfigFormFlowExecutionPlan
-}
-
 export interface CanonicalPageIR extends ProjectPageValueSchema {
   id: PageId
   name: string
@@ -118,7 +109,6 @@ export interface CanonicalPageIR extends ProjectPageValueSchema {
   form: FormSettings
   rootIds: NodeId[]
   nodesById: Record<NodeId, CanonicalNodeIR>
-  flows: CanonicalFlowIR[]
   runtime?: ProjectPageRuntimeConfiguration
 }
 

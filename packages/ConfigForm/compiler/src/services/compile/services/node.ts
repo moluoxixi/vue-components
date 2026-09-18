@@ -67,7 +67,7 @@ export function compileNodeShallow(
     })
     return undefined
   }
-  const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
+  const common = compileNodeBase(node, component, placement)
   if (node.kind === 'field') {
     const semanticNode = compileFieldSemanticNode(node, common)
     return { ...semanticNode, subtreeHash: semanticHash(semanticNode) } as CanonicalNodeIR
@@ -139,7 +139,7 @@ export function compileNode(
     return undefined
   }
 
-  const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
+  const common = compileNodeBase(node, component, placement)
   if (node.kind === 'field') {
     const semanticNode = compileFieldSemanticNode(node, common)
     const compiled = {
@@ -199,7 +199,6 @@ function compileNodeBase(
   node: PageNode,
   component: RegistryContractComponentSnapshot,
   placement: CanonicalNodePlacement,
-  flowEvents?: readonly string[],
 ) {
   return {
     id: node.id,
@@ -209,9 +208,7 @@ function compileNodeBase(
     placement,
     configuredProps: clone(node.props),
     props: mergeComponentProps(component.contract.defaults, node.props),
-    events: clone(node.events),
     bindings: clone(node.bindings),
-    ...(flowEvents?.length ? { flowEvents: [...flowEvents] } : {}),
     ...(node.extensions === undefined ? {} : { extensions: clone(node.extensions) }),
     ...(node.conditions === undefined ? {} : { conditions: clone(node.conditions) }),
     ...(node.reactions === undefined ? {} : { reactions: clone(node.reactions) }),

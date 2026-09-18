@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
-import { ChevronRight, Trash2, Workflow } from '@lucide/vue'
-import { CONFIG_FORM_FLOW_TRIGGER_KINDS, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
-import { computed } from 'vue'
 import { useDesignerLocale } from '../../locale'
 import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
@@ -12,70 +8,21 @@ const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
 const locale = useDesignerLocale()
 
-const formEventLabels: Record<Exclude<ConfigFormFlowTrigger['kind'], 'component.event'>, string> = {
-  'form.initialize': 'Form initialization',
-  'page.mount': 'Page mounted',
-  'page.unmount': 'Page unmounted',
-  'form.valuesChange': 'Form values changed',
-  'form.beforeSubmit': 'Before submit',
-  'form.validationSuccess': 'Validation succeeded',
-  'form.validationFailure': 'Validation failed',
-  'form.reset': 'Form reset',
-  'form.submit': 'Form submit',
-}
-const formFlowEvents = computed(() => CONFIG_FORM_FLOW_TRIGGER_KINDS
-  .filter(kind => kind !== 'component.event')
-  .map(kind => ({
-    label: locale.t(`flow.trigger.${kind}`, formEventLabels[kind]),
-    code: kind,
-    trigger: { kind },
-    flows: (props.flows ?? []).filter(flow => flow.trigger.kind === kind),
-  })))
-
-function flowState(trigger: ConfigFormFlowTrigger): { count: number, nodes: number, duplicate: boolean } {
-  const flows = (props.flows ?? []).filter(flow => getConfigFormFlowTriggerKey(flow.trigger) === getConfigFormFlowTriggerKey(trigger))
-  return {
-    count: flows.length,
-    nodes: flows[0]?.nodes.length ?? 0,
-    duplicate: flows.length > 1,
-  }
-}
-
 const {
-  commitBinding,
   commitForm,
   commitNodePath,
-  configureEvent,
-  fieldOptions,
   formEntries,
-  formatStaleValue,
   primaryMaterial,
-  projection,
   propertyEntries,
   propertyTabs,
-  reactionIds,
-  removeStaleItem,
-  resolveMaterialEventTitle,
   sectionReadonly,
   selectedDiagnostics,
   selectedNodes,
-  staleItemsFor,
-  staleKindLabel,
-  staleNodeLabel,
-  staleReason,
 } = useDesignerPropertyEntries(props, {
-  onConfigureEvent: target => emit('configureEvent', target),
-  onRemoveStoredConfig: (nodeId, path) => emit('removeStoredConfig', nodeId, path),
   onUpdateForm: changes => emit('updateForm', changes),
   onUpdatePath: (nodeId, path, value) => emit('updatePath', nodeId, path, value),
   onUpdatePaths: (nodeIds, path, value) => emit('updatePaths', nodeIds, path, value),
 })
-
-function eventLabel(eventName: string): string {
-  const binding = projection.value.commonBindings.find(candidate => candidate.trigger === eventName)
-    ?? props.componentDefinition?.bindings.find(candidate => candidate.trigger === eventName)
-  return binding ? locale.t('flow.trigger.valueChange', 'Value change') : resolveMaterialEventTitle(eventName)
-}
 
 const {
   activeTab,
@@ -92,8 +39,6 @@ const {
   tabs: () => propertyTabs.value,
 })
 
-// The panel root is bound to `propertyPanelRef` for keyboard tab lookups. Expose it so
-// the binding is also a script-side read and parents can address the panel element.
 defineExpose({ propertyPanelRef })
 </script>
 
@@ -133,80 +78,13 @@ defineExpose({ propertyPanelRef })
         :inert="activeTab !== tab.id ? true : undefined"
         :tabindex="activeTab === tab.id ? 0 : -1"
       >
-        <ul
-          v-if="staleItemsFor(tab.id).length"
-          class="mx-config-form-designer__stale-configs"
-          :aria-label="locale.t('property.stale.configuration', 'Stored configuration warnings')"
-        >
-          <li
-            v-for="item in staleItemsFor(tab.id)"
-            :key="`${item.nodeId}-${item.kind}-${item.key}`"
-            :data-stale-kind="item.kind"
-            :data-stale-node-id="item.nodeId"
-          >
-            <div class="mx-config-form-designer__stale-heading">
-              <strong>{{ staleKindLabel(item) }}</strong>
-              <div class="mx-config-form-designer__stale-actions">
-                <code>{{ item.key }}</code>
-                <button
-                  v-if="item.removal"
-                  type="button"
-                  class="mx-config-form-designer__icon-button is-danger"
-                  data-stale-remove
-                  :aria-label="locale.t('property.stale.delete', 'Delete stored configuration {key} from {node}', { key: item.key, node: staleNodeLabel(item) })"
-                  :title="locale.t('property.stale.delete', 'Delete stored configuration {key} from {node}', { key: item.key, node: staleNodeLabel(item) })"
-                  :disabled="readonly"
-                  @click="removeStaleItem(item)"
-                >
-                  <Trash2 :size="14" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-            <span>{{ staleNodeLabel(item) }} · {{ staleReason(item) }}</span>
-            <pre>{{ formatStaleValue(item.value) }}</pre>
-          </li>
-        </ul>
-
-        <div v-if="tab.id === 'events'" class="mx-config-form-designer__event-flows">
-          <button
-            v-for="event in projection.commonEvents"
-            :key="event.name"
-            type="button"
-            :disabled="sectionReadonly(tab.id)"
-            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: eventLabel(event.name) })"
-            @click="configureEvent(event.name)"
-          >
-            <Workflow :size="15" aria-hidden="true" />
-            <span>
-              <strong>{{ eventLabel(event.name) }}</strong>
-              <code>{{ event.name }}</code>
-            </span>
-            <small v-if="flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).duplicate" class="is-conflict">{{ locale.t('flow.status.conflict', 'Conflict') }}</small>
-            <small v-else-if="flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).count" class="is-configured">{{ locale.t('flow.status.configured', 'Configured · {nodes} nodes', { nodes: flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).nodes }) }}</small>
-            <small v-else class="is-unconfigured">{{ locale.t('flow.status.unconfigured', 'Not orchestrated') }}</small>
-            <ChevronRight :size="15" aria-hidden="true" />
-          </button>
-        </div>
         <DesignerPropertyForm
-          v-else-if="tab.id === 'bindings'"
-          :entries="propertyEntries.bindings"
-          :renderer="renderer"
-          :components="components"
-          :controls="propertyControls"
-          :readonly="sectionReadonly(tab.id)"
-          @commit="commitBinding"
-        />
-        <DesignerPropertyForm
-          v-else
           :entries="propertyEntries[tab.id]"
           :renderer="renderer"
           :components="components"
           :controls="propertyControls"
           :readonly="sectionReadonly(tab.id)"
           :node="node"
-          :field-options="fieldOptions"
-          :reaction-ids="reactionIds"
-          :validator-options="validatorOptions"
           @commit="commitNodePath"
         />
       </div>
@@ -233,25 +111,6 @@ defineExpose({ propertyPanelRef })
           :renderer="renderer"
           @update-form="emit('updateForm', $event)"
         />
-        <section class="mx-config-form-designer__form-events" :aria-label="locale.t('flow.formEvents', 'Form events')">
-          <header><strong>{{ locale.t('flow.formEvents', 'Form events') }}</strong></header>
-          <button
-            v-for="event in formFlowEvents"
-            :key="event.code"
-            type="button"
-            :data-form-event="event.code"
-            :disabled="readonly"
-            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: event.label })"
-            @click="emit('configureFlow', event.trigger)"
-          >
-            <Workflow :size="15" aria-hidden="true" />
-            <span><strong>{{ event.label }}</strong><code>{{ event.code }}</code></span>
-            <small v-if="event.flows.length > 1" class="is-conflict">{{ locale.t('flow.status.conflict', 'Conflict') }}</small>
-            <small v-else-if="event.flows.length" class="is-configured">{{ locale.t('flow.status.configured', 'Configured · {nodes} nodes', { nodes: event.flows[0]!.nodes.length }) }}</small>
-            <small v-else class="is-unconfigured">{{ locale.t('flow.status.unconfigured', 'Not orchestrated') }}</small>
-            <ChevronRight :size="15" aria-hidden="true" />
-          </button>
-        </section>
       </div>
     </template>
 

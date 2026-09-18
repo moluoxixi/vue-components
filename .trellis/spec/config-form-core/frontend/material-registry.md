@@ -51,7 +51,6 @@ interface DesignerDefaultValueControlProps {
 }
 
 interface DesignerMaterialDefinitionBase {
-  events?: Array<{ name: string, title: string }>
   runtime: { valueProp?: string, trigger?: string }
 }
 ```
@@ -74,8 +73,8 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 - Designer material keys remain adapter-namespaced, and their final segment must equal `module.name`.
 - Entries sort by non-negative integer `order`, then `name`, then source. Never rely on filesystem traversal order.
 - A designer module co-locates `material`, optional locale, and order. The registry derives both the material array and locale map from the same entries.
-- `material.events` declares non-binding component events that may trigger a Flow. Field value-binding events are derived from `runtime.valueProp/trigger`; explicit events merge by canonical name and may replace the generated display title without creating a duplicate event.
-- Event names are stable Registry contract values, not DOM event discovery results. They must be non-empty, trimmed, whitespace-free, unique within the material, and must not use `__proto__`, `constructor`, or `prototype`.
+- Designer materials and persisted Registry component contracts do not declare component events. `runtime.valueProp`, `runtime.trigger`, `blurTrigger`, and `getValueFromEvent` belong only to Runtime value binding and validation timing; they are not authoring metadata or event subscriptions.
+- Complex component listeners are host-only `props.onX` functions. They are not scanned from DOM listeners, serialized into a Registry snapshot, projected into Designer, or forwarded through Preview.
 - Scanning creates adapter defaults only. Runtime caller `components` and Designer caller layers retain their existing higher precedence.
 - Public adapter registry constants must be explicitly annotated with Headless/Designer layer types. Do not leak an inferred Core type through an adapter declaration.
 - Ordinary field materials use `defineDesignerFieldMaterial()` when their node is one field with declarative defaults. The helper derives `kind`, version, Runtime binding, prop/default-value setters, and a JSON-safe node factory; it does not reflect arbitrary Vue props.
@@ -102,7 +101,6 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 | Negative or non-integer order | `CONFIG_FORM_MODULE_ORDER_INVALID` |
 | Designer module has no valid material | `DESIGNER_MATERIAL_MODULE_INVALID` |
 | Designer key final segment differs from module name | `DESIGNER_MATERIAL_MODULE_KEY_MISMATCH` |
-| Designer event is empty, unsafe, malformed, or duplicated | `DESIGNER_MATERIAL_EVENT_INVALID` |
 | Adapter omits `propertyControls.defaultValue` | Render the core default-value control without changing the registry contract |
 | Adapter registers `propertyControls.defaultValue` | Render the adapter control and preserve registered props plus value/disabled/options wiring |
 
@@ -119,7 +117,6 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.input-number',
-      events: [{ name: 'change', title: 'Committed value' }],
       /* ... */
     },
     locale: { title: '数字输入' },
@@ -146,12 +143,12 @@ export default defineConfigFormComponentMaterial({
 - Core unit tests assert stable ordering and every error code above.
 - Headless tests prove direct components and binding-aware registration objects preserve `ConfigFormComponentRegistry` shape.
 - Designer tests prove material/locale co-location and malformed-value diagnostics.
-- Designer tests prove explicit events merge with generated field binding events by canonical name and reject malformed/duplicate declarations.
+- Designer and Registry tests reject an obsolete material/component `events` field and preserve Runtime value-binding declarations.
 - Designer tests prove the high-level field helper derives setters and Runtime binding, respects binding overrides, produces valid nodes, and deep-clones every default.
 - Designer tests prove a registered `defaultValue` control receives registry props and commits through `update:modelValue`, while an unregistered adapter still renders the core fallback.
 - Provider adapter tests mount every supported default-value kind through real library components and verify value, clear, disabled, option, date, and time wiring. Browser coverage must prove the provider input keeps one library-owned focus frame.
 - Provider adapter tests assert every default-value kind's concrete class, preserve arbitrary caller classes, reject duplicate shared classes and the generic `is-default-value` marker, and keep `multiselect` mapped to the select visual class.
-- Each adapter test asserts exact material names, source paths, order, locale coverage, provider-specific binding triggers, explicit events, and existing caller override precedence.
+- Each adapter test asserts exact material names, source paths, order, locale coverage, provider-specific binding triggers, absence of event-authoring metadata, and existing caller override precedence.
 - Each Designer adapter test registers a caller material without a named layer and proves it overrides provider defaults; advanced layers remain independently testable through the options object.
 - `pnpm test:config-form-packages` must explicitly build Core and validate Core, Headless, Designer, and adapter JS exports plus independent TypeScript consumers.
 
@@ -161,6 +158,6 @@ Wrong: hard-code a provider input in Designer core, or style every descendant `i
 
 Correct: register the provider default-value component through `propertyControls.defaultValue`, retain the core fallback, and scope native selectors to core-owned elements.
 
-Wrong: maintain a hand-written array beside scanned files, discover Flow events from rendered DOM listeners, silently overwrite duplicate names, or let glob order define palette order.
+Wrong: maintain a hand-written array beside scanned files, add component event metadata to material contracts, discover listeners from rendered DOM, or let glob order define palette order.
 
-Correct: use one named module per material, declare event capabilities in that material, derive binding events from the same Runtime binding, and keep application extension APIs separate from build-time scanning.
+Correct: use one named module per material, keep value binding in the Runtime registration, keep host listeners in `props.onX`, and keep application extension APIs separate from build-time scanning.

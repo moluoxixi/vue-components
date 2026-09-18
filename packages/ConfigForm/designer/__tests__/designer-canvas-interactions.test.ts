@@ -15,7 +15,7 @@ import { createDesignerDragController } from '../src/components/DesignerCanvas/s
 import { createDesignerCanvasSelection } from '../src/components/DesignerCanvas/services/canvas-selection'
 
 const graph: PageGraph = {
-  version: 2,
+  version: 3,
   form: { columns: 24, fieldSpan: 24 },
   props: {},
   root: [{ nodeId: 'field', placement: { span: 12 } }],
@@ -24,7 +24,6 @@ const graph: PageGraph = {
       id: 'field',
       bindings: {},
       component: 'test.input',
-      events: {},
       field: 'field',
       kind: 'field',
       props: {},

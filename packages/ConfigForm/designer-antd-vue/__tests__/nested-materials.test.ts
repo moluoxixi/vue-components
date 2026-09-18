@@ -1,5 +1,5 @@
 import type { LayoutNode, PageGraph, ProjectDocument } from '@moluoxixi/config-form-model'
-import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, useDesignerController } from '@moluoxixi/config-form-designer'
+import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, isDesignerSetterPathAllowed, useDesignerController } from '@moluoxixi/config-form-designer'
 import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { effectScope, shallowRef } from 'vue'
@@ -8,7 +8,7 @@ import { ANTD_VUE_DESIGNER_MATERIAL_REGISTRY, createAntdVueDesignerRegistry } fr
 function fixture() {
   const registry = createAntdVueDesignerRegistry()
   const contracts = createComponentContractRegistry(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.contracts, { adapter: 'antd', version: '1' })
-  const graph = shallowRef<PageGraph>({ version: 2, props: {}, form: {}, root: [], nodesById: {} })
+  const graph = shallowRef<PageGraph>({ version: 3, props: {}, form: {}, root: [], nodesById: {} })
   const document: ProjectDocument = {
     version: PROJECT_DOCUMENT_VERSION,
     id: 'nested',
@@ -74,28 +74,26 @@ describe('antd nested materials', () => {
     finally { scope.stop() }
   })
 
-  it('commits scope setters with provider propertyControls and validates the complete ProjectCommand', () => {
-    const { add, graph, controller, registry, engine, scope } = fixture()
+  it('exposes only allowed property setters and rejects value-scope authoring', () => {
+    const { add, graph, controller, registry, scope } = fixture()
     try {
       const id = add('detail-table')
-      const values: Record<string, unknown> = { title: 'Invoice lines', scopeField: 'order.details', itemKey: 'order.id', minItems: 1, maxItems: 5, arrayDisplay: 'list', readonly: true, disabled: true }
+      const values: Record<string, unknown> = { title: 'Invoice lines', arrayDisplay: 'list', readonly: true, disabled: true }
       for (const setter of registry.getMaterial('antd.detail-table')!.setters) {
+        expect(isDesignerSetterPathAllowed(setter.path)).toBe(true)
         expect(
           registry.propertyControls[setter.control as 'text']
           ?? DEFAULT_DESIGNER_PROPERTY_CONTROLS[setter.control as 'text'],
         ).toBeDefined()
         expect(controller.dispatch(createNodePathCommand(graph.value, 'home', [id], setter.path, values[setter.key]))).toBe(true)
-        engine.sealHistoryGroup()
       }
-      expect(graph.value.nodesById[id]).toMatchObject({ valueScope: { field: 'order.details', itemKey: 'order.id', minItems: 1, maxItems: 5 }, props: { arrayDisplay: 'list', readonly: true, disabled: true } })
-      const before = engine.snapshot.contentHash
-      expect(controller.dispatch(createNodePathCommand(graph.value, 'home', [id], ['valueScope', 'maxItems'], 0))).toBe(false)
-      expect(engine.snapshot.contentHash).toBe(before)
-      expect(controller.dispatch(createNodePathCommand(graph.value, 'home', [id], ['valueScope', 'itemKey'], undefined))).toBe(true)
-      expect((graph.value.nodesById[id] as LayoutNode).valueScope).not.toHaveProperty('itemKey')
-      expect(engine.undo().changed).toBe(true)
-      expect(engine.snapshot.document.pagesById.home!.graph.nodesById[id]).toMatchObject({ valueScope: { itemKey: 'order.id' } })
-      expect(engine.redo().changed).toBe(true)
+      expect(graph.value.nodesById[id]).toMatchObject({ valueScope: { kind: 'array', field: 'details', minItems: 0 }, props: { arrayDisplay: 'list', readonly: true, disabled: true } })
+      const before = structuredClone(graph.value.nodesById[id])
+      expect(() => createNodePathCommand(graph.value, 'home', [id], ['valueScope', 'field'], 'order.details'))
+        .toThrow(/DESIGNER_SETTER_PATH_FORBIDDEN/)
+      expect(() => createNodePathCommand(graph.value, 'home', [id], ['valueScope', 'maxItems'], 5))
+        .toThrow(/DESIGNER_SETTER_PATH_FORBIDDEN/)
+      expect(graph.value.nodesById[id]).toEqual(before)
     }
     finally { scope.stop() }
   })
