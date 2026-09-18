@@ -1107,3 +1107,39 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 45: 收敛 ConfigForm Runtime-first 产品边界
+
+**Date**: 2026-09-18
+**Task**: 收敛 ConfigForm Runtime-first 产品边界
+**Package**: config-form
+**Branch**: `fix架构`
+
+### Summary
+
+移除事件编辑、事件转发与事件编排，明确复杂事件由工程师在代码态 config 中维护，并完成全链路验证。
+
+### Main Changes
+
+- 固化 Runtime-first 产品定位并收敛 Designer 能力边界
+- 删除事件编辑与设计器事件转发相关代码和兼容层
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6d493985` | (see git log) |
+
+### Testing
+
+- [OK] Workbench 59 files / 619 tests、Compiler 55 tests、Vue backend 10 tests 通过
+- [OK] 类型检查、构建、导出模板与发布合同检查通过
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 创建并实现独立的 @moluoxixi/config-form-source 包
