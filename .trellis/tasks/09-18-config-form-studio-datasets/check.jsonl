@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对 Dataset/Resource 的 Repository、IR、import/export 和 Source 触点完整"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对 Dataset query 与 Materials 渲染/选择所有权不重叠"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查 Dataset/Resource 签名、精确版本、诊断和查询语义"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查无 HTTP、无运行期写入且不复用 Data Source 合同"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 Select/Table/List、Preview 和 Source 不复制查询逻辑"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 raw/envelope 相反失败用例与无损往返"}

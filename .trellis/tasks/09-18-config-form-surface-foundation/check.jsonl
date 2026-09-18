@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对所有 Page 身份、Reader、缓存和协议触点完成原子切换"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对 foundation 未侵占资产、Dataset 编辑、Materials、Interaction UI 或 Source 抽离职责"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查 Surface、实例、会话、版本、诊断和测试矩阵符合目标合同"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"检查生产状态与 Prototype session 隔离且 Preview/Source 不复制 reducer"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查公共包、依赖方向、README 和 current-contract-only 同步"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Model 到持久化、Compiler、Host、Preview 的完整数据流和失败路径"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查会话 reducer、引用解析和版本常量没有重复实现"}

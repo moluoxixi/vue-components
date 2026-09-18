@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"Surface、实例、硬切和无兼容层的已确认产品边界"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"Page-only 身份贯穿 Model、持久化、Compiler、Host 和现有生成器的原子切换证据"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"SurfaceGraph、ProjectDocument v6、Prototype session v1、版本和诊断目标合同"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"生产 Runtime、Studio、序列化和禁止兼容/事件域边界"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"表单状态与 Prototype session 的所有权和双端复用合同"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"current-contract-only、跨包文档和新公共包激活门禁"}
+{"file":".trellis/spec/directory-structure.md","reason":"新增 Prototype Runtime 包、入口和责任目录约束"}

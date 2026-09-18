@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"核对最终集成没有偏离已确认产品边界"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对版本、协议、缓存、持久化、交互与导出链完整覆盖"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对子任务依赖、职责和最终 Source 抽离条件"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查跨层数据流、失败路径和双端 parity"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查产品、序列化、禁止事件域和版本合同一致性"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查架构事实源与公开包边界同步"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查 Studio/Preview/Source 的测试、可访问性和异步边界"}

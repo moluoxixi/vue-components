@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对 Dataset 前置门禁和 Materials 所有权没有漂移"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查 Material/Surface、Dataset query/selection 和 semantic trigger 分界"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查双 adapter 不恢复 DOM 事件表、任意 CSS 或业务副作用"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"检查 Registry、共同能力、序列化和稳定排序合同"}
+{"file":".trellis/spec/config-form-core/frontend/form-layout-settings.md","reason":"检查响应式布局与现有 Runtime 投影一致"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查双 adapter 和数据物料没有复制稳定语义"}

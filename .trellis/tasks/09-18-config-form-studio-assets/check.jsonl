@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对资产任务没有反向依赖 Interaction 作者 UI 或重复绑定事务"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查资产、Surface 外壳、稳定引用，并确保不提前实现 Design/Experience 切换"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查 Studio 不引入 HTTP、事件域、业务函数或兼容模型"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查持久化、窄屏、焦点、对话框和 E2E 门禁"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查单 Surface Designer 组合和交互质量"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查资产命令、Repository、自动保存和 UI 的跨层失败路径"}

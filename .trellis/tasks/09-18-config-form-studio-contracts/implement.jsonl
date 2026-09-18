@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"合同文档必须逐项固化的用户确认决策"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"现有版本基线、跨包硬切范围、Prototype Runtime 与交互执行缺口"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"Dataset/Materials、Studio/Interaction 与 Source resolver 所有权约束"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"设计 Surface、Dataset、Interaction、Preview 与 Source 跨层合同"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"防止 Preview/Source、Dataset query 和 adapter resolver 产生重复实现"}
+{"file":".trellis/spec/directory-structure.md","reason":"文档与新 spec 路由遵循仓库职责目录和公共边界"}

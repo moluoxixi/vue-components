@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对初始化、依赖变化、循环、Host/Preview 和 Source 执行触点"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对不重写 foundation 的 Prototype Runtime v1 或侵占资产任务"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查表达式、触发器、动作、参数结果、诊断和实例语义"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"检查三类执行通道、事务原子性和生产 Runtime 隔离"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查没有恢复事件转发、动作链、Flow 或兼容层"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Model、Designer、Experience、Runtime Host 和 Source parity"}

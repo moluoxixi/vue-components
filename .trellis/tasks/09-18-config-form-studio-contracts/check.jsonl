@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"检查所有合同完整且无歧义地覆盖用户确认范围"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"检查版本表、错误矩阵、原子切换和验证矩阵完整性"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"检查职责边界和子任务依赖没有重新交叉"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"审查跨层输入输出、失败和双端 parity"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"审查共享会话、Dataset query 与 resolver 没有重复实现"}
+{"file":".trellis/spec/directory-structure.md","reason":"审查新增和移动的 spec 文档符合目录所有权"}
