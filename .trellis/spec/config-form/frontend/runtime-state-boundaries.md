@@ -39,11 +39,16 @@ type PrototypeInteraction =
 reducePrototypeSession(
   session: PrototypeSessionV1,
   command: PrototypeSessionCommand,
+  context: PrototypeProjectContextV1,
 ): PrototypeSessionResult
 ```
 
 The full target shapes are owned by
 [Studio Domain Contracts](./studio-domain-contracts.md).
+The context is an immutable, Reader-validated projection of Surface kind,
+initial values, parameters, outputs, presentation, and interactions. A host
+supplies every new `instanceId`; the reducer never reads time, randomness, DOM,
+Vue, Workbench state, or a mutable Registry.
 
 ## 3. Contracts
 
@@ -104,6 +109,9 @@ The full target shapes are owned by
   user semantic activation, never initialization or arbitrary DOM event names.
 - A named result maps into caller values atomically, then triggers normal value
   and state reevaluation. Result assignments are not an action chain.
+- Every overlay instance retains the exact opener interaction ID and scoped
+  node address for result routing and focus restoration; one node may have many
+  runtime row addresses and different `open` bindings on semantic triggers.
 - Page history, overlay instances, parameters/results, and primary actions live
   in planned Prototype Runtime, not Headless, production Runtime, Designer, or
   iframe event forwarding.

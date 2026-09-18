@@ -5,3 +5,17 @@
 {"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"表单状态与 Prototype session 的所有权和双端复用合同"}
 {"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"current-contract-only、跨包文档和新公共包激活门禁"}
 {"file":".trellis/spec/directory-structure.md","reason":"新增 Prototype Runtime 包、入口和责任目录约束"}
+{"file":".trellis/spec/config-form-model/frontend/index.md","reason":"Model Reader、Repository、事务和版本硬切的包级实施检查"}
+{"file":".trellis/spec/config-form-compiler/frontend/index.md","reason":"Canonical Surface IR、Compiler 版本和缓存边界"}
+{"file":".trellis/spec/config-form-vue-backend/frontend/index.md","reason":"Surface artifact 与生产 Runtime 投影边界"}
+{"file":".trellis/spec/config-form-workbench/frontend/index.md","reason":"Workbench persistence、import、Host 和临时 generator 组合边界"}
+{"file":".trellis/spec/config-form-prototype-runtime/frontend/index.md","reason":"Prototype Runtime 多入口、纯 session 与 Vue host 激活门禁"}
+{"file":".trellis/spec/config-form/frontend/index.md","reason":"生产 Runtime 包级边界、Surface 命名同步与 direct listener/Data Source 保留要求"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"Registry v3 capability、集中投影与 fingerprint 规则"}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"Designer material domain 与 Registry v3 projection 的包级约束"}
+{"file":".trellis/spec/config-form-designer-element-plus/frontend/index.md","reason":"Element Plus 基础物料 Registry v3 条目迁移约束"}
+{"file":".trellis/spec/config-form-designer-antd-vue/frontend/index.md","reason":"Ant Design Vue 基础物料 Registry v3 条目迁移约束"}
+{"file":".trellis/spec/indexed-db/frontend/index.md","reason":"Codec v4、draft bytes 与单事务 updateItems 的存储约束"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/model-persistence-surface-cut.md","reason":"Model、事务、Repository bytes 和 codec v4 的精确影响文件与顺序"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/compiler-runtime-surface-cut.md","reason":"Compiler、Vue backend、Runtime 和 Prototype Runtime 的身份与发布影响"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/workbench-protocol-surface-cut.md","reason":"Workbench import/persistence/cache/Host v7/generator 的硬切证据"}

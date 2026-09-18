@@ -306,6 +306,17 @@ interface ProjectTransferReadResult {
   embeddedBytesByResourceId: Readonly<Record<ResourceId, Uint8Array>>
 }
 
+interface ProjectEmbeddedResourceRead {
+  projectId: ProjectId
+  resourceId: ResourceId
+  contentHash: string
+}
+
+interface ProjectTransferWriteInputV1 {
+  document: Readonly<ProjectDocumentV6>
+  readEmbedded(input: ProjectEmbeddedResourceRead): Promise<Uint8Array | undefined>
+}
+
 readResourceTransfer(
   input: unknown,
 ): Promise<ContractResult<ResourceTransferReadResult>>
@@ -313,6 +324,10 @@ readResourceTransfer(
 readProjectTransfer(
   input: unknown,
 ): Promise<ContractResult<ProjectTransferReadResult>>
+
+writeProjectTransfer(
+  input: ProjectTransferWriteInputV1,
+): Promise<ContractResult<ProjectTransferEnvelopeV1>>
 ```
 
 Surface parameter and output names are unique within one asset and follow the
@@ -410,6 +425,16 @@ missing, extra, length-mismatched, or hash-mismatched content fails the whole
 Reader. The ProjectDocument remains metadata-only; project import commits its
 validated document and returned byte snapshot atomically.
 
+`writeProjectTransfer` first validates the complete current ProjectDocument,
+then visits embedded Resources in ascending `resourceId` order and calls
+`readEmbedded` with the exact project/resource/hash identity. URL Resources are
+never read. It copies and validates every byte array before emitting canonical
+padded base64 in the same order; no embedded Resource produces
+`embeddedContents: []` and zero reads. Missing, rejected, thrown, stale,
+length/hash-invalid, or over-budget bytes return `resource_content_invalid`
+with no partial envelope. `readProjectTransfer` returns fresh byte arrays, so a
+write -> JSON -> read round trip is lossless without sharing mutable buffers.
+
 `registryLock` remains the single persisted owner of the locked adapter
 identity, Registry version/fingerprint, and component locks. The document does
 not add a parallel `adapter` field. Full provider metadata remains outside the
@@ -426,9 +451,12 @@ interface SurfaceInstance {
   instanceId: SurfaceInstanceId
   surfaceId: SurfaceId
   parentInstanceId?: SurfaceInstanceId
-  openerNodeId?: NodeId
+  openerAddress?: PrototypeNodeAddressV1
+  openerInteractionId?: InteractionRuleId
   parameters: Readonly<ModelJsonObject>
   values: ModelJsonObject
+  runtime: PrototypeInstanceRuntimeSnapshotV1
+  projection: PrototypeInstanceProjectionV1
 }
 
 interface PrototypeSessionV1 {
@@ -438,6 +466,147 @@ interface PrototypeSessionV1 {
   overlayStack: readonly SurfaceInstanceId[]
   instancesById: Readonly<Record<SurfaceInstanceId, SurfaceInstance>>
 }
+
+interface PrototypeNodeAddressV1 {
+  nodeId: NodeId
+  scope: ConfigFormScopePath
+}
+
+interface PrototypeSurfaceTopologyV1 {
+  nodeOrder: readonly NodeId[]
+  ownerScopeIdByNodeId: Readonly<Record<NodeId, NodeId | null>>
+  valueScopes: readonly ConfigFormValueScopeDefinition[]
+  scopedFields: readonly ConfigFormScopedFieldDefinition[]
+}
+
+interface PrototypeFieldInstanceAddressV1 {
+  address: PrototypeNodeAddressV1
+  valuePath: readonly (string | number)[]
+}
+
+interface PrototypeInstanceRuntimeSnapshotV1 {
+  nodeAddresses: readonly PrototypeNodeAddressV1[]
+  fieldInstances: readonly PrototypeFieldInstanceAddressV1[]
+}
+
+interface PrototypeSurfaceContractBaseV1 {
+  id: SurfaceId
+  initialValues: Readonly<ModelJsonObject>
+  parameters: readonly SurfaceParameterDefinition[]
+  outputs: readonly SurfaceOutputDefinition[]
+  interactions: readonly PrototypeInteraction[]
+  topology: PrototypeSurfaceTopologyV1
+}
+
+type PrototypeSurfaceContractV1 =
+  | (PrototypeSurfaceContractBaseV1 & {
+      kind: 'page'
+      route: string
+    })
+  | (PrototypeSurfaceContractBaseV1 & {
+      kind: 'dialog'
+      presentation: ProjectDialogSurface['presentation']
+    })
+  | (PrototypeSurfaceContractBaseV1 & {
+      kind: 'drawer'
+      presentation: ProjectDrawerSurface['presentation']
+    })
+
+interface PrototypeProjectContextV1 {
+  version: 1
+  projectId: ProjectId
+  homeSurfaceId: SurfaceId
+  surfacesById: Readonly<Record<SurfaceId, PrototypeSurfaceContractV1>>
+}
+
+interface PrototypeNodeProjectionV1 {
+  address: PrototypeNodeAddressV1
+  states: Readonly<Partial<Record<
+    'visible' | 'disabled' | 'readonly' | 'required',
+    boolean
+  >>>
+  properties: readonly {
+    path: readonly string[]
+    value: ModelJsonValue
+  }[]
+}
+
+type PrototypeInstanceProjectionV1 = readonly PrototypeNodeProjectionV1[]
+
+type PrototypeSessionCommand =
+  | {
+      type: 'instance.valuesChanged'
+      instanceId: SurfaceInstanceId
+      values: ModelJsonObject
+      runtime: PrototypeInstanceRuntimeSnapshotV1
+      originScope: ConfigFormScopePath
+      changedAddresses: readonly PrototypeNodeAddressV1[]
+    }
+  | {
+      type: 'interaction.activate'
+      sourceInstanceId: SurfaceInstanceId
+      sourceAddress: PrototypeNodeAddressV1
+      interactionId: InteractionRuleId
+      nextInstance?: {
+        instanceId: SurfaceInstanceId
+        runtime: PrototypeInstanceRuntimeSnapshotV1
+      }
+      item?: Readonly<ModelJsonObject>
+    }
+  | { type: 'history.back' }
+  | {
+      type: 'overlay.dismiss'
+      instanceId: SurfaceInstanceId
+      reason: 'escape' | 'mask' | 'button'
+    }
+  | { type: 'overlay.closeAll' }
+
+type PrototypeSessionEffect =
+  | {
+      type: 'instance.mount'
+      instanceId: SurfaceInstanceId
+      surfaceId: SurfaceId
+    }
+  | { type: 'instance.dispose', instanceId: SurfaceInstanceId }
+  | {
+      type: 'instance.values.replace'
+      instanceId: SurfaceInstanceId
+      values: ModelJsonObject
+      changedAddresses: readonly PrototypeNodeAddressV1[]
+    }
+  | {
+      type: 'instance.projection.replace'
+      instanceId: SurfaceInstanceId
+      projection: PrototypeInstanceProjectionV1
+    }
+  | {
+      type: 'focus.restore'
+      instanceId: SurfaceInstanceId
+      address: PrototypeNodeAddressV1
+    }
+
+interface PrototypeSessionResult {
+  session: PrototypeSessionV1
+  diagnostics: readonly PrototypeDiagnostic[]
+  effects: readonly PrototypeSessionEffect[]
+}
+
+initializePrototypeSession(
+  input: {
+    projectId: ProjectId
+    homeInstance: {
+      instanceId: SurfaceInstanceId
+      runtime: PrototypeInstanceRuntimeSnapshotV1
+    }
+  },
+  context: PrototypeProjectContextV1,
+): PrototypeSessionResult
+
+reducePrototypeSession(
+  session: PrototypeSessionV1,
+  command: PrototypeSessionCommand,
+  context: PrototypeProjectContextV1,
+): PrototypeSessionResult
 ```
 
 Entering or navigating to a Page creates a Page instance and page-history entry.
@@ -450,6 +619,64 @@ or `overlayStack`; each map key equals the contained `instanceId`. Any transitio
 that closes an instance removes its stack/history entry and map entry in the
 same reducer result and releases its values, validation, focus, and parameter
 state. No closed or unreachable instance may remain as a cache.
+
+Page instances omit `parentInstanceId`, `openerAddress`, and
+`openerInteractionId` together. Overlay instances contain all three: the parent
+must be live, the node plus value-scope path is the exact focus/result target,
+and the interaction ID names the `open` binding on the parent Surface whose
+address, semantic trigger, and target created this instance. A named result
+resolves `onResults` through that interaction ID and resolves field targets from
+the opener scope. Missing, mismatched, ambiguous, or no-longer-live opener
+identity rejects the result transaction and leaves the session unchanged.
+
+The project context, session, and command each have strict current-version
+Readers. Context map keys equal Surface IDs, the home Surface is a Page, and
+interaction IDs are unique inside one Surface. Context also carries the compiled
+value-scope topology: stable node order, each node's owner scope, scoped fields,
+and value-scope definitions. A host uses the DOM-free value-scope store and an
+injected row-ID factory to create an exact runtime snapshot of live node/field
+addresses before initialization or instance creation. The caller supplies every
+new instance ID. `interaction.activate.nextInstance` is required exactly for an
+`open` or `navigate` action and forbidden for every other action. The reducer
+never generates identity, reads mutable project state, or accepts a command-
+supplied target, parameter binding, or result mapping.
+
+Every activation names a live `sourceAddress`; binding node ID and address node
+ID must match. Value-change commands carry the complete validated values,
+current runtime snapshot, and exact changed addresses. A ValueAction or
+ResultAssignment resolves its field NodeId against the trigger/opener scope and
+compiled topology: root targets use the empty scope, ancestor targets use the
+matching scope prefix, and a missing, descendant, or ambiguous target aborts the
+whole transition. All changed addresses in one command must be live field
+addresses resolvable from one explicit `originScope`; unrelated row changes are
+dispatched as separate commands in occurrence order. Value rules evaluate and
+settle once in that origin scope. Projection entries and focus effects also use
+exact node addresses rather than NodeId alone.
+
+For `rowActivate` and `itemActivate`, the Vue host fresh-clones the activated
+readonly Dataset-view row into `interaction.activate.item`; that item is
+required and JSON-safe. It is forbidden for `activate` and `submit`. The item
+exists only for that immediate activation and may feed parameter/action
+expressions; it is never retained in a Surface instance, session, or effect.
+`onResults` executes later and therefore may not reference `item`; it may read
+caller values/parameters and the returned `result` only.
+
+The reducer is the sole StateProjectionRule evaluator. Each instance stores a
+JSON-safe, address-scoped projection of dynamic overrides; Material static
+props/states remain in the compiled artifact. Initialization, open, and navigation establish values
+and immutable parameters, then compute projection without running value or UI
+actions. User-value and named-result transactions settle all value rules first,
+then recompute every live target address using that address's scope-local values.
+Expression failure rolls back
+the whole transition. Vue consumes the ordered `instance.projection.replace`
+effect and never implements a second projection evaluator.
+
+A Vue host executes a binding's validation gate before dispatching
+`interaction.activate`; validation failure dispatches nothing. The host is also
+the sole ordered executor of returned effects. Transport and parent UI may
+observe the session and diagnostics but never replay mount, dispose, value, or
+focus effects. Invalid commands return the identical prior session with stable
+diagnostics and an empty effect list.
 
 There is no static overlay-depth limit. User activation may produce A -> B -> A
 or any other finite stack. Session/project initialization must not dispatch a
@@ -577,7 +804,13 @@ type SafeExpressionNode =
   | { kind: 'literal', value: ModelJsonValue }
   | {
     kind: 'reference'
-    scope: SafeExpressionReferenceScope
+    scope: 'values'
+    selector?: ConfigFormScopeSelector
+    path: readonly string[]
+  }
+  | {
+    kind: 'reference'
+    scope: Exclude<SafeExpressionReferenceScope, 'values'>
     path: readonly string[]
   }
   | { kind: 'array', items: readonly SafeExpressionNode[] }
@@ -622,6 +855,11 @@ prototype access, I/O, time, randomness, and arbitrary JavaScript are invalid.
 `item` is available only while evaluating a Dataset row. `result` is available
 only inside an atomic named-result mapping. Invalid scope use fails validation
 before Experience or Source generation.
+
+A `values` reference resolves from the evaluator's scoped node address. Its
+optional selector is `current | parent | root` and defaults to `current`, using
+the same value-scope semantics as Core. At root, `parent` resolves to root.
+Selectors are forbidden on `parameters`, `result`, and `item` references.
 
 Safe Expression v1 has one deterministic evaluator contract:
 
@@ -764,6 +1002,9 @@ targets require a JSON value accepted by the Material capability.
 Value rules establish an initial baseline without applying actions. One rule
 contains exactly one `set`, `copy`, or `clear` action and runs only after a
 declared dependency changes through user input or a named-result transaction.
+A dependency, copy source, action target, and result-assignment target must
+reference a `SurfaceFieldNode`; a value-scope owner layout or non-value element
+is never an implicit writable field.
 Affected rules settle in one deterministic transaction. Cycles abort the whole
 transaction; partial values are not published. Candidate rules execute in their
 `ProjectSurfaceBase.interactions` declaration order against staged values. When
@@ -957,6 +1198,7 @@ package directories, manifests, placeholder exports, or release entries.
 | Canonical Project IR | `4` | `5` | surface-foundation |
 | Compiler | `5.0.0` | `6.0.0` | surface-foundation |
 | IndexedDB manifest/entity codec | `3` | `4` | surface-foundation |
+| Recovery Draft | `1` | `2` | surface-foundation |
 | Page transfer / Surface transfer | `Page 2` | `Surface 1` | surface-foundation |
 | Runtime Host protocol | `6` | `7` | surface-foundation |
 | Workbench export generator | `4.0.0` | `5.0.0` | surface-foundation; source-package moves ownership only |
@@ -1037,6 +1279,9 @@ translated into these diagnostics.
 | `open` targets Page | `invalid_surface_kind`; do not create an instance |
 | Same Dialog is opened twice | Create two isolated instance IDs and value/validation states |
 | User opens A -> B -> A | Permit the finite stack; do not recursively compile assets |
+| Same node activates from two value-scope rows | Use its exact scoped address; never write/project/focus the sibling row |
+| Runtime snapshot contains a stale, duplicate, or topology-invalid address | `prototype_session_invalid`; leave session unchanged |
+| `rowActivate`/`itemActivate` omits item, or another trigger supplies item | `prototype_command_invalid`; leave session unchanged |
 | An overlay closes, all overlays close, or navigation clears overlays | Remove every closed ID from `instancesById` and release its instance-owned state |
 | Project load contains an automatic open action | Reject the initialization path |
 | Required parameter is absent | `surface_parameter_invalid`; reject action before session mutation |
@@ -1135,6 +1380,9 @@ translated into these diagnostics.
   content attached to URL resources, invalid canonical base64, length/hash
   mismatch, unsafe filename/URL, and per-resource/project budget overflow before
   committing either metadata or bytes.
+- Prove Project transfer writer order is deterministic, skips URL Resources,
+  returns no partial envelope on missing/rejected/thrown/stale bytes, and writes
+  `embeddedContents: []` for a no-Resource write -> JSON -> read round trip.
 
 ### Dataset and materials
 
@@ -1158,6 +1406,10 @@ translated into these diagnostics.
   missing/coalesce behavior, strict deep equality, boolean short-circuiting,
   same-type ordering, function arity/types, finite arithmetic, JSON-safe output,
   and the 32-depth/256-node limits without JavaScript coercion.
+- Cover omitted `values` selector defaulting to `current`, explicit
+  `current/parent/root` across nested value scopes, root-parent fallback, and
+  Reader rejection of selectors on `parameters/result/item`; run the same
+  fixtures through the reducer, Preview/Experience, and generated Source.
 - Reject duplicate state-projection targets and prove dynamic projections
   override their static baseline. For multi-write value rules, assert the stable
   warning, declaration-order staging, and last-write-wins result.
@@ -1166,6 +1418,9 @@ translated into these diagnostics.
 - Cover navigate/back/open/closeCurrent/closeAll, optional validation, required
   parameters, named outputs, result rollback, repeated same-Surface instances,
   and A -> B -> A.
+- Cover root/parent/current scoped field resolution, nested array row addresses,
+  row/item-derived parameters, address-scoped projection, stale row rejection,
+  and same-node different-row result/focus isolation.
 - Prove `back` with overlays closes exactly the top instance without changing
   Page history; prove `back` with no overlay returns to the previous Page.
 - After closeCurrent, closeAll, overlay dismissal, back, and navigation, prove
