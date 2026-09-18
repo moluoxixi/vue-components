@@ -25,7 +25,7 @@ const registry = createElementPlusDesignerRegistry({
 })
 ```
 
-Select、Radio、Checkbox 等动态选项物料可以通过 `optionResolver` 接入业务数据源；更高级的组件、属性控件或 validator 组合使用 `layers`。
+当前 Select、Radio、Checkbox 等动态选项物料可以通过代码态 `optionResolver` 接入宿主业务数据；这属于现有 Designer adapter 扩展点，不是目标 Studio Dataset 合同。目标 Dataset 将使用稳定的 `datasetId + projection`、运行期只读的对象数组和共享查询服务，落地前不得用 `optionResolver` shape 代替它。更高级的组件、属性控件或 validator 组合使用 `layers`。
 
 ## 公开入口
 

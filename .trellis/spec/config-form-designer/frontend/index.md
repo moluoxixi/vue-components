@@ -10,7 +10,8 @@ contract and the package-specific contracts that contain real project rules.
 | Guide | Description | Status |
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
-| [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Designer Lite, setter allowlist, serialization, and extension contracts | Ready |
+| [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Current Designer status, target Studio responsibility, setter, serialization, and event exclusions | Ready |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target single-Surface authoring, semantic triggers, Dataset references, interactions, and diagnostics | Target contract |
 | [State Management](./state-management.md) | Package-specific contract | Ready |
 | [Quality Guidelines](./quality-guidelines.md) | Package-specific contract | Ready |
 | [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md) | Package-specific contract | Ready |
@@ -22,5 +23,6 @@ contract and the package-specific contracts that contain real project rules.
 
 - Read [Repository Directory Structure](../../directory-structure.md) before creating or moving modules.
 - Read [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) before changing Inspector sections, materials, or public authoring APIs.
+- Read [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) before implementing Surface, Dataset, interaction, or Design/Experience authoring behavior.
 - Read each package-specific contract relevant to the files and behavior being changed.
 - Run the validation commands required by those contracts.

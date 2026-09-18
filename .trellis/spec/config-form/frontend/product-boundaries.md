@@ -2,18 +2,29 @@
 
 ## 1. Scope / Trigger
 
-This contract applies to every package and application under `packages/ConfigForm/`.
-Read it before changing public props/emits, persisted Model shapes, Registry
-contracts, Canonical IR, generated Source, Preview transport, Designer sections,
-or package dependencies.
+This contract applies to every package and application under
+`packages/ConfigForm/`. Read it before changing public props/emits, persisted
+Model shapes, Registry contracts, Canonical IR, generated Source, Preview
+transport, Designer sections, Studio assets, or package dependencies.
 
-ConfigForm is Runtime-first. Runtime is the product, Designer is an optional
-lightweight Schema editor, and Workbench is an internal Preview/Source integration
-application. Complex business logic belongs to host Vue/TypeScript code.
+The target product is ConfigForm Studio: a local-first authoring application for
+high-fidelity business-interface demos with no real API calls. Runtime remains
+the production form foundation. Studio owns UI, layout, validation, mock data,
+and deterministic local interaction; engineers own HTTP, authentication,
+asynchronous side effects, and business functions in exported or host
+Vue/TypeScript code.
+
+Status must always be explicit. The repository is currently Page-only and the
+existing Designer has two Inspector sections. Surface assets, Dataset authoring,
+Prototype Interaction, `@moluoxixi/config-form-prototype-runtime`, and
+`@moluoxixi/config-form-source` are target contracts, not current imports.
+
+The exact target domain shapes, versions, diagnostics, and tests are owned by
+[Studio Domain Contracts](./studio-domain-contracts.md).
 
 ## 2. Signatures
 
-Runtime component listeners are ordinary Vue props on an in-memory config:
+Runtime component listeners remain ordinary Vue props on an in-memory config:
 
 ```ts
 defineField({
@@ -48,111 +59,131 @@ interface ConfigFormHostExpose {
 }
 ```
 
-Designer has exactly two default Inspector sections:
-
-```ts
-type DesignerInspectorSection = 'properties' | 'validation'
-```
-
-The package dependency direction is:
+The target dependency direction is:
 
 ```text
-Model -> Compiler -> Canonical IR -> Vue Backend -> Runtime
-  ^                                                  ^
-  |                                                  |
-Designer                                      host Vue/TypeScript
-
 Core <- Headless <- Runtime <- UI adapters
-                    ^
-                    |
-             Designer / Workbench composition
+
+Model -> Compiler -> Canonical IR -> Vue Backend -> Runtime
+  ^                                      |
+  |                                      v
+Designer                         Prototype Runtime
+  ^                                      ^
+  |                                      |
+Studio ----------------------------------+
+  |
+  +---- provider/resource adapters ----> Source generator / viewer
 ```
 
 ## 3. Contracts
 
-### 3.1 Runtime and host code
+### 3.1 Two delivery paths
+
+- Runtime is the production execution foundation. Engineers may construct
+  in-memory configs directly and attach typed Vue functions.
+- Studio is the demo-authoring product. Its persisted output is JSON-safe and
+  demonstrates local UI behavior without HTTP or host functions.
+- Source is a one-way handoff from Studio to runnable Vue/TypeScript. Edited
+  source is not imported back into Designer.
+- Designer edits one current Surface in the target architecture. Studio owns
+  project assets, persistence, Design/Experience switching, and host commands.
+
+### 3.2 Runtime and host functions
 
 - `props.onX` functions exist only in the host's in-memory Runtime config. The
   Renderer passes them directly to the resolved Vue component.
-- For a field value or blur trigger, Runtime completes binding, model write, and
-  validation bookkeeping before invoking the configured `props.onX` listener.
-- Design mode blocks component interaction inside the Renderer before either
-  internal binding work or the host listener runs. It does not create an event
-  payload for Designer.
-- Listener errors follow normal Vue error handling. Runtime does not translate
-  them into scheduler diagnostics or an event-domain result type.
-- Form emits/expose and Headless controller lifecycle are host APIs, not an
-  event-authoring model.
+- For a field value or blur trigger, Runtime completes binding, model write,
+  and validation bookkeeping before invoking the configured listener once.
+- Design mode blocks component interaction inside the Renderer before internal
+  binding work or the host listener runs. It does not create an event payload.
+- Listener failures follow normal Vue error handling. Runtime does not translate
+  them into Studio diagnostics or an action result.
+- `props.onX` is never serialized, converted into Prototype Interaction, or
+  forwarded through Preview RPC. Form emits/expose remain host APIs.
 
-### 3.2 Forbidden event domain
+### 3.3 Forbidden event domain
 
-- Production code must not define event editing, event forwarding, event
-  orchestration, an action registry, a handler registry, a component event bus,
-  a Flow scheduler, or a renamed equivalent.
+- Production code must not define event editing, raw event forwarding, event
+  orchestration, an action or handler registry, a component event bus, an
+  action chain, a Flow scheduler, or a renamed equivalent.
 - Public contracts must not expose `runtimeEvent`, `componentEvent`,
   `forwardEvents`, `onRuntimeEvent`, `eventNames`, `flowActions`, `flowResult`,
   `flowError`, `flowTrace`, `ConfigFormRuntimeEventContext`, or
   `ConfigFormFlow*`.
-- Model nodes do not store action-oriented `events`; project pages do not store
-  `flows`; Registry component contracts and Designer materials do not declare
-  event-authoring metadata. Runtime value bindings retain `trigger`,
-  `blurTrigger`, and `getValueFromEvent` because those fields implement model
-  binding rather than event orchestration.
-- Do not retain compatibility aliases, deprecated exports, hidden feature flags,
-  empty packages, dormant adapters, migration readers, or dual-shape unions for
-  the removed event domain.
+- Model nodes do not store action-oriented `events`; projects do not store
+  `flows`; Registry components and Designer materials do not declare arbitrary
+  DOM event metadata. Runtime `trigger`, `blurTrigger`, and
+  `getValueFromEvent` remain value-binding fields, not authoring triggers.
+- Prototype Interaction is not an event-domain alias. It is a closed union of
+  state projection, one change-triggered value action, and one primary UI
+  action per material-declared semantic trigger.
+- Do not retain compatibility aliases, deprecated exports, hidden feature
+  flags, empty packages, dormant adapters, migration readers, or dual shapes.
 
-### 3.3 Serialization and compilation
+### 3.4 Studio target boundary
 
-- ProjectDocument, PageGraph, Registry snapshots, JSON import/export, IndexedDB,
-  Canonical IR, Preview transport, and Source generation accept only JSON-safe
-  current-contract data. They never store, clone, compare, or transmit functions.
-- Compiler and Vue backend compile structure, bindings, validation, reactions,
-  data, and layout. They do not collect component event names or emit Flow plans.
-- Source output contains static configuration only. It does not generate handler
-  stubs, string action references, callback registries, or event metadata.
-- Preview cannot reproduce host listeners that were not injected by host code.
-  This is a deliberate boundary and must not be bypassed with iframe RPC.
+- Project assets are Page, Dialog, Drawer, Dataset, and static Resource.
+  Page/Dialog/Drawer are `SurfaceAsset`; each Experience opening creates an
+  isolated `SurfaceInstance`. Material and Surface identities never overlap.
+- Studio supports responsive Grid/Flex, controlled visual properties, base and
+  dynamic-required validation, static Dataset views, and safe expressions.
+- Studio does not support arbitrary CSS, arbitrary JavaScript, absolute-position
+  free canvas, HTTP, authentication, delays, retries, parallel actions, or
+  business-function authoring.
+- User actions may create any finite overlay depth and may open A -> B -> A.
+  Automatic opening during session/project initialization is forbidden.
+- Dataset is a project-level, runtime-readonly JSON-object array. Runtime Data
+  Source remains an engineer-authored production capability and is removed
+  from the target Studio authoring experience. Their types are not reused.
 
-### 3.4 Designer Lite
+### 3.5 Serialization, Preview, and Source
 
-- The default Inspector exposes only `properties` and `validation`.
-- `properties` may edit field identity/label, static component props, default
-  value, static options, span, and form layout. `validation` may create only
-  synchronous deterministic base rules and `validateOn`.
-- Default material setters use one Registry-owned path allowlist. They must not
-  write `events`, `bindings`, `conditions`, `reactions`, `optionSource`,
-  `valueScope`, or `extensions`.
-- Programmatic advanced validation, conditions, reactions, Data Source,
-  optionSource, valueScope, and bindings remain Runtime inputs. Designer may
-  project them read-only and must preserve them during ordinary edits, but it
-  does not provide authoring UI for them.
-- A custom property control is still limited to its declared local property path;
-  it is not an arbitrary ProjectDocument mutation escape hatch.
+- ProjectDocument, SurfaceGraph, Project/Dataset/Resource envelopes, Registry
+  snapshots, JSON import/export, IndexedDB, Canonical IR, Preview transport,
+  Prototype session, and Source generation accept only JSON-safe current-
+  contract data. ProjectDocument stores Resource metadata; Project transfer
+  carries embedded bytes so full project JSON is lossless.
+- Preview and generated projects consume the same Prototype Runtime session and
+  Dataset query implementation. Do not copy reducers or query engines into
+  templates.
+- Source does not emit HTTP placeholders, handler stubs, string action refs,
+  event metadata, or Flow plans. It preserves complete local demo behavior.
+- The Source package owns separate provider-neutral component-resolver and async
+  embedded-resource-reader inputs. Studio reads adapter metadata and Repository
+  content and injects both implementations at its composition root. URL
+  Resources do not invoke the reader or a network fetch.
+- The Source Viewer owns file-tree/code presentation only. Studio owns dialogs,
+  regeneration, clipboard, downloads, ZIP, notifications, and persistence.
 
-### 3.5 Package ownership and future extension
+### 3.6 Package ownership
 
-- Core, Headless, and Runtime never depend on Designer or Workbench. Designer
-  never depends on Workbench or owns business side effects. Workbench is a
-  private composition root.
-- Data Source HTTP contracts, clone helpers, value context, lifecycle, and
-  cancellation use Data/value-reference names and ownership. They must not live
-  behind Flow paths or construct synthetic component/data-source events.
-- A future Rules, Data, or Automation authoring product requires a new approved
-  task, an independent package, explicit input/output/error/cancellation and
-  lifecycle contracts, zero cost when absent, and independent tests. No placeholder
-  abstraction is added before those conditions are met.
+- Core, Headless, and production Runtime never depend on Designer, Studio,
+  Workbench, Prototype Runtime, or Source.
+- Designer does not depend on Studio, Workbench, Source, or a concrete runtime
+  adapter, and does not own business side effects.
+- Planned `@moluoxixi/config-form-prototype-runtime` exposes DOM-free root and
+  `/session` entries; Vue Surface/overlay ownership is isolated in `/vue` and
+  `/vue/style`. Studio Experience and generated projects consume it.
+- Source generator does not import Designer, Workbench, concrete provider UI,
+  Repository, Monaco, Vue DOM, or browser globals. Viewer dependencies stay
+  under `/viewer`.
+- Studio/Workbench is the private composition root and may depend on public
+  authoring, compilation, runtime, Prototype Runtime, and Source packages.
 
-### 3.6 Current-contract-only versioning
+### 3.7 Current-contract-only versioning
 
-- Writers and readers switch atomically to the current PageGraph,
-  ProjectDocument, Registry snapshot, Canonical IR, Compiler, entity/transfer,
-  Runtime Host, and Source generator versions.
+- Writers and readers switch atomically to the target versions assigned in the
+  Studio domain contract. A Reader accepts exactly one current shape.
 - Lower, higher, missing, malformed, or mixed versions fail closed. Do not
-  migrate, repair, infer, or silently strip removed fields.
-- A published pre-1.0 package that removes public API receives a minor Changeset.
-  Dependent adapters/plugins/devtools ship in the same release and require the
-  new peer minor; old/new union peer ranges are forbidden.
+  migrate, repair, infer, or silently strip fields.
+- Removing `pagesById/pageOrder`, old event shapes, or old export entries does
+  not permit a compatibility reader, alias, deprecated wrapper, or union peer
+  range.
+- Explicit Dataset raw-row ingestion is a create command that accepts a JSON
+  object array. It is not a version-reader fallback; the versioned Dataset
+  envelope reader must reject that same unversioned array.
+- A pre-1.0 package that removes public API receives a minor Changeset. All
+  dependent packages ship together and require the new peer minor.
 
 ## 4. Validation & Error Matrix
 
@@ -160,46 +191,48 @@ Core <- Headless <- Runtime <- UI adapters
 | --- | --- |
 | Runtime field contains `props.onClick` | Pass the function directly to the resolved component and invoke it once outside design mode |
 | Value/blur trigger also has a host listener | Complete model/validation bookkeeping first, then invoke the listener once |
-| Component interaction occurs in design mode | Block internally; do not call the listener or emit/forward an event payload |
-| Function reaches a serialized boundary | Reject as non-JSON data; do not stringify, clone, or replace it with a token |
-| Current document contains removed `events`/`flows` shape | Reject the document as non-current; do not migrate or ignore the fields |
-| Material setter targets a non-allowlisted root | Reject material registration or setter compilation before editing |
-| Basic validation edit sees advanced rules | Preserve the opaque advanced rules and edit only the supported base subset |
-| Preview lacks a host-only listener | Render the static config without inventing a forwarding RPC |
-| Runtime/Core/Headless imports Designer/Workbench | Fail the architecture gate |
-| New Automation proposal has no independent contract/package | Keep the logic in host code and do not add a placeholder |
+| Component interaction occurs in design mode | Block internally; do not call the listener or forward an event payload |
+| Function reaches a serialized boundary | Reject as non-JSON data; never replace it with a token |
+| Studio author requests HTTP or an arbitrary function | Keep it in exported/host code; do not add a placeholder action |
+| Material declares an arbitrary DOM event trigger | Reject registration; semantic triggers are allowlisted capabilities |
+| A semantic trigger has two primary UI actions | Reject the binding; do not execute a chain |
+| Preview lacks a host-only listener | Run the JSON-safe demo without inventing iframe forwarding |
+| Dataset envelope reader receives raw rows | Reject as missing version; raw ingestion must be called explicitly |
+| Runtime/Core/Headless imports an outward package | Fail the architecture gate |
+| Planned package has no implementation | Document it as target only; do not create a manifest or import example |
 
 ## 5. Good / Base / Bad Cases
 
-- Good: a generated static config is imported by a host module, augmented with
-  typed `props.onX` functions, and passed to Runtime.
-- Good: Designer edits a label while preserving code-authored reactions and
-  advanced validation it does not expose.
-- Base: a fully serializable form uses no host component listeners and previews
-  identically in Workbench and the consuming application.
-- Bad: Preview serializes listener names and forwards component arguments to a
-  parent action registry.
-- Bad: rename `runtimeEvent` to `hostEvent` while preserving the same central bus.
-- Bad: leave deleted Flow exports as deprecated aliases for a future package.
+- Good: Studio opens a Dialog Surface with parameters, closes it with a named
+  result, atomically maps the result into the caller, then reevaluates value and
+  state rules.
+- Good: generated static config is augmented by typed `props.onX` functions in
+  host code and passed to production Runtime.
+- Good: an options component reads a shared Dataset projection while its
+  selection remains component/form state.
+- Base: a JSON-safe Page demo has no overlays or host listeners and behaves the
+  same in Experience and generated source.
+- Bad: serialize listener names and forward component arguments to an action
+  registry in Preview.
+- Bad: rename Flow to “interaction pipeline” while retaining an action array.
+- Bad: accept `DatasetRow[]` in the versioned envelope Reader for convenience.
+- Bad: document planned Surface or Source exports as currently installable.
 
 ## 6. Tests Required
 
-- Runtime tests prove binding/validation-before-listener ordering, exactly-once
-  invocation, design-mode blocking, and normal Vue error behavior.
-- Model/Registry tests accept only the current no-events/no-flows shapes and
+- Runtime tests retain binding/validation-before-listener ordering,
+  exactly-once invocation, design-mode blocking, and Vue error behavior.
+- Model/Compiler/transport tests accept only current JSON-safe contracts and
   reject old, future, missing, malformed, and mixed versions.
-- Compiler/Vue backend tests prove Canonical and Runtime plans contain no event
-  collection or Flow plan while bindings, reactions, validation, data, and layout
-  remain intact.
-- Designer and both provider-adapter tests prove exactly two Inspector sections,
-  setter allowlist enforcement, base validation authoring, static options, and
-  preservation of opaque advanced configuration.
-- Workbench tests prove Preview and generated Source still execute static Runtime
-  behavior and Data Source integration without event RPC, action RPC, Flow UI, or
-  handler generation.
-- Architecture searches reject removed symbols/paths and `@vue-flow/core`.
-  Package tests, typechecks, builds, template verification, release checks, and
-  the hand-written Changeset gate must pass for the complete package family.
+- Studio contract tests reject arbitrary event metadata, functions, action
+  arrays, Flow shapes, HTTP actions, and automatic initialization opens.
+- Preview/generated-project parity tests execute the same Surface navigation,
+  overlay, Dataset, validation, and interaction scenarios using shared runtime
+  implementations. String snapshots are not behavioral evidence.
+- Architecture tests enforce inward dependencies, DOM-free generator/session
+  imports, Viewer-only Monaco, and absence of wrappers or compatibility paths.
+- Package tests, typechecks, builds, generated-consumer tests, release checks,
+  and handwritten Changeset gates run for the complete affected package family.
 
 ## 7. Wrong vs Correct
 
@@ -207,7 +240,7 @@ Wrong:
 
 ```ts
 emit('runtimeEvent', { nodeId, name: 'click', args })
-dispatchRegisteredAction('save')
+dispatchActions(['validate', 'save', 'navigate'])
 ```
 
 Correct:
@@ -223,13 +256,13 @@ defineField({
 Wrong:
 
 ```ts
-if (document.version < CURRENT_VERSION)
-  return migrateAndDropFlows(document)
+if (input.version < CURRENT_VERSION)
+  return migrateOrGuess(input)
 ```
 
 Correct:
 
 ```ts
-if (document.version !== CURRENT_VERSION)
-  return unsupportedVersion(document.version)
+if (input.version !== CURRENT_VERSION)
+  return unsupportedVersion(input.version)
 ```

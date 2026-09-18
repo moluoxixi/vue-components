@@ -2,24 +2,48 @@
 
 ## Convention: Keep the architecture README current
 
-`packages/ConfigForm/README.md` is the current-state architecture source of truth for the ConfigForm package family.
+`packages/ConfigForm/README.md` is the architecture entry for the ConfigForm
+package family. It must keep **current implementation** and **target contract**
+in separate, explicitly named sections:
+
+- `PRODUCT.md` owns the approved target product boundary.
+- `ROADMAP.md` owns the current baseline, migration stages, and target-version
+  ownership.
+- `README.md` owns current package/dependency facts and may summarize planned
+  dependencies only when they are labeled as unavailable target contracts.
+- Package READMEs document current importable APIs. A target-responsibility
+  section may explain migration ownership but must state that its API does not
+  yet exist.
+
+Task `design.md` records implementation history and trade-offs. It is not a
+public current-state source, and it is not a substitute for these documents.
 
 Update it in the same change set when a task changes any of these contracts:
 
 - package ownership, package names, public subpaths, dependencies, or peer dependencies;
 - the Headless/Renderer path or the Runtime/Plugin path;
-- ProjectDocument, PageGraph, Headless node, reaction, slot, option source, or extension metadata;
+- ProjectDocument, SurfaceGraph/PageGraph, Dataset, Headless node, interaction,
+  reaction, slot, option source, or extension metadata;
 - material/component registries, naming rules, error codes, discovery, or precedence;
 - a capability reused by two or more ConfigForm packages.
 
-Task `design.md` records implementation history and trade-offs. Package README files document package APIs. Neither is a substitute for updating the current architecture facts in `packages/ConfigForm/README.md`.
+When a planned public package becomes real, the same atomic change must add its
+implementation, package manifest, root README, public entries, build/type tests,
+architecture routing, release metadata, and current dependency diagram. Do not
+create an empty package, placeholder export, or README that implies installable
+behavior before then. In particular, the documented
+`@moluoxixi/config-form-prototype-runtime` and
+`@moluoxixi/config-form-source` remain target-only until their owning tasks land.
 
 Before finishing a cross-package ConfigForm task, verify:
 
 1. The dependency diagram still matches package manifests.
-2. Package responsibilities and data flows match the implementation.
+2. Current package responsibilities and data flows match the implementation;
+   target-only paths are visibly marked unavailable.
 3. Extension selection and override precedence remain accurate.
-4. New terminology distinguishes Runtime plugins, Designer adapters, lightweight UI packages, and Vue plugins.
+4. New terminology distinguishes Material/Surface/Instance, Dataset/Data Source,
+   Prototype Interaction/host listener, Runtime plugins, Designer adapters, and
+   Vue plugins.
 5. `pnpm test:config-form-packages` covers any new public package boundary.
 
 ## Scenario: Headless Nested Slot Attr Inference
@@ -106,6 +130,12 @@ migration chain, deprecated alias, shape fallback, or compatibility shim.
 Archived Trellis tasks remain historical evidence and are not current
 contracts.
 
+The constants below are the **currently implemented** identities. Target
+Studio identities are recorded in
+`config-form/frontend/studio-domain-contracts.md`; documenting a target number
+does not make it current. The implementation task that owns a Reader replaces
+its current constant, writer, parser, fixtures, docs, and consumers atomically.
+
 ### 2. Signatures
 
 Current version identities are explicit at every ingest boundary and use one
@@ -159,6 +189,11 @@ type CurrentContractResult<T, D> =
   tests, fixtures, examples, generated source, documentation, and package
   exports in the same change set. Existing development data may be discarded;
   do not preserve it by adding an upgrade path.
+- A multi-stage target does not permit an intermediate dual reader. The first
+  task that owns a Reader lands the complete reviewed target shape; later tasks
+  consume it or return to contract review before changing it again.
+- Dataset raw-row ingestion is an explicit current-shape creation command, not
+  a Reader fallback. A versioned envelope parser still rejects a bare array.
 - The ConfigForm public surface is owned only by the dedicated packages under
   `packages/ConfigForm/`. General-purpose aggregators such as
   `@moluoxixi/components` must not depend on, wrap, re-export, auto-import, or
@@ -183,6 +218,9 @@ type CurrentContractResult<T, D> =
   is not backward compatibility.
 - Historical changelogs and archived task artifacts may describe removed
   contracts. Current README/spec documents and executable examples must not.
+- A planned package name or entry may appear in target-contract documentation,
+  but not in current install/import examples, package graphs, release lists, or
+  runtime dependencies until a real implementation lands.
 
 ### 4. Validation & Error Matrix
 

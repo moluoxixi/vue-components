@@ -1,48 +1,143 @@
-# ConfigForm 路线图
+# ConfigForm Studio 路线图
 
-产品方向以 [PRODUCT.md](./PRODUCT.md) 为准：Runtime-first，Designer optional，复杂业务逻辑由工程师在宿主 Vue/TypeScript 中维护。
+目标产品合同以 [PRODUCT.md](./PRODUCT.md) 为准。本页记录仓库当前事实、迁移顺序和
+每一阶段的完成定义；“目标”不表示对应 API 已经可以导入。
 
-## 当前优先级
+## 当前实现基线
 
-1. 稳定 Runtime、Headless、Element Plus 与 Ant Design Vue 的生产表单能力。
-2. 保持嵌套对象/数组、readonly、校验、提交、同步 reactions、Data Source、动态 options 和 value scope 的运行一致性。
-3. 将 Designer 维持为只包含 `properties` 与 `validation` 的轻量 Schema 编辑器。
-4. 让 Preview 与静态 Source/Config 导出持续验证 Runtime 合同，但不承载宿主业务函数。
-5. 完善包级类型、架构、发布和真实生成项目门禁。
+截至当前版本，仓库仍是 Runtime-first / Page-only 实现：
 
-## 已完成的基础
+- `ProjectDocument v5` 使用 `homePageId/pageOrder/pagesById`，还没有统一的
+  Page/Dialog/Drawer `SurfaceAsset`、Dataset 或 Surface 参数/结果合同。
+- Designer 当前只编辑单个 PageGraph，默认 Inspector 只有 `properties` 与
+  `validation`；没有 Design/Experience 双模式或 Prototype Interaction 作者入口。
+- Workbench 当前组合项目编辑、双区 Designer、动态 Runtime Data Source 作者 UI、
+  iframe Preview 和内置 Source/Config 导出。
+- Compiler、Canonical IR、Vue backend、Runtime Host、IndexedDB 和 Source generator
+  均以 Page 为身份；同一 Surface 的多实例隔离尚未实现。
+- `@moluoxixi/config-form-prototype-runtime` 和
+  `@moluoxixi/config-form-source` 都是规划包，当前不存在可导入实现。
 
-- 同步 `model.read/write` 单一值源、Headless controller 与统一 Renderer。
-- Element Plus / Ant Design Vue 运行适配与 readonly 展示。
-- 响应式布局、嵌套 slot、object/array value scope 与行级操作。
-- required、RuleSet、Zod、业务 validator、`validateOn`、dirty/touched 和防陈旧异步校验。
-- 同步 reactions、Data Source、option source、variables 与 scope cancellation。
-- ProjectDocument、编译链、Preview、Source/Config 导出和 current-contract-only 版本门禁。
-- 画布选择、拖拽、resize、候选投影、模板创建和 JSON ingress。
+生产 Runtime、Headless、代码态 `props.onX`、reaction 和 Data Source 仍是当前可用
+能力。迁移期间不能把目标 Surface、Dataset 或 Source API 写成现状，也不能为了
+过渡保留 pages/surfaces 双模型。
 
-## 明确终止的方向
+## 迁移阶段
 
-旧 E1-E5 事件编排专项及其后续扩张已被 Runtime-first 决策取代，不属于“完成项”：
+### 1. 产品与领域合同
 
-- 可视化事件编辑、内联动作清单和流程图。
-- 动作注册表、异步 Flow 调度、trace 面板和事件参数映射。
-- Designer/Preview iframe 的组件事件转发。
-- Source 中的 handler stub、action binding 或 Flow runtime。
+固化 Studio、Designer、Runtime、Prototype Runtime 与 Source 的职责，定义 Surface、
+Dataset、Prototype Interaction、版本、诊断和依赖方向。
 
-复杂组件事件统一使用代码态 config 的 `props.onX`。未来若真实需求证明 Automation 值得产品化，必须重新立项并使用独立 package 和合同，不从主产品恢复旧实现。
+完成定义：长期文档和 `.trellis/spec/` 对目标合同、当前基线与硬切策略没有冲突。
 
-## 后续候选
+### 2. Surface Foundation
 
-- 基于真实业务样本补齐表单组件与校验能力。
-- 移动端渲染适配与 Vant adapter 可行性验证。
-- 元素级多语言配置。
-- Data Source 的可观测性与 DevTools，前提是不引入事件编排。
-- AI 辅助生成静态 PageGraph，输出仍须通过当前 Schema、Registry 和 Compiler 校验。
+原子切换 Model、Repository、Compiler、Canonical IR、Vue backend、IndexedDB、导入
+导出、Runtime Host 和现有生成器读取路径；建立 Prototype Runtime 的纯会话核心与
+Vue overlay host，并落地 ProjectTheme v1、结构化 ResponsiveLength、完整 SurfaceGraph
+field/layout/element wire shape，以及 Registry snapshot v3 的类型、Reader 校验和现有
+基础物料条目迁移；同时固定 Project transfer v1，使无资源项目也从第一版使用最终
+envelope，而非裸 ProjectDocument。
 
-候选项不代表承诺。任何新增作者能力都必须先满足 `PRODUCT.md` 的扩展准入条件。
+完成定义：Page/Dialog/Drawer 使用统一 `SurfaceAsset`，每次打开创建隔离
+`SurfaceInstance`；关闭、返回或导航清除浮层后不保留已关闭实例状态；旧、未来、
+缺失、混合合同 fail closed；Preview 和生成项目可共享同一会话实现而不复制 reducer。
 
-## 已知风险
+### 3. Studio Assets
 
-- CI Linux 视觉基线需随现有主题变更维护。
-- Compiler 性能预算在高并发任务下可能受机器负载影响，应在独立复跑后判断。
-- Preview 无法复现宿主未注入的 `props.onX` 函数，这是可序列化边界，不通过 RPC 绕过。
+将 Workbench 产品化为 Studio 应用壳，提供项目管理、Surface/Resource 资产树、
+Surface 创建选择、独立设计面和调用路径上下文。
+
+完成定义：用户可在独立设计面管理和编辑三类 Surface；资产任务不提前实现
+Design/Experience 切换，也不发明交互绑定合同。
+
+### 4. Studio Datasets
+
+建立 Dataset v1、项目级编辑、JSON 导入导出、options 保存为 Dataset，以及共享的
+projection/filter/sort/pagination 纯查询服务；同时建立 embedded/url Resource 与单
+Resource transfer v1，并在既有 Project transfer v1 中填充/校验 embedded contents。
+
+完成定义：Dataset versioned envelope 只接受精确 v1；显式 raw rows ingestion 只把
+JSON 对象数组创建为 v1 Dataset，两条入口不互相兼容；运行期数据只读。
+
+### 5. Studio Materials
+
+扩充业务展示、操作、Table/List、响应式 Grid/Flex、Design Token 和受控视觉属性，
+保持 Element Plus 与 Ant Design Vue 的基础能力一致；只扩充 Registry v3 物料条目、
+编辑 UI 和 adapter 映射，不再次升版或发明能力字段。
+
+完成定义：数据物料只消费共享 Dataset view，不复制查询器；选择状态属于物料，不写
+回 Dataset；Designer adapter 仍不拥有业务副作用。
+
+### 6. Studio Interactions
+
+提供 Design/Experience 模式切换，以及状态投影、`set/copy/clear` 值动作和单一主要
+UI 动作的作者体验，包括页面跳转、返回、Dialog/Drawer 打开关闭、参数、具名结果和
+可选校验。
+
+完成定义：初始化只执行状态投影；值动作只由用户/结果变化触发；一个语义触发器最多
+一个主要 UI 动作；非法表达式或循环使用稳定诊断阻止 Experience 和 Source。
+
+### 7. 独立 Source 包
+
+将最终生成器与只读 Viewer 移入 `@moluoxixi/config-form-source`。Generator 保持无
+DOM；Viewer 桌面为左文件树/右源码，窄屏为 tree/code 切换，Monaco 只在 Viewer 内
+异步加载。
+
+完成定义：Source 不依赖 Designer/Workbench、具体 provider UI 或 Repository；Studio
+在组合根分别注入同步 provider component resolver 与异步 Resource reader。生成器
+返回含 entry 的稳定排序 SourceFileSet，不保留 Workbench wrapper、旧名称或 re-export；
+生成项目安装、类型检查、测试和构建通过，embedded 资源以 binary/base64 文件项无损
+输出，URL 不调用 reader 或 fetch。
+
+## 目标合同版本
+
+版本号由拥有相应 Reader 的阶段一次性切换：
+
+| 合同                             | 当前基线      | 目标             | 所属阶段                                                  |
+| -------------------------------- | ------------- | ---------------- | --------------------------------------------------------- |
+| ProjectDocument                  | `5`           | `6`              | Surface Foundation                                        |
+| PageGraph / SurfaceGraph         | `PageGraph 3` | `SurfaceGraph 1` | Surface Foundation                                        |
+| Project theme                    | 不存在        | `1`              | Surface Foundation；Studio Materials 只消费，不扩宽 shape |
+| Registry snapshot                | `2`           | `3`              | Surface Foundation；Studio Materials 只扩充条目和作者映射 |
+| Canonical Project IR             | `4`           | `5`              | Surface Foundation                                        |
+| Compiler                         | `5.0.0`       | `6.0.0`          | Surface Foundation                                        |
+| IndexedDB manifest/entity codec  | `3`           | `4`              | Surface Foundation                                        |
+| Page transfer / Surface transfer | `Page 2`      | `Surface 1`      | Surface Foundation                                        |
+| Runtime Host protocol            | `6`           | `7`              | Surface Foundation                                        |
+| Workbench export generator       | `4.0.0`       | `5.0.0`          | Surface Foundation；Source 阶段仅迁移所有权               |
+| Project transfer                 | 不存在        | `1`              | Surface Foundation；Studio Datasets 提供 embedded content |
+| Dataset transfer                 | 不存在        | `1`              | Studio Datasets                                           |
+| Resource transfer                | 不存在        | `1`              | Studio Datasets                                           |
+| Prototype session                | 不存在        | `1`              | Surface Foundation                                        |
+| SourceFileSet                    | 不存在        | `1`              | Source 包                                                 |
+
+目标版本不是兼容范围。每个 Reader 只接受精确当前版本；低版本、高版本、缺失、畸形
+和混合版本均拒绝。后续阶段若需要再次改变同一 shape，必须回到合同审阅，不能私自
+叠加版本或临时兼容 Reader。
+
+## 已终止方向
+
+- 可视化原始事件编辑、事件转发和 iframe 组件参数 RPC。
+- 多动作清单、动作注册表、handler registry、异步 Flow、trace 面板和流程图。
+- Source handler stub、字符串 action binding 或 Flow runtime。
+- pages/surfaces 双读、旧导出 wrapper、deprecated alias 和迁移链。
+
+Prototype Interaction 不是上述事件域的改名。它只处理封闭的状态投影、值动作和单一
+主要 UI 动作；生产组件函数继续直接写在宿主 config 的 `props.onX` 中。
+
+## 已知风险与门禁
+
+- Surface 身份目前贯穿持久化、编译缓存、Preview 协议和生成器，Foundation 必须原子
+  切换，不能只改 Model。
+- Preview 与生成项目必须执行同一 Prototype Runtime 和 Dataset query；字符串快照
+  不能替代真实生成项目测试。
+- 同一 Surface 重复打开、A -> B -> A、返回、关闭、参数和结果事务必须覆盖实例隔离。
+- Dataset raw rows ingestion 与 versioned envelope reader 必须有相反失败用例，避免无
+  版本数组被 Reader 静默接受。
+- 两套 provider adapter 必须共享基础语义，但 Source provider resolver 与 Resource
+  reader 由 Studio 组合根分别注入，不能让 Source 反向依赖 adapter metadata 或
+  Repository。
+- CI 需要持续覆盖 package architecture、合同版本、生成项目、Workbench build/E2E 和
+  可访问性；规划包在真实实现前不得进入发布矩阵。

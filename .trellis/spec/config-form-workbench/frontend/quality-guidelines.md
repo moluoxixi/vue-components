@@ -1,8 +1,10 @@
 # ConfigForm Workbench Quality Contracts
 
-These contracts apply to `packages/ConfigForm/workbench`. Read them before
-changing Monaco language services, dialog focus behavior, or accessibility
-gates.
+These contracts apply to the current `packages/ConfigForm/workbench` and its
+evolution into the ConfigForm Studio composition root. Read them before
+changing Monaco language services, assets, Preview/Experience, Source
+composition, dialog focus behavior, or accessibility gates. Current Workbench
+facts and target Studio responsibilities must be labeled separately.
 
 ## Workbench Stylesheet Ownership
 
@@ -66,7 +68,11 @@ retry when Monaco reports `TypeScript not registered!`.
 
 ## Source Export Service Boundaries
 
-The export facade keeps generation order and error semantics stable while private services own recursive graph concerns:
+### Current implementation
+
+Until the independent Source package lands, the Workbench export facade keeps
+generation order and error semantics stable while private services own
+recursive PageGraph concerns:
 
 - `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
 - `source-page.ts` generates one page's Vue source and delegates layout serialization, Registry lookup, portability
@@ -79,6 +85,42 @@ The export facade keeps generation order and error semantics stable while privat
 Regression coverage must include invalid nested components/props/bindings/sources, dependencies that appear only in
 child nodes, nested library conflicts, canonical Source snapshots, generated Data Source execution, and byte-stable
 generated project/page files. Source must not emit handler stubs, action bindings, event metadata, or Flow plans.
+
+This is a Page-only current implementation. It must not be described as the
+target Surface/Dataset generator, and it must not gain a temporary compatibility
+layer while target contracts are implemented.
+
+### Target ownership
+
+The final generator, `SourceFileSet`, file-tree model, and readonly
+`ConfigFormSourceViewer` move to planned
+`@moluoxixi/config-form-source` only after Surface, Dataset, interaction, and
+Prototype Runtime contracts are complete.
+
+- Generator owns deterministic generation plus separate provider-neutral
+  component-resolver and async embedded-resource-reader input contracts. It
+  imports no Designer, Workbench, concrete provider UI, Repository, Monaco, Vue
+  DOM, or browser global.
+- Studio reads locked adapter metadata and Repository content at its application
+  composition root, creates both adapters, and injects them into Source. Source
+  validates bytes and derives output paths; adapter/storage implementations do
+  not become Source dependencies.
+- Studio owns the Source dialog, regeneration, clipboard, single-file download,
+  ZIP, notifications, and persistence. Viewer owns none of those commands.
+- Viewer renders a file tree and readonly code, with a desktop split and narrow
+  tree/code switch. Its `selectedPath` is a required controlled v-model and
+  Monaco loads only through the Viewer async boundary.
+- Generated projects and Studio Experience consume the same Prototype Runtime
+  session reducer and Dataset query implementation. Templates do not copy them.
+- The move is a hard ownership cut. Delete the old Workbench generator/Viewer
+  entry and use the Source package directly; no wrapper, alias, deprecated
+  export, or re-export remains.
+
+Target regression coverage includes Node import without DOM, deterministic
+generation for the same compilation/resolver, resolution failure with no
+partial files, installed generated-project typecheck/test/build, controlled
+Viewer selection, responsive layout, lazy Monaco, accessibility, and executed
+Experience/generated-project parity. String containment is not parity evidence.
 
 ---
 
@@ -97,8 +139,11 @@ disposeMonacoLanguageFeatures(): void
 onExternalRevision(resolution, message): Promise<void>
 ```
 
-The export workspace continues to load `WorkspaceCodeEditor` through a literal dynamic import. Persistence callbacks may
-call controller commands only while their captured `ProjectEditorSession` is still the controller's active session.
+The current export workspace continues to load `WorkspaceCodeEditor` through a
+literal dynamic import. After Source extraction, the equivalent lazy boundary
+belongs inside the Source Viewer and Studio still owns the dialog. Persistence
+callbacks may call controller commands only while their captured
+`ProjectEditorSession` is still the controller's active session.
 
 ### 3. Contracts
 
