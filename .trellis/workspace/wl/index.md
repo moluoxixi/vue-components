@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 45
+- **Total Sessions**: 46
 - **Last Active**: 2026-09-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1145 | Active |
+| `journal-1.md` | ~1168 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 46 | 2026-09-18 | 定型 ConfigForm Demo Studio 产品与领域合同 | `d69afcfa`, `3e6d2c87` | `fix架构` |
 | 45 | 2026-09-18 | 收敛 ConfigForm Runtime-first 产品边界 | `6d493985` | `fix架构` |
 | 44 | 2026-09-07 | 完成 ConfigForm worktree 清理与任务归档 | `0c4b5f8b` | `main` |
 | 43 | 2026-09-07 | 配置化表单与设计器重构收尾 | `0c4b5f8b` | `main` |

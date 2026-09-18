@@ -1143,3 +1143,26 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Next Steps
 
 - 创建并实现独立的 @moluoxixi/config-form-source 包
+
+
+## Session 46: 定型 ConfigForm Demo Studio 产品与领域合同
+
+**Date**: 2026-09-18
+**Task**: 定型 ConfigForm Demo Studio 产品与领域合同
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+确认 Studio 只负责 UI、布局、校验、模拟 Dataset 与本地交互；固化 Surface、Dataset、Resource、Prototype Runtime、Source 的版本化跨包合同，规划后续六个实现子任务，并归档合同定型任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d69afcfa` | (see git log) |
+| `3e6d2c87` | (see git log) |
+
+### Status
+
+[OK] **Completed**
