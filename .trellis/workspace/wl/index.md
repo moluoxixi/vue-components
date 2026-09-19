@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 47
+- **Total Sessions**: 48
 - **Last Active**: 2026-09-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1191 | Active |
+| `journal-1.md` | ~1213 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 48 | 2026-09-20 | 收紧 ConfigForm 源码导出与响应合同 | `06f06776` | `fix架构` |
 | 47 | 2026-09-20 | 完成 ConfigForm 原始源码与绑定导出 | `038271fa`, `7a04139c` | `fix架构` |
 | 46 | 2026-09-18 | 定型 ConfigForm Demo Studio 产品与领域合同 | `d69afcfa`, `3e6d2c87` | `fix架构` |
 | 45 | 2026-09-18 | 收敛 ConfigForm Runtime-first 产品边界 | `6d493985` | `fix架构` |

@@ -1189,3 +1189,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 48: 收紧 ConfigForm 源码导出与响应合同
+
+**Date**: 2026-09-20
+**Task**: 收紧 ConfigForm 源码导出与响应合同
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成 Source 双产物边界收口，清理 Workbench 旧 generator/archive 合同，将 Core Data Source 上下文硬切为 response，并补齐规范、架构门禁与全套验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `06f06776` | (see git log) |
+
+### Status
+
+[OK] **Completed**
