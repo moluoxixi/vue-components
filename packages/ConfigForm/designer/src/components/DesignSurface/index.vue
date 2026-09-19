@@ -17,7 +17,6 @@ import {
 import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
 import {
-  applyDesignGraphReactions,
   createDesignPreviewModel,
   findDesignNode,
 } from '../../graph'
@@ -69,7 +68,7 @@ const controller = useDesignerController({
     return result
   },
   graph: () => props.graph,
-  pageId: () => props.pageId,
+  surfaceId: () => props.surfaceId,
   registry: () => props.registry,
   readonly: () => props.readonly,
   onDiagnostics: diagnostics => emit('diagnostics', diagnostics),
@@ -89,7 +88,7 @@ const designSession = createDesignerDesignSession(controller, {
         type: 'operation.apply',
         operations: [{
           type: 'node.insert',
-          pageId: props.pageId,
+          surfaceId: props.surfaceId,
           subgraph: candidate.subgraph,
           target,
         }],
@@ -168,10 +167,9 @@ const dragAnnouncement = computed(() => {
   const announcement = dragController.announcement.value
   return announcement ? formatDragAnnouncement(announcement) : ''
 })
-const runtimeProjection = computed(() => applyDesignGraphReactions(
-  controller.graph.value,
-  createDesignPreviewModel(controller.graph.value),
-))
+const runtimeProjection = computed(() => ({
+  values: createDesignPreviewModel(controller.graph.value),
+}))
 const selectedComponentDefinition = computed(() => {
   const component = controller.selectedNode.value?.component
   return component ? props.componentRegistry.get(component) : undefined
@@ -201,7 +199,7 @@ const {
   lastAcceptedCommandId: () => lastAcceptedCommandId,
   mediumPanel,
   onNotice: (message, action) => emit('notice', message, action),
-  pageId: () => props.pageId,
+  surfaceId: () => props.surfaceId,
   readonly: () => props.readonly,
   rootRef,
   selectBreakpoint,
@@ -272,7 +270,7 @@ defineExpose<DesignSurfaceExpose>({
         <DesignerCanvas
           :command-hint="commandHint"
           :graph="controller.graph.value"
-          :page-id="pageId"
+          :surface-id="surfaceId"
           :registry="registry"
           :selected-id="controller.selectedId.value"
           :selected-ids="controller.selectedIds.value"
@@ -282,8 +280,6 @@ defineExpose<DesignSurfaceExpose>({
           :interactive="false"
           :paste-available="controller.pasteAvailable.value"
           :model="runtimeProjection.values"
-          :reaction-props="runtimeProjection.props"
-          :reaction-states="runtimeProjection.states"
           @select="handleCanvasSelect"
           @inspect="handleCanvasInspect"
           @move="handleMove"

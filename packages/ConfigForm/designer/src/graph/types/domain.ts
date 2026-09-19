@@ -1,8 +1,8 @@
 import type {
   ModelDiagnostic,
   NodePlacement,
-  PageGraph,
-  PageNode,
+  SurfaceGraph,
+  SurfaceNode,
   ProjectCommand,
   SlotItem,
 } from '@moluoxixi/config-form-model'
@@ -13,8 +13,8 @@ export type DesignerJsonObject = import('@moluoxixi/config-form-model').ModelJso
 export interface DesignNodeLocation {
   index: number
   item: SlotItem
-  node: PageNode
-  parent?: Extract<PageNode, { kind: 'layout' }>
+  node: SurfaceNode
+  parent?: Extract<SurfaceNode, { kind: 'layout' }>
   parentId: string | null
   path: Array<string | number>
   placement: NodePlacement
@@ -32,8 +32,8 @@ export interface DesignerDiagnostic extends ModelDiagnostic {
 }
 
 export interface DesignGraphContext {
-  graph: PageGraph
-  pageId: string
+  graph: SurfaceGraph
+  surfaceId: string
 }
 
 export type DesignerDropTarget
@@ -42,5 +42,5 @@ export type DesignerDropTarget
 
 export interface DesignCommandPreview {
   command: ProjectCommand
-  graph: PageGraph
+  graph: SurfaceGraph
 }

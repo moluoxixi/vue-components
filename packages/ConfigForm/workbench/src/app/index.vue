@@ -33,8 +33,7 @@ import {
 defineProps<WorkbenchShellProps>()
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
-const DataDialog = defineAsyncComponent(() => import('../features/data').then(module => module.DataDialog))
-const PageManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.PageManagerDialog))
+const SurfaceManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.SurfaceManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
 
 const emit = defineEmits<WorkbenchShellEmits>()
@@ -51,20 +50,15 @@ const {
   configError,
   currentProject,
   currentGraph,
-  currentPage,
-  currentPageId,
-  dataTestContext,
-  dataSourceHost,
-  modelRevision,
-  requestDataSource,
-  dataReferenceFields,
+  currentSurface,
+  currentSurfaceId,
   designerLayers,
   dirty,
-  executeProjectCommand,
   getCurrentAdapterId,
-  handlePageAction,
+  handleSurfaceAction,
   localeOptions,
   previewState,
+  readEmbeddedResource,
   registry,
   repositoryRevision,
   recoveryDrafts,
@@ -72,7 +66,7 @@ const {
   reloadCurrentProject,
   saveProject,
   saveCurrentDraftAsProject,
-  selectPageFromDesigner,
+  selectSurfaceFromDesigner,
   statusLabel,
   workbenchLocale,
   workspaceRecoveryNotice,
@@ -86,24 +80,16 @@ const {
   selectedIds: selectedDesignerIds,
 } = designSession
 const {
-  getCompilation: getPreviewCompilation,
-  handleFieldChange: handlePreviewFieldChange,
+  compilation: previewCompilation,
+  handleInstanceState: handlePreviewInstanceState,
+  handleRuntimeError: handlePreviewRuntimeError,
   handleRuntimeMounted: handlePreviewRuntimeMounted,
   handleRuntimeReady: handlePreviewRuntimeReady,
-  handleRuntimeState: handlePreviewRuntimeState,
-  handleSubmitResult: handlePreviewSubmitResult,
-  handleSubmit: handlePreviewSubmit,
-  clearSubmission: clearPreviewSubmission,
-  lastSubmission: previewLastSubmission,
-  projection: previewProjection,
-  runtimeState: previewRuntimeState,
+  handleSession: handlePreviewSession,
+  revision: previewRevision,
+  session: previewPrototypeSession,
+  sessionId: previewSessionId,
 } = previewSession
-const previewReactionProjection = computed(() => ({
-  props: {},
-  states: {},
-  validate: [],
-  values: previewRuntimeState.value.values,
-}))
 const {
   capture: captureExportSnapshotInput,
   getCompilation: getCurrentExportCompilation,
@@ -111,10 +97,7 @@ const {
 const {
   clearNotice,
   closeExportPreview,
-  closeDataWorkspace,
-  dataDialogLoaded,
-  dataWorkspaceOpen,
-  closePageManager,
+  closeSurfaceManager,
   exportDialogLoaded,
   exportPreviewMode,
   localeId,
@@ -123,8 +106,7 @@ const {
   notice,
   openExportPreview,
   openAppearanceDrawer,
-  openDataWorkspace,
-  openPageManager,
+  openSurfaceManager,
   pageManagerLoaded,
   pageManagerOpen,
   paletteFamily,
@@ -149,7 +131,7 @@ const mobileStudioViews = computed(() => [
   { icon: Layers3, id: 'layers' as const, label: workbenchLocale.value.t('designer.view.layers', 'Layers') },
   { icon: Monitor, id: 'canvas' as const, label: workbenchLocale.value.t('designer.view.canvas', 'Canvas') },
   { icon: SlidersHorizontal, id: 'inspector' as const, label: workbenchLocale.value.t('designer.view.inspector', 'Inspector') },
-  { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Pages') },
+  { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Surfaces') },
 ])
 
 function selectMobileStudioView(view: MobileStudioView): void {
@@ -223,8 +205,8 @@ function showExportDialog(mode: 'source' | 'config'): void {
   openExportPreview(mode)
 }
 
-function showPageManager(): void {
-  openPageManager()
+function showSurfaceManager(): void {
+  openSurfaceManager()
 }
 
 function requestCreation(target: TemplateCreationTarget, focusKey: string): void {
@@ -266,7 +248,7 @@ watch(recoveryDrafts, (drafts) => {
       :project="currentProject"
       :busy="busy"
       :config-error="configError"
-      :current-page="currentPage"
+      :current-surface="currentSurface"
       :dirty="dirty"
       :locale="localeOptions"
       :locale-id="localeId"
@@ -277,9 +259,9 @@ watch(recoveryDrafts, (drafts) => {
       :theme-preference="themePreference"
       @export="showExportDialog"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
-      @new-page="requestCreation('page', $event)"
+      @new-surface="requestCreation('surface', $event)"
       @open-appearance="openAppearanceDrawer"
-      @open-pages="showPageManager"
+      @open-surfaces="showSurfaceManager"
       @open-versions="showPersistenceDialog('versions')"
       @save="saveProject"
       @set-palette-family="setPaletteFamily"
@@ -309,10 +291,10 @@ watch(recoveryDrafts, (drafts) => {
           <DesignSurface
             v-if="currentGraph && designRuntime"
             ref="designer"
-            :key="`${currentProject.registryLock.adapter}-${currentPageId}`"
+            :key="`${currentProject.registryLock.adapter}-${currentSurfaceId}`"
             class="embedded-designer"
             :graph="currentGraph"
-            :page-id="currentPageId"
+            :surface-id="currentSurfaceId"
             :component-registry="componentRegistry"
             :command-hint="WorkbenchCommandHint"
             :command-control="designerCommandControl"
@@ -373,7 +355,7 @@ watch(recoveryDrafts, (drafts) => {
               <StudioLeftPanel
                 v-model:active-view="studioLeftView"
                 :project="currentProject"
-                :current-page-id="currentPageId"
+                :current-surface-id="currentSurfaceId"
                 :form="form"
                 :history="designerHistoryControl.history"
                 :layers="designerLayers"
@@ -386,10 +368,9 @@ watch(recoveryDrafts, (drafts) => {
                 @arrange-layer="moveDesignerLayer"
                 @move-layer="(nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)"
                 @jump-history="jumpDesignerHistory"
-                @manage-pages="showPageManager"
-                @open-data="openDataWorkspace"
+                @manage-surfaces="showSurfaceManager"
                 @select-layer="selectDesignerLayer"
-                @select-page="selectPageFromDesigner"
+                @select-surface="selectSurfaceFromDesigner"
               />
             </template>
             <template #runtime="scope">
@@ -403,8 +384,6 @@ watch(recoveryDrafts, (drafts) => {
                 :locale="workbenchLocale.locale"
                 :model-value="scope.model"
                 :namespace="registry.rendererNamespace"
-                :reaction-props="scope.reactionProps"
-                :reaction-states="scope.reactionStates"
                 :resolve-compilation="getDesignRuntimeCompilation"
                 :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
                 variant="canvas"
@@ -429,8 +408,6 @@ watch(recoveryDrafts, (drafts) => {
                 :locale="workbenchLocale.locale"
                 :model-value="scope.model"
                 :namespace="registry.rendererNamespace"
-                :reaction-props="scope.reactionProps"
-                :reaction-states="scope.reactionStates"
                 :resolve-compilation="getDesignRuntimeCompilation"
                 :title="workbenchLocale.t('canvas.dragVisualFrame', 'Drag preview runtime')"
                 variant="drag-visual"
@@ -445,27 +422,20 @@ watch(recoveryDrafts, (drafts) => {
         v-model:expanded="previewExpanded"
         v-model:viewport="previewViewport"
         :adapter="getCurrentAdapterId()"
-        :compilation="getPreviewCompilation()"
-        :config-error="configError"
-        :data-source-host="dataSourceHost"
+        :compilation="previewCompilation"
         :locale="localeOptions"
-        :runtime-state="previewRuntimeState"
-        :last-submission="previewLastSubmission"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
-        :projection="previewProjection"
-        :reaction-projection="previewReactionProjection"
+        :revision="previewRevision"
+        :session="previewPrototypeSession"
+        :session-id="previewSessionId"
         :state="previewState"
         @close="togglePreview"
-        @error="message = $event instanceof Error ? $event.message : String($event)"
-        @field-change="handlePreviewFieldChange"
-        @runtime-mounted="handlePreviewRuntimeMounted"
+        @error="handlePreviewRuntimeError"
+        @instance-state="handlePreviewInstanceState"
+        @mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
-        @runtime-state="handlePreviewRuntimeState"
-        @submit="handlePreviewSubmit"
-        @submit-result="handlePreviewSubmitResult"
-        @clear-submission="clearPreviewSubmission"
-        @message="message = $event"
+        @session="handlePreviewSession"
       />
     </section>
 
@@ -486,7 +456,7 @@ watch(recoveryDrafts, (drafts) => {
       </button>
     </nav>
 
-    <PageManagerDialog
+    <SurfaceManagerDialog
       v-if="pageManagerLoaded"
       :project="currentProject"
       :projects="projects"
@@ -494,37 +464,22 @@ watch(recoveryDrafts, (drafts) => {
       :locale="localeOptions"
       :open="pageManagerOpen"
       :return-focus-key="creationReturnFocusKey"
-      @close="closePageManager"
-      @create-page="requestCreation('page', 'page-manager-new-page')"
+      @close="closeSurfaceManager"
+      @create-surface="requestCreation('surface', 'page-manager-new-surface')"
       @create-project="requestCreation('project', 'page-manager-new-project')"
       @open-project="requestOpenProject($event)"
-      @action="handlePageAction"
+      @action="handleSurfaceAction"
       @return-focus-restored="emit('creationFocusRestored')"
-    />
-
-    <DataDialog
-      v-if="dataDialogLoaded && dataWorkspaceOpen && currentPage"
-      :key="`${currentProject?.id}:${currentPageId}`"
-      :execute="executeProjectCommand"
-      :locale="localeOptions"
-      :on-request="requestDataSource"
-      :open="dataWorkspaceOpen"
-      :page-id="currentPageId"
-      :readonly="busy"
-      :reference-fields="dataReferenceFields"
-      :runtime="currentPage.runtime"
-      :runtime-revision="modelRevision"
-      :test-context="dataTestContext"
-      @close="closeDataWorkspace"
     />
 
     <ExportDialog
       v-if="exportDialogLoaded"
       :capture="captureExportSnapshotInput"
       :current-compilation="getCurrentExportCompilation()"
-      :current-page-id="currentPageId"
+      :current-surface-id="currentSurfaceId"
       :locale="localeOptions"
       :mode="exportPreviewMode"
+      :read-embedded="readEmbeddedResource"
       :theme="resolvedTheme"
       @close="closeExportPreview"
       @message="message = $event"

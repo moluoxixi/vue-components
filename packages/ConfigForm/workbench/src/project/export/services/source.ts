@@ -1,4 +1,4 @@
-import type { CanonicalPageIR, ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { CanonicalSurfaceIR, ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { ProjectPath, WorkspaceFile } from '../../types'
 import type {
   CanonicalProjectSourceExport,
@@ -7,11 +7,11 @@ import type {
 } from '../types'
 import type { StandaloneSourceProject } from '../types/source'
 import { getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
+import { createPrototypeProjectContext } from '@moluoxixi/config-form-prototype-runtime/session'
 import { normalizeProjectPath } from '../../utils'
-import { canonicalSourcePage, createCanonicalSourceRegistry, textFile } from './source-canonical'
-import { createStandaloneDataSourceRequestSource } from './source-data'
+import { canonicalSourceSurface, createCanonicalSourceRegistry, textFile } from './source-canonical'
 import { collectSourceLibraries } from './source-libraries'
-import { appSource, standalonePageRuntimeSource } from './source-page'
+import { appSource, standaloneSurfaceRuntimeSource } from './source-page'
 import { assertPortableNode } from './source-portability'
 import {
   canonicalProjectPackage,
@@ -22,11 +22,12 @@ import {
   standaloneHtml,
   standaloneTsconfig,
   standaloneViteConfig,
-  uniquePageDirectories,
+  uniqueSurfaceDirectories,
 } from './source-project-files'
+import { scriptJson } from './source-serialization'
 import { createStandaloneValidationRuntimeSource } from './source-validation'
 
-export { createStandaloneDataSourceRequestSource, createStandaloneValidationRuntimeSource }
+export { createStandaloneValidationRuntimeSource }
 
 /** Generate a complete standalone Vue project from one indivisible compilation. */
 export function createCanonicalProjectSourceExport(
@@ -40,20 +41,26 @@ export function createCanonicalProjectSourceExport(
   ) {
     throw new Error('Standalone Source resolver does not match the ProjectCompilation Registry identity.')
   }
-  const pages = compilation.ir.pageOrder.map((pageId) => {
-    const page = compilation.ir.pagesById[pageId]
-    if (!page)
-      throw new Error(`Canonical project references unknown page "${pageId}".`)
-    return canonicalSourcePage(page as CanonicalPageIR)
+  const surfaces = compilation.ir.surfaceOrder.map((surfaceId) => {
+    const surface = compilation.ir.surfacesById[surfaceId]
+    if (!surface)
+      throw new Error(`Canonical project references unknown Surface "${surfaceId}".`)
+    return canonicalSourceSurface(surface as CanonicalSurfaceIR)
   })
   const project: StandaloneSourceProject = {
     id: compilation.ir.identity.projectId,
     name: compilation.ir.name,
-    homePageId: compilation.ir.homePageId,
-    pages,
+    homeSurfaceId: compilation.ir.homeSurfaceId,
+    surfaces,
+  }
+  const context = createPrototypeProjectContext(compilation)
+  if (!context.success) {
+    throw new Error(`ProjectCompilation cannot be exported as a Prototype project: ${context.diagnostics
+      .map(diagnostic => diagnostic.message)
+      .join('; ')}`)
   }
   const registry = createCanonicalSourceRegistry(compilation, resolver)
-  const pageDirectories = uniquePageDirectories(project)
+  const surfaceDirectories = uniqueSurfaceDirectories(project)
   const libraries = new Map<string, CanonicalSourceLibraryBinding>()
   const files: Record<ProjectPath, WorkspaceFile> = {}
   for (const [path, content] of Object.entries(getConfigFormRuntimeSources())) {
@@ -62,19 +69,18 @@ export function createCanonicalProjectSourceExport(
       : path.endsWith('.scss') ? 'scss' : 'typescript'
     files[normalizeProjectPath(`src/runtime/${path}`)] = textFile(content, language)
   }
-  files[normalizeProjectPath('src/runtime/source-page.ts')] = textFile(standalonePageRuntimeSource(), 'typescript')
-  files[normalizeProjectPath('src/data/index.ts')] = textFile(createStandaloneDataSourceRequestSource(), 'typescript')
+  files[normalizeProjectPath('src/runtime/source-page.ts')] = textFile(standaloneSurfaceRuntimeSource(), 'typescript')
 
-  pages.forEach((page) => {
-    page.root.forEach(node => assertPortableNode(node, registry))
-    collectSourceLibraries(page.root, registry, libraries)
-    const directory = pageDirectories.get(page.id)!
-    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(
-      appSource(page, registry),
+  surfaces.forEach((surface) => {
+    surface.root.forEach(node => assertPortableNode(node, registry))
+    collectSourceLibraries(surface.root, registry, libraries)
+    const directory = surfaceDirectories.get(surface.id)!
+    files[normalizeProjectPath(`src/surfaces/${directory}/Surface.vue`)] = textFile(
+      appSource(surface, registry),
       'vue',
     )
-    files[normalizeProjectPath(`src/pages/${directory}/validation.ts`)] = textFile(
-      createStandaloneValidationRuntimeSource(page.root),
+    files[normalizeProjectPath(`src/surfaces/${directory}/validation.ts`)] = textFile(
+      createStandaloneValidationRuntimeSource(surface.root),
       'typescript',
     )
   })
@@ -82,8 +88,12 @@ export function createCanonicalProjectSourceExport(
   const entry = normalizeProjectPath('src/main.ts')
   files[normalizeProjectPath('index.html')] = textFile(standaloneHtml(project.name), 'html')
   files[normalizeProjectPath('package.json')] = textFile(canonicalProjectPackage(project.name, libraries), 'json')
-  files[normalizeProjectPath('src/App.vue')] = textFile(projectAppSource(), 'vue')
-  files[normalizeProjectPath('src/router.ts')] = textFile(projectRouterSource(project, pageDirectories), 'typescript')
+  files[normalizeProjectPath('src/App.vue')] = textFile(projectAppSource(project, surfaceDirectories), 'vue')
+  files[normalizeProjectPath('src/prototype-context.ts')] = textFile(
+    `import type { PrototypeProjectContextV1 } from '@moluoxixi/config-form-prototype-runtime/session'\n\nexport const prototypeContext = ${scriptJson(context.data, 2)} as const satisfies PrototypeProjectContextV1\n`,
+    'typescript',
+  )
+  files[normalizeProjectPath('src/router.ts')] = textFile(projectRouterSource(project), 'typescript')
   files[entry] = textFile(mainSource(libraries, true), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
   files[normalizeProjectPath('src/vite-env.d.ts')] = textFile('/// <reference types="vite/client" />\n', 'typescript')

@@ -1,23 +1,31 @@
-import type { ProjectPage } from '@moluoxixi/config-form-model'
+import type { ProjectSurface } from '@moluoxixi/config-form-model'
 
 export type ProjectIdentityKind
   = | 'field'
     | 'node'
-    | 'page'
+    | 'surface'
+    | 'dataset'
+    | 'resource'
     | 'project'
-    | 'reaction'
+    | 'interaction'
 
 export interface ProjectIdentityFactory {
   create: (kind: ProjectIdentityKind, source: string) => string
 }
 
-export interface ProjectPageIdentityMap {
+export interface ProjectSurfaceIdentityMap {
   fields: ReadonlyMap<string, string>
   nodes: ReadonlyMap<string, string>
-  reactions: ReadonlyMap<string, string>
+  interactions: ReadonlyMap<string, string>
 }
 
-export interface RemappedProjectPage {
-  identityMap: ProjectPageIdentityMap
-  page: ProjectPage
+export interface RemappedProjectSurface {
+  identityMap: ProjectSurfaceIdentityMap
+  surface: ProjectSurface
+}
+
+export interface ProjectSurfaceReferenceMaps {
+  datasets: ReadonlyMap<string, string>
+  resources: ReadonlyMap<string, string>
+  surfaces: ReadonlyMap<string, string>
 }

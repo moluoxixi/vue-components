@@ -1,6 +1,6 @@
-import type { PageGraph } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
-import { pageGraphSchema } from '@moluoxixi/config-form-model'
+import { surfaceGraphSchema } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
@@ -33,9 +33,9 @@ const expectedKeys = [
   'element.detail-table',
 ]
 
-function graphForRootMaterials(): PageGraph {
+function graphForRootMaterials(): SurfaceGraph {
   const registry = createElementPlusDesignerRegistry()
-  const graph: PageGraph = { version: 3, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: SurfaceGraph = { version: 1, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -87,7 +87,7 @@ describe('element plus designer materials', () => {
 
   it('creates a normalized JSON-safe subgraph for every material', () => {
     const graph = graphForRootMaterials()
-    expect(() => pageGraphSchema.parse(graph)).not.toThrow()
+    expect(() => surfaceGraphSchema.parse(graph)).not.toThrow()
     expect(Object.keys(graph.nodesById)).toHaveLength(expectedKeys.length)
   })
 

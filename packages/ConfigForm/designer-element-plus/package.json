@@ -52,11 +52,6 @@
       "style": "./src/materials/components/ElementSelectField/style/index.scss",
       "default": "./src/materials/components/ElementSelectField/style/index.scss"
     },
-    "./element-option-state/style": {
-      "sass": "./src/materials/components/ElementOptionState/style/index.scss",
-      "style": "./src/materials/components/ElementOptionState/style/index.scss",
-      "default": "./src/materials/components/ElementOptionState/style/index.scss"
-    },
     "./element-choice-default-setter/style": {
       "sass": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",
       "style": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",

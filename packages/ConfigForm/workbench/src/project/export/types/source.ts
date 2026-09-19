@@ -1,17 +1,16 @@
 import type { CanonicalFieldDescriptor } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormPageRuntimeConfiguration,
-  ConfigFormReaction,
   ConfigFormScopedFieldDefinition,
   ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type {
-  ConditionExpression,
-  ConditionTarget,
+  DatasetReference,
   FieldNode,
   FormSettings,
   ModelJsonObject,
-  RegisteredBinding,
+  ProjectDialogSurface,
+  ProjectDrawerSurface,
+  StaticResourceReference,
   ValidateTrigger,
 } from '@moluoxixi/config-form-model'
 import type { ProjectPath, WorkspaceFile } from '../../types'
@@ -30,10 +29,9 @@ export interface StandaloneSourceNodeBase {
   component: string
   props: ModelJsonObject
   extensions?: ModelJsonObject
-  bindings: Record<string, RegisteredBinding>
+  datasetBindings?: Record<string, DatasetReference>
+  resourceBindings?: Record<string, StaticResourceReference>
   placement: ModelJsonObject
-  conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
-  reactions?: ConfigFormReaction[]
 }
 
 export interface StandaloneSourceFieldNode extends StandaloneSourceNodeBase, CanonicalFieldDescriptor {
@@ -46,22 +44,26 @@ export interface StandaloneSourceLayoutNode extends StandaloneSourceNodeBase {
   valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
 
-export type StandaloneSourceNode = StandaloneSourceFieldNode | StandaloneSourceLayoutNode
+export interface StandaloneSourceElementNode extends StandaloneSourceNodeBase {
+  kind: 'element'
+}
 
-export interface StandaloneSourcePage {
+export type StandaloneSourceNode = StandaloneSourceFieldNode | StandaloneSourceLayoutNode | StandaloneSourceElementNode
+
+interface StandaloneSourceSurfaceBase {
   id: string
   name: string
-  route: string
+  kind: 'page' | 'dialog' | 'drawer'
   form: FormSettings
   root: StandaloneSourceNode[]
-  runtime: ConfigFormPageRuntimeConfiguration
   scopedFields: ConfigFormScopedFieldDefinition[]
   valueScopes: ConfigFormValueScopeDefinition[]
-  optionBindings: Array<{
-    nodeId: string
-    source: NonNullable<CanonicalFieldDescriptor['optionSource']>
-  }>
 }
+
+export type StandaloneSourceSurface
+  = | StandaloneSourceSurfaceBase & { kind: 'page', route: string }
+    | StandaloneSourceSurfaceBase & { kind: 'dialog', presentation: ProjectDialogSurface['presentation'] }
+    | StandaloneSourceSurfaceBase & { kind: 'drawer', presentation: ProjectDrawerSurface['presentation'] }
 
 export interface StandaloneSourceComponentDefinition {
   binding: CanonicalSourceComponentBinding
@@ -75,8 +77,8 @@ export interface StandaloneSourceRegistry {
 export interface StandaloneSourceProject {
   id: string
   name: string
-  homePageId: string
-  pages: StandaloneSourcePage[]
+  homeSurfaceId: string
+  surfaces: StandaloneSourceSurface[]
 }
 
 export interface StandaloneSourceResolvedLayout {

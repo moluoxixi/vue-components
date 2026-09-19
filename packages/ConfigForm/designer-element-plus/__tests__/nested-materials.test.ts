@@ -1,4 +1,4 @@
-import type { LayoutNode, PageGraph, ProjectDocument } from '@moluoxixi/config-form-model'
+import type { LayoutNode, SurfaceGraph, ProjectDocument } from '@moluoxixi/config-form-model'
 import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, isDesignerSetterPathAllowed, useDesignerController } from '@moluoxixi/config-form-designer'
 import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,30 +8,33 @@ import { createElementPlusDesignerRegistry, ELEMENT_PLUS_DESIGNER_MATERIAL_REGIS
 function fixture() {
   const registry = createElementPlusDesignerRegistry()
   const contracts = createComponentContractRegistry(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.contracts, { adapter: 'element', version: '1' })
-  const graph = shallowRef<PageGraph>({ version: 3, props: {}, form: {}, root: [], nodesById: {} })
+  const graph = shallowRef<SurfaceGraph>({ version: 1, props: {}, form: {}, root: [], nodesById: {} })
   const document: ProjectDocument = {
     version: PROJECT_DOCUMENT_VERSION,
     id: 'nested',
     name: 'Nested',
-    homePageId: 'home',
-    pageOrder: ['home'],
-    pagesById: { home: { id: 'home', name: 'Home', route: '/', graph: graph.value } },
+    homeSurfaceId: 'home',
+    surfaceOrder: ['home'],
+    surfacesById: { home: { id: 'home', kind: 'page', name: 'Home', route: '/', graph: graph.value, parameters: [], outputs: [], interactions: [] } },
+    datasetOrder: [],
+    datasetsById: {},
     registryLock: structuredClone(contracts.lock),
     settings: {},
     resources: {},
+    theme: { version: 1 },
   }
   const engine = createProjectDomainEngine({ document, registry: contracts })
   const scope = effectScope()
   const controller = scope.run(() => useDesignerController({
     graph: () => graph.value,
     registry: () => registry,
-    pageId: () => 'home',
+    surfaceId: () => 'home',
     readonly: () => false,
     onDiagnostics: vi.fn(),
     onSelectionChange: vi.fn(),
     execute(command) {
       const result = engine.execute(JSON.parse(JSON.stringify(command)))
-      graph.value = JSON.parse(JSON.stringify(engine.snapshot.document.pagesById.home!.graph)) as PageGraph
+      graph.value = JSON.parse(JSON.stringify(engine.snapshot.document.surfacesById.home!.graph)) as SurfaceGraph
       return result
     },
   }))!

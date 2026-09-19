@@ -54,9 +54,9 @@ export type {
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
-  ConfigFormPageRuntimeOptionBinding,
-  ConfigFormPageRuntimePlan,
-  ConfigFormPageRuntimeValueSchema,
+  ConfigFormSurfaceRuntimeOptionBinding,
+  ConfigFormSurfaceRuntimePlan,
+  ConfigFormSurfaceRuntimeValueSchema,
   FormRuntimeOptions,
   ReadonlyAdapter,
   ReadonlyAdapterRegistry,

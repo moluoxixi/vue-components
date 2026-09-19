@@ -18,7 +18,7 @@ export function useWorkbenchControllerLifecycle(options: WorkbenchControllerLife
       void options.handleVisibilityHidden()
   }
 
-  function handlePageHide(): void {
+  function handleSurfaceHide(): void {
     void options.handleVisibilityHidden()
   }
 
@@ -34,7 +34,7 @@ export function useWorkbenchControllerLifecycle(options: WorkbenchControllerLife
       return await disposePromise
     disposePromise = (async () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      globalThis.removeEventListener('pagehide', handlePageHide)
+      globalThis.removeEventListener('pagehide', handleSurfaceHide)
       globalThis.removeEventListener('beforeunload', handleBeforeUnload)
       await options.dispose()
     })()
@@ -43,7 +43,7 @@ export function useWorkbenchControllerLifecycle(options: WorkbenchControllerLife
 
   onMounted(async () => {
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    globalThis.addEventListener('pagehide', handlePageHide)
+    globalThis.addEventListener('pagehide', handleSurfaceHide)
     globalThis.addEventListener('beforeunload', handleBeforeUnload)
     try {
       await options.initialize()

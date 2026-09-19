@@ -13,7 +13,6 @@ export type DesignerFieldMaterialPropertyDefinition = Omit<
   | 'componentProps'
   | 'control'
   | 'key'
-  | 'optionSourcePath'
   | 'optionsPath'
   | 'path'
   | 'valueKind'

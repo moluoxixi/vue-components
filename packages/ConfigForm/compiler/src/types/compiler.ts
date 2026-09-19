@@ -1,6 +1,7 @@
 import type {
   ComponentKey,
-  ConfigFormFieldOptionSource,
+  DatasetId,
+  DatasetReference,
   DeepReadonly,
   FieldNode,
   FormSettings,
@@ -8,21 +9,37 @@ import type {
   ModelJsonObject,
   ModelJsonValue,
   NodeId,
-  PageId,
-  PageNode,
   ProjectChangeSet,
   ProjectCompilationSnapshot,
+  ProjectDataset,
+  ProjectDialogSurface,
   ProjectDraftSnapshot,
-  ProjectPageRuntimeConfiguration,
-  ProjectPageValueSchema,
-  ProjectResourceReference,
+  ProjectDrawerSurface,
+  ProjectResource,
   ProjectSnapshot,
-  RegisteredBinding,
+  ProjectTheme,
+  PrototypeInteraction,
   RegistryContractSnapshot,
+  ResourceId,
   SlotName,
+  StaticResourceReference,
+  SurfaceId,
+  SurfaceOutputDefinition,
+  SurfaceParameterDefinition,
+  SurfaceValueSchema,
   ValidateTrigger,
 } from '@moluoxixi/config-form-model'
 import type { CANONICAL_PROJECT_IR_VERSION } from '../constants/versions'
+
+export type MutableClone<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly [infer Head, ...infer Tail]
+    ? [MutableClone<Head>, ...MutableClone<Tail>]
+    : T extends readonly (infer Item)[]
+      ? MutableClone<Item>[]
+      : T extends object
+        ? { -readonly [Key in keyof T]: MutableClone<T[Key]> }
+        : T
 
 export interface SemanticCompilerEnvironment {
   version: string
@@ -40,16 +57,16 @@ export interface CanonicalProjectIdentity {
   irHash: string
 }
 
-export interface CanonicalPageRegistryUsage {
+export interface CanonicalSurfaceRegistryUsage {
   key: ComponentKey
   contractVersion: string
   fingerprint: string
 }
 
-export interface CanonicalPageIdentity {
+export interface CanonicalSurfaceIdentity {
   irVersion: typeof CANONICAL_PROJECT_IR_VERSION
   projectId: string
-  pageId: PageId
+  surfaceId: SurfaceId
   registryAdapter: string
   registryAdapterVersion: string
   registryUsageHash: string
@@ -74,10 +91,9 @@ interface CanonicalNodeBase {
   placement: CanonicalNodePlacement
   configuredProps: ModelJsonObject
   props: ModelJsonObject
-  bindings: Record<string, RegisteredBinding>
+  datasetBindings?: Record<string, DatasetReference>
+  resourceBindings?: Record<string, StaticResourceReference>
   extensions?: ModelJsonObject
-  conditions?: PageNode['conditions']
-  reactions?: PageNode['reactions']
 }
 
 export interface CanonicalFieldDescriptor {
@@ -86,7 +102,6 @@ export interface CanonicalFieldDescriptor {
   defaultValue?: ModelJsonValue
   validation?: FieldNode['validation']
   validateOn: ValidateTrigger[]
-  optionSource?: ConfigFormFieldOptionSource
 }
 
 export interface CanonicalFieldNodeIR extends CanonicalNodeBase, CanonicalFieldDescriptor {
@@ -99,62 +114,85 @@ export interface CanonicalLayoutNodeIR extends CanonicalNodeBase {
   valueScope?: LayoutNode['valueScope']
 }
 
-export type CanonicalNodeIR = CanonicalFieldNodeIR | CanonicalLayoutNodeIR
+export interface CanonicalElementNodeIR extends CanonicalNodeBase {
+  kind: 'element'
+}
 
-export interface CanonicalPageIR extends ProjectPageValueSchema {
-  id: PageId
+export type CanonicalNodeIR = CanonicalFieldNodeIR | CanonicalLayoutNodeIR | CanonicalElementNodeIR
+
+interface CanonicalSurfaceBaseIR extends SurfaceValueSchema {
+  id: SurfaceId
   name: string
-  route: string
+  kind: 'page' | 'dialog' | 'drawer'
   props: ModelJsonObject
   form: FormSettings
   rootIds: NodeId[]
   nodesById: Record<NodeId, CanonicalNodeIR>
-  runtime?: ProjectPageRuntimeConfiguration
+  parameters: SurfaceParameterDefinition[]
+  outputs: SurfaceOutputDefinition[]
+  interactions: PrototypeInteraction[]
 }
+
+export interface CanonicalRouteSurfaceIR extends CanonicalSurfaceBaseIR {
+  kind: 'page'
+  route: string
+}
+
+export interface CanonicalDialogSurfaceIR extends CanonicalSurfaceBaseIR {
+  kind: 'dialog'
+  presentation: ProjectDialogSurface['presentation']
+}
+
+export interface CanonicalDrawerSurfaceIR extends CanonicalSurfaceBaseIR {
+  kind: 'drawer'
+  presentation: ProjectDrawerSurface['presentation']
+}
+
+export type CanonicalSurfaceIR = CanonicalRouteSurfaceIR | CanonicalDialogSurfaceIR | CanonicalDrawerSurfaceIR
 
 export interface CanonicalProjectIRDocument {
   version: typeof CANONICAL_PROJECT_IR_VERSION
   identity: CanonicalProjectIdentity
   name: string
-  homePageId: PageId
-  pageOrder: PageId[]
-  pagesById: Record<PageId, CanonicalPageIR>
+  homeSurfaceId: SurfaceId
+  surfaceOrder: SurfaceId[]
+  surfacesById: Record<SurfaceId, CanonicalSurfaceIR>
+  datasetOrder: DatasetId[]
+  datasetsById: Record<DatasetId, ProjectDataset>
+  resources: Record<ResourceId, ProjectResource>
+  theme: ProjectTheme
   settings: ModelJsonObject
-  resources: Record<string, ProjectResourceReference>
   environment: SemanticCompilerEnvironment
 }
 
 export type CanonicalProjectIR = DeepReadonly<CanonicalProjectIRDocument>
 
-export type PageCompilationSnapshotIdentity
+export type SurfaceCompilationSnapshotIdentity
   = | {
     source: 'committed'
     projectId: string
-    pageId: PageId
+    surfaceId: SurfaceId
     contentHash: string
     editVersion: number
   }
   | {
     source: 'draft'
     projectId: string
-    pageId: PageId
+    surfaceId: SurfaceId
     contentHash: string
     baseEditVersion: number
     draftId: string
   }
 
-export interface PageCompilationDocument {
-  snapshotIdentity: PageCompilationSnapshotIdentity
-  registryUsage: CanonicalPageRegistryUsage[]
-  key: CanonicalPageIdentity
-  page: CanonicalPageIR
+export interface SurfaceCompilationDocument {
+  snapshotIdentity: SurfaceCompilationSnapshotIdentity
+  registryUsage: CanonicalSurfaceRegistryUsage[]
+  key: CanonicalSurfaceIdentity
+  surface: CanonicalSurfaceIR
 }
 
-/**
- * Indivisible page-scoped compiler output for Design and Preview. The full
- * ProjectDocument stays outside the realtime Runtime boundary.
- */
-export type PageCompilation = DeepReadonly<PageCompilationDocument>
+/** Indivisible Surface-scoped compiler output for Design hosts. */
+export type SurfaceCompilation = DeepReadonly<SurfaceCompilationDocument>
 
 export type ProjectCompilationOrigin
   = | {
@@ -185,7 +223,7 @@ export interface SemanticCompilerDiagnostic {
   code: string
   message: string
   path?: Array<string | number>
-  pageId?: PageId
+  surfaceId?: SurfaceId
   nodeId?: NodeId
 }
 
@@ -195,24 +233,24 @@ export interface CompileCanonicalProjectInput {
   environment?: Partial<SemanticCompilerEnvironment>
 }
 
-export interface CompileCanonicalPageInput extends CompileCanonicalProjectInput {
-  pageId: PageId
+export interface CompileCanonicalSurfaceInput extends CompileCanonicalProjectInput {
+  surfaceId: SurfaceId
 }
 
 export interface CreateCompileCoordinatorOptions {
   registry: RegistryContractSnapshot | unknown
   environment?: Partial<SemanticCompilerEnvironment>
-  maxCachedPages?: number
+  maxCachedSurfaces?: number
 }
 
 export interface CompileCoordinator {
   acceptSnapshot: (snapshot: ProjectSnapshot, changeSet?: ProjectChangeSet) => void
-  compilePage: (pageId: PageId) => CompileCanonicalPageResult
-  compileDraftPage: (
+  compileSurface: (surfaceId: SurfaceId) => CompileCanonicalSurfaceResult
+  compileDraftSurface: (
     snapshot: ProjectDraftSnapshot,
-    pageId: PageId,
+    surfaceId: SurfaceId,
     changeSet?: ProjectChangeSet,
-  ) => CompileCanonicalPageResult
+  ) => CompileCanonicalSurfaceResult
   clear: () => void
 }
 
@@ -220,6 +258,6 @@ export type CompileCanonicalProjectResult
   = | { success: true, compilation: ProjectCompilation, diagnostics: [] }
     | { success: false, diagnostics: SemanticCompilerDiagnostic[] }
 
-export type CompileCanonicalPageResult
-  = | { success: true, compilation: PageCompilation, diagnostics: [] }
+export type CompileCanonicalSurfaceResult
+  = | { success: true, compilation: SurfaceCompilation, diagnostics: [] }
     | { success: false, diagnostics: SemanticCompilerDiagnostic[] }

@@ -2,8 +2,6 @@ import type { DesignerDefaultValueKind } from '@moluoxixi/config-form-designer'
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import type {
   AntdVueDesignerOption,
-  AntdVueOptionSource,
-  AntdVueResolvedOptionState,
 } from './options'
 
 export type AntdAutoCompleteValue = string | number
@@ -12,13 +10,11 @@ export type AntdSelectValue = string | number | Array<string | number>
 export interface AntdAutoCompleteFieldProps {
   value?: AntdAutoCompleteValue
   options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
 }
 
 export interface AntdCheckboxFieldProps {
   value?: Array<string | number>
   options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
 }
 
 export interface AntdChoiceDefaultSetterProps {
@@ -28,20 +24,9 @@ export interface AntdChoiceDefaultSetterProps {
   kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
 }
 
-export interface AntdChoiceReadonlyContentProps {
-  value?: unknown
-  options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
-}
-
-export interface AntdOptionStateProps {
-  state: AntdVueResolvedOptionState
-}
-
 export interface AntdRadioFieldProps {
   value?: string | number | boolean
   options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
 }
 
 export interface AntdSectionProps {
@@ -52,7 +37,6 @@ export interface AntdSectionProps {
 export interface AntdSelectFieldProps {
   value?: AntdSelectValue
   options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
 }
 
 export type AntdFlexDirection = 'row' | 'column'

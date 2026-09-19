@@ -1,11 +1,11 @@
-import type { CanonicalPageIR, ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { CanonicalSurfaceIR, ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { WorkspaceFile } from '../../types'
 import type { CanonicalSourceBindingResolver } from '../types'
 import type {
   StandaloneSourceComponentDefinition,
   StandaloneSourceNode,
   StandaloneSourceNodeBase,
-  StandaloneSourcePage,
+  StandaloneSourceSurface,
   StandaloneSourceRegistry,
 } from '../types/source'
 
@@ -41,7 +41,7 @@ export function createCanonicalSourceRegistry(
 }
 
 function canonicalSourceNode(
-  page: CanonicalPageIR,
+  page: CanonicalSurfaceIR,
   nodeId: string,
   ancestors: ReadonlySet<string>,
 ): StandaloneSourceNode {
@@ -54,11 +54,10 @@ function canonicalSourceNode(
     id: node.id,
     component: node.component,
     props: structuredClone(node.props),
-    bindings: structuredClone(node.bindings),
     placement: structuredClone(node.placement.props),
     ...(node.extensions === undefined ? {} : { extensions: structuredClone(node.extensions) }),
-    ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
-    ...(node.reactions === undefined ? {} : { reactions: structuredClone(node.reactions) }),
+    ...(node.datasetBindings === undefined ? {} : { datasetBindings: structuredClone(node.datasetBindings) }),
+    ...(node.resourceBindings === undefined ? {} : { resourceBindings: structuredClone(node.resourceBindings) }),
   }
   if (node.kind === 'field') {
     return {
@@ -67,11 +66,13 @@ function canonicalSourceNode(
       field: node.field,
       ...(node.label === undefined ? {} : { label: node.label }),
       ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
-      ...(node.optionSource === undefined ? {} : { optionSource: structuredClone(node.optionSource) }),
       ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
       validateOn: [...node.validateOn],
     }
   }
+
+  if (node.kind === 'element')
+    return { ...common, kind: 'element' }
 
   const nextAncestors = new Set(ancestors)
   nextAncestors.add(node.id)
@@ -86,21 +87,15 @@ function canonicalSourceNode(
   }
 }
 
-export function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage {
-  const optionBindings = Object.values(page.nodesById)
-    .flatMap(node => node.kind === 'field' && node.optionSource
-      ? [{ nodeId: node.id, source: structuredClone(node.optionSource) }]
-      : [])
-    .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
+export function canonicalSourceSurface(page: CanonicalSurfaceIR): StandaloneSourceSurface {
   return {
     id: page.id,
     name: page.name,
-    route: page.route,
+    kind: page.kind,
+    ...(page.kind === 'page' ? { route: page.route } : { presentation: structuredClone(page.presentation) }),
     form: structuredClone(page.form),
     root: page.rootIds.map(nodeId => canonicalSourceNode(page, nodeId, new Set())),
-    runtime: structuredClone(page.runtime ?? { dataSources: [], variables: [] }),
     scopedFields: structuredClone(page.scopedFields),
     valueScopes: structuredClone(page.valueScopes),
-    optionBindings,
-  }
+  } as StandaloneSourceSurface
 }

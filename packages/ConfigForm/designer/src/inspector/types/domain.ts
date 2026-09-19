@@ -1,4 +1,4 @@
-import type { ComponentContract, PageNode } from '@moluoxixi/config-form-model'
+import type { ComponentContract, SurfaceNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerMaterialDefinition,
   DesignerPropertySetterDefinition,
@@ -9,7 +9,7 @@ export type InspectorSectionId
     | 'validation'
 
 export interface InspectorNodeCapabilityInput {
-  node: PageNode
+  node: SurfaceNode
   material?: DesignerMaterialDefinition
   contract?: ComponentContract
 }

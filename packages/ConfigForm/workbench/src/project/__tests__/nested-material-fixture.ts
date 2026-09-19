@@ -1,17 +1,24 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { LayoutNode, PageGraph, PageNode, ProjectDocument } from '@moluoxixi/config-form-model'
+import type { LayoutNode, SurfaceGraph, SurfaceNode, ProjectDocument } from '@moluoxixi/config-form-model'
 import type { NestedMaterialProvider } from './types'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createComponentContractRegistry, createProjectSnapshot, createRegistryContractSnapshot, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
-import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
+import {
+  createComponentContractRegistry,
+  createProjectSnapshot,
+  createRegistryContractSnapshot,
+  PROJECT_DOCUMENT_VERSION,
+  PROJECT_THEME_VERSION,
+  SURFACE_GRAPH_VERSION,
+} from '@moluoxixi/config-form-model'
+import { compileCanonicalSurfaceRuntime } from '@moluoxixi/config-form-vue-backend'
 
 export type { NestedMaterialProvider } from './types'
 
 export function createNestedMaterialFixture(provider: NestedMaterialProvider, populated = true) {
   const registry = provider.createRegistry()
   const contracts = createComponentContractRegistry(provider.capabilities.contracts, { adapter: provider.prefix, version: '1' })
-  const graph: PageGraph = { version: 3, props: {}, form: { labelPosition: 'top' }, root: [], nodesById: {} }
-  function add(material: string, id: string, field: string, parent?: string): PageNode {
+  const graph: SurfaceGraph = { version: SURFACE_GRAPH_VERSION, props: {}, form: { labelPosition: 'top' }, root: [], nodesById: {} }
+  function add(material: string, id: string, field: string, parent?: string): SurfaceNode {
     const subgraph = registry.createSubgraph(`${provider.prefix}.${material}`, { id, field })
     Object.assign(graph.nodesById, subgraph.nodesById)
     if (parent)
@@ -32,7 +39,11 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
     if (sku.kind === 'field') {
       sku.label = 'SKU'
       sku.defaultValue = 'New SKU'
-      sku.conditions = { required: { kind: 'literal', value: true } }
+      sku.validation = {
+        version: 1,
+        base: { type: 'string' },
+        rules: [{ kind: 'required' }],
+      }
     }
     const delivery = add('object-group', 'delivery', 'delivery', 'orders')
     delivery.props.title = 'Delivery'
@@ -50,18 +61,32 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
     version: PROJECT_DOCUMENT_VERSION,
     id: `${provider.prefix}-nested`,
     name: 'Nested materials',
-    homePageId: 'home',
-    pageOrder: ['home'],
-    pagesById: { home: { id: 'home', name: 'Home', route: '/', graph } },
+    homeSurfaceId: 'home',
+    surfaceOrder: ['home'],
+    surfacesById: {
+      home: {
+        id: 'home',
+        kind: 'page',
+        name: 'Home',
+        route: '/',
+        graph,
+        parameters: [],
+        outputs: [],
+        interactions: [],
+      },
+    },
+    datasetOrder: [],
+    datasetsById: {},
     registryLock: structuredClone(contracts.lock),
     settings: {},
     resources: {},
+    theme: { version: PROJECT_THEME_VERSION },
   }
   function compile() {
     const compiled = compileCanonicalProject({ snapshot: createProjectSnapshot(document, 0), registry: createRegistryContractSnapshot(contracts) })
     if (!compiled.success)
       throw new Error(JSON.stringify(compiled.diagnostics))
-    const result = compileCanonicalPageRuntime({ compilation: compiled.compilation, pageId: 'home' }, {
+    const result = compileCanonicalSurfaceRuntime({ compilation: compiled.compilation, surfaceId: 'home' }, {
       components: registry.components,
       resolveBinding(component) {
         const entry = provider.capabilities.get(component)

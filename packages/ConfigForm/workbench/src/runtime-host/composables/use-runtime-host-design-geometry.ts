@@ -3,16 +3,24 @@ import type {
   ConfigFormRuntimeNodeMetadata,
 } from '@moluoxixi/config-form'
 import type { CSSProperties, Ref } from 'vue'
-import type { RuntimeHostSyncMessage, RuntimeHostToParentPayload } from '../types'
+import type { RuntimeHostPayloadV7, RuntimeHostToParentMessageV7 } from '../types'
 import { hitTestDesignNodes } from '@moluoxixi/config-form-model'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
+interface RuntimeHostDesignGeometryState {
+  candidateId?: string
+  candidateUsesFallback?: boolean
+  canvasWidth?: number
+  variant: 'canvas' | 'drag-visual'
+}
+
 export function useRuntimeHostDesignGeometry(options: {
-  design: Ref<RuntimeHostSyncMessage['design']>
-  postMessage: (message: RuntimeHostToParentPayload) => void
-  runtimeMode: Ref<'design' | 'preview'>
+  design: Readonly<Ref<RuntimeHostDesignGeometryState | undefined>>
+  postMessage: (message: RuntimeHostPayloadV7<RuntimeHostToParentMessageV7>) => void
+  runtimeMode: Ref<'design' | 'experience'>
+  surfaceId: Ref<string>
 }) {
-  const { design, postMessage, runtimeMode } = options
+  const { design, postMessage, runtimeMode, surfaceId } = options
   const stage = useTemplateRef<HTMLElement>('stage')
   const ghostOffset = ref<{ x: number, y: number }>()
   const registeredNodes = new Map<string, {
@@ -65,7 +73,8 @@ export function useRuntimeHostDesignGeometry(options: {
         ...(registration.metadata.slot ? { slot: registration.metadata.slot } : {}),
       }))
     postMessage({
-      type: 'geometry',
+      type: 'design.geometry',
+      surfaceId: surfaceId.value,
       payload: {
         ...(layout ? { layoutRect: rectPayload(layout.getBoundingClientRect()) } : {}),
         nodes,
@@ -162,11 +171,12 @@ export function useRuntimeHostDesignGeometry(options: {
     return hitTestDesignNodes({ x: clientX, y: clientY }, hits)[0]?.nodeId
   }
 
-  function postDesignPointer(type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel', event: PointerEvent): void {
+  function postDesignPointer(type: 'design.pointerDown' | 'design.pointerMove' | 'design.pointerUp' | 'design.pointerCancel', event: PointerEvent): void {
     if (runtimeMode.value !== 'design' || design.value?.variant !== 'canvas')
       return
     postMessage({
       type,
+      surfaceId: surfaceId.value,
       payload: {
         button: event.button,
         clientX: event.clientX,
@@ -182,7 +192,7 @@ export function useRuntimeHostDesignGeometry(options: {
 
   function handleDesignPointerDown(event: PointerEvent): void {
     event.preventDefault()
-    postDesignPointer('designPointerDown', event)
+    postDesignPointer('design.pointerDown', event)
   }
 
   // Context menus are surfaced by the parent designer; the iframe only
@@ -192,7 +202,8 @@ export function useRuntimeHostDesignGeometry(options: {
       return
     event.preventDefault()
     postMessage({
-      type: 'designContextMenu',
+      type: 'design.contextMenu',
+      surfaceId: surfaceId.value,
       payload: {
         button: 2,
         clientX: event.clientX,

@@ -1,8 +1,15 @@
+import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
+
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 const MAX_STRING_LENGTH = 16_384
 
 /** Shared wire budget, including keys and otherwise unrecognized properties. */
-export function isRuntimeHostJson(value: unknown, depth = 0, ancestors = new Set<object>(), budget = { count: 0 }): boolean {
+export function isRuntimeHostJsonValue(
+  value: unknown,
+  depth = 0,
+  ancestors = new Set<object>(),
+  budget = { count: 0 },
+): value is ModelJsonValue {
   if (++budget.count > 10_000 || depth > 64)
     return false
   if (value === null || typeof value === 'string' || typeof value === 'boolean')
@@ -29,8 +36,17 @@ export function isRuntimeHostJson(value: unknown, depth = 0, ancestors = new Set
       return false
     const property = Object.getOwnPropertyDescriptor(value, key)
     return !!property && property.enumerable && Object.hasOwn(property, 'value')
-      && isRuntimeHostJson(property.value, depth + 1, ancestors, budget)
+      && isRuntimeHostJsonValue(property.value, depth + 1, ancestors, budget)
   })
   ancestors.delete(value)
   return valid
 }
+
+export function isRuntimeHostJsonObject(value: unknown): value is ModelJsonObject {
+  return typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value)
+    && isRuntimeHostJsonValue(value)
+}
+
+export const isRuntimeHostJson = isRuntimeHostJsonValue

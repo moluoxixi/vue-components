@@ -17,7 +17,7 @@ import { assertUniqueProjectPaths, normalizeProjectPath } from '../../utils'
 import { createCanonicalProjectConfigExport } from './config'
 import { createCanonicalProjectSourceExport } from './source'
 
-export const CONFIG_FORM_EXPORT_GENERATOR_VERSION = '4.0.0' as const
+export const CONFIG_FORM_EXPORT_GENERATOR_VERSION = '5.0.0' as const
 
 function cloneSnapshotFile(file: WorkspaceFile): Readonly<WorkspaceFile> {
   if (file.kind === 'text')

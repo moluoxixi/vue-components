@@ -1,4 +1,7 @@
-import type { ModelDiagnostic } from '@moluoxixi/config-form-model'
+import type {
+  ModelDiagnostic,
+  ProjectRepository,
+} from '@moluoxixi/config-form-model'
 import type {
   ProjectEditorSession,
   ProjectEditorSessionSaveResult,
@@ -46,6 +49,7 @@ export interface ProjectPersistenceSessionOptions {
   coordination?: ProjectCoordinationChannel
   draftStore: ProjectRecoveryDraftStore
   editor: ProjectEditorSession
+  readEmbedded: ProjectRepository['readEmbedded']
   onExternalRevision?: (
     resolution: 'conflict' | 'ignored' | 'reload',
     message: ProjectCoordinationRevisionMessage,

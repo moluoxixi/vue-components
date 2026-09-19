@@ -82,6 +82,7 @@ export function canonicalProjectPackage(
   const manifest = JSON.parse(sourcePackage(name, libraries, declaredDependencies)) as PackageJson
   manifest.dependencies = {
     ...manifest.dependencies,
+    '@moluoxixi/config-form-prototype-runtime': '^0.1.0',
     'vue-router': '4.5.1',
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
@@ -102,20 +103,74 @@ export function mainSource(
   ].map(plugin => `.use(${plugin})`).join('')
   return `import { createApp } from 'vue'
 import App from './App.vue'
-${withRouter ? `import { router } from './router'\n` : ''}${imports.join('\n')}${imports.length ? '\n' : ''}import './runtime/vue/styles/index.scss'
+${withRouter ? `import { router } from './router'\n` : ''}${imports.join('\n')}${imports.length ? '\n' : ''}import '@moluoxixi/config-form-prototype-runtime/vue/style'
+import './runtime/vue/styles/index.scss'
 import './styles.css'
 
-createApp(App)${appUses}.mount('#app')
-`
+const app = createApp(App)${appUses}
+${withRouter
+  ? `
+async function mountApp(): Promise<void> {
+  await router.isReady()
+  app.mount('#app')
 }
 
-export function projectAppSource(): string {
+void mountApp()
+`
+  : 'app.mount(\'#app\')\n'}`
+}
+
+export function projectAppSource(
+  project: Pick<StandaloneSourceProject, 'surfaces'>,
+  surfaceDirectories: ReadonlyMap<string, string>,
+): string {
+  const imports = project.surfaces.map((surface, index) => (
+    `import Surface${index + 1} from './surfaces/${surfaceDirectories.get(surface.id)}/Surface.vue'`
+  )).join('\n')
+  const artifacts = project.surfaces.map((surface, index) => (
+    `  ${quote(surface.id)}: { surfaceId: ${quote(surface.id)}, component: Surface${index + 1} },`
+  )).join('\n')
   return `<script setup lang="ts">
-import { RouterView } from 'vue-router'
+import type { PrototypeProjectContextV1 } from '@moluoxixi/config-form-prototype-runtime/session'
+import type { PrototypeVueSurfaceArtifact, PrototypeVueTransitionSnapshot } from '@moluoxixi/config-form-prototype-runtime/vue'
+import { PrototypeSurfaceHost } from '@moluoxixi/config-form-prototype-runtime/vue'
+${imports}
+import { prototypeContext } from './prototype-context'
+import { router } from './router'
+
+const artifactsBySurfaceId = {
+${artifacts}
+} satisfies Readonly<Record<string, PrototypeVueSurfaceArtifact>>
+
+const context: PrototypeProjectContextV1 = prototypeContext
+const requestedSurfaceId = typeof router.currentRoute.value.name === 'string'
+  ? router.currentRoute.value.name
+  : undefined
+const requestedSurface = requestedSurfaceId
+  ? context.surfacesById[requestedSurfaceId]
+  : undefined
+const initialContext: PrototypeProjectContextV1 = Object.freeze({
+  ...context,
+  homeSurfaceId: requestedSurface?.kind === 'page'
+    ? requestedSurface.id
+    : context.homeSurfaceId,
+})
+
+function syncPageRoute(snapshot: PrototypeVueTransitionSnapshot): void {
+  const instanceId = snapshot.session.pageHistory.at(-1)
+  const instance = instanceId ? snapshot.session.instancesById[instanceId] : undefined
+  const surface = instance ? initialContext.surfacesById[instance.surfaceId] : undefined
+  if (surface?.kind === 'page' && router.currentRoute.value.path !== surface.route)
+    void router.replace(surface.route)
+}
 </script>
 
 <template>
-  <RouterView />
+  <PrototypeSurfaceHost
+    :artifacts-by-surface-id="artifactsBySurfaceId"
+    :context="initialContext"
+    @transition="syncPageRoute"
+  />
 </template>
 `
 }
@@ -165,17 +220,18 @@ export function standaloneHtml(title: string): string {
 }
 
 export function projectRouterSource(
-  project: Pick<StandaloneSourceProject, 'homePageId' | 'pages'>,
-  pageDirectories: ReadonlyMap<string, string>,
+  project: Pick<StandaloneSourceProject, 'homeSurfaceId' | 'surfaces'>,
 ): string {
-  const imports = project.pages.map((page, index) => `import Page${index + 1} from './pages/${pageDirectories.get(page.id)}/Page.vue'`).join('\n')
-  const routes = project.pages.map((page, index) => `  { path: ${quote(page.route)}, name: ${quote(page.id)}, component: Page${index + 1} },`).join('\n')
-  const home = project.pages.find(page => page.id === project.homePageId)!
+  const pages = project.surfaces.filter((surface): surface is Extract<StandaloneSourceProject['surfaces'][number], { kind: 'page' }> => surface.kind === 'page')
+  const routes = pages.map(page => `  { path: ${quote(page.route)}, name: ${quote(page.id)}, component: SurfaceRoute },`).join('\n')
+  const home = pages.find(page => page.id === project.homeSurfaceId)!
   const redirect = home.route === '/'
     ? ''
     : `\n  { path: '/', redirect: ${quote(home.route)} },`
-  return `import { createRouter, createWebHistory } from 'vue-router'
-${imports}
+  return `import { defineComponent } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
+
+const SurfaceRoute = defineComponent({ name: 'GeneratedSurfaceRoute', render: () => null })
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -186,10 +242,10 @@ ${routes}
 `
 }
 
-export function uniquePageDirectories(project: Pick<StandaloneSourceProject, 'pages'>): ReadonlyMap<string, string> {
+export function uniqueSurfaceDirectories(project: Pick<StandaloneSourceProject, 'surfaces'>): ReadonlyMap<string, string> {
   const used = new Set<string>()
-  return new Map(project.pages.map((page) => {
-    const base = safeProjectSlug(page.id)
+  return new Map(project.surfaces.map((surface) => {
+    const base = safeProjectSlug(surface.id)
     let directory = base
     let suffix = 2
     while (used.has(directory)) {
@@ -197,6 +253,6 @@ export function uniquePageDirectories(project: Pick<StandaloneSourceProject, 'pa
       suffix += 1
     }
     used.add(directory)
-    return [page.id, directory]
+    return [surface.id, directory]
   }))
 }

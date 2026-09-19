@@ -1,4 +1,3 @@
-export { createElementPlusOptionDiagnostics } from '../../options'
 export {
   renderElementPlusChoiceReadonly,
   renderElementPlusRawReadonly,

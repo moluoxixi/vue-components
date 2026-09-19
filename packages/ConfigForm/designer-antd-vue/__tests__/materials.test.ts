@@ -1,16 +1,13 @@
-import type { FieldNode, PageGraph } from '@moluoxixi/config-form-model'
+import type { FieldNode, SurfaceGraph } from '@moluoxixi/config-form-model'
 import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
-import { pageGraphSchema } from '@moluoxixi/config-form-model'
-import { flushPromises, mount } from '@vue/test-utils'
+import { surfaceGraphSchema } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
   ANTD_VUE_DESIGNER_MATERIAL_REGISTRY,
   ANTD_VUE_DESIGNER_MATERIALS,
   ANTD_VUE_DESIGNER_ZH_CN,
-  ANTD_VUE_OPTION_RESOLVER_KEY,
   createAntdVueDesignerRegistry,
-  createAntdVueOptionResolverContext,
 } from '../index'
 import {
   renderAntdVueChoiceReadonly,
@@ -47,9 +44,9 @@ const expectedKeys = [
   'antd.detail-table',
 ]
 
-function graphForRootMaterials(): PageGraph {
+function graphForRootMaterials(): SurfaceGraph {
   const registry = createAntdVueDesignerRegistry()
-  const graph: PageGraph = { version: 3, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: SurfaceGraph = { version: 1, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -76,7 +73,6 @@ function fieldNode(component: string, field: string): FieldNode {
     component,
     field,
     props: {},
-    bindings: {},
   }
 }
 
@@ -112,7 +108,7 @@ describe('ant design vue designer materials', () => {
 
   it('creates a normalized JSON-safe subgraph for every material', () => {
     const graph = graphForRootMaterials()
-    expect(() => pageGraphSchema.parse(graph)).not.toThrow()
+    expect(() => surfaceGraphSchema.parse(graph)).not.toThrow()
     expect(Object.keys(graph.nodesById)).toHaveLength(expectedKeys.length)
   })
 
@@ -281,9 +277,8 @@ describe('ant design vue designer materials', () => {
     }
   })
 
-  it('renders semantic readonly values against canonical field nodes', async () => {
+  it('renders semantic readonly values against canonical field nodes', () => {
     const select = fieldNode('antd.select', 'environment')
-    const autoComplete = fieldNode('antd.auto-complete', 'project')
     const password = fieldNode('antd.password', 'password')
     const switchNode = fieldNode('antd.switch', 'enabled')
 
@@ -311,22 +306,6 @@ describe('ant design vue designer materials', () => {
       value: 'secret',
       componentProps: {},
     })).toBe('********')
-
-    const optionResolver = createAntdVueOptionResolverContext({
-      dictionaries: { projects: [{ label: 'Project A', value: 'a' }] },
-    })
-    const dynamicReadonly = renderAntdVueChoiceReadonly({
-      node: autoComplete,
-      model: { project: 'a' },
-      value: 'a',
-      componentProps: { optionSource: { kind: 'dictionary', key: 'projects' } },
-    })
-    const readonlyHost = defineComponent({ setup: () => () => dynamicReadonly })
-    const readonlyWrapper = mount(readonlyHost, {
-      global: { provide: { [ANTD_VUE_OPTION_RESOLVER_KEY as symbol]: optionResolver } },
-    })
-    await flushPromises()
-    expect(readonlyWrapper.text()).toBe('Project A')
   })
 
   it('keeps direct materials above advanced layers and provider defaults', () => {

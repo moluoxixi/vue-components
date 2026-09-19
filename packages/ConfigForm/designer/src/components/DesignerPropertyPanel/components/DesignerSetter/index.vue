@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PageNode } from '@moluoxixi/config-form-model'
+import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '@designer/registry'
 import { computed, useId } from 'vue'
 import { useDesignerLocale } from '@designer/locale'
@@ -19,7 +19,7 @@ const props = defineProps<{
   inheritedValue?: unknown
   hint?: string
   readonly?: boolean
-  node?: PageNode
+  node?: SurfaceNode
 }>()
 
 const emit = defineEmits<{

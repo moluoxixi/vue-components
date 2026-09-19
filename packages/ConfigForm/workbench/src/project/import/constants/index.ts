@@ -1,1 +1,1 @@
-export { PAGE_TRANSFER_VERSION } from './version'
+export { SURFACE_TRANSFER_VERSION } from './version'

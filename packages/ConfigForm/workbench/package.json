@@ -22,6 +22,7 @@
     "@moluoxixi/config-form-designer-element-plus": "workspace:*",
     "@moluoxixi/config-form-element": "workspace:*",
     "@moluoxixi/config-form-model": "workspace:*",
+    "@moluoxixi/config-form-prototype-runtime": "workspace:*",
     "@moluoxixi/config-form-vue-backend": "workspace:*",
     "@moluoxixi/indexed-db": "workspace:*",
     "@vue/compiler-sfc": "catalog:dev",
@@ -45,6 +46,7 @@
     "sass": "catalog:dev",
     "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
     "vite": "catalog:dev",
+    "vue-router": "catalog:build",
     "vitest": "catalog:dev",
     "vue-tsc": "catalog:dev"
   }

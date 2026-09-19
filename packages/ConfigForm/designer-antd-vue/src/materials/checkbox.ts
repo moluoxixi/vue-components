@@ -19,7 +19,6 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
-      analyze: s.createAntdVueOptionDiagnostics(),
       setters: [s.choiceDefaultValueSetter('multiselect'), s.optionsSetter, s.disabledSetter],
       createNode: ({ id, field = 'checkbox' }) => ({
         id,

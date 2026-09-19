@@ -1,4 +1,4 @@
-import type { ComponentContractRegistry, PageGraph } from '@moluoxixi/config-form-model'
+import type { ComponentContractRegistry, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
 import type { DesignerLocaleOptions } from '../../../locale'
 import type { DesignerRegistry } from '../../../registry'
@@ -8,10 +8,10 @@ export interface DesignSurfaceProps {
   commandHint?: Component
   commandControl: DesignerCommandControl
   componentRegistry: ComponentContractRegistry
-  graph: PageGraph
+  graph: SurfaceGraph
   historyControl: DesignerHistoryControl
   locale?: DesignerLocaleOptions
-  pageId: string
+  surfaceId: string
   readonly?: boolean
   registry: DesignerRegistry
   renderer: Component

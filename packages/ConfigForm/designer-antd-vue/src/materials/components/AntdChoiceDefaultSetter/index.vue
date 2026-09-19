@@ -3,21 +3,14 @@ import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
 import type { AntdChoiceDefaultSetterEmits, AntdChoiceDefaultSetterProps } from '../../../types'
 import { DesignerDefaultValueSetter } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
-import {
-  normalizeAntdVueOptions,
-  readAntdVueOptionSource,
-  useAntdVueResolvedOptions,
-} from '../../../options'
-import AntdOptionState from '../AntdOptionState/index.vue'
+import { normalizeAntdVueOptions } from '../../../options'
 
 const props = defineProps<AntdChoiceDefaultSetterProps>()
 
 const emit = defineEmits<AntdChoiceDefaultSetterEmits>()
 
 const staticOptions = computed(() => normalizeAntdVueOptions(props.node?.props?.options as unknown[] | undefined))
-const source = computed(() => readAntdVueOptionSource(props.node?.props?.optionSource))
-const state = useAntdVueResolvedOptions(source, staticOptions)
-const setterOptions = computed(() => state.value.options.flatMap((option) => {
+const setterOptions = computed(() => staticOptions.value.flatMap((option) => {
   if (typeof option.value === 'boolean')
     return []
   return [{ label: option.label, value: option.value }]
@@ -34,9 +27,8 @@ function updateValue(value: unknown): void {
       :model-value="modelValue as DesignerJsonValue"
       :kind="kind"
       :options="setterOptions"
-      :disabled="disabled || state.status === 'loading'"
+      :disabled="disabled"
       @update:model-value="updateValue"
     />
-    <AntdOptionState :state="state" />
   </div>
 </template>

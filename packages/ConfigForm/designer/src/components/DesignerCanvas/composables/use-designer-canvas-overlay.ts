@@ -1,4 +1,4 @@
-import type { PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { ComputedRef, CSSProperties, Ref } from 'vue'
 import type { DesignerMaterialDefinition } from '../../../registry'
 import type { DesignerCanvasDesignPolicySpot, DesignerCanvasOverlayBox, DesignerCanvasProps, DesignerDragSession, DesignerDragVisualSlotScope, DesignerRuntimeGeometrySnapshot, DesignerRuntimeNodeGeometry, DesignerRuntimeRect, DesignerRuntimeSlotScope } from '../types'
@@ -11,11 +11,11 @@ interface UseDesignerCanvasOverlayOptions {
   activeSession: () => DesignerDragSession | undefined
   cameraScale: () => number
   candidateId: () => string | undefined
-  candidateNode: () => PageNode | undefined
+  candidateNode: () => SurfaceNode | undefined
   elementVersion: Ref<number>
   externalGeometry: Ref<DesignerRuntimeGeometrySnapshot | undefined>
   materialTitle: (material: DesignerMaterialDefinition) => string
-  projectedGraph: () => PageGraph
+  projectedGraph: () => SurfaceGraph
   registry: () => DesignerCanvasProps['registry']
   runtimeNodeGeometryById: (nodeId: string) => DesignerRuntimeNodeGeometry | undefined
   runtimeSlotScope: ComputedRef<DesignerRuntimeSlotScope>
@@ -115,7 +115,12 @@ export function useDesignerCanvasOverlay(options: UseDesignerCanvasOverlayOption
     const geometry = id ? options.runtimeNodeGeometryById(id) : undefined
     if (!session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
       return undefined
-    const height = resolveDesignerDragVisualHeight(geometry.rect.height, options.candidateNode()?.kind)
+    const height = resolveDesignerDragVisualHeight(
+      geometry.rect.height,
+      options.candidateNode()?.kind === 'field' || options.candidateNode()?.kind === 'layout'
+        ? options.candidateNode()?.kind
+        : undefined,
+    )
     const position = resolveDesignerDragOverlayPosition(
       session.position,
       session.pointerOffset,

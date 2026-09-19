@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   actualCatalogLoad: undefined as undefined | (() => Promise<unknown>),
   analyzeEligibility: vi.fn(),
   catalogLoad: vi.fn(),
-  createPage: vi.fn(),
+  createSurface: vi.fn(),
   createProject: vi.fn(),
   loadAdapter: vi.fn(),
   preparePreview: vi.fn(),
@@ -108,7 +108,7 @@ const SelectStub = defineComponent({
 })
 
 const RuntimeStub = defineComponent({
-  name: 'PreviewRuntimeHostFrameStub',
+  name: 'DesignRuntimeHostFrameStub',
   inheritAttrs: false,
   props: { adapter: String },
   setup(props) {
@@ -147,16 +147,14 @@ function previewFor(template: { manifest: { adapter: string, id: string } }) {
   const projectId = `preview-${template.manifest.id}`
   return {
     adapter: template.manifest.adapter,
-    compilation: { snapshotIdentity: { pageId: 'page', projectId } },
+    compilation: { snapshotIdentity: { surfaceId: 'page', projectId } },
     namespace: 'mx-template-preview',
-    reactionProjection: { props: {}, states: {}, validate: [], values: {} },
     revision: projectId,
-    runtimeSessionKey: `${projectId}:page`,
-    runtimeState: { touched: [], validation: {}, values: {} },
+    values: {},
   }
 }
 
-function mountWorkspace(target: 'page' | 'project' = 'project') {
+function mountWorkspace(target: 'surface' | 'project' = 'project') {
   return mount(TemplateCreationWorkspace as Component, {
     attachTo: document.body,
     props: {
@@ -169,7 +167,7 @@ function mountWorkspace(target: 'page' | 'project' = 'project') {
         ElInput: InputStub,
         ElOption: OptionStub,
         ElSelect: SelectStub,
-        PreviewRuntimeHostFrame: RuntimeStub,
+        DesignRuntimeHostFrame: RuntimeStub,
       },
     },
   })
@@ -182,7 +180,7 @@ describe('template creation workspace', () => {
     stubMatchMedia(() => false)
     mocks.analyzeEligibility.mockImplementation(eligible)
     mocks.catalogLoad.mockImplementation(() => mocks.actualCatalogLoad!())
-    mocks.createPage.mockResolvedValue(true)
+    mocks.createSurface.mockResolvedValue(true)
     mocks.createProject.mockResolvedValue(true)
     mocks.loadAdapter.mockImplementation(async (adapter: string) => ({
       designerRegistry: { rendererNamespace: `mx-${adapter}` },
@@ -200,7 +198,7 @@ describe('template creation workspace', () => {
     appearanceDrawerOpen.value = false
     mocks.useController.mockReturnValue({
       busy: ref(false),
-      createPageFromTemplate: mocks.createPage,
+      createSurfaceFromTemplate: mocks.createSurface,
       createProjectFromTemplate: mocks.createProject,
       currentProject,
     })
@@ -288,7 +286,7 @@ describe('template creation workspace', () => {
   })
 
   it('keys eligibility display status by the current Registry fingerprint', async () => {
-    const wrapper = mountWorkspace('page')
+    const wrapper = mountWorkspace('surface')
     await flushPromises()
 
     const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
@@ -362,7 +360,7 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
-  it('shows actionable diagnostics and disables creation when page requirements are unmet', async () => {
+  it('shows actionable diagnostics and disables creation when Surface requirements are unmet', async () => {
     mocks.analyzeEligibility.mockImplementation((template: { manifest: { adapter: string } }) =>
       template.manifest.adapter === 'antd-vue'
         ? {
@@ -373,7 +371,7 @@ describe('template creation workspace', () => {
             }],
           }
         : eligible())
-    const wrapper = mountWorkspace('page')
+    const wrapper = mountWorkspace('surface')
     await flushPromises()
 
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')

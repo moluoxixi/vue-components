@@ -1,10 +1,10 @@
-import type { ProjectPageAction } from '../../../project'
+import type { ProjectSurfaceAction } from '../../../project'
 
-export interface PageManagerDialogEmits {
+export interface SurfaceManagerDialogEmits {
   close: []
-  createPage: []
+  createSurface: []
   createProject: []
   openProject: [id: string]
-  action: [action: ProjectPageAction]
+  action: [action: ProjectSurfaceAction]
   returnFocusRestored: []
 }

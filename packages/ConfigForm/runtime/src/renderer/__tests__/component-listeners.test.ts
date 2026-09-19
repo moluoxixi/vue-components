@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import type { ConfigFormRendererExpose } from '../types'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -16,7 +16,7 @@ const Control = defineComponent({
   }),
 })
 
-const plan: ConfigFormPageRuntimePlan = {
+const plan: ConfigFormSurfaceRuntimePlan = {
   optionBindings: [],
   runtime: { dataSources: [], variables: [] },
   valueSchema: {

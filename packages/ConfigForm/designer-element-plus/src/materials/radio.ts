@@ -16,7 +16,6 @@ export default defineDesignerMaterialModule({
       category: 'Choices',
       icon: shared.CircleDot,
       runtime: { component: shared.ElementRadioField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
-      analyze: shared.createElementPlusOptionDiagnostics(),
       setters: [shared.choiceDefaultValueSetter('select'), shared.optionsSetter, shared.disabledSetter],
       createNode: ({ id, field = 'radio' }) => ({
         id,

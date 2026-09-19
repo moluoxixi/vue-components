@@ -1,2 +1,2 @@
-export * from './canonical-page'
+export * from './canonical-surface'
 export * from './environment'

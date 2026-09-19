@@ -1,6 +1,5 @@
 export * from './src/components'
 export * from './src/composables'
-export * from './src/condition'
 export * from './src/graph'
 export * from './src/locale'
 export * from './src/options'

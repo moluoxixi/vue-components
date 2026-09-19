@@ -1,5 +1,5 @@
 export {
-  compileCanonicalPage,
   compileCanonicalProject,
+  compileCanonicalSurface,
   createCompileCoordinator,
 } from './services'

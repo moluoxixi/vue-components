@@ -7,14 +7,14 @@ import type {
   ConfigFormController,
   ConfigFormFieldInstance,
 } from '@moluoxixi/config-form-headless'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import { selectConfigFormScopePath } from '@moluoxixi/config-form-core'
 
 type ScopeController = Pick<ConfigFormController, 'listFieldInstances'>
 
 /** Resolve stable field IDs for Data/value-reference consumers without an event payload. */
 export function createRendererValueContext(
-  plan: ConfigFormPageRuntimePlan | undefined,
+  plan: ConfigFormSurfaceRuntimePlan | undefined,
   controller: ScopeController,
   values: Readonly<Record<string, unknown>>,
   scope: ConfigFormScopePath = [],
@@ -54,7 +54,7 @@ export function selectRendererFieldInstance(
   scope: ConfigFormScopePath,
   selector: ConfigFormValueReferenceScope,
   context?: {
-    schema: ConfigFormPageRuntimePlan['valueSchema']
+    schema: ConfigFormSurfaceRuntimePlan['valueSchema']
     sourceNodeId?: string
   },
 ): ConfigFormFieldInstance | undefined {

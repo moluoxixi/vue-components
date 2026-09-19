@@ -57,7 +57,7 @@ export function useDesignInteractionGuard(
       return
     }
 
-    for (const element of form.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) {
+    for (const element of Array.from(form.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))) {
       if (!designTabIndex.has(element))
         designTabIndex.set(element, element.getAttribute('tabindex'))
       element.setAttribute('tabindex', '-1')

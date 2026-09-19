@@ -6,21 +6,21 @@ import type {
 import type {
   FieldNode,
   NodeId,
-  PageGraph,
-  ProjectPageValueSchema,
-  ProjectPageValueScopeAnalysis,
-  ProjectPageValueScopeIssue,
+  SurfaceGraph,
+  SurfaceValueSchema,
+  SurfaceValueScopeAnalysis,
+  SurfaceValueScopeIssue,
 } from '../types'
 
 const MAX_SCOPE_DEPTH = 32
 type ScopeId = NodeId | undefined
 
 /** Derives runtime scope metadata from graph containment; parentId is never read from a node. */
-export function deriveProjectPageValueSchema(graph: PageGraph): ProjectPageValueSchema {
+export function deriveSurfaceValueSchema(graph: SurfaceGraph): SurfaceValueSchema {
   const scopedFields: ConfigFormScopedFieldDefinition[] = []
   for (const node of Object.values(graph.nodesById)) {
     if (node.kind === 'layout' && node.valueScope !== undefined) {
-      const analysis = analyzeProjectPageValueScopes(graph)
+      const analysis = analyzeSurfaceValueScopes(graph)
       return {
         valueScopes: structuredClone(analysis.valueScopes),
         scopedFields: structuredClone(analysis.scopedFields),
@@ -37,14 +37,14 @@ export function deriveProjectPageValueSchema(graph: PageGraph): ProjectPageValue
   return { valueScopes: [], scopedFields }
 }
 
-export function analyzeProjectPageValueScopes(graph: PageGraph): ProjectPageValueScopeAnalysis {
+export function analyzeSurfaceValueScopes(graph: SurfaceGraph): SurfaceValueScopeAnalysis {
   const hasExplicitScope = Object.values(graph.nodesById).some(node => node.kind === 'layout' && node.valueScope !== undefined)
   if (!hasExplicitScope)
-    return analyzeFlatProjectPageValueScopes(graph)
+    return analyzeFlatSurfaceValueScopes(graph)
 
   const valueScopes: ConfigFormValueScopeDefinition[] = []
   const scopedFields: ConfigFormScopedFieldDefinition[] = []
-  const issues: ProjectPageValueScopeIssue[] = []
+  const issues: SurfaceValueScopeIssue[] = []
   const ownerScopeByNodeId = new Map<NodeId, ScopeId>()
   const parentScopeByScopeId = new Map<NodeId, ScopeId>()
   const fieldsByScopeMutable = new Map<ScopeId, Map<string, FieldNode>>()
@@ -83,6 +83,8 @@ export function analyzeProjectPageValueScopes(graph: PageGraph): ProjectPageValu
       registerKey(owner, node.field, ['nodesById', node.id, 'field'])
       return
     }
+    if (node.kind === 'element')
+      return
 
     let childOwner = owner
     let childDepth = depth
@@ -114,10 +116,10 @@ export function analyzeProjectPageValueScopes(graph: PageGraph): ProjectPageValu
   return { fieldsByScope, issues, ownerScopeByNodeId, parentScopeByScopeId, scopedFields, valueScopes }
 }
 
-function analyzeFlatProjectPageValueScopes(graph: PageGraph): ProjectPageValueScopeAnalysis {
+function analyzeFlatSurfaceValueScopes(graph: SurfaceGraph): SurfaceValueScopeAnalysis {
   const fields = new Map<string, FieldNode>()
   const scopedFields: ConfigFormScopedFieldDefinition[] = []
-  const issues: ProjectPageValueScopeIssue[] = []
+  const issues: SurfaceValueScopeIssue[] = []
   const ownerScopeByNodeId = new Map<NodeId, ScopeId>()
   Object.values(graph.nodesById).forEach((node) => {
     ownerScopeByNodeId.set(node.id, undefined)
@@ -143,8 +145,8 @@ function analyzeFlatProjectPageValueScopes(graph: PageGraph): ProjectPageValueSc
   }
 }
 
-export function resolveProjectPageNamedField(
-  analysis: ProjectPageValueScopeAnalysis,
+export function resolveSurfaceNamedField(
+  analysis: SurfaceValueScopeAnalysis,
   sourceNodeId: NodeId | undefined,
   field: string,
 ): FieldNode | undefined {
@@ -161,8 +163,8 @@ export function resolveProjectPageNamedField(
   }
 }
 
-export function isProjectPageFieldReferenceInScope(
-  analysis: ProjectPageValueScopeAnalysis,
+export function isSurfaceFieldReferenceInScope(
+  analysis: SurfaceValueScopeAnalysis,
   sourceNodeId: NodeId,
   targetNodeId: NodeId,
   selector: ConfigFormValueReferenceScope,
@@ -186,7 +188,7 @@ export function isProjectPageFieldReferenceInScope(
   return target.scopeId === expected
 }
 
-function effectiveSourceScope(analysis: ProjectPageValueScopeAnalysis, sourceNodeId: NodeId | undefined): ScopeId {
+function effectiveSourceScope(analysis: SurfaceValueScopeAnalysis, sourceNodeId: NodeId | undefined): ScopeId {
   if (sourceNodeId === undefined)
     return undefined
   return analysis.valueScopes.some(scope => scope.nodeId === sourceNodeId)

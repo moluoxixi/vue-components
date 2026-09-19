@@ -9,10 +9,12 @@ ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工
 
 ## 当前实现
 
-仓库当前仍是 Page-only 实现。`ProjectDocument`、Compiler、Canonical IR、Vue backend、
-Workbench persistence/Preview/Source 都以 Page 为主身份；Designer 的默认 Inspector
-只有 `properties` 与 `validation`。Surface、Dataset、Prototype Interaction、共享
-Prototype Runtime 和独立 Source 包尚未实现。
+Surface Foundation 已落地。`ProjectDocument v6`、Compiler/Canonical IR、Vue backend、
+Workbench persistence/Preview 和现有生成器都以 `SurfaceAsset` 为身份；Page/Dialog/Drawer
+共享 `SurfaceGraph`，每次 Experience 打开由 Prototype Runtime 创建隔离的
+`SurfaceInstance`。Designer 仍聚焦一个 Surface，默认 Inspector 只有 `properties` 与
+`validation`；完整 Studio 资产 UI、Dataset 编辑 UI、Interactions Inspector 和独立
+Source 包仍是后续任务。
 
 当前可用分层：
 
@@ -22,30 +24,36 @@ Prototype Runtime 和独立 Source 包尚未实现。
 | 表单内核    | `@moluoxixi/config-form-headless`      | 字段树、模型读写、状态、校验、提交与 controller           |
 | Vue Runtime | `@moluoxixi/config-form`               | 组件解析、值绑定、布局、readonly 与 Data 生命周期         |
 | UI 适配     | Element Plus / Ant Design Vue packages | 真实组件、值绑定预设与样式                                |
-| Designer    | Designer 与 provider adapters          | 单 Page 的结构、布局、静态属性、options 与基础校验        |
-| Workbench   | `@config-form/workbench`               | Project 编辑、iframe Preview、当前内置 Source/Config 导出 |
+| Designer    | Designer 与 provider adapters          | 单 Surface 的结构、布局、静态属性、options 与基础校验    |
+| Model       | `@moluoxixi/config-form-model`         | Surface/Dataset/Resource、事务、Repository 与 transfer   |
+| Prototype   | `@moluoxixi/config-form-prototype-runtime` | DOM-free session、SurfaceInstance 与 Vue overlay host   |
+| Workbench   | `@config-form/workbench`               | Project 编辑、iframe Preview、Surface/Config 导出         |
 
 当前代码依赖方向是：
 
 ```text
 Core <- Headless <- Runtime <- UI adapters
-
-Model -> Compiler -> Canonical IR -> Vue Backend -> Runtime
-  ^                                                  ^
-  |                                                  |
-Designer                                      host Vue/TypeScript
-  ^
-  |
-Workbench composition root
+  ^                    ^
+  |                    |
+Model -> Compiler -> Vue Backend
+  ^          |
+  |          v
+Designer  Prototype Runtime
+  ^          ^
+  |          |
+  +-- Workbench composition root
 ```
 
 Core、Headless 和 Runtime 不依赖 Designer 或 Workbench；Designer 不拥有业务副作用。
+Prototype Runtime 依赖 Compiler/Core 的纯合同，但生产 Runtime 不反向依赖它；Workbench
+作为私有组合根连接编译 artifact、Prototype session 与 provider adapter。
 ProjectDocument、Canonical IR、Preview transport 和 Source generator 只处理 JSON-safe
 数据，不承载函数。
 
 ## 目标架构
 
-目标合同在当前链路之上增加 Studio、Dataset、Prototype Runtime 与独立 Source 所有权：
+当前合同在生产链路之上增加 Surface、Dataset 基础合同和 Prototype Runtime；Studio 资产、
+Dataset 作者 UI、Interactions 作者 UI 与独立 Source 仍按后续阶段交付：
 
 ```text
 Core <- Headless <- Runtime <- UI adapters
@@ -69,9 +77,9 @@ Studio ----------------------------------+
 | Prototype Runtime | 页面历史、SurfaceInstance 栈、参数/结果事务和主要 UI 动作                             |
 | Source            | 无 DOM Generator、provider component resolver、异步 Resource reader 和只读源码 Viewer |
 
-`@moluoxixi/config-form-prototype-runtime` 与
-`@moluoxixi/config-form-source` 目前只是规划包，没有可导入入口。它们只有在对应阶段
-交付真实实现、测试、README、manifest 和 Changeset 后才进入当前架构与发布矩阵。
+`@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和
+`/vue/style` 入口，并进入当前发布矩阵。`@moluoxixi/config-form-source` 仍是后续独立
+任务；本阶段不创建 Source 包或兼容 wrapper。
 
 目标依赖规则：
 
@@ -126,8 +134,9 @@ wrapper、双模型或联合 peer range。
 - [Designer](./designer/README.md)
 - [Workbench](./workbench/README.md)
 
-Model、Compiler 和 Vue backend 的 README 仍描述当前 Page-only API；它们将在 Surface
-Foundation 原子落地时同步更新，不提前声称目标类型已经存在。
+Model、Compiler、Vue backend 和 Prototype Runtime 的 README 已同步当前 Surface
+Foundation 入口；Studio 资产、Dataset/Interaction 作者 UI 和 Source Viewer 仍只在
+路线图中描述，不提前声称这些应用能力已经存在。
 
 ## 验证
 

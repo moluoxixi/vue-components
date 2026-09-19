@@ -16,7 +16,6 @@ export default defineDesignerMaterialModule({
       category: 'Choices',
       icon: shared.List,
       runtime: { component: shared.ElementSelectField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
-      analyze: shared.createElementPlusOptionDiagnostics(),
       setters: [shared.choiceDefaultValueSetter('select'), shared.optionsSetter, shared.placeholderSetter, shared.clearableSetter, shared.propSetter('filterable', 'Filterable', 'boolean')],
       createNode: ({ id, field = 'select' }) => ({
         id,

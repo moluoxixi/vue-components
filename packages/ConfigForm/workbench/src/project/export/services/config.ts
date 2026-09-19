@@ -1,19 +1,19 @@
-import type { CanonicalPageIR, ProjectCompilation, SemanticCompilerEnvironment } from '@moluoxixi/config-form-compiler'
+import type { CanonicalSurfaceIR, ProjectCompilation, SemanticCompilerEnvironment } from '@moluoxixi/config-form-compiler'
 import type { ProjectPath, WorkspaceFile } from '../../types'
 import type { CanonicalConfigExport, CanonicalSourceBindingResolver } from '../types'
-import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
+import { compileCanonicalSurface } from '@moluoxixi/config-form-compiler'
 import { normalizeProjectPath, safeProjectSlug } from '../../utils'
 import { formatStaticValue, quoteKey } from '../utils'
-import { configPageSource } from './config-page'
+import { configSurfaceSource } from './config-page'
 
 function textFile(content: string): WorkspaceFile {
   return { content, kind: 'text', language: 'typescript' }
 }
 
-function uniquePageDirectories(pages: readonly Pick<CanonicalPageIR, 'id'>[]): ReadonlyMap<string, string> {
+function uniqueSurfaceDirectories(surfaces: readonly Pick<CanonicalSurfaceIR, 'id'>[]): ReadonlyMap<string, string> {
   const used = new Set<string>()
-  return new Map(pages.map((page) => {
-    const base = safeProjectSlug(page.id)
+  return new Map(surfaces.map((surface) => {
+    const base = safeProjectSlug(surface.id)
     let directory = base
     let suffix = 2
     while (used.has(directory)) {
@@ -21,7 +21,7 @@ function uniquePageDirectories(pages: readonly Pick<CanonicalPageIR, 'id'>[]): R
       suffix += 1
     }
     used.add(directory)
-    return [page.id, directory]
+    return [surface.id, directory]
   }))
 }
 
@@ -38,39 +38,40 @@ export function createCanonicalProjectConfigExport(
   }
 
   const { ir } = compilation
-  const pages = ir.pageOrder.map((pageId) => {
-    if (!ir.pagesById[pageId])
-      throw new Error(`Canonical project references unknown page "${pageId}".`)
-    // The public compiler owns page identity; never reconstruct its hashes locally.
-    const result = compileCanonicalPage({
+  const surfaceCompilations = ir.surfaceOrder.map((surfaceId) => {
+    if (!ir.surfacesById[surfaceId])
+      throw new Error(`Canonical project references unknown Surface "${surfaceId}".`)
+    // The public compiler owns Surface identity; never reconstruct its hashes locally.
+    const result = compileCanonicalSurface({
       snapshot: compilation.snapshot,
       registry: compilation.registry,
       environment: structuredClone(ir.environment) as SemanticCompilerEnvironment,
-      pageId,
+      surfaceId,
     })
     if (!result.success)
-      throw new Error(`Config page compilation failed: ${JSON.stringify(result.diagnostics)}`)
+      throw new Error(`Config Surface compilation failed: ${JSON.stringify(result.diagnostics)}`)
     return result.compilation
   })
-  const directories = uniquePageDirectories(pages.map(item => item.page))
+  const directories = uniqueSurfaceDirectories(surfaceCompilations.map(item => item.surface))
   const files: Record<ProjectPath, WorkspaceFile> = {}
 
-  pages.forEach((pageCompilation) => {
-    const path = normalizeProjectPath(`pages/${directories.get(pageCompilation.key.pageId)}/form.config.ts`)
-    files[path] = textFile(configPageSource(pageCompilation, compilation, resolver))
+  surfaceCompilations.forEach((surfaceCompilation) => {
+    const path = normalizeProjectPath(`surfaces/${directories.get(surfaceCompilation.key.surfaceId)}/form.config.ts`)
+    files[path] = textFile(configSurfaceSource(surfaceCompilation, compilation, resolver))
   })
 
   const entry = normalizeProjectPath('project.config.ts')
-  const projectPages = pages.map(({ page }) => ({
-    id: page.id,
-    name: page.name,
-    route: page.route,
-    config: `./pages/${directories.get(page.id)}/form.config`,
+  const projectSurfaces = surfaceCompilations.map(({ surface }) => ({
+    id: surface.id,
+    name: surface.name,
+    kind: surface.kind,
+    ...(surface.kind === 'page' ? { route: surface.route } : { presentation: surface.presentation }),
+    config: `./surfaces/${directories.get(surface.id)}/form.config`,
   }))
-  const imports = projectPages.map((page, index) =>
-    `import * as page${index} from ${JSON.stringify(page.config)}`).join('\n')
-  const mappings = projectPages.map((page, index) =>
-    `  ${quoteKey(page.id, 'pageConfigs')}: page${index}`).join(',\n')
+  const imports = projectSurfaces.map((surface, index) =>
+    `import * as surface${index} from ${JSON.stringify(surface.config)}`).join('\n')
+  const mappings = projectSurfaces.map((surface, index) =>
+    `  ${quoteKey(surface.id, 'surfaceConfigs')}: surface${index}`).join(',\n')
   files[entry] = textFile(`${imports}
 
 export const project = ${formatStaticValue({
@@ -80,9 +81,9 @@ export const project = ${formatStaticValue({
   origin: compilation.origin,
   id: ir.identity.projectId,
   name: ir.name,
-  homePageId: ir.homePageId,
-  pageOrder: ir.pageOrder,
-  pages: projectPages,
+  homeSurfaceId: ir.homeSurfaceId,
+  surfaceOrder: ir.surfaceOrder,
+  surfaces: projectSurfaces,
   settings: ir.settings,
   resources: ir.resources,
   environment: ir.environment,
@@ -90,7 +91,7 @@ export const project = ${formatStaticValue({
   registryLock: compilation.snapshot.document.registryLock,
 }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')}
 
-export const pageConfigs = {
+export const surfaceConfigs = {
 ${mappings}
 }
 `)

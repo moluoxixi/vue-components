@@ -53,6 +53,16 @@ function projectMaterialCapabilities(material: DesignerMaterialDefinition): Desi
       kind: material.kind,
       props: [...properties.values()],
       bindings: material.kind === 'field' ? [{ name: 'value', valueProp, trigger }] : [],
+      semanticTriggers: [...(material.semanticTriggers ?? (material.kind === 'field' ? ['activate'] : []))],
+      stateProjectionProperties: (material.stateProjectionProperties ?? []).map(path => [...path]),
+      datasetBindings: (material.datasetBindings ?? []).map(binding => ({
+        key: binding.key,
+        projectionKinds: [...binding.projectionKinds],
+      })),
+      resourceBindings: (material.resourceBindings ?? []).map(binding => ({
+        key: binding.key,
+        ...(binding.mediaTypes ? { mediaTypes: [...binding.mediaTypes] } : {}),
+      })),
       slots: (material.kind === 'layout' ? material.slots : []).map(slot => ({
         name: slot.name,
         ...(slot.accepts ? { accepts: [...slot.accepts] } : {}),

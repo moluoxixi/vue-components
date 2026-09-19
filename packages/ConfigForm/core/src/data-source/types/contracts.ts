@@ -27,7 +27,7 @@ export interface ConfigFormDataSourceDefinition {
   cacheTtlMs?: number
 }
 
-export interface ConfigFormPageRuntimeConfiguration {
+export interface ConfigFormSurfaceRuntimeConfiguration {
   variables: ConfigFormVariableDefinition[]
   dataSources: ConfigFormDataSourceDefinition[]
 }

@@ -1,22 +1,22 @@
 # @moluoxixi/config-form-designer
 
-ConfigForm 的物料无关设计器核心。当前版本提供物料注册、PageGraph 编辑、画布、物料面板和属性面板，用于编辑结构、布局、静态属性、默认值、静态 options 与基础校验，不内置 Element Plus 或 Ant Design Vue 物料。目标 Studio 中，Designer 仍只负责聚焦一个 Surface 的作者体验；项目资产、Experience 会话、持久化和 Source 命令由 Studio 组合根负责。完整定位见 [ConfigForm 产品边界](../PRODUCT.md)，当前与目标状态见 [路线图](../ROADMAP.md)。
+ConfigForm 的物料无关设计器核心。当前版本提供物料注册、SurfaceGraph 编辑、画布、物料面板和属性面板，用于编辑结构、布局、静态属性、默认值、静态 options 与基础校验，不内置 Element Plus 或 Ant Design Vue 物料。Designer 只负责聚焦一个 Surface 的作者体验；项目资产、Experience 会话、持久化和 Source 命令由 Studio 组合根负责。完整定位见 [ConfigForm 产品边界](../PRODUCT.md)，当前与目标状态见 [路线图](../ROADMAP.md)。
 
 设计器的**契约层保持库无关**：物料注册、`runtime`/`dragVisual` 插槽、属性 setter 定义、页面图与命令都由核心定义，适配包（`designer-element-plus` / `designer-antd-vue`）负责注入具体组件库的物料与控件。设计器**自身的界面控件统一构建在 Element Plus 之上**（属性面板的输入框、数字、开关、下拉、日期时间等），Element Plus 因此是 peer 依赖：宿主需要注册 `ElementPlus` 插件并引入其样式（`element-plus/dist/index.css`）。若要换掉设计器外壳的控件库，替换点集中在属性面板 setter 与工具条控件；也可以给 EP 换一套 CSS 命名空间（`ElConfigProvider :namespace` + 以同名前缀编译 EP SCSS）来避免与宿主样式冲突——这会同时改变 DOM 类名，需要一起更新设计器样式与依赖 `el-*` 的测试。
 
 ## 当前实现
 
-默认 Inspector 精确只提供 `properties` 与 `validation`。Designer 不提供事件编辑、事件转发、事件编排、底层 bindings、conditions、reactions、动态 option source 或 Automation 作者入口。程序化配置中已有的高级 validation、conditions、reactions、Data Source、option source、value scope 和 bindings 由 Runtime 消费，普通设计编辑必须无损保留，但不会为它们提供默认作者 UI。
+默认 Inspector 精确只提供 `properties` 与 `validation`。Designer 不提供事件编辑、事件转发、事件编排、Flow、脚本、底层 bindings、conditions、reactions、动态 option source 或 Automation 作者入口。复杂逻辑由工程师在导出源码/config 中维护；Designer 持久化的 SurfaceGraph 只接受当前合同定义的节点、静态属性、Dataset/Resource 引用和安全本地交互引用。
 
 复杂组件逻辑由工程师在宿主 Vue/TypeScript config 中通过 `props.onX` 函数维护。函数不进入 Designer JSON、ProjectDocument、IndexedDB、Preview transport 或生成源码；Designer 也不通过事件总线或 iframe RPC 转发这些函数。
 
-当前 API 仍以单个 PageGraph 为中心，画布通过 `runtime` / `dragVisual` 插槽接入宿主；不存在可导入的 Surface、Dataset 或 Prototype Interaction 作者 API。
+当前 API 以单个 `SurfaceGraph` 为中心，画布通过 `runtime` / `dragVisual` 插槽接入宿主；项目级 Surface、Dataset、Resource 和 Prototype Interaction 编排由 Studio 组合根负责，Designer 不提供事件函数或接口调用能力。
 
 ## 目标责任
 
-目标迁移完成后，Designer 将聚焦一个 Page/Dialog/Drawer `SurfaceAsset`，提供结构、响应式 Grid/Flex、受控视觉属性、校验和封闭 Prototype Interaction 的作者界面。交互只包含安全表达式状态投影、`set/copy/clear` 值动作和每个语义触发器最多一个主要 UI 动作；不接受任意 DOM 事件名、函数、动作链或 Flow。
+Designer 聚焦一个 Page/Dialog/Drawer `SurfaceAsset`，提供结构、响应式 Grid/Flex、受控视觉属性、校验和静态 Demo 所需的安全本地交互引用。交互只包含安全表达式状态投影、`set/copy/clear` 值动作和每个语义触发器最多一个主要 UI 动作；不接受任意 DOM 事件名、函数、动作链或 Flow。Registry projection 输出 v3 的 kind、semantic triggers、state projection、Dataset/Resource capability 字段。
 
-Designer 不拥有项目资产树、页面历史、浮层实例栈、HTTP、Source generator 或复制/下载命令。`SurfaceInstance` 和 Experience 行为由规划中的 Prototype Runtime 负责。上述目标尚未实现，不能按本 README 的目标描述导入对应 API。
+Designer 不拥有项目资产树、页面历史、浮层实例栈、HTTP、Source generator 或复制/下载命令。`SurfaceInstance` 和 Experience 行为由独立的 `@moluoxixi/config-form-prototype-runtime` 负责；Designer 只消费其上游 Surface 合同，不反向依赖该运行时。
 
 ## 安装
 

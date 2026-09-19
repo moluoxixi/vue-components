@@ -1,12 +1,12 @@
 import type {
-  PageGraph,
   ProjectDocument,
+  ProjectEmbeddedResourceRead,
   ProjectRepository,
   ProjectSummary,
+  SurfaceGraph,
 } from '@moluoxixi/config-form-model'
 import type { ComputedRef } from 'vue'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
-import type { DataReferenceField } from '../../features/data'
 import type {
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
@@ -37,11 +37,9 @@ import {
 } from '../../session'
 import { useWorkbenchControllerLifecycle } from '../composables/use-workbench-controller-lifecycle'
 import { createWorkbenchCreationCommands } from './controller-creation'
-import { createWorkbenchPageCommands } from './controller-page-commands'
+import { createWorkbenchSurfaceCommands } from './controller-page-commands'
 import { createWorkbenchPersistenceCommands } from './controller-persistence'
 import { createWorkbenchProjectBinding } from './controller-project-binding'
-import { createWorkbenchDataSourceRequest } from './data-source-request'
-import { createWorkbenchDataTestContext } from './data-test-context'
 
 export function createWorkbenchController(
   props: Readonly<WorkbenchControllerProps>,
@@ -54,22 +52,15 @@ export function createWorkbenchController(
   const projectSessionSnapshot = shallowRef<ProjectEditorSessionSnapshot>()
   const persistenceSnapshot = shallowRef<ProjectPersistenceSnapshot>()
   const recoveryDrafts = shallowRef<WorkbenchRecoveryDraftSummary[]>([])
-  const currentPageId = ref('')
+  const currentSurfaceId = ref('')
   const configError = ref('')
   const busy = ref(false)
   const initialized = ref(false)
   let disposed = false
-  const onRequest: typeof globalThis.fetch = (input, init) => window.fetch(input, init)
-  const requestDataSource = createWorkbenchDataSourceRequest(
-    onRequest,
-    () => window.location.href,
-  )
-  const dataSourceHost = { request: requestDataSource }
   const previewSession = createWorkbenchPreviewSession()
-  const previewProjection = previewSession.projection
   const designSession = createWorkbenchDesignSession({
     getAdapter: () => currentAdapter.value,
-    getPageId: () => currentPageId.value,
+    getSurfaceId: () => currentSurfaceId.value,
     getProjectSession: () => projectSession.value,
     getSnapshot: () => projectSessionSnapshot.value,
     setDiagnostic: message => configError.value = message,
@@ -88,8 +79,8 @@ export function createWorkbenchController(
   // The session document is an immutable (deep-frozen) Immer snapshot and
   // every consumer is read-only, so the page is exposed without the previous
   // defensive structuredClone; the cast only relaxes the DeepReadonly view.
-  const currentPage: ComputedRef<ProjectDocument['pagesById'][string] | undefined> = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value] as ProjectDocument['pagesById'][string] | undefined)
-  const currentGraph = computed<PageGraph | undefined>(() => currentPage.value?.graph)
+  const currentSurface: ComputedRef<ProjectDocument['surfacesById'][string] | undefined> = computed(() => projectSessionSnapshot.value?.document.surfacesById[currentSurfaceId.value] as ProjectDocument['surfacesById'][string] | undefined)
+  const currentGraph = computed<SurfaceGraph | undefined>(() => currentSurface.value?.graph)
   const componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']> = computed(() => currentAdapter.value!.componentRegistry)
   const registry: ComputedRef<WorkbenchAdapter['designerRegistry']> = computed(() => currentAdapter.value!.designerRegistry)
   const modelRevision = computed(() => projectSessionSnapshot.value?.editVersion ?? 0)
@@ -157,17 +148,6 @@ export function createWorkbenchController(
     }
     return [...new Set(fields)]
   })
-  const dataReferenceFields = computed<DataReferenceField[]>(() => {
-    const fields: DataReferenceField[] = []
-    if (currentGraph.value) {
-      walkDesignGraph(currentGraph.value, ({ node }) => {
-        if (node.kind === 'field')
-          fields.push({ nodeId: node.id, field: node.field, label: node.label?.trim() || node.field })
-      })
-    }
-    return fields
-  })
-  const dataTestContext = computed(() => createWorkbenchDataTestContext(currentGraph.value, previewSession.values.value))
 
   function getCurrentAdapterId(): WorkbenchAdapterId {
     const adapter = currentAdapter.value?.registrySnapshot.adapter
@@ -175,22 +155,29 @@ export function createWorkbenchController(
       return adapter
     throw new TypeError('Workbench adapter is unavailable.')
   }
+
+  async function readEmbeddedResource(
+    input: ProjectEmbeddedResourceRead,
+  ): Promise<Uint8Array | undefined> {
+    return repository.value?.readEmbedded(input)
+  }
   const previewState = computed(() => {
-    const projection = previewProjection.value
-    if (configError.value || projection?.status === 'stale') {
+    if (configError.value || previewSession.error.value) {
       return {
-        label: workbenchLocale.value.t('preview.staleAt', 'Stale at r{revision}', {
-          revision: projection?.display?.snapshot.editVersion ?? modelRevision.value,
-        }),
+        label: configError.value
+          || previewSession.error.value?.message
+          || workbenchLocale.value.t('preview.blocked', 'Blocked'),
         tone: 'error' as const,
       }
     }
-    if (!projection || projection.status === 'blocked')
+    if (!previewSession.compilation.value || !previewSession.session.value)
       return { label: workbenchLocale.value.t('preview.blocked', 'Blocked'), tone: 'error' as const }
     return {
-      label: dirty.value
-        ? workbenchLocale.value.t('preview.liveDraft', 'Live draft')
-        : workbenchLocale.value.t('preview.live', 'Live'),
+      label: previewSession.ready.value
+        ? dirty.value
+          ? workbenchLocale.value.t('preview.liveDraft', 'Live draft')
+          : workbenchLocale.value.t('preview.live', 'Live')
+        : workbenchLocale.value.t('preview.starting', 'Starting preview'),
       tone: 'live' as const,
     }
   })
@@ -242,7 +229,7 @@ export function createWorkbenchController(
   const projectBinding = createWorkbenchProjectBinding({
     configError,
     currentAdapter,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     designSession,
     exportService,
@@ -259,15 +246,15 @@ export function createWorkbenchController(
     ui,
     workbenchLocale,
   })
-  const pageCommands = createWorkbenchPageCommands({
+  const pageCommands = createWorkbenchSurfaceCommands({
     busy,
     currentProject,
     executeProjectActions: projectBinding.executeProjectActions,
-    selectCurrentPage: projectBinding.selectCurrentPage,
+    selectCurrentSurface: projectBinding.selectCurrentSurface,
     ui,
   })
   const creationCommands = createWorkbenchCreationCommands({
-    addPreparedPage: pageCommands.addPreparedPage,
+    addPreparedSurface: pageCommands.addPreparedSurface,
     busy,
     currentProject,
     hasUnsavedChanges,
@@ -282,7 +269,7 @@ export function createWorkbenchController(
   const persistenceCommands = createWorkbenchPersistenceCommands({
     busy,
     configError,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     disposeProjectPersistence: projectBinding.disposeProjectPersistence,
     getPersistenceSession: projectBinding.getPersistenceSession,
@@ -324,30 +311,26 @@ export function createWorkbenchController(
     configError,
     createFromJsonImport: creationCommands.createFromJsonImport,
     createNamedCheckpoint: persistenceCommands.createNamedCheckpoint,
-    createPageFromTemplate: creationCommands.createPageFromTemplate,
+    createSurfaceFromTemplate: creationCommands.createSurfaceFromTemplate,
     createProjectFromTemplate: creationCommands.createProjectFromTemplate,
     currentProject,
     currentGraph,
-    currentPage,
-    currentPageId,
-    dataTestContext,
-    dataSourceHost,
+    currentSurface,
+    currentSurfaceId,
     modelRevision,
-    requestDataSource,
     discardRecoveryDraft: persistenceCommands.discardRecoveryDraft,
     designerFieldNames,
-    dataReferenceFields,
     designerLayers,
     dirty,
-    executeProjectCommand: projectBinding.executeProjectCommand,
     getCurrentAdapterId,
-    handlePageAction: pageCommands.handlePageAction,
+    handleSurfaceAction: pageCommands.handleSurfaceAction,
     inspectProjectVersion: persistenceCommands.inspectProjectVersion,
     initialized,
     listProjectVersions: persistenceCommands.listProjectVersions,
     listRecoveryDrafts: persistenceCommands.listRecoveryDrafts,
     localeOptions,
     previewState,
+    readEmbeddedResource,
     prepareJsonImport: creationCommands.prepareJsonImport,
     registry,
     repositoryRevision,
@@ -358,7 +341,7 @@ export function createWorkbenchController(
     reloadCurrentProject: persistenceCommands.reloadCurrentProject,
     saveProject: persistenceCommands.saveProject,
     saveCurrentDraftAsProject: persistenceCommands.saveCurrentDraftAsProject,
-    selectPageFromDesigner: pageCommands.selectPageFromDesigner,
+    selectSurfaceFromDesigner: pageCommands.selectSurfaceFromDesigner,
     setProjectVersionLabel: persistenceCommands.setProjectVersionLabel,
     statusLabel,
     workbenchLocale,

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import type { PageGraph } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { DesignerRuntimePointerHandlers } from '../src/components/DesignerCanvas/types'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -14,15 +14,15 @@ import {
 import { createDesignerDragController } from '../src/components/DesignerCanvas/services'
 import { createDesignerCanvasSelection } from '../src/components/DesignerCanvas/services/canvas-selection'
 
-const graph: PageGraph = {
-  version: 3,
+const graph: SurfaceGraph = {
+  version: 1,
   form: { columns: 24, fieldSpan: 24 },
   props: {},
   root: [{ nodeId: 'field', placement: { span: 12 } }],
   nodesById: {
     field: {
       id: 'field',
-      bindings: {},
+      datasetBindings: {},
       component: 'test.input',
       field: 'field',
       kind: 'field',

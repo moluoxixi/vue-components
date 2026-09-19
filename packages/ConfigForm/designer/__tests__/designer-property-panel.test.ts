@@ -1,4 +1,4 @@
-import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { ComponentContract, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { mount } from '@vue/test-utils'
@@ -57,27 +57,27 @@ const DefaultValueControl = defineComponent({
 function field(
   id: string,
   component: string,
-  values: Partial<Extract<PageNode, { kind: 'field' }>> = {},
-): Extract<PageNode, { kind: 'field' }> {
+  values: Partial<Extract<SurfaceNode, { kind: 'field' }>> = {},
+): Extract<SurfaceNode, { kind: 'field' }> {
   return {
     id,
     component,
     kind: 'field',
     field: id,
     props: {},
-    bindings: {},
+    datasetBindings: {},
     ...values,
   }
 }
 
-function graph(nodes: PageNode[], spans: Record<string, number> = {}, form: PageGraph['form'] = {}): PageGraph {
+function graph(nodes: SurfaceNode[], spans: Record<string, number> = {}, form: SurfaceGraph['form'] = {}): SurfaceGraph {
   return {
-    version: 3,
+    version: 1,
     props: {},
     form,
     root: nodes.map(node => ({
       nodeId: node.id,
-      placement: (spans[node.id] === undefined ? {} : { span: spans[node.id]! }) as PageGraph['root'][number]['placement'],
+      placement: (spans[node.id] === undefined ? {} : { span: spans[node.id]! }) as SurfaceGraph['root'][number]['placement'],
     })),
     nodesById: Object.fromEntries(nodes.map(node => [node.id, node])),
   }
@@ -90,6 +90,10 @@ function contract(key: string): ComponentContract {
     kind: 'field',
     props: [],
     bindings: [],
+    semanticTriggers: ['activate'],
+    stateProjectionProperties: [],
+    datasetBindings: [],
+    resourceBindings: [],
     slots: [],
     allowedParents: [],
     defaults: {},
@@ -303,11 +307,7 @@ describe('designer property panel lite Inspector', () => {
   })
 
   it('has no event, Flow, binding, condition, or reaction authoring surface', () => {
-    const node = field('name', 'test.input', {
-      bindings: { value: { source: 'profile.name' } },
-      conditions: { disabled: { kind: 'literal', value: true } },
-      reactions: [{ id: 'sync', enabled: true, when: { kind: 'literal', value: true }, then: [] }],
-    })
+    const node = field('name', 'test.input')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
         renderer: ConfigFormRenderer,

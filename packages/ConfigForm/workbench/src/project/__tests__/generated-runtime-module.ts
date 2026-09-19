@@ -1,11 +1,14 @@
 import { posix } from 'node:path'
 import { runInThisContext } from 'node:vm'
 import * as Lucide from '@lucide/vue'
+import * as PrototypeSession from '@moluoxixi/config-form-prototype-runtime/session'
+import * as PrototypeVue from '@moluoxixi/config-form-prototype-runtime/vue'
 import * as ConfigFormVueBackend from '@moluoxixi/config-form-vue-backend'
 import * as Rules from '@moluoxixi/zod3-to-rule'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { transformWithEsbuild } from 'vite'
 import * as Vue from 'vue'
+import * as VueRouter from 'vue-router'
 import * as Zod from 'zod'
 
 /** Compile and execute the actual generated TS/SFC import closure, with only external dependencies supplied by the host. */
@@ -32,8 +35,11 @@ export async function createGeneratedModuleLoader(inputs: Readonly<Record<string
     })))
   const externals: Record<string, unknown> = {
     'vue': Vue,
+    'vue-router': VueRouter,
     'zod': Zod,
     '@lucide/vue': Lucide,
+    '@moluoxixi/config-form-prototype-runtime/session': PrototypeSession,
+    '@moluoxixi/config-form-prototype-runtime/vue': PrototypeVue,
     '@moluoxixi/config-form-vue-backend': ConfigFormVueBackend,
     '@moluoxixi/zod3-to-rule': Rules,
   }

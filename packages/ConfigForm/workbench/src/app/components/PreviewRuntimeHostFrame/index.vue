@@ -1,181 +1,162 @@
 <script setup lang="ts">
 import type {
-  PreviewRuntimeHostFrameEmits,
-  PreviewRuntimeHostFrameExpose,
-  PreviewRuntimeHostFrameProps,
+  ExperienceRuntimeHostFrameEmits,
+  ExperienceRuntimeHostFrameExpose,
+  ExperienceRuntimeHostFrameProps,
+  RuntimeHostToParentMessageV7,
 } from '../../../runtime-host'
-import type { PreviewRuntimeIdentity } from '../../../session'
+import {
+  createPrototypeProjectContext,
+  readPrototypeSession,
+} from '@moluoxixi/config-form-prototype-runtime/session'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../../../utils'
-import {
-  acceptsRuntimeHostMessageEvent,
-  isRuntimeHostToParentMessage,
-} from '../../../runtime-host'
-import {
-  RUNTIME_HOST_CHANNEL,
-  RUNTIME_HOST_PROTOCOL_VERSION,
-} from '../../../runtime-host'
-import {
-  createRuntimeHostDataExecutor,
-} from '../../../runtime-host'
+import { acceptsRuntimeHostMessageEvent, isRuntimeHostToParentMessage } from '../../../runtime-host'
+import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../../../runtime-host'
 
-const props = defineProps<PreviewRuntimeHostFrameProps>()
-const emit = defineEmits<PreviewRuntimeHostFrameEmits>()
+const props = defineProps<ExperienceRuntimeHostFrameProps>()
+const emit = defineEmits<ExperienceRuntimeHostFrameEmits>()
 const frame = useTemplateRef<HTMLIFrameElement>('frame')
 const frameSource = `${import.meta.env.BASE_URL}runtime-host.html`
 const targetOrigin = window.location.origin
 const hostId = typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
-  : `runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  : `experience-runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 let loaded = false
+let disposed = false
 let parentSequence = 0
 let lastChildSequence = -1
-let submitSequence = 0
-let pendingSubmit: { identity: PreviewRuntimeIdentity, requestId: string, values?: Record<string, unknown> } | undefined
+let lastInstanceRevision = new Map<string, number>()
+let liveSession = cloneWorkbenchJson(props.session)
+let latestChildSessionFingerprint: string | undefined
 
-function currentIdentity(): PreviewRuntimeIdentity {
-  return {
-    hostId,
-    pageId: props.compilation.snapshotIdentity.pageId,
-    projectId: props.compilation.snapshotIdentity.projectId,
-    revision: props.revision,
-  }
-}
-
-function isCurrentIdentity(identity: PreviewRuntimeIdentity): boolean {
-  const current = currentIdentity()
-  return identity.hostId === current.hostId
-    && identity.projectId === current.projectId
-    && identity.pageId === current.pageId
-    && identity.revision === current.revision
+function sessionFingerprint(session: ExperienceRuntimeHostFrameProps['session']): string {
+  return JSON.stringify(session)
 }
 
 function postMessage(message: Record<string, unknown>): void {
-  if (!loaded)
+  if (!loaded || disposed)
     return
   frame.value?.contentWindow?.postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
     hostId,
-    projectId: props.compilation.snapshotIdentity.projectId,
-    pageId: props.compilation.snapshotIdentity.pageId,
-    sequence: ++parentSequence,
+    projectId: props.compilation.key.projectId,
     revision: props.revision,
+    sequence: ++parentSequence,
     ...message,
   }, targetOrigin)
 }
 
-const dataExecutor = createRuntimeHostDataExecutor({
-  getHost: () => props.dataSourceHost,
-  isCurrent: identity => loaded && isCurrentIdentity(identity),
-  postResult: message => postMessage(message),
-})
-
 function syncRuntime(): void {
-  pendingSubmit = undefined
+  latestChildSessionFingerprint = undefined
+  lastInstanceRevision = new Map()
+  liveSession = cloneWorkbenchJson(props.session)
   postMessage({
-    type: 'sync',
-    adapter: props.adapter,
-    compilation: cloneWorkbenchJson(props.compilation),
-    mode: 'preview',
-    dataSourceRequest: typeof props.dataSourceHost?.request === 'function',
-    locale: props.locale,
-    runtimeState: cloneWorkbenchJson(props.runtimeState),
-    ...(props.namespace ? { namespace: props.namespace } : {}),
-    reactionProjection: cloneWorkbenchJson(props.reactionProjection),
-    runtimeSessionKey: props.runtimeSessionKey,
+    type: 'experience.sync',
+    sessionId: props.sessionId,
+    payload: {
+      adapter: props.adapter,
+      compilation: cloneWorkbenchJson(props.compilation),
+      locale: props.locale,
+      ...(props.namespace ? { namespace: props.namespace } : {}),
+      session: cloneWorkbenchJson(props.session),
+    },
   })
 }
 
-function submit(): void {
-  if (!loaded || !frame.value?.contentWindow || pendingSubmit)
-    return
-  const requestId = `${hostId}:submit:${++submitSequence}`
-  pendingSubmit = { identity: currentIdentity(), requestId }
-  emit('submit', identityEvent({ phase: 'request' as const, requestId }))
-  postMessage({ type: 'submit', requestId })
+function dispatch(command: unknown): void {
+  postMessage({ type: 'experience.command', sessionId: props.sessionId, command: cloneWorkbenchJson(command) })
 }
 
-function identityEvent<T extends object>(payload: T): T & {
-  hostId: string
-  pageId: string
-  projectId: string
-  revision: string
-} {
+function identityEvent() {
   return {
-    ...payload,
     hostId,
-    pageId: props.compilation.snapshotIdentity.pageId,
-    projectId: props.compilation.snapshotIdentity.projectId,
+    projectId: props.compilation.key.projectId,
     revision: props.revision,
+    sessionId: props.sessionId,
   }
 }
 
 function handleLoad(): void {
-  dataExecutor.cancelAll(new Error('Runtime frame reloaded.'))
   loaded = true
   lastChildSequence = -1
   syncRuntime()
 }
 
+function isExperienceRuntimeMessage(value: unknown): value is RuntimeHostToParentMessageV7 {
+  const context = createPrototypeProjectContext(props.compilation)
+  return context.success && isRuntimeHostToParentMessage(value, context.data)
+}
+
 function handleMessage(event: MessageEvent<unknown>): void {
   const message = acceptsRuntimeHostMessageEvent(event, {
-    guard: isRuntimeHostToParentMessage,
+    guard: isExperienceRuntimeMessage,
     hostId,
     origin: targetOrigin,
-    pageId: props.compilation.snapshotIdentity.pageId,
-    projectId: props.compilation.snapshotIdentity.projectId,
+    projectId: props.compilation.key.projectId,
     revision: props.revision,
     source: frame.value?.contentWindow ?? null,
   })
   if (!message || message.sequence <= lastChildSequence)
     return
-  lastChildSequence = message.sequence
-
-  switch (message.type) {
-    case 'dataRequest':
-      dataExecutor.handleRequest(message)
-      break
-    case 'dataCancel':
-      dataExecutor.handleCancel(message)
-      break
-    case 'ready':
-      emit('ready', identityEvent({}))
-      break
-    case 'mounted':
-      emit('mounted', identityEvent({}))
-      break
-    case 'runtimeState':
-      emit('runtimeState', identityEvent({ state: message.payload }))
-      break
-    case 'submit':
-      if (!pendingSubmit || pendingSubmit.requestId !== message.requestId
-        || !isCurrentIdentity(pendingSubmit.identity) || pendingSubmit.values !== undefined)
-        break
-      pendingSubmit.values = cloneWorkbenchJson(message.values)
-      emit('submit', identityEvent({ phase: 'success' as const, requestId: message.requestId, values: cloneWorkbenchJson(message.values) }))
-      break
-    case 'submitResult': {
-      if (!pendingSubmit || pendingSubmit.requestId !== message.payload.requestId
-        || !isCurrentIdentity(pendingSubmit.identity))
-        break
-      const request = pendingSubmit
-      pendingSubmit = undefined
-      const result = cloneWorkbenchJson(message.payload)
-      if (result.status === 'success' && (request.values === undefined
-        || JSON.stringify(request.values) !== JSON.stringify(result.values)))
-        result.status = 'failure'
-      emit('submitResult', identityEvent({ result }))
-      break
+  if (message.type === 'ready' || message.type === 'mounted') {
+    if (message.mode !== 'experience')
+      return
+    lastChildSequence = message.sequence
+    if (message.type === 'ready')
+      emit('ready', identityEvent())
+    else
+      emit('mounted', identityEvent())
+    return
+  }
+  if (message.type === 'experience.session') {
+    if (message.sessionId !== props.sessionId
+      || message.transition.session.projectId !== props.compilation.key.projectId)
+      return
+    const context = createPrototypeProjectContext(props.compilation)
+    if (!context.success)
+      return
+    const session = readPrototypeSession(message.transition.session, context.data)
+    if (!session.success)
+      return
+    lastChildSequence = message.sequence
+    liveSession = cloneWorkbenchJson(session.data)
+    latestChildSessionFingerprint = sessionFingerprint(liveSession)
+    for (const instanceId of lastInstanceRevision.keys()) {
+      if (!liveSession.instancesById[instanceId])
+        lastInstanceRevision.delete(instanceId)
     }
-    case 'fieldChange':
-      emit('fieldChange', identityEvent(cloneWorkbenchJson(message.payload)))
-      break
-    case 'error':
-      emit('error', new Error(`${message.code}: ${message.message}`))
-      break
-    default:
-      break
+    emit('session', {
+      ...identityEvent(),
+      transition: cloneWorkbenchJson({
+        ...message.transition,
+        session: session.data,
+      }),
+    })
+    return
+  }
+  if (message.type === 'experience.instanceState') {
+    if (message.sessionId !== props.sessionId)
+      return
+    const liveInstance = liveSession.instancesById[message.instanceId]
+    if (!liveInstance || liveInstance.surfaceId !== message.payload.surfaceId)
+      return
+    const previous = lastInstanceRevision.get(message.instanceId)
+    if (previous !== undefined && message.payload.stateRevision <= previous)
+      return
+    lastChildSequence = message.sequence
+    lastInstanceRevision.set(message.instanceId, message.payload.stateRevision)
+    emit('instanceState', {
+      ...identityEvent(),
+      instanceId: message.instanceId,
+      payload: cloneWorkbenchJson(message.payload),
+    })
+    return
+  }
+  if (message.type === 'error') {
+    lastChildSequence = message.sequence
+    emit('error', new Error(`${message.code}: ${message.message}`))
   }
 }
 
@@ -183,32 +164,37 @@ watch(
   () => [
     props.adapter,
     props.compilation,
-    props.dataSourceHost,
     props.locale,
     props.namespace,
     props.revision,
-    props.runtimeSessionKey,
-  ],
-  () => {
+    props.session,
+    props.sessionId,
+  ] as const,
+  (next, previous) => {
+    const identityUnchanged = previous !== undefined
+      && next[0] === previous[0]
+      && next[1] === previous[1]
+      && next[2] === previous[2]
+      && next[3] === previous[3]
+      && next[4] === previous[4]
+      && next[6] === previous[6]
+    if (identityUnchanged
+      && latestChildSessionFingerprint !== undefined
+      && sessionFingerprint(next[5]) === latestChildSessionFingerprint) {
+      liveSession = cloneWorkbenchJson(next[5])
+      return
+    }
     syncRuntime()
   },
 )
-
-watch(
-  () => [props.adapter, props.compilation, props.dataSourceHost, props.revision, props.runtimeSessionKey],
-  () => dataExecutor.cancelAll(new Error('Runtime preview identity changed.')),
-  { flush: 'sync' },
-)
-
 onMounted(() => window.addEventListener('message', handleMessage))
 onBeforeUnmount(() => {
-  pendingSubmit = undefined
-  dataExecutor.dispose()
+  disposed = true
   loaded = false
   window.removeEventListener('message', handleMessage)
 })
 
-defineExpose<PreviewRuntimeHostFrameExpose>({ submit })
+defineExpose<ExperienceRuntimeHostFrameExpose>({ dispatch })
 </script>
 
 <template>

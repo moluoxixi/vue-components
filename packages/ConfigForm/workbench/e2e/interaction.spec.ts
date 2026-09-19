@@ -1568,7 +1568,7 @@ test('exports pinned source and config files through the readonly workspace', as
   await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
   const configDialog = page.getByRole('dialog', { name: 'Config model' })
   await expect(configDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('form.config.ts')
-  await expect(configDialog.locator('.view-lines')).toContainText('version: 4')
+  await expect(configDialog.locator('.view-lines')).toContainText('version: 6')
   const [configDownload] = await Promise.all([
     page.waitForEvent('download'),
     configDialog.getByRole('button', { name: 'Download', exact: true }).click(),

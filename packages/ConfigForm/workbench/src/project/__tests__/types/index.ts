@@ -1,6 +1,6 @@
-import type { PageCompilation, ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { SurfaceCompilation, ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { ProjectDocument, ProjectSnapshot } from '@moluoxixi/config-form-model'
-import type { VueRuntimeArtifact, VueRuntimeBindingResolver, VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
+import type { VueRuntimeBindingResolver, VueRuntimeCompileSuccess, VueSurfaceRuntimeArtifact } from '@moluoxixi/config-form-vue-backend'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../../adapters'
 import type { CanonicalConfigExport, CanonicalProjectSourceExport } from '../../export'
 
@@ -20,14 +20,14 @@ export interface BusinessScenariosFixture {
   compilation: ProjectCompilation
   runtimeResolver: VueRuntimeBindingResolver
   /** 以页为单位直接编译运行时（Direct 路径）。 */
-  direct: (pageId: BusinessScenario) => VueRuntimeArtifact
+  direct: (surfaceId: BusinessScenario) => VueSurfaceRuntimeArtifact
   exportConfig: () => CanonicalConfigExport
   exportSource: () => CanonicalProjectSourceExport
 }
 
 /** `compileDataFixture` 的产物面：数据源联动的最小可编译工程。 */
 export interface DataRuntimeFixture {
-  compilation: PageCompilation
+  compilation: SurfaceCompilation
   runtime: VueRuntimeCompileSuccess
   resolver: VueRuntimeBindingResolver
   exportSource: () => CanonicalProjectSourceExport

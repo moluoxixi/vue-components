@@ -1,401 +1,174 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ModelJsonValue, PageGraph } from '@moluoxixi/config-form-model'
-import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
-import {
-  CANONICAL_PROJECT_IR_VERSION,
-  CONFIG_FORM_COMPILER_VERSION,
-} from '@moluoxixi/config-form-compiler'
-import { PAGE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
+import type { ExperienceRuntimeHostIdentityEvent } from '../../runtime-host'
 import { describe, expect, it } from 'vitest'
+import { createPreviewSession, createWorkbenchPreviewSession } from '../services/preview'
 import {
-  createPreviewSession,
-  createWorkbenchPreviewSession,
-} from '..'
+  compilePreviewFixture,
+  previewSessionFixture,
+  previewStateFixture,
+} from './preview-instance-fixture'
 
-interface FieldFixture {
-  component?: string
-  defaultValue?: ModelJsonValue
-  field: string
-  id: string
-}
-
-function graph(...fields: FieldFixture[]): PageGraph {
-  return {
-    version: PAGE_GRAPH_VERSION,
-    props: {},
-    form: {},
-    root: fields.map(field => ({ nodeId: field.id, placement: {} })),
-    nodesById: Object.fromEntries(fields.map(field => [field.id, {
-      id: field.id,
-      kind: 'field' as const,
-      field: field.field,
-      component: field.component ?? 'element.input',
-      props: {},
-      bindings: {},
-      ...(field.defaultValue === undefined ? {} : { defaultValue: field.defaultValue }),
-    }])),
-  }
-}
-
-function compilation(options: {
-  componentFingerprint?: string
-  editVersion?: number
-  pageId?: string
-  projectId?: string
-} = {}): PageCompilation {
-  const editVersion = options.editVersion ?? 0
-  const pageId = options.pageId ?? 'home'
-  const projectId = options.projectId ?? 'project'
-  return {
-    snapshotIdentity: {
-      source: 'committed',
-      projectId,
-      pageId,
-      contentHash: `fnv1a:${projectId}:${editVersion}`,
-      editVersion,
-    },
-    registryUsage: [{
-      key: 'element.input',
-      contractVersion: '1',
-      fingerprint: options.componentFingerprint ?? 'fnv1a:element-input-v1',
-    }],
-    key: {
-      irVersion: CANONICAL_PROJECT_IR_VERSION,
-      projectId,
-      pageId,
-      registryAdapter: 'element-plus',
-      registryAdapterVersion: '1',
-      registryUsageHash: 'fnv1a:usage',
-      compilerVersion: CONFIG_FORM_COMPILER_VERSION,
-      environmentHash: 'fnv1a:environment',
-      semanticHash: `fnv1a:${pageId}:${editVersion}`,
-    },
-    page: {
-      id: pageId,
-      name: pageId,
-      route: `/${pageId}`,
-      props: {},
-      form: {},
-      rootIds: [],
-      nodesById: {},
-      valueScopes: [],
-      scopedFields: [],
-    },
-  }
-}
-
-function success(value: PageCompilation): VueRuntimeCompileResult {
-  return {
-    success: true,
-    artifact: {
-      compilationKey: value.key,
-      pageId: value.page.id,
-      renderer: {
-        fields: [],
-        plan: {
-          valueSchema: { valueScopes: [], scopedFields: [] },
-          runtime: { variables: [], dataSources: [] },
-          optionBindings: [],
-        },
-      },
-    },
-    diagnostics: [],
-  }
-}
-
-const failure: VueRuntimeCompileResult = {
-  success: false,
-  diagnostics: [{ code: 'TEST', message: 'compile failed', path: [], severity: 'error' }],
-}
-
-function accept(
+function mount(
   session: ReturnType<typeof createPreviewSession>,
-  options: {
-    compilation?: PageCompilation
-    editVersion?: number
-    graph?: PageGraph
-    pageId?: string
-    projectId?: string
-    runtime?: VueRuntimeCompileResult
-  } = {},
-) {
-  const editVersion = options.editVersion ?? 0
-  const pageId = options.pageId ?? 'home'
-  const projectId = options.projectId ?? 'project'
-  const pageCompilation = options.compilation ?? compilation({ editVersion, pageId, projectId })
-  return session.accept({
-    adapter: 'element-plus',
-    compilation: pageCompilation,
-    editVersion,
-    graph: options.graph ?? graph({ id: 'name', field: 'name', defaultValue: 'Default' }),
-    pageId,
-    projectId,
-    repositoryRevision: 4,
-    runtime: options.runtime ?? success(pageCompilation),
-  })
+  identity: ExperienceRuntimeHostIdentityEvent,
+): void {
+  session.handleRuntimeMounted(identity)
+  session.handleRuntimeReady(identity)
 }
 
-function runtimeIdentity(
-  projection: NonNullable<ReturnType<typeof accept>>,
-  hostId: string,
-) {
-  return {
-    hostId,
-    pageId: projection.current.pageId,
-    projectId: projection.current.projectId,
-    revision: projection.current.revisionKey,
-  }
-}
-
-describe('preview session', () => {
-  it('preserves values only while the field identity and component contract stay compatible', () => {
+describe('experience preview session', () => {
+  it('accepts one ProjectCompilation and Prototype Session identity', () => {
+    const fixture = compilePreviewFixture()
     const session = createWorkbenchPreviewSession()
-    accept(session, {
-      graph: graph(
-        { id: 'name', field: 'name', defaultValue: 'Initial' },
-        { id: 'age', field: 'age', component: 'element.input-number', defaultValue: 18 },
-      ),
-    })
-    session.updateRuntimeModel({ name: 'Edited', age: 42 })
 
-    accept(session, {
-      editVersion: 1,
-      graph: graph(
-        { id: 'name', field: 'name', defaultValue: 'Changed default' },
-        { id: 'age', field: 'age', component: 'element.date', defaultValue: '2026-08-31' },
-        { id: 'city', field: 'city', defaultValue: 'Shanghai' },
-      ),
-    })
+    session.accept(fixture.input)
 
-    expect(session.getRuntimeModel()).toEqual({
-      name: 'Edited',
-      age: '2026-08-31',
-      city: 'Shanghai',
-    })
-    session.dispose()
+    expect(session.compilation.value).toBe(fixture.compilation)
+    expect(session.session.value).toEqual(fixture.session)
+    expect(session.revision.value).toBe('revision-1')
+    expect(session.sessionId.value).toBe('session-1')
+    expect(session.mounted.value).toBe(false)
+    expect(session.ready.value).toBe(false)
   })
 
-  it('resets a field when its registered component contract changes under the same key', () => {
-    const session = createWorkbenchPreviewSession()
-    accept(session)
-    session.updateRuntimeModel({ name: 'Edited' })
-    const upgraded = compilation({
-      componentFingerprint: 'fnv1a:element-input-v2',
-      editVersion: 1,
-    })
-
-    accept(session, { compilation: upgraded, editVersion: 1 })
-
-    expect(session.getRuntimeModel()).toEqual({ name: 'Default' })
-    session.dispose()
-  })
-
-  it('reconciles field state and accepts mirrors only from the current revision and mounted host', () => {
-    const session = createWorkbenchPreviewSession()
-    const first = accept(session, {
-      graph: graph(
-        { id: 'name', field: 'name', defaultValue: 'Initial' },
-        { id: 'age', field: 'age', defaultValue: 18 },
-      ),
-    })!
-    const firstHost = runtimeIdentity(first, 'host-a')
-    session.handleRuntimeMounted(firstHost)
-    session.handleRuntimeState({
-      ...firstHost,
-      state: { fields: flatFields('name', 'age'), values: { name: 'Edited', age: 42 }, touched: ['name', 'age'], validation: { name: ['Required'], age: ['Too young'] } },
-    })
-    session.handleRuntimeReady(firstHost)
-
-    const next = accept(session, {
-      editVersion: 1,
-      graph: graph(
-        { id: 'name', field: 'name', defaultValue: 'Changed default' },
-        { id: 'age', field: 'age', component: 'element.date', defaultValue: '2026-08-31' },
-      ),
-    })!
-    const sameHost = runtimeIdentity(next, 'host-a')
-
-    expect(session.runtimeState.value).toEqual({ fields: flatFields('name'), values: { name: 'Edited', age: '2026-08-31' }, touched: ['name'], validation: { name: ['Required'] } })
-
-    session.handleRuntimeState({
-      ...firstHost,
-      state: { fields: flatFields('name'), values: { name: 'Stale revision' }, touched: [], validation: {} },
-    })
-    session.handleRuntimeState({
-      ...sameHost,
-      state: { fields: flatFields('name'), values: { name: 'Current host' }, touched: ['name'], validation: {} },
-    })
-    expect(session.runtimeState.value.values.name).toBe('Current host')
-
-    const replacementHost = runtimeIdentity(next, 'host-b')
-    session.handleRuntimeMounted(replacementHost)
-    session.handleRuntimeState({
-      ...sameHost,
-      state: { fields: flatFields('name'), values: { name: 'Old host' }, touched: [], validation: {} },
-    })
-    session.handleRuntimeState({
-      ...replacementHost,
-      state: { fields: flatFields('name'), values: { name: 'Replacement host' }, touched: [], validation: {} },
-    })
-    expect(session.runtimeState.value.values.name).toBe('Replacement host')
-    session.handleRuntimeMounted(sameHost)
-    session.handleRuntimeState({
-      ...sameHost,
-      state: { fields: flatFields('name'), values: { name: 'Retired host reclaim' }, touched: [], validation: {} },
-    })
-    expect(session.runtimeState.value.values.name).toBe('Replacement host')
-    session.dispose()
-  })
-
-  it('requires and consumes a real current-host submit marker for every success result', () => {
-    const session = createWorkbenchPreviewSession()
-    const current = accept(session)!
-    const host = runtimeIdentity(current, 'host-a')
-    session.handleRuntimeMounted(host)
-
-    session.handleSubmit({ ...host, phase: 'request', requestId: 'unmarked' })
-    session.handleSubmitResult({
-      ...host,
-      result: { requestId: 'unmarked', fields: flatFields('name'), status: 'success', values: { name: 'Unmarked' }, touched: [], validation: {} },
-    })
-    expect(session.lastSubmission.value?.status).toBe('failure')
-
-    session.handleSubmit({ ...host, phase: 'request', requestId: 'current' })
-    session.handleSubmit({ ...host, phase: 'success', requestId: 'current', values: { name: 'Submitted' } })
-    session.handleSubmitResult({
-      ...host,
-      result: { requestId: 'current', fields: flatFields('name'), status: 'success', values: { name: 'Submitted' }, touched: ['name'], validation: {} },
-    })
-    expect(session.lastSubmission.value).toMatchObject({
-      status: 'success',
-      values: { name: 'Submitted' },
-      revisionKey: current.current.revisionKey,
-    })
-
-    session.handleSubmitResult({
-      ...host,
-      result: { requestId: 'current', fields: flatFields('name'), status: 'success', values: { name: 'Replayed' }, touched: [], validation: {} },
-    })
-    expect(session.lastSubmission.value).toMatchObject({ status: 'success', values: { name: 'Submitted' } })
-
-    session.clearSubmission()
-    expect(session.lastSubmission.value).toBeUndefined()
-    expect(session.getRuntimeModel()).toEqual({ name: 'Submitted' })
-    session.dispose()
-  })
-
-  it('keeps fallback compilation and runtime state from the last ready revision in the same scope', () => {
+  it('rejects an invalid or cross-project initial session', () => {
+    const fixture = compilePreviewFixture()
     const session = createPreviewSession()
-    const oldCompilation = compilation()
-    const first = accept(session, { compilation: oldCompilation })!
-    const host = runtimeIdentity(first, 'host-a')
-    session.handleRuntimeMounted(host)
-    session.handleRuntimeState({
-      ...host,
-      state: { fields: flatFields('name'), values: { name: 'Latest input' }, touched: ['name'], validation: {} },
-    })
-    session.handleRuntimeReady(host)
 
-    const failed = accept(session, {
-      compilation: compilation({ editVersion: 1 }),
-      editVersion: 1,
-      graph: graph({ id: 'broken-name', field: 'broken', defaultValue: 'Broken graph value' }),
-      runtime: failure,
-    })!
-    const fallbackHost = runtimeIdentity(failed, 'host-a')
-
-    expect(session.getCompilation()).toBe(oldCompilation)
-    expect(session.runtimeState.value).toEqual({ fields: flatFields('name'), values: { name: 'Latest input' }, touched: ['name'], validation: {} })
-
-    session.handleRuntimeState({
-      ...fallbackHost,
-      state: { fields: flatFields('name'), values: { name: 'Edited fallback' }, touched: [], validation: {} },
-    })
-    expect(session.getCompilation()).toBe(oldCompilation)
-    expect(session.getRuntimeModel()).toEqual({ name: 'Edited fallback' })
-
-    accept(session, {
-      compilation: compilation({ editVersion: 2 }),
-      editVersion: 2,
-      runtime: failure,
-    })
-    expect(session.getCompilation()).toBe(oldCompilation)
-    expect(session.getRuntimeModel()).toEqual({ name: 'Edited fallback' })
-
-    accept(session, {
-      compilation: compilation({ editVersion: 3, pageId: 'other' }),
-      editVersion: 3,
-      graph: graph({ id: 'other-name', field: 'name', defaultValue: 'Other page' }),
-      pageId: 'other',
-      runtime: failure,
-    })
-    expect(session.getCompilation()).toBeUndefined()
-    expect(session.getRuntimeModel()).toEqual({ name: 'Other page' })
-    session.dispose()
+    expect(() => session.accept({ ...fixture.input, revision: '' })).toThrow('revision')
+    expect(() => session.accept({
+      ...fixture.input,
+      session: { ...fixture.session, projectId: 'other-project' },
+    })).toThrow('same project')
+    expect(() => session.accept({
+      ...fixture.input,
+      session: {
+        ...fixture.session,
+        pageHistory: [],
+        instancesById: {},
+      },
+    })).toThrow('valid Prototype Session')
   })
 
-  it('does not establish a ready fallback from an unmounted or stale host', () => {
+  it('establishes mounted and ready only for the current identity', () => {
+    const fixture = compilePreviewFixture()
     const session = createPreviewSession()
-    const current = accept(session)!
-    const host = runtimeIdentity(current, 'host-a')
-    session.handleRuntimeReady(host)
+    session.accept(fixture.input)
+    const current = fixture.identity()
 
-    accept(session, {
-      compilation: compilation({ editVersion: 1 }),
-      editVersion: 1,
-      runtime: failure,
-    })
+    session.handleRuntimeMounted({ ...current, revision: 'stale' })
+    session.handleRuntimeMounted({ ...current, sessionId: 'stale' })
+    session.handleRuntimeReady(current)
+    expect(session.activeHost.value).toBeUndefined()
+    expect(session.ready.value).toBe(false)
 
-    expect(session.getCompilation()).toBeUndefined()
-    session.dispose()
+    session.handleRuntimeMounted(current)
+    expect(session.mounted.value).toBe(true)
+    expect(session.ready.value).toBe(false)
+    session.handleRuntimeReady(current)
+    expect(session.ready.value).toBe(true)
   })
 
-  it('clears mirror ownership and ignores all future RuntimeHost updates when disposed', () => {
+  it('retires a replaced host and ignores all of its later messages', () => {
+    const fixture = compilePreviewFixture()
     const session = createPreviewSession()
-    const current = accept(session)!
-    const host = runtimeIdentity(current, 'host-a')
-    session.handleRuntimeMounted(host)
-    session.dispose()
+    session.accept(fixture.input)
+    const first = fixture.identity('host-1')
+    const replacement = fixture.identity('host-2')
+    mount(session, first)
+    session.handleInstanceState({ ...first, instanceId: 'page-1', payload: previewStateFixture('page-1', 1, 'first') })
 
-    session.handleRuntimeState({
-      ...host,
-      state: { fields: flatFields('name'), values: { name: 'Ignored' }, touched: ['name'], validation: { name: ['Ignored'] } },
-    })
-    session.handleSubmit({ ...host, phase: 'success', requestId: 'ignored', values: { name: 'Ignored' } })
-    session.handleSubmitResult({
-      ...host,
-      result: { requestId: 'ignored', fields: flatFields('name'), status: 'success', values: { name: 'Ignored' }, touched: [], validation: {} },
-    })
-    session.updateRuntimeModel({ name: 'Ignored' })
+    mount(session, replacement)
+    session.handleInstanceState({ ...first, instanceId: 'page-1', payload: previewStateFixture('page-1', 2, 'stale') })
+    session.handleRuntimeMounted(first)
 
-    expect(session.projection.value).toBeUndefined()
-    expect(session.getRuntimeModel()).toEqual({})
-    expect(session.lastSubmission.value).toBeUndefined()
+    expect(session.activeHost.value?.hostId).toBe('host-2')
+    expect(session.getInstanceState('page-1')?.values).toEqual({ name: 'first' })
+    session.handleInstanceState({ ...replacement, instanceId: 'page-1', payload: previewStateFixture('page-1', 2, 'replacement') })
+    expect(session.getInstanceState('page-1')?.values).toEqual({ name: 'replacement' })
   })
-  it('rejects unrequested, superseded same-revision, old-host and old-revision submit identities without changing the mirror', () => {
+
+  it('updates the Prototype Session and removes state for closed instances', () => {
+    const open = previewSessionFixture(['page-1', 'page-2'])
+    const fixture = compilePreviewFixture(open)
     const session = createPreviewSession()
-    const host = runtimeIdentity(accept(session)!, 'host-a')
-    session.handleRuntimeMounted(host)
-    const result = { requestId: 'old', fields: flatFields('name'), status: 'invalid' as const, values: { name: 'stale' }, touched: ['name'], validation: { name: ['stale'] } }
-    session.handleSubmitResult({ ...host, result })
-    expect(session.lastSubmission.value).toBeUndefined()
-    session.handleSubmit({ ...host, phase: 'request', requestId: 'old' })
-    session.handleSubmit({ ...host, phase: 'request', requestId: 'new' })
-    session.handleSubmit({ ...host, phase: 'success', requestId: 'old', values: result.values })
-    session.handleSubmitResult({ ...host, result })
-    session.handleSubmitResult({ ...host, hostId: 'old-host', result: { ...result, requestId: 'new' } })
-    session.handleSubmitResult({ ...host, revision: 'old-revision', result: { ...result, requestId: 'new' } })
-    expect(session.lastSubmission.value).toBeUndefined()
-    expect(session.runtimeState.value.values).toEqual({ name: 'Default' })
-    expect(session.runtimeState.value.touched).toEqual([])
-    session.handleSubmitResult({ ...host, result: { ...result, requestId: 'new', values: { name: 'current' } } })
-    expect(session.lastSubmission.value).toMatchObject({ requestId: 'new', status: 'invalid', values: { name: 'current' } })
-    session.handleSubmitResult({ ...host, result: { ...result, requestId: 'new' } })
-    expect(session.runtimeState.value.values).toEqual({ name: 'current' })
+    session.accept(fixture.input)
+    const identity = fixture.identity()
+    mount(session, identity)
+    session.handleInstanceState({ ...identity, instanceId: 'page-1', payload: previewStateFixture('page-1') })
+    session.handleInstanceState({ ...identity, instanceId: 'page-2', payload: previewStateFixture('page-2') })
+
+    const closed = previewSessionFixture(['page-1'], { 'page-1': 'kept' })
+    session.handleSession({
+      ...identity,
+      transition: {
+        session: closed,
+        diagnostics: [{ code: 'notice', message: 'transitioned' }],
+      },
+    })
+
+    expect(session.session.value).toEqual(closed)
+    expect(session.diagnostics.value).toEqual([{ code: 'notice', message: 'transitioned' }])
+    expect(Object.keys(session.instanceStates.value)).toEqual(['page-1'])
+    session.handleInstanceState({ ...identity, instanceId: 'page-2', payload: previewStateFixture('page-2', 2) })
+    expect(session.getInstanceState('page-2')).toBeUndefined()
+  })
+
+  it('isolates repeated Surface instances and enforces per-instance revisions', () => {
+    const fixture = compilePreviewFixture(previewSessionFixture(['page-1', 'page-2']))
+    const session = createPreviewSession()
+    session.accept(fixture.input)
+    const identity = fixture.identity()
+    mount(session, identity)
+
+    session.handleInstanceState({ ...identity, instanceId: 'page-1', payload: previewStateFixture('page-1', 2, 'one') })
+    session.handleInstanceState({ ...identity, instanceId: 'page-2', payload: previewStateFixture('page-2', 1, 'two') })
+    session.handleInstanceState({ ...identity, instanceId: 'page-1', payload: previewStateFixture('page-1', 1, 'stale') })
+
+    expect(session.getInstanceState('page-1')?.values).toEqual({ name: 'one' })
+    expect(session.getInstanceState('page-2')?.values).toEqual({ name: 'two' })
+  })
+
+  it('resets host state when the accepted revision changes', () => {
+    const fixture = compilePreviewFixture()
+    const session = createPreviewSession()
+    session.accept(fixture.input)
+    const identity = fixture.identity()
+    mount(session, identity)
+    session.handleInstanceState({ ...identity, instanceId: 'page-1', payload: previewStateFixture('page-1') })
+
+    session.accept({ ...fixture.input, revision: 'revision-2' })
+
+    expect(session.activeHost.value).toBeUndefined()
+    expect(session.mounted.value).toBe(false)
+    expect(session.ready.value).toBe(false)
+    expect(session.instanceStates.value).toEqual({})
+  })
+
+  it('clears runtime errors and ignores every operation after disposal', () => {
+    const fixture = compilePreviewFixture()
+    const session = createPreviewSession()
+    session.accept(fixture.input)
+    mount(session, fixture.identity())
+    session.handleRuntimeError('render failed')
+    expect(session.error.value?.message).toBe('render failed')
+    expect(session.ready.value).toBe(false)
+
     session.dispose()
+    session.accept(fixture.input)
+    mount(session, fixture.identity())
+
+    expect(session.compilation.value).toBeUndefined()
+    expect(session.activeHost.value).toBeUndefined()
+    expect(session.error.value).toBeUndefined()
+  })
+
+  it('does not expose legacy event forwarding or submission APIs', () => {
+    const session = createPreviewSession()
+
+    expect('handleFieldChange' in session).toBe(false)
+    expect('handleRuntimeState' in session).toBe(false)
+    expect('handleSubmit' in session).toBe(false)
+    expect('handleSubmitResult' in session).toBe(false)
+    expect('lastSubmission' in session).toBe(false)
   })
 })
-
-function flatFields(...names: string[]) {
-  return names.map(nodeId => ({ nodeId, scope: [], instanceKey: nodeId, valuePath: [nodeId] }))
-}

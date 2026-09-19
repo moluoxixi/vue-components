@@ -5,22 +5,23 @@
 
 ## 当前实现基线
 
-截至当前版本，仓库仍是 Runtime-first / Page-only 实现：
+截至当前版本，仓库是 Runtime-first / Surface Foundation 实现：
 
-- `ProjectDocument v5` 使用 `homePageId/pageOrder/pagesById`，还没有统一的
-  Page/Dialog/Drawer `SurfaceAsset`、Dataset 或 Surface 参数/结果合同。
-- Designer 当前只编辑单个 PageGraph，默认 Inspector 只有 `properties` 与
-  `validation`；没有 Design/Experience 双模式或 Prototype Interaction 作者入口。
-- Workbench 当前组合项目编辑、双区 Designer、动态 Runtime Data Source 作者 UI、
-  iframe Preview 和内置 Source/Config 导出。
-- Compiler、Canonical IR、Vue backend、Runtime Host、IndexedDB 和 Source generator
-  均以 Page 为身份；同一 Surface 的多实例隔离尚未实现。
-- `@moluoxixi/config-form-prototype-runtime` 和
-  `@moluoxixi/config-form-source` 都是规划包，当前不存在可导入实现。
+- `ProjectDocument v6` 使用 `homeSurfaceId/surfaceOrder/surfacesById`，统一承载
+  Page/Dialog/Drawer `SurfaceAsset`，并提供 Dataset、Resource、参数/结果和主题合同。
+- `SurfaceGraph v1`、Registry snapshot v3、Canonical IR v5、Compiler 6.0.0、IndexedDB
+  codec v4、Project/Surface transfer v1 已切换为严格 current-contract-only reader。
+- Designer 当前聚焦单个 Surface，默认 Inspector 仍只有 `properties` 与 `validation`；
+  Design/Experience 切换和完整 Interactions 作者 UI 尚属后续任务。
+- Workbench persistence、Preview Runtime Host、缓存和生成器已使用 Surface 身份；项目
+  资产管理界面仍是迁移中的内部基线，动态 Runtime Data Source 不进入 Studio Demo 合同。
+- `@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和样式入口，
+  共享纯 reducer、SurfaceInstance 栈、参数/结果事务与 overlay host。
+- `@moluoxixi/config-form-source` 仍是后续独立包，本阶段不提供 Source package 或兼容层。
 
 生产 Runtime、Headless、代码态 `props.onX`、reaction 和 Data Source 仍是当前可用
-能力。迁移期间不能把目标 Surface、Dataset 或 Source API 写成现状，也不能为了
-过渡保留 pages/surfaces 双模型。
+能力。Studio 持久化产物只包含 JSON-safe 模拟 Demo；复杂业务逻辑由导出项目或宿主
+TypeScript 维护。当前实现不保留 pages/surfaces 双模型，也不恢复事件编辑、转发或 Flow。
 
 ## 迁移阶段
 
@@ -43,6 +44,9 @@ envelope，而非裸 ProjectDocument。
 完成定义：Page/Dialog/Drawer 使用统一 `SurfaceAsset`，每次打开创建隔离
 `SurfaceInstance`；关闭、返回或导航清除浮层后不保留已关闭实例状态；旧、未来、
 缺失、混合合同 fail closed；Preview 和生成项目可共享同一会话实现而不复制 reducer。
+
+当前状态：已完成 Model、Repository、IndexedDB、Compiler、Vue backend、Runtime Host
+和 Prototype Runtime 的基础合同与定向测试；Workbench 全量迁移和最终质量门禁仍在本任务收口。
 
 ### 3. Studio Assets
 
@@ -95,7 +99,7 @@ DOM；Viewer 桌面为左文件树/右源码，窄屏为 tree/code 切换，Mona
 
 版本号由拥有相应 Reader 的阶段一次性切换：
 
-| 合同                             | 当前基线      | 目标             | 所属阶段                                                  |
+| 合同                             | 基线          | 当前             | 所属阶段                                                  |
 | -------------------------------- | ------------- | ---------------- | --------------------------------------------------------- |
 | ProjectDocument                  | `5`           | `6`              | Surface Foundation                                        |
 | PageGraph / SurfaceGraph         | `PageGraph 3` | `SurfaceGraph 1` | Surface Foundation                                        |

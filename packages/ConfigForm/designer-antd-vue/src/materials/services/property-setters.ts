@@ -40,7 +40,6 @@ export function choiceDefaultValueSetter(
     component: AntdChoiceDefaultSetter,
     componentProps: { kind: valueKind },
     optionsPath: ['props', 'options'],
-    optionSourcePath: ['props', 'optionSource'],
     valueKind,
   }
 }

@@ -1,5 +1,4 @@
 export * from './constants'
 export { default as RuntimeHostApp } from './index.vue'
 export * from './schemas'
-export * from './services/data-rpc'
 export type * from './types'

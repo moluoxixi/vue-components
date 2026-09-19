@@ -8,7 +8,7 @@ import type {
   StudioLeftView,
   StudioLayerAction,
 } from '../../../studio'
-import { Blocks, Check, ChevronDown, ChevronUp, Database, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2, Variable } from '@lucide/vue'
+import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import './style/index.scss'
@@ -26,8 +26,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
 const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers') },
-  { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Pages') },
-  { icon: Database, id: 'data' as const, label: locale.value.t('designer.view.data', 'Data') },
+  { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Surfaces') },
   { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History') },
 ])
 const historyPositions = computed(() => {
@@ -176,7 +175,7 @@ function navigationIndex(event: KeyboardEvent, current: number, length: number):
   return undefined
 }
 
-function focusItem(root: HTMLElement | null, attribute: 'layerId' | 'pageId', id: string): void {
+function focusItem(root: HTMLElement | null, attribute: 'layerId' | 'surfaceId', id: string): void {
   void nextTick(() => [...(root?.querySelectorAll<HTMLElement>('[tabindex]') ?? [])]
     .find(element => element.dataset[attribute] === id)
     ?.focus())
@@ -214,21 +213,21 @@ function handleLayerKeydown(event: KeyboardEvent, nodeId: string): void {
   focusItem(layerTree.value, 'layerId', nextId)
 }
 
-function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
+function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
-    emit('selectPage', pageId)
+    emit('selectSurface', surfaceId)
     return
   }
-  const pages = props.project.pageOrder.map(id => props.project.pagesById[id]!).filter(Boolean)
-  const current = pages.findIndex(page => page.id === pageId)
+  const pages = props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean)
+  const current = pages.findIndex(page => page.id === surfaceId)
   const next = navigationIndex(event, current, pages.length)
   if (next === undefined || next === current)
     return
   event.preventDefault()
   const nextId = pages[next]!.id
-  emit('selectPage', nextId)
-  focusItem(pageList.value, 'pageId', nextId)
+  emit('selectSurface', nextId)
+  focusItem(pageList.value, 'surfaceId', nextId)
 }
 
 </script>
@@ -297,7 +296,7 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
     </div>
 
     <ElScrollbar v-else-if="activeView === 'layers'" class="designer-layers-scrollbar">
-    <div ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Page layers')">
+    <div ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Surface layers')">
       <div
         v-for="(layer, index) in layers"
         :key="layer.id"
@@ -354,57 +353,28 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
       <ElScrollbar>
       <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.project', 'Project pages')">
         <ElButton
-          v-for="pageId in project.pageOrder"
-          :key="pageId"
+          v-for="surfaceId in project.surfaceOrder"
+          :key="surfaceId"
           text
           native-type="button"
           role="option"
-          :aria-selected="pageId === currentPageId"
-          :aria-current="pageId === currentPageId ? 'page' : undefined"
-          :data-page-id="pageId"
-          :tabindex="pageId === currentPageId ? 0 : -1"
-          :class="{ 'is-current': pageId === currentPageId }"
-          @click="emit('selectPage', pageId)"
-          @keydown="handlePageKeydown($event, pageId)"
+          :aria-selected="surfaceId === currentSurfaceId"
+          :aria-current="surfaceId === currentSurfaceId ? 'page' : undefined"
+          :data-surface-id="surfaceId"
+          :tabindex="surfaceId === currentSurfaceId ? 0 : -1"
+          :class="{ 'is-current': surfaceId === currentSurfaceId }"
+          @click="emit('selectSurface', surfaceId)"
+          @keydown="handleSurfaceKeydown($event, surfaceId)"
         >
           <Files :size="14" aria-hidden="true" />
-          <span>{{ project.pagesById[pageId]?.name }}</span>
-          <small>{{ project.pagesById[pageId]?.route }}</small>
+          <span>{{ project.surfacesById[surfaceId]?.name }}</span>
+          <small>{{ project.surfacesById[surfaceId]?.kind === 'page' ? project.surfacesById[surfaceId].route : project.surfacesById[surfaceId]?.kind }}</small>
         </ElButton>
       </nav>
       </ElScrollbar>
-      <ElButton native-type="button" class="manage-pages-button" @click="emit('managePages')">
+      <ElButton native-type="button" class="manage-pages-button" @click="emit('manageSurfaces')">
         <Settings2 :size="14" aria-hidden="true" />
         {{ locale.t('pages.manage', 'Manage pages') }}
-      </ElButton>
-    </div>
-
-    <div v-else-if="activeView === 'data'" class="designer-data-panel">
-      <div class="designer-data-header">
-        <strong>{{ locale.t('data.title', 'Page data') }}</strong>
-        <small>{{ (project.pagesById[currentPageId]?.runtime?.variables.length ?? 0) + (project.pagesById[currentPageId]?.runtime?.dataSources.length ?? 0) }}</small>
-      </div>
-      <ElScrollbar>
-        <div class="designer-data-summary">
-          <section>
-            <h3><Variable :size="14" aria-hidden="true" />{{ locale.t('data.variables', 'Variables') }}</h3>
-            <ul v-if="project.pagesById[currentPageId]?.runtime?.variables.length">
-              <li v-for="variable in project.pagesById[currentPageId]?.runtime?.variables" :key="variable.id">{{ variable.name }}</li>
-            </ul>
-            <p v-else>{{ locale.t('data.emptyVariables', 'No variables') }}</p>
-          </section>
-          <section>
-            <h3><Database :size="14" aria-hidden="true" />{{ locale.t('data.sources', 'Data sources') }}</h3>
-            <ul v-if="project.pagesById[currentPageId]?.runtime?.dataSources.length">
-              <li v-for="source in project.pagesById[currentPageId]?.runtime?.dataSources" :key="source.id">{{ source.name }}</li>
-            </ul>
-            <p v-else>{{ locale.t('data.emptySources', 'No data sources') }}</p>
-          </section>
-        </div>
-      </ElScrollbar>
-      <ElButton native-type="button" class="manage-data-button" @click="emit('openData')">
-        <Settings2 :size="14" aria-hidden="true" />
-        {{ locale.t('data.manage', 'Edit page data') }}
       </ElButton>
     </div>
 

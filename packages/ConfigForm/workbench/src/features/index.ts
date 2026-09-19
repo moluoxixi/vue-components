@@ -1,4 +1,3 @@
-export * from './data'
 export * from './export'
 export * from './pages'
 export * from './persistence'

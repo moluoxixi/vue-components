@@ -128,30 +128,7 @@
   flex: 1 1 auto;
 }
 
-.mx-antd-designer-option-state {
-  display: inline-grid;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  place-items: center;
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.mx-antd-designer-option-state.is-error {
-  color: #ff4d4f;
-}
-
-.mx-antd-designer-option-state.is-loading svg {
-  animation: mx-antd-designer-spin 800ms linear infinite;
-}
-
 .mx-antd-designer-choice-default {
   display: grid;
   gap: 6px;
-}
-
-@keyframes mx-antd-designer-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }

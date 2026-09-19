@@ -1,8 +1,8 @@
 import type { ConfigFormValueSchema } from '@moluoxixi/config-form-headless'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 
 /** Transient design topology. Initialize its separate model with Core defaults. */
-export function projectRendererDesignValueSchema(plan: Pick<ConfigFormPageRuntimePlan, 'valueSchema'>): ConfigFormValueSchema {
+export function projectRendererDesignValueSchema(plan: Pick<ConfigFormSurfaceRuntimePlan, 'valueSchema'>): ConfigFormValueSchema {
   return {
     scopedFields: plan.valueSchema.scopedFields.map(field => ({
       ...field,

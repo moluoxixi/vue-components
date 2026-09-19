@@ -1,5 +1,5 @@
 import type { ConfigFormDataSourceHost } from '@moluoxixi/config-form-core'
-import type { ConfigFormPageRuntimeDataSourceStateChange } from '../../runtime'
+import type { ConfigFormSurfaceRuntimeDataSourceStateChange } from '../../runtime'
 import { flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { binding, Control, deferred, fieldRef, fixture, plan, response, source } from './data-runtime-fixture'
@@ -8,7 +8,7 @@ const address = { nodeId: 'choice', scope: [] }
 const loadKey = `load:${JSON.stringify(['choices', []])}`
 
 function observeDataSourceStates() {
-  const onState = vi.fn<(change: ConfigFormPageRuntimeDataSourceStateChange) => void>()
+  const onState = vi.fn<(change: ConfigFormSurfaceRuntimeDataSourceStateChange) => void>()
   const states = (key: string) => onState.mock.calls
     .filter(([change]) => change.consumerKey === key)
     .map(([change]) => change.state)
@@ -138,7 +138,7 @@ describe('renderer data lifecycle', () => {
       }),
     })
     expect(bounded.wrapper.emitted('dataSourceStateChange')?.some(([change]) =>
-      (change as ConfigFormPageRuntimeDataSourceStateChange).state.error?.code === 'CONFIG_FORM_DATA_CONSUMER_LIMIT')).toBe(true)
+      (change as ConfigFormSurfaceRuntimeDataSourceStateChange).state.error?.code === 'CONFIG_FORM_DATA_CONSUMER_LIMIT')).toBe(true)
     never.resolve(response([]))
   })
 

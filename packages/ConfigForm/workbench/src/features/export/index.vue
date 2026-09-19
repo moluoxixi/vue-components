@@ -6,6 +6,10 @@ import type {
   WorkspaceFile,
 } from '../../project'
 import type {
+  ProjectTransferEnvelopeV1,
+  SurfaceTransferEnvelopeV1,
+} from '@moluoxixi/config-form-model'
+import type {
   ConfigJsonScope,
   ConfigTreeEntry,
   ConfigViewMode,
@@ -39,7 +43,10 @@ import {
   normalizeProjectPath,
   resolveExportSnapshotPath,
 } from '../../project'
-import { createPageTransferDocument } from '../../project'
+import {
+  createProjectTransferDocument,
+  createSurfaceTransferDocument,
+} from '../../project'
 
 const props = defineProps<ExportDialogProps>()
 
@@ -81,20 +88,15 @@ const selectedConfigFile = computed<Readonly<WorkspaceFile> | undefined>(() => c
 const sourceCode = computed(() => selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : '')
 const configCode = computed(() => selectedConfigFile.value?.kind === 'text' ? selectedConfigFile.value.content : '')
 const configDocument = computed(() => snapshot.value?.compilation.snapshot.document)
-const configJsonValue = computed(() => {
-  const document = configDocument.value
-  if (!document)
-    return undefined
-  return configJsonScope.value === 'project'
-    ? document
-    : createPageTransferDocument(document, props.currentPageId ?? '')
-})
+const configJsonValue = shallowRef<ProjectTransferEnvelopeV1 | SurfaceTransferEnvelopeV1>()
+const configJsonError = ref('')
+let configJsonRequest = 0
 const generatedConfigJson = computed(() => configJsonValue.value
   ? `${JSON.stringify(configJsonValue.value, null, 2)}\n`
   : '')
 const configScopeOptions = computed(() => [
   { label: locale.value.t('export.scopeProject', 'Entire project'), value: 'project' },
-  { label: locale.value.t('export.scopePage', 'Current page'), value: 'page', disabled: !props.currentPageId || !configDocument.value?.pagesById[props.currentPageId] },
+  { label: locale.value.t('export.scopeSurface', 'Current Surface'), value: 'surface', disabled: !props.currentSurfaceId || !configDocument.value?.surfacesById[props.currentSurfaceId] },
 ])
 const dialogTitle = computed(() => props.mode === 'source'
   ? locale.value.t('export.generatedSource', 'Generated Vue source')
@@ -132,6 +134,11 @@ const generatedConfigTree = computed<ConfigTreeEntry[]>(() => {
 })
 
 watch(() => props.currentCompilation, () => exportSession.sync())
+watch(
+  () => [configDocument.value, configJsonScope.value, props.currentSurfaceId, props.readEmbedded] as const,
+  () => void refreshConfigJsonValue(),
+  { immediate: true },
+)
 watch(() => props.mode, (mode) => {
   if (!mode)
     return
@@ -147,7 +154,34 @@ watch(() => props.mode, (mode) => {
     exportSession.sync()
 }, { immediate: true })
 
-onBeforeUnmount(unsubscribeSession)
+onBeforeUnmount(() => {
+  configJsonRequest += 1
+  unsubscribeSession()
+})
+
+async function refreshConfigJsonValue(): Promise<void> {
+  const request = ++configJsonRequest
+  const document = configDocument.value
+  configJsonValue.value = undefined
+  configJsonError.value = ''
+  if (!document)
+    return
+  try {
+    const transfer = configJsonScope.value === 'project'
+      ? await createProjectTransferDocument(document, props.readEmbedded)
+      : await createSurfaceTransferDocument(
+          document,
+          props.currentSurfaceId ?? '',
+          props.readEmbedded,
+        )
+    if (request === configJsonRequest)
+      configJsonValue.value = transfer
+  }
+  catch (error) {
+    if (request === configJsonRequest)
+      configJsonError.value = error instanceof Error ? error.message : String(error)
+  }
+}
 
 function languageFor(file: Readonly<WorkspaceFile> | undefined, path: ProjectPath): string {
   if (file?.kind === 'text' && file.language)
@@ -230,8 +264,8 @@ function downloadCurrent(): void {
       ? sourceViewPath.value.split('/').at(-1)!
       : configViewMode.value === 'source'
         ? configViewPath.value.split('/').at(-1)!
-        : configJsonScope.value === 'page'
-          ? `${(props.currentPageId ?? 'page').replace(/[^a-z0-9._-]+/gi, '-')}.page.json`
+        : configJsonScope.value === 'surface'
+          ? `${(props.currentSurfaceId ?? 'surface').replace(/[^a-z0-9._-]+/gi, '-')}.surface.json`
           : 'project.config.json',
     ...(mode === 'config' && configViewMode.value !== 'source'
       ? { mime: 'application/json;charset=utf-8' }
@@ -343,11 +377,11 @@ async function downloadBundle(): Promise<void> {
 
         <div v-else class="config-export-view">
           <ElAlert
-            v-if="snapshotError"
+            v-if="snapshotError || configJsonError"
             class="export-diagnostic"
             type="error"
             :title="locale.t('export.configUnavailable', 'Config export unavailable')"
-            :description="snapshotError"
+            :description="snapshotError || configJsonError"
             :closable="false"
             show-icon
           />
@@ -397,7 +431,7 @@ async function downloadBundle(): Promise<void> {
               />
             </div>
           </div>
-          <p v-else-if="!configJsonValue" class="config-json-view" role="status">{{ locale.t('export.currentPageUnavailable', 'The current page is unavailable in this export snapshot.') }}</p>
+          <p v-else-if="!configJsonValue" class="config-json-view" role="status">{{ locale.t('export.currentSurfaceUnavailable', 'The current page is unavailable in this export snapshot.') }}</p>
           <pre v-else-if="configViewMode === 'json'" class="config-json-view" tabindex="0">{{ generatedConfigJson }}</pre>
           <div v-else class="config-tree-view" role="tree" tabindex="0">
             <div v-for="entry in generatedConfigTree" :key="entry.path" role="treeitem" :style="{ paddingLeft: `${12 + entry.depth * 18}px` }">

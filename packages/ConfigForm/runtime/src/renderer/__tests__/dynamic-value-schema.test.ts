@@ -1,6 +1,6 @@
 import type { ConfigFormFieldValidator, ConfigFormValues, ConfigFormValueSchema } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import type { ConfigFormRendererExpose, ConfigFormRendererNode } from '../types'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -62,7 +62,7 @@ function nodes(
   return children()
 }
 
-function plan(valueSchema: ConfigFormValueSchema): ConfigFormPageRuntimePlan {
+function plan(valueSchema: ConfigFormValueSchema): ConfigFormSurfaceRuntimePlan {
   return { optionBindings: [], runtime: { dataSources: [], variables: [] }, valueSchema }
 }
 

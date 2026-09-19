@@ -35,7 +35,13 @@ async function fixture() {
 function sessionResult(snapshot: ProjectEditorSessionSnapshot): ProjectEditorSessionDispatchResult {
   return {
     changed: true,
-    changeSet: { project: false, pageIds: ['home'], nodeIds: [], nodeChanges: [] },
+    changeSet: {
+      project: false,
+      surfaceIds: [snapshot.document.homeSurfaceId],
+      datasetIds: [],
+      resourceIds: [],
+      nodeChanges: [],
+    },
     diagnostics: [],
     snapshot,
   }
@@ -44,16 +50,17 @@ function sessionResult(snapshot: ProjectEditorSessionSnapshot): ProjectEditorSes
 describe('workbench service boundaries', () => {
   it('publishes compilation failures instead of leaving an unexplained blank canvas', async () => {
     const { snapshot } = await fixture()
+    const surfaceId = snapshot.document.homeSurfaceId
     let diagnostic = ''
     const design = createWorkbenchDesignSession({
       getAdapter: () => undefined,
-      getPageId: () => 'home',
+      getSurfaceId: () => surfaceId,
       getProjectSession: () => undefined,
       getSnapshot: () => snapshot,
       setDiagnostic: message => diagnostic = message,
     })
 
-    const publication = design.accept(snapshot, 'home')
+    const publication = design.accept(snapshot, surfaceId)
 
     expect(publication.runtime).toMatchObject({ success: false })
     expect(design.compilation.value).toBeUndefined()
@@ -63,6 +70,7 @@ describe('workbench service boundaries', () => {
 
   it('keeps compilation candidates and command history inside Design Session', async () => {
     const { adapter, document, snapshot } = await fixture()
+    const surfaceId = document.homeSurfaceId
     const execute = vi.fn(() => sessionResult(snapshot))
     const undo = vi.fn(() => sessionResult(snapshot))
     const redo = vi.fn(() => sessionResult(snapshot))
@@ -75,32 +83,32 @@ describe('workbench service boundaries', () => {
     let diagnostic = 'stale'
     const design = createWorkbenchDesignSession({
       getAdapter: () => adapter,
-      getPageId: () => 'home',
+      getSurfaceId: () => surfaceId,
       getProjectSession: () => projectSession,
       getSnapshot: () => snapshot,
       setDiagnostic: message => diagnostic = message,
     })
     design.configure(adapter)
-    const publication = design.accept(snapshot, 'home')
+    const publication = design.accept(snapshot, surfaceId)
     expect(publication.compilation).toBe(design.compilation.value)
     expect(publication.runtime.success).toBe(true)
     expect(design.runtime.value).toBe(publication.runtime)
 
-    const field = Object.values(document.pagesById.home!.graph.nodesById)
+    const field = Object.values(document.surfacesById[surfaceId]!.graph.nodesById)
       .find(node => node.kind === 'field')!
     const command: ProjectCommand = {
       id: 'candidate-label',
       label: 'Candidate label',
       actions: [{
         type: 'node.patch',
-        pageId: 'home',
+        surfaceId,
         nodeId: field.id,
         patch: { set: { label: 'Candidate label' } },
       }],
     }
     const candidate = design.getCompilation(command)
     expect(candidate?.snapshotIdentity).toMatchObject({ source: 'draft' })
-    expect(snapshot.document.pagesById.home!.graph.nodesById[field.id]).not.toHaveProperty('label', 'Candidate label')
+    expect(snapshot.document.surfacesById[surfaceId]!.graph.nodesById[field.id]).not.toHaveProperty('label', 'Candidate label')
     expect(design.commandControl.preview(command)?.graph.nodesById[field.id]).toMatchObject({ label: 'Candidate label' })
 
     expect(design.commandControl.execute(command).changed).toBe(true)
@@ -118,25 +126,26 @@ describe('workbench service boundaries', () => {
 
   it('memoizes candidate projections per document revision', async () => {
     const { adapter, document, snapshot } = await fixture()
+    const surfaceId = document.homeSurfaceId
     let current = snapshot
     const design = createWorkbenchDesignSession({
       getAdapter: () => adapter,
-      getPageId: () => 'home',
+      getSurfaceId: () => surfaceId,
       getProjectSession: () => undefined,
       getSnapshot: () => current,
       setDiagnostic: () => {},
     })
     design.configure(adapter)
-    design.accept(current, 'home')
+    design.accept(current, surfaceId)
 
-    const field = Object.values(document.pagesById.home!.graph.nodesById)
+    const field = Object.values(document.surfacesById[surfaceId]!.graph.nodesById)
       .find(node => node.kind === 'field')!
     const command: ProjectCommand = {
       id: 'candidate-cache',
       label: 'Candidate cache',
       actions: [{
         type: 'node.patch',
-        pageId: 'home',
+        surfaceId,
         nodeId: field.id,
         patch: { set: { label: 'Cached label' } },
       }],
@@ -148,8 +157,9 @@ describe('workbench service boundaries', () => {
     expect(design.getCompilation(command)).toBe(first)
     expect(design.commandControl.preview(command)?.graph).toBe(design.commandControl.preview(command)?.graph)
 
-    current = { ...snapshot, editVersion: snapshot.editVersion + 1 }
-    design.accept(current, 'home')
+    const nextProject = createProjectSnapshot(snapshot.document, snapshot.editVersion + 1)
+    current = { ...snapshot, ...nextProject }
+    design.accept(current, surfaceId)
     const recomputed = design.getCompilation(command)
     expect(recomputed).toBeDefined()
     expect(recomputed).not.toBe(first)
@@ -157,6 +167,7 @@ describe('workbench service boundaries', () => {
 
   it('jumps through the engine history with undo and redo instead of replacing snapshots', async () => {
     const { adapter, snapshot } = await fixture()
+    const surfaceId = snapshot.document.homeSurfaceId
     let current: ProjectEditorSessionSnapshot = {
       ...snapshot,
       history: {
@@ -187,7 +198,7 @@ describe('workbench service boundaries', () => {
     const setDiagnostic = vi.fn()
     const design = createWorkbenchDesignSession({
       getAdapter: () => adapter,
-      getPageId: () => 'home',
+      getSurfaceId: () => surfaceId,
       getProjectSession: () => projectSession,
       getSnapshot: () => current,
       setDiagnostic,
@@ -211,7 +222,13 @@ describe('workbench service boundaries', () => {
       })
       .mockImplementationOnce(() => ({
         changed: false,
-        changeSet: { project: false, pageIds: [], nodeIds: [], nodeChanges: [] },
+        changeSet: {
+          project: false,
+          surfaceIds: [],
+          datasetIds: [],
+          resourceIds: [],
+          nodeChanges: [],
+        },
         diagnostics: [{ code: 'HISTORY_BLOCKED', message: 'History jump blocked.' }],
         snapshot: current,
       }))

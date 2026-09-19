@@ -27,7 +27,7 @@ interface UseDesignSurfaceCommandsOptions {
   lastAcceptedCommandId: () => string | undefined
   mediumPanel: Ref<'palette' | 'properties' | undefined>
   onNotice: (message: string, action: () => boolean) => void
-  pageId: () => string
+  surfaceId: () => string
   readonly: () => boolean
   rootRef: Ref<HTMLElement | undefined>
   selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
@@ -76,7 +76,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
 
   function handleMove(nodeId: string, target: DesignerDropTarget): void {
     options.controller.select(nodeId)
-    dispatch(createMoveCommand(options.pageId(), nodeId, target))
+    dispatch(createMoveCommand(options.surfaceId(), nodeId, target))
   }
 
   /**
@@ -101,7 +101,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
       ? { parentId: null, index }
       : { parentId: reference.parentId, slot: reference.slot!, index }
     options.controller.select(nodeId)
-    return dispatch(createMoveCommand(options.pageId(), nodeId, target))
+    return dispatch(createMoveCommand(options.surfaceId(), nodeId, target))
   }
 
   function showCanvasOrProperties(): void {
@@ -131,19 +131,19 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
 
   function handleResize(nodeId: string, span: number): void {
     options.controller.select(nodeId)
-    dispatch(createResizeCommand(options.pageId(), nodeId, span))
+    dispatch(createResizeCommand(options.surfaceId(), nodeId, span))
   }
 
   function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.pageId(), [nodeId], path, value))
+    dispatch(createNodePathCommand(options.controller.graph.value, options.surfaceId(), [nodeId], path, value))
   }
 
   function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.pageId(), nodeIds, path, value))
+    dispatch(createNodePathCommand(options.controller.graph.value, options.surfaceId(), nodeIds, path, value))
   }
 
   function handleUpdateForm(changes: Record<string, unknown>): void {
-    dispatch(createFormCommand(options.controller.graph.value, options.pageId(), changes))
+    dispatch(createFormCommand(options.controller.graph.value, options.surfaceId(), changes))
   }
 
   function deletionUndoTarget(positionBefore?: number): DeletionUndoTarget {

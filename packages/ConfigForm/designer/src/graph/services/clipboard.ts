@@ -1,4 +1,4 @@
-import type { NodeSubgraph, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { NodeSubgraph, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
 import { collectDesignSubtreeIds, findDesignNode, walkDesignGraph } from '../utils'
 import { createDesignBusinessKeyAllocator } from './business-keys'
@@ -15,7 +15,7 @@ function cloneJson<T>(value: T): T {
  * into a serializable subgraph, ordered by document order. The extracted
  * subgraph still carries the original ids; remap before re-inserting.
  */
-export function extractDesignSubgraph(graph: PageGraph, nodeIds: readonly string[]): NodeSubgraph | undefined {
+export function extractDesignSubgraph(graph: SurfaceGraph, nodeIds: readonly string[]): NodeSubgraph | undefined {
   const order: string[] = []
   walkDesignGraph(graph, ({ node }) => {
     order.push(node.id)
@@ -27,7 +27,7 @@ export function extractDesignSubgraph(graph: PageGraph, nodeIds: readonly string
   if (roots.length === 0)
     return undefined
 
-  const nodesById: Record<string, PageNode> = {}
+  const nodesById: Record<string, SurfaceNode> = {}
   for (const location of roots) {
     for (const subtreeId of collectDesignSubtreeIds(graph, location.node.id)) {
       const node = graph.nodesById[subtreeId]
@@ -48,14 +48,14 @@ export function extractDesignSubgraph(graph: PageGraph, nodeIds: readonly string
  */
 export function remapDesignSubgraph(
   subgraph: NodeSubgraph,
-  graph: PageGraph,
+  graph: SurfaceGraph,
   target: DesignerDropTarget = { parentId: null },
 ): NodeSubgraph {
   const idMap = new Map<string, string>()
   for (const sourceId of Object.keys(subgraph.nodesById))
     idMap.set(sourceId, createDesignerNodeId(subgraph.nodesById[sourceId]!.kind))
 
-  const nodesById: Record<string, PageNode> = {}
+  const nodesById: Record<string, SurfaceNode> = {}
   for (const [sourceId, sourceNode] of Object.entries(subgraph.nodesById)) {
     const node = cloneJson(sourceNode)
     node.id = idMap.get(sourceId)!

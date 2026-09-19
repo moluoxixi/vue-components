@@ -71,24 +71,24 @@ retry when Monaco reports `TypeScript not registered!`.
 ### Current implementation
 
 Until the independent Source package lands, the Workbench export facade keeps
-generation order and error semantics stable while private services own
-recursive PageGraph concerns:
+generation order and error semantics stable while private services consume the
+current flat Surface compilation:
 
 - `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
-- `source-page.ts` generates one page's Vue source and delegates layout serialization, Registry lookup, portability
+- `source-page.ts` generates one Surface's Vue source and delegates layout serialization, Registry lookup, portability
   validation, and dependency collection.
-- `source-portability.ts` recursively validates every nested node, static prop, binding, and source reference before
-  source generation.
+- `source-portability.ts` recursively validates every nested node, static prop, and component resolution before source
+  generation.
 - `source-libraries.ts` recursively collects libraries and rejects conflicting declarations for the same package.
 - `source-registry.ts` centralizes component lookup and retains the public export error wording.
 
-Regression coverage must include invalid nested components/props/bindings/sources, dependencies that appear only in
-child nodes, nested library conflicts, canonical Source snapshots, generated Data Source execution, and byte-stable
-generated project/page files. Source must not emit handler stubs, action bindings, event metadata, or Flow plans.
+Regression coverage must include invalid nested components/props, dependencies that appear only in child nodes,
+nested library conflicts, canonical Source snapshots, generated project execution, and byte-stable generated
+project/Surface files. Source must not emit handler stubs, action bindings, event metadata, or Flow plans.
 
-This is a Page-only current implementation. It must not be described as the
-target Surface/Dataset generator, and it must not gain a temporary compatibility
-layer while target contracts are implemented.
+This is the current temporary Surface generator, not the final SourceFileSet or
+Dataset/Resource generator. It must not gain a compatibility layer while final
+ownership moves to the Source package.
 
 ### Target ownership
 
@@ -374,84 +374,81 @@ Correct:
 
 ---
 
-## Scenario: JSON Value Boundaries And Vue Prop Casting
+## Scenario: JSON Value Boundaries Across Vue And Runtime Hosts
 
 ### 1. Scope / Trigger
 
-Apply this contract when Workbench passes reactive project state into Model/Core
-services or when a controlled editor prop accepts multiple JSON primitive kinds.
+Apply this contract when Workbench passes reactive project, compilation,
+Prototype session, command, projection, or value state into Model services,
+iframe messages, or Runtime Host component props.
 
 ### 2. Signatures
 
 ```ts
 cloneWorkbenchJson<T>(value: T): T
-
-createWorkbenchDataTestContext(
-  graph: PageGraph | undefined,
-  values: Record<string, unknown>,
-): ConfigFormValueContext
-
-modelValue: {
-  type: null as unknown as PropType<DataValueEditorProps['modelValue']>,
-}
 ```
 
 ### 3. Contracts
 
-- Clone reactive graph/value inputs through `cloneWorkbenchJson` before passing
-  them to schema derivation or other APIs that require plain JSON data. Do not
-  call native `structuredClone` directly on a Vue proxy.
-- A controlled prop whose valid values include `''`, `false`, `0`, `null`,
-  objects, and arrays disables Vue runtime type casting with `type: null` while
-  retaining its compile-time `PropType`. Do not generate a runtime union that
-  contains `Boolean`: Vue may cast a present empty string to `true` before the
-  child component reads it.
-- The parent remains the source of truth. The editor emits the exact selected
-  JSON value and must preserve that value after the controlled prop is written
-  back.
+- Clone reactive JSON inputs through `cloneWorkbenchJson` before crossing an
+  iframe, Runtime Host, or plain Model boundary. Do not call native
+  `structuredClone` directly on a Vue proxy.
+- The helper unwraps the root with Vue `toRaw`, prefers `structuredClone`, and
+  falls back to a JSON round trip only because these boundaries already require
+  JSON-safe data. It is not a validator and must not be used to make functions,
+  DOM nodes, class instances, or other non-JSON values appear supported.
+- Every outbound Runtime Host message owns a detached payload. A receiver may
+  update its local session or value state without mutating the Workbench source,
+  and Workbench must clone accepted inbound snapshots before storing them in
+  reactive state.
+- Surface identity stays `surfaceId` and runtime state stays keyed by
+  `instanceId`; cloning must not collapse those two ownership domains or reuse a
+  mutable object between instances.
 
 ### 4. Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| Reactive `PageGraph` or values reach a test/runtime boundary | Convert them to plain JSON through `cloneWorkbenchJson` |
+| Reactive `SurfaceGraph`, compilation, session, command, projection, or values cross a host boundary | Convert them to detached plain JSON through `cloneWorkbenchJson` |
 | Native structured clone rejects a proxy or host object | Use the helper's deterministic JSON fallback |
-| User selects the text kind | Emit `''`; after parent write-back, render the text input |
-| User selects the boolean kind | Emit `false`; render the boolean control |
-| Runtime prop generation places `Boolean` before other union kinds | Reject the declaration and use a cast-free runtime prop |
+| A payload contains a non-JSON value | Reject it through the owning Reader/guard; do not treat cloning as validation |
+| Two open instances render the same Surface | Store detached values/projection for each `instanceId` |
+| A closed instance sends a late snapshot | Reject it through Runtime Host protocol state; cloning does not make it current |
 
 ### 5. Good / Base / Bad Cases
 
-- Good: a reactive page graph is cloned to plain data before value-schema
-  derivation, and an empty text literal stays `''` through controlled write-back.
-- Base: non-reactive JSON inputs clone without semantic changes.
-- Bad: pass a Vue proxy directly to `structuredClone`, or declare the value prop
-  as `[Boolean, Number, String, Object, Array]` and silently turn `''` into `true`.
+- Good: a reactive Prototype session is cloned before `postMessage`, and the
+  accepted reply is cloned again before Workbench stores it.
+- Base: non-reactive JSON input clones without semantic changes and does not
+  retain nested object identity.
+- Bad: pass a Vue proxy directly to `structuredClone`, share one values object
+  across two `instanceId` entries, or use the JSON fallback as permission to
+  accept an otherwise invalid protocol payload.
 
 ### 6. Tests Required
 
-- Unit coverage passes reactive graph/value inputs to
-  `createWorkbenchDataTestContext` and asserts field resolution without a
-  `DataCloneError`.
-- Component coverage selects the text kind, asserts `update:modelValue` emits
-  `''`, writes `''` back, and proves the text input renders instead of a switch.
-- Browser coverage uses a real Element Plus option click and proves a
-  variable-backed request can be configured and executed in Preview.
+- Unit coverage passes nested Vue reactive JSON to `cloneWorkbenchJson`, asserts
+  no `DataCloneError`, deep equality, and detached nested references.
+- Runtime Host protocol coverage mutates a delivered message fixture and proves
+  the source session/compilation is unchanged; malformed and late messages still
+  fail their exact guards.
+- Experience coverage opens the same Surface twice and proves values,
+  validation, projection, and focus snapshots remain isolated by `instanceId`.
 
 ### 7. Wrong vs Correct
 
 Wrong:
 
 ```ts
-deriveProjectPageValueSchema(structuredClone(graph))
-modelValue: [Boolean, Number, String, Object, Array]
+postMessage({ session: structuredClone(reactiveSession) })
+instancesById[next.surfaceId] = next.values
 ```
 
 Correct:
 
 ```ts
-deriveProjectPageValueSchema(cloneWorkbenchJson(graph))
-modelValue: { type: null as unknown as PropType<DataValueEditorProps['modelValue']> }
+postMessage({ session: cloneWorkbenchJson(reactiveSession) })
+instancesById[next.instanceId] = cloneWorkbenchJson(next.values)
 ```
 
 ---

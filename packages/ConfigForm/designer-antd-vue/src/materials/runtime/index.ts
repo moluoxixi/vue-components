@@ -1,4 +1,3 @@
-export { createAntdVueOptionDiagnostics } from '../../options'
 export {
   renderAntdVueChoiceReadonly,
   renderAntdVuePasswordReadonly,

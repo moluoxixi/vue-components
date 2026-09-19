@@ -30,7 +30,7 @@ function closeCreation(created = false): void {
     return
   const focusKey = returnFocusKey.value
   if (created)
-    ui.closePageManager()
+    ui.closeSurfaceManager()
   view.value = 'designer'
   if (!created && focusKey && ui.pageManagerOpen.value)
     return

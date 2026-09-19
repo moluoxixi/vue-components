@@ -44,6 +44,7 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'playground': ['App.vue', 'main.ts'],
   'plugin-antd-vue': ['index.ts'],
   'plugin-element-plus': ['index.ts'],
+  'prototype-runtime': [],
   'runtime': ['index.vue'],
   'vue-backend': ['index.ts'],
   'workbench': [
@@ -96,7 +97,11 @@ function collectProductDirectories(directory: string): string[] {
     if (!entry.isDirectory() || ignoredDirectories.has(entry.name) || entry.name.startsWith('__'))
       return []
     const path = join(directory, entry.name)
-    return [path, ...collectProductDirectories(path)]
+    const entries = readdirSync(path, { withFileTypes: true })
+    const descendants = collectProductDirectories(path)
+    return entries.some(child => child.isFile()) || descendants.length > 0
+      ? [path, ...descendants]
+      : []
   })
 }
 
@@ -164,7 +169,7 @@ describe('workbench production architecture boundary', () => {
       ['apply', 'Workspace', 'Application', 'Operation'].join(''),
       ['Project', 'Store'].join(''),
       ['create', 'Project', 'Store'].join(''),
-      'setCurrentPage(',
+      'setCurrentSurface(',
       `type: '${['update', 'page', 'model'].join('-')}'`,
     ]
     forbidden.forEach(token => expect(source).not.toContain(token))
@@ -190,9 +195,9 @@ describe('workbench production architecture boundary', () => {
       ['create', 'Project', 'Template', 'Registry'].join(''),
       ['BUILT_IN', 'PROJECT', 'TEMPLATES'].join('_'),
       ['create', 'Built', 'In', 'Project'].join(''),
-      ['create', 'Built', 'In', 'Project', 'Page'].join(''),
+      ['create', 'Built', 'In', 'Project', 'Surface'].join(''),
       ['Template', 'Identity', 'Factory'].join(''),
-      ['remap', 'Template', 'Page', 'Identity'].join(''),
+      ['remap', 'Template', 'Surface', 'Identity'].join(''),
       ['Runtime', 'Surface'].join(''),
       ['IMPORT', 'COMPONENT', 'MIGRATION', 'FAILED'].join('_'),
       ['antd', 'Config', 'Form'].join(''),
@@ -222,7 +227,7 @@ describe('workbench production architecture boundary', () => {
       ['Config', 'Form', 'Runtime', 'Event'].join(''),
       ['Registered', 'Event', 'Action'].join(''),
       ['Flow', 'Value', 'Editor'].join(''),
-      ['Page', 'Flow', 'Engine'].join(''),
+      ['Surface', 'Flow', 'Engine'].join(''),
       ['create', 'Config', 'Form', 'Event', 'Runtime'].join(''),
       ['runtime', 'Event'].join(''),
       ['component', 'Event'].join(''),
@@ -319,6 +324,7 @@ describe('workbench production architecture boundary', () => {
         .map(entry => `${name}/src/${entry.name}`)
     })
     const allSourceDirectories = packageSourceRoots.flatMap(({ sourceRoot }) => collectProductDirectories(sourceRoot))
+    const productDirectorySet = new Set(allSourceDirectories)
     const responsibilityDirectories = allSourceDirectories
       .filter(directory => responsibilityDirectoryNames.has(basename(directory)))
     const featureRoots = allSourceDirectories.filter((directory) => {
@@ -335,11 +341,13 @@ describe('workbench production architecture boundary', () => {
     const missingLocalEntries = [...new Set([
       ...packageSourceRoots.flatMap(({ sourceRoot }) => readdirSync(sourceRoot, { withFileTypes: true })
         .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(sourceRoot, entry.name))),
+        .map(entry => join(sourceRoot, entry.name))
+        .filter(directory => productDirectorySet.has(directory))),
       ...responsibilityDirectories,
       ...featureRoots.flatMap(directory => readdirSync(directory, { withFileTypes: true })
         .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(directory, entry.name))),
+        .map(entry => join(directory, entry.name))
+        .filter(child => productDirectorySet.has(child))),
     ])]
       .filter(directory => !sourceRootDirectoryEntryExceptions.has(normalizedRelative(configFormRoot, directory)))
       .filter(directory => !hasLocalEntry(directory))
@@ -483,7 +491,7 @@ describe('workbench production architecture boundary', () => {
   it('keeps legacy contracts out of every ConfigForm source, test, script, template, and public declaration', () => {
     const forbiddenTokens = [
       ['Workspace', 'Application'].join(''),
-      ['LowCode', 'PageModel'].join(''),
+      ['LowCode', 'SurfaceModel'].join(''),
       ['Designer', 'Document'].join(''),
       ['Workspace', 'Session'].join(''),
       ['Workspace', 'Repository'].join(''),
@@ -540,14 +548,14 @@ describe('workbench production architecture boundary', () => {
     const designSession = readFileSync(new URL('../../session/services/workbench-design.ts', import.meta.url), 'utf8')
     const exportService = readFileSync(new URL('../../session/services/workbench-export.ts', import.meta.url), 'utf8')
     expect(designSession).toContain('createCompileCoordinator')
-    expect(designSession).toContain('coordinator.compilePage(pageId)')
-    expect(designSession).toContain('coordinator.compileDraftPage(snapshot, pageId, changeSet)')
+    expect(designSession).toContain('coordinator.compileSurface(surfaceId)')
+    expect(designSession).toContain('coordinator.compileDraftSurface(snapshot, surfaceId, changeSet)')
     expect(designSession).toContain('createProjectDraftSnapshotFromTransaction')
-    expect(designSession).toContain('compileCanonicalPageRuntime')
+    expect(designSession).toContain('compileCanonicalSurfaceRuntime')
     expect(designSession).not.toContain('compileCanonicalProject')
     expect(exportService).toContain('compileCanonicalProject')
     expect(controller).not.toContain('compileCanonicalProject')
-    expect(controller).not.toContain('compileCanonicalPageRuntime')
+    expect(controller).not.toContain('compileCanonicalSurfaceRuntime')
     expect(controller).not.toContain('createCompileCoordinator')
     expect(controller).not.toContain(['configModel', 'ToDesigner', 'Document'].join(''))
     expect(controller).not.toContain(['compile', 'Designer', 'Document(document'].join(''))
@@ -562,11 +570,11 @@ describe('workbench production architecture boundary', () => {
     expect(drawer).toContain('PreviewRuntimeHostFrame')
     expect(drawer).not.toContain('RuntimeSurface')
     expect(drawer).not.toContain('VueRuntimeCompileSuccess')
-    expect(host).not.toContain('compileCanonicalPageRuntime')
+    expect(host).not.toContain('compileCanonicalSurfaceRuntime')
     expect(host).not.toContain('loadWorkbenchRuntimeAdapter')
-    expect(hostProtocol).toContain('compileCanonicalPageRuntime')
+    expect(hostProtocol).toContain('compileCanonicalSurfaceRuntime')
     expect(hostProtocol).toContain('loadWorkbenchRuntimeAdapter')
-    expect(protocol).toContain('compilation: PageCompilation')
+    expect(protocol).toContain('compilation: SurfaceCompilation')
     expect(protocol).not.toContain(`from '${['@moluoxixi/config-form', 'renderer'].join('/')}'`)
   })
 
@@ -591,7 +599,7 @@ describe('workbench production architecture boundary', () => {
       expect(shell).toContain(`${name}()`)
     }
     expect(shell).not.toContain('compileCanonicalProject')
-    expect(shell).not.toContain('compileCanonicalPageRuntime')
+    expect(shell).not.toContain('compileCanonicalSurfaceRuntime')
   })
 
   it('passes app services into lazy features without a reverse app import', () => {
@@ -629,16 +637,18 @@ describe('workbench production architecture boundary', () => {
     expect(controller).toContain('createWorkbenchPreviewSession')
     expect(projectBinding).toContain('previewSession.accept')
     expect(controller).toContain('previewSession.dispose')
-    expect(controllerOrchestration).not.toContain('createPageProjectionCoordinator')
+    expect(controllerOrchestration).not.toContain('createSurfaceProjectionCoordinator')
     expect(controllerOrchestration).not.toContain('lastRuntimePreview')
     expect(controllerOrchestration).not.toContain('reconcilePreviewModel')
     expect(controllerOrchestration).not.toContain('projectionCoordinator')
-    expect(previewSession).toContain('createPageProjectionCoordinator')
-    expect(previewSession).toContain('lastReadyPreview')
+    expect(previewSession).toContain('readPrototypeSession')
+    expect(previewSession).toContain('instanceStates')
     expect(previewSession).toContain('handleRuntimeMounted')
-    expect(previewSession).toContain('handleRuntimeState')
-    expect(previewSession).toContain('const touched = shallowRef')
-    expect(previewSession).toContain('const validation = shallowRef')
+    expect(previewSession).toContain('handleRuntimeReady')
+    expect(previewSession).toContain('handleInstanceState')
+    expect(previewSession).toContain('handleSession')
+    expect(previewSession).not.toContain('createSurfaceProjectionCoordinator')
+    expect(previewSession).not.toContain('handleRuntimeState')
   })
 
   it('keeps transient chrome state inside the UI Store', () => {
@@ -680,7 +690,7 @@ describe('workbench production architecture boundary', () => {
     expect(app).toContain('TemplateCreationWorkspace')
     expect(app).toContain('ref<\'create\' | \'designer\'>')
     expect(workspace).toContain('createTemplateCatalogService')
-    expect(workspace).toContain('PreviewRuntimeHostFrame')
+    expect(workspace).toContain('DesignRuntimeHostFrame')
     expect(shell).not.toContain('TemplateDialog')
     expect(shell).not.toContain('templatePickerOpen')
     expect(shell).not.toContain('builtInTemplateCatalogProvider')

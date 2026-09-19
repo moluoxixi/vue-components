@@ -1,6 +1,11 @@
 import type {
+  DatasetId,
   ProjectDocument,
+  ProjectEmbeddedResourceRead,
+  ProjectId,
   RegistryLock,
+  ResourceId,
+  SurfaceId,
 } from './contracts'
 
 export type ProjectRepositoryPersistence = 'durable' | 'volatile'
@@ -23,8 +28,9 @@ export type ProjectRepositoryErrorCode
 
 export interface ProjectEntityRevisions {
   manifest: number
-  pages: Record<string, number>
-  resources: Record<string, number>
+  surfaces: Record<SurfaceId, number>
+  datasets: Record<DatasetId, number>
+  resources: Record<ResourceId, number>
 }
 
 export interface PersistedProjectEnvelope {
@@ -36,11 +42,13 @@ export interface PersistedProjectEnvelope {
 }
 
 export interface ProjectSummary {
-  id: string
+  id: ProjectId
   name: string
   repositoryRevision: number
-  homePageId: string
-  pageCount: number
+  homeSurfaceId: SurfaceId
+  surfaceCount: number
+  datasetCount: number
+  resourceCount: number
   registryLock: RegistryLock
   updatedAt: string
 }
@@ -53,14 +61,22 @@ export interface ProjectRepositorySeed {
 
 export interface ProjectRepositoryCreateInput {
   document: ProjectDocument
+  embeddedContents: readonly ProjectEmbeddedResourceWrite[]
   seed?: ProjectRepositorySeed
+}
+
+export interface ProjectEmbeddedResourceWrite {
+  resourceId: ResourceId
+  contentHash: string
+  bytes: Uint8Array
 }
 
 export interface ProjectRepositoryCommitInput {
   commandId: string
   document: ProjectDocument
+  embeddedWrites?: readonly ProjectEmbeddedResourceWrite[]
   expectedRepositoryRevision: number
-  id: string
+  id: ProjectId
   metadata: ProjectCommitMetadata
 }
 
@@ -70,7 +86,7 @@ export interface ProjectRepositoryCommitResult {
 }
 
 export interface ProjectVersionSummary {
-  projectId: string
+  projectId: ProjectId
   repositoryRevision: number
   source: ProjectCommitSource
   label?: string
@@ -80,7 +96,7 @@ export interface ProjectVersionSummary {
 }
 
 export interface ProjectVersionLabelInput {
-  projectId: string
+  projectId: ProjectId
   revision: number
   label?: string
   expectedRepositoryRevision: number
@@ -103,6 +119,7 @@ export interface ProjectRepository {
   list: () => Promise<ProjectSummary[]>
   listVersions: (projectId: string) => Promise<ProjectVersionSummary[]>
   pruneVersions: (projectId: string, policy?: ProjectVersionRetentionPolicy) => Promise<void>
+  readEmbedded: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
   setVersionLabel: (input: ProjectVersionLabelInput) => Promise<void>
 }
 

@@ -18,45 +18,57 @@ function editorSnapshot(project: ReturnType<typeof createProjectSnapshot>): Proj
     repositoryRevision: 2,
     saving: false,
     updatedAt: '2026-08-31T00:00:00.000Z',
-  } as ProjectEditorSessionSnapshot
+  }
 }
 
 describe('candidate previews after layout inserts', () => {
   it('keeps insert previews alive after an empty section lands through incremental compilation', async () => {
     const adapter = await loadWorkbenchAdapter('element-plus')
     const document = createBuiltInProjectFixture('element-profile', { id: 'repro', name: 'Repro' }, adapter.componentRegistry.lock)
+    const surfaceId = document.homeSurfaceId
     let snapshot = editorSnapshot(createProjectSnapshot(document, 3))
     const design = createWorkbenchDesignSession({
       getAdapter: () => adapter,
-      getPageId: () => 'home',
+      getSurfaceId: () => surfaceId,
       getProjectSession: () => undefined,
       getSnapshot: () => snapshot,
       setDiagnostic: () => {},
     })
     design.configure(adapter)
-    expect(design.accept(snapshot, 'home').runtime.success).toBe(true)
+    expect(design.accept(snapshot, surfaceId).runtime.success).toBe(true)
 
     // evolve the document: empty section appended at root end
-    const page = document.pagesById.home!
+    const surface = document.surfacesById[surfaceId]!
     const next = {
       ...document,
-      pagesById: {
-        ...document.pagesById,
-        home: {
-          ...page,
+      surfacesById: {
+        ...document.surfacesById,
+        [surfaceId]: {
+          ...surface,
           graph: {
-            ...page.graph,
+            ...surface.graph,
             nodesById: {
-              ...page.graph.nodesById,
-              'sec-1': { id: 'sec-1', kind: 'layout' as const, component: 'element.section', props: { title: 'Section' }, bindings: {}, slots: { default: [] } },
+              ...surface.graph.nodesById,
+              'sec-1': { id: 'sec-1', kind: 'layout' as const, component: 'element.section', props: { title: 'Section' }, slots: { default: [] } },
             },
-            root: [...page.graph.root, { nodeId: 'sec-1', placement: {} }],
+            root: [...surface.graph.root, { nodeId: 'sec-1', placement: {} }],
           },
         },
       },
     }
     snapshot = editorSnapshot(createProjectSnapshot(next, 4))
-    const accepted = design.accept(snapshot, 'home', { project: false, pageIds: ['home'], nodeIds: ['sec-1'], nodeChanges: [{ pageId: 'home', nodeId: 'sec-1', kind: 'insert', after: { parentId: null } }] } as never)
+    const accepted = design.accept(snapshot, surfaceId, {
+      project: false,
+      surfaceIds: [surfaceId],
+      datasetIds: [],
+      resourceIds: [],
+      nodeChanges: [{
+        surfaceId,
+        nodeId: 'sec-1',
+        kind: 'insert',
+        after: { parentId: null, slot: null },
+      }],
+    })
     expect(accepted.runtime.success).toBe(true)
 
     const inputInsert: ProjectCommand = {
@@ -66,14 +78,14 @@ describe('candidate previews after layout inserts', () => {
         type: 'operation.apply',
         operations: [{
           type: 'node.insert',
-          pageId: 'home',
+          surfaceId,
           subgraph: {
             root: [{ nodeId: 'cand-1', placement: {} }],
-            nodesById: { 'cand-1': { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, bindings: {} } },
+            nodesById: { 'cand-1': { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {} } },
           },
-          target: { parentId: null, index: next.pagesById.home!.graph.root.length },
+          target: { parentId: null, index: next.surfacesById[surfaceId]!.graph.root.length },
         }],
-      }] as never,
+      }],
     }
     expect(design.commandControl.preview(inputInsert)).toBeDefined()
   })

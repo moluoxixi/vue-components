@@ -14,10 +14,12 @@ and deterministic local interaction; engineers own HTTP, authentication,
 asynchronous side effects, and business functions in exported or host
 Vue/TypeScript code.
 
-Status must always be explicit. The repository is currently Page-only and the
-existing Designer has two Inspector sections. Surface assets, Dataset authoring,
-Prototype Interaction, `@moluoxixi/config-form-prototype-runtime`, and
-`@moluoxixi/config-form-source` are target contracts, not current imports.
+Status must always be explicit. Surface Foundation is current: ProjectDocument,
+Compiler, persistence, Runtime Host, and the existing generator use
+Page/Dialog/Drawer Surface assets, and
+`@moluoxixi/config-form-prototype-runtime` is importable. The Designer still has
+two Inspector sections. Full Studio asset/Dataset/Interaction authoring and
+`@moluoxixi/config-form-source` remain later delivery stages.
 
 The exact target domain shapes, versions, diagnostics, and tests are owned by
 [Studio Domain Contracts](./studio-domain-contracts.md).
@@ -161,7 +163,7 @@ Studio ----------------------------------+
   Workbench, Prototype Runtime, or Source.
 - Designer does not depend on Studio, Workbench, Source, or a concrete runtime
   adapter, and does not own business side effects.
-- Planned `@moluoxixi/config-form-prototype-runtime` exposes DOM-free root and
+- `@moluoxixi/config-form-prototype-runtime` exposes DOM-free root and
   `/session` entries; Vue Surface/overlay ownership is isolated in `/vue` and
   `/vue/style`. Studio Experience and generated projects consume it.
 - Source generator does not import Designer, Workbench, concrete provider UI,

@@ -1,2 +1,2 @@
-export { PageManager } from './PageManager'
-export type * from './PageManager/types'
+export { SurfaceManager } from './SurfaceManager'
+export type * from './SurfaceManager/types'

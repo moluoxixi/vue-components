@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload, ConfigFormField } from '@moluoxixi/config-form-headless'
-import type { PageNode } from '@moluoxixi/config-form-model'
+import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerPropertyControlDefinition,
   DesignerPropertyControlRegistry,
@@ -21,7 +21,7 @@ const props = defineProps<{
   components?: ConfigFormComponentRegistry
   controls?: DesignerPropertyControlRegistry
   readonly?: boolean
-  node?: PageNode
+  node?: SurfaceNode
   renderer: Component
 }>()
 

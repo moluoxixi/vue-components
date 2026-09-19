@@ -1,5 +1,5 @@
 import type {
-  PageGraph,
+  SurfaceGraph,
 } from '@moluoxixi/config-form-model'
 import type {
   ProjectTemplateAdapter,
@@ -8,13 +8,13 @@ import {
   FORM_LABEL_WIDTH_DEFAULT_PX,
   FORM_LABEL_WIDTH_MOBILE_DEFAULT_PX,
   FORM_LABEL_WIDTH_TABLET_DEFAULT_PX,
-  PAGE_GRAPH_VERSION,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 
-export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
+export function createProfileGraph(adapter: ProjectTemplateAdapter): SurfaceGraph {
   const prefix = adapter === 'element-plus' ? 'element' : 'antd'
   return {
-    version: PAGE_GRAPH_VERSION,
+    version: SURFACE_GRAPH_VERSION,
     props: {},
     form: {
       columns: 24,
@@ -41,7 +41,6 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
         label: 'Name',
         defaultValue: '',
         props: { placeholder: 'Enter your name' },
-        bindings: {},
       },
       'profile-role': {
         id: 'profile-role',
@@ -57,7 +56,6 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
           ],
           placeholder: 'Select a role',
         },
-        bindings: {},
       },
       'profile-active': {
         id: 'profile-active',
@@ -67,15 +65,14 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
         label: 'Active',
         defaultValue: true,
         props: {},
-        bindings: {},
       },
     },
   }
 }
 
-export function createBlankGraph(): PageGraph {
+export function createBlankGraph(): SurfaceGraph {
   return {
-    version: PAGE_GRAPH_VERSION,
+    version: SURFACE_GRAPH_VERSION,
     props: {},
     form: {
       columns: 24,

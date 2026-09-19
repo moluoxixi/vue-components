@@ -2,8 +2,6 @@ import type { DesignerDefaultValueKind, DesignerJsonValue, DesignerSetterOption 
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import type {
   ElementPlusDesignerOption,
-  ElementPlusOptionSource,
-  ElementPlusResolvedOptionState,
 } from './options'
 
 export type ElementSelectValue
@@ -14,7 +12,6 @@ export type ElementSelectValue
 export interface ElementCheckboxFieldProps {
   modelValue?: Array<string | number>
   options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
 }
 
 export interface ElementChoiceDefaultSetterProps {
@@ -32,14 +29,9 @@ export interface ElementDefaultValueSetterProps {
   options?: DesignerSetterOption[]
 }
 
-export interface ElementOptionStateProps {
-  state: ElementPlusResolvedOptionState
-}
-
 export interface ElementRadioFieldProps {
   modelValue?: string | number | boolean
   options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
 }
 
 export interface ElementSectionProps {
@@ -50,7 +42,6 @@ export interface ElementSectionProps {
 export interface ElementSelectFieldProps {
   modelValue?: ElementSelectValue
   options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
 }
 
 export type ElementFlexDirection = 'row' | 'column'

@@ -1,30 +1,33 @@
-import type { ProjectDocument, ProjectPage } from '@moluoxixi/config-form-model'
+import type { ModelJsonObject, ProjectDocument, ProjectSurface } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter } from '../../adapters'
 import type { IsolatedProjectPreview } from '../types'
-import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
+import { compileCanonicalSurface } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 
-function initialValues(page: ProjectPage): Record<string, unknown> {
-  return Object.fromEntries(Object.values(page.graph.nodesById)
-    .filter(node => node.kind === 'field' && node.defaultValue !== undefined)
-    .map(node => [node.kind === 'field' ? node.field : '', structuredClone(node.kind === 'field' ? node.defaultValue : undefined)]))
+function initialValues(surface: ProjectSurface): ModelJsonObject {
+  const values: ModelJsonObject = {}
+  for (const node of Object.values(surface.graph.nodesById)) {
+    if (node.kind === 'field' && node.defaultValue !== undefined)
+      values[node.field] = structuredClone(node.defaultValue)
+  }
+  return values
 }
 
 export function prepareIsolatedProjectPreview(input: {
   adapter: Pick<WorkbenchAdapter, 'designerRegistry' | 'registrySnapshot'>
   adapterId: IsolatedProjectPreview['adapter']
   document: ProjectDocument
-  pageId: string
+  surfaceId: string
   revision: string
 }): IsolatedProjectPreview {
   const snapshot = createProjectSnapshot(input.document, 0)
-  const compiled = compileCanonicalPage({
+  const compiled = compileCanonicalSurface({
     snapshot: {
       document: snapshot.document,
       editVersion: snapshot.editVersion,
       contentHash: snapshot.contentHash,
     },
-    pageId: input.pageId,
+    surfaceId: input.surfaceId,
     registry: input.adapter.registrySnapshot,
   })
   if (!compiled.success) {
@@ -32,15 +35,13 @@ export function prepareIsolatedProjectPreview(input: {
       `${compiled.diagnostics[0]?.code ?? 'ISOLATED_PREVIEW_COMPILE_FAILED'}: ${compiled.diagnostics[0]?.message ?? 'Preview compilation failed.'}`,
     )
   }
-  const page = input.document.pagesById[input.pageId]!
-  const values = initialValues(page)
+  const surface = input.document.surfacesById[input.surfaceId]!
+  const values = initialValues(surface)
   return {
     adapter: input.adapterId,
     compilation: compiled.compilation,
     namespace: input.adapter.designerRegistry.rendererNamespace,
-    reactionProjection: { values: structuredClone(values), props: {}, states: {}, validate: [] },
     revision: input.revision,
-    runtimeSessionKey: `${input.document.id}:${input.adapterId}:${input.pageId}`,
-    runtimeState: { fields: [], values, touched: [], validation: {} },
+    values,
   }
 }

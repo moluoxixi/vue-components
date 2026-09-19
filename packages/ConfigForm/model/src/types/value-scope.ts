@@ -1,13 +1,13 @@
-import type { FieldNode, NodeId, ProjectPageValueSchema } from './contracts'
+import type { FieldNode, NodeId, SurfaceValueSchema } from './contracts'
 
-export interface ProjectPageValueScopeIssue {
+export interface SurfaceValueScopeIssue {
   message: string
   path: Array<string | number>
 }
 
-export interface ProjectPageValueScopeAnalysis extends ProjectPageValueSchema {
+export interface SurfaceValueScopeAnalysis extends SurfaceValueSchema {
   fieldsByScope: ReadonlyMap<NodeId | undefined, ReadonlyMap<string, FieldNode>>
-  issues: ProjectPageValueScopeIssue[]
+  issues: SurfaceValueScopeIssue[]
   ownerScopeByNodeId: ReadonlyMap<NodeId, NodeId | undefined>
   parentScopeByScopeId: ReadonlyMap<NodeId, NodeId | undefined>
 }

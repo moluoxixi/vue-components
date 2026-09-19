@@ -3,7 +3,7 @@
   "name": "config-form-surface-foundation",
   "title": "建立 Surface 与项目领域基础",
   "description": "实现 Surface、Dataset、Interaction 在 Model、持久化、Compiler、Vue backend 与 Runtime 的基础合同。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "config-form-model",

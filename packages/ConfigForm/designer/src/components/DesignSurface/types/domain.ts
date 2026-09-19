@@ -1,4 +1,4 @@
-import type { ComponentContract, FormSettings, ModelDiagnostic, PageGraph, PageNode, ProjectCommand, ProjectHistorySummary } from '@moluoxixi/config-form-model'
+import type { ComponentContract, FormSettings, ModelDiagnostic, SurfaceGraph, SurfaceNode, ProjectCommand, ProjectHistorySummary } from '@moluoxixi/config-form-model'
 import type { DesignCommandPreview, DesignerDiagnostic, DesignerDropTarget } from '../../../graph'
 import type { DesignerMaterialDefinition } from '../../../registry'
 
@@ -30,9 +30,9 @@ export interface DesignerPaletteScope {
 }
 
 export interface DesignerPropertiesScope {
-  graph: PageGraph
-  node: PageNode | undefined
-  nodes: PageNode[]
+  graph: SurfaceGraph
+  node: SurfaceNode | undefined
+  nodes: SurfaceNode[]
   material: DesignerMaterialDefinition | undefined
   diagnostics: DesignerDiagnostic[]
   componentDefinition: ComponentContract | undefined

@@ -9,15 +9,18 @@ function toFieldNode(node: CanonicalRuntimeFieldNode): FieldNode {
     kind: 'field',
     field: node.field,
     props: structuredClone(node.configuredProps) as FieldNode['props'],
-    bindings: structuredClone(node.bindings) as FieldNode['bindings'],
+    ...(node.datasetBindings
+      ? { datasetBindings: structuredClone(node.datasetBindings) as FieldNode['datasetBindings'] }
+      : {}),
+    ...(node.resourceBindings
+      ? { resourceBindings: structuredClone(node.resourceBindings) as FieldNode['resourceBindings'] }
+      : {}),
     ...(node.extensions ? { extensions: structuredClone(node.extensions) as FieldNode['extensions'] } : {}),
-    ...(node.conditions ? { conditions: structuredClone(node.conditions) as FieldNode['conditions'] } : {}),
-    ...(node.reactions ? { reactions: structuredClone(node.reactions) as FieldNode['reactions'] } : {}),
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
     ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
     ...(node.validateOn === undefined ? {} : { validateOn: structuredClone(node.validateOn) }),
-  } as FieldNode
+  }
 }
 
 export function createWorkbenchVueRuntimeResolver(

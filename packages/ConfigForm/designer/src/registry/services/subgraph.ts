@@ -1,16 +1,44 @@
-import type { NodeSubgraph, PageNode } from '@moluoxixi/config-form-model'
+import type { NodeSubgraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerCreateNodeContext,
   DesignerMaterialDefinition,
 } from '../types'
 import { DesignerRegistryError } from '../../graph'
 
-function normalizeNode(node: PageNode | Record<string, unknown>): PageNode {
-  return {
-    ...structuredClone(node),
-    props: structuredClone((node.props as PageNode['props'] | undefined) ?? {}),
-    bindings: structuredClone((node.bindings as PageNode['bindings'] | undefined) ?? {}),
-  } as PageNode
+function isSurfaceNode(value: object): value is SurfaceNode {
+  const candidate = value as Record<string, unknown>
+  if (typeof candidate.id !== 'string' || typeof candidate.component !== 'string'
+    || !['field', 'layout', 'element'].includes(candidate.kind as string))
+    return false
+  if (typeof candidate.props !== 'object' || candidate.props === null || Array.isArray(candidate.props))
+    return false
+  if (candidate.kind === 'field')
+    return typeof candidate.field === 'string'
+  if (candidate.kind === 'layout')
+    return typeof candidate.slots === 'object' && candidate.slots !== null && !Array.isArray(candidate.slots)
+  return true
+}
+
+function normalizeNode(node: SurfaceNode | Record<string, unknown>): SurfaceNode {
+  const cloned = structuredClone(node)
+  if (typeof cloned !== 'object' || cloned === null || Array.isArray(cloned))
+    throw new DesignerRegistryError('DESIGNER_MATERIAL_FACTORY_INVALID', 'Designer material factory returned a non-object node')
+  const candidate = cloned as Record<string, unknown>
+  if (typeof candidate.id !== 'string' || typeof candidate.component !== 'string'
+    || !['field', 'layout', 'element'].includes(candidate.kind as string)) {
+    throw new DesignerRegistryError('DESIGNER_MATERIAL_FACTORY_INVALID', 'Designer material factory returned an invalid node')
+  }
+  const props = candidate.props
+  if (props !== undefined && (typeof props !== 'object' || props === null || Array.isArray(props)))
+    throw new DesignerRegistryError('DESIGNER_MATERIAL_FACTORY_INVALID', 'Designer material node props must be an object')
+  candidate.props = structuredClone((props as Record<string, unknown> | undefined) ?? {})
+  if (candidate.datasetBindings !== undefined)
+    candidate.datasetBindings = structuredClone(candidate.datasetBindings)
+  if (candidate.resourceBindings !== undefined)
+    candidate.resourceBindings = structuredClone(candidate.resourceBindings)
+  if (!isSurfaceNode(candidate))
+    throw new DesignerRegistryError('DESIGNER_MATERIAL_FACTORY_INVALID', 'Designer material factory returned an invalid node shape')
+  return candidate
 }
 
 export function createDesignerMaterialSubgraph(

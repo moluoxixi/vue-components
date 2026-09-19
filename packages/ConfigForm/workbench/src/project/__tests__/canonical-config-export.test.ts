@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
+import type { PrototypeSurfaceHostExpose } from '@moluoxixi/config-form-prototype-runtime/vue'
 import type { CanonicalProjectSourceExport } from '../export'
 import { parse } from '@babel/parser'
 import { compileCanonicalProject, getConfigFormRuntimeSources } from '@moluoxixi/config-form-compiler'
@@ -15,23 +16,39 @@ import { createCanonicalProjectConfigExport, createCanonicalProjectSourceExport 
 import { createBuiltInProjectFixture } from './fixtures'
 import { createGeneratedModuleLoader } from './generated-runtime-module'
 
-const mountedPages: Array<{ unmount: () => void }> = []
+const mountedSurfaces: Array<{ unmount: () => void }> = []
 afterEach(() => {
-  mountedPages.splice(0).forEach(page => page.unmount())
+  mountedSurfaces.splice(0).forEach(page => page.unmount())
 })
 
-async function generatedPage(
+async function generatedSurface(
   exported: CanonicalProjectSourceExport,
   configure?: (load: Awaited<ReturnType<typeof createGeneratedModuleLoader>>) => void,
+  initialRoute = '/',
 ) {
   const load = await createGeneratedModuleLoader(Object.fromEntries(Object.entries(exported.files)
     .filter(([, file]) => file.kind === 'text')
     .map(([path, file]) => [path, file.content as string])))
   configure?.(load)
-  const wrapper = mount(load('src/pages/home/Page.vue').default, { global: { plugins: [ElementPlus] } })
-  mountedPages.push(wrapper)
+  const router = load('src/router.ts').router
+  await router.push(initialRoute)
+  const wrapper = mount(load('src/App.vue').default, {
+    attachTo: document.body,
+    global: {
+      plugins: [ElementPlus, router],
+      stubs: { teleport: true },
+    },
+  })
+  mountedSurfaces.push(wrapper)
   await flushPromises()
-  return { wrapper, load, api: wrapper.vm as unknown as ConfigFormRendererExpose }
+  const renderer = wrapper.findComponent({ name: 'ConfigFormRenderer' })
+  if (!renderer.exists())
+    throw new Error('Generated project did not mount the active Surface renderer.')
+  return {
+    wrapper,
+    load,
+    api: renderer.vm.$.exposed as unknown as ConfigFormRendererExpose,
+  }
 }
 
 async function fixture(update?: (
@@ -62,19 +79,19 @@ describe('canonical Config export', () => {
     const paths = Object.keys(exported.files).sort()
     expect(paths).toContain('project.config.ts')
     expect(paths.filter(path => path.endsWith('/form.config.ts'))).toHaveLength(
-      compilation.snapshot.document.pageOrder.length,
+      compilation.snapshot.document.surfaceOrder.length,
     )
 
-    const pageId = compilation.snapshot.document.pageOrder[0]!
-    const pageFile = exported.files[normalizeProjectPath(`pages/${safeProjectSlug(pageId)}/form.config.ts`)]
-    expect(pageFile?.kind).toBe('text')
-    if (pageFile?.kind !== 'text')
+    const surfaceId = compilation.snapshot.document.surfaceOrder[0]!
+    const surfaceFile = exported.files[normalizeProjectPath(`surfaces/${safeProjectSlug(surfaceId)}/form.config.ts`)]
+    expect(surfaceFile?.kind).toBe('text')
+    if (surfaceFile?.kind !== 'text')
       return
-    expect(pageFile.content).toContain('export const pageCompilation: PageCompilation = {')
-    expect(pageFile.content).toContain('export const plan: ConfigFormPageRuntimePlan = {')
-    expect(pageFile.content).toContain('compileCanonicalPageRuntime({ compilation: pageCompilation }, resolver)')
-    expect(pageFile.content).not.toContain('defineFields')
-    expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
+    expect(surfaceFile.content).toContain('export const surfaceCompilation: SurfaceCompilation = {')
+    expect(surfaceFile.content).toContain('export const plan: ConfigFormSurfaceRuntimePlan = {')
+    expect(surfaceFile.content).toContain('compileCanonicalSurfaceRuntime({ compilation: surfaceCompilation }, resolver)')
+    expect(surfaceFile.content).not.toContain('defineFields')
+    expect(() => parse(surfaceFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
   })
 
   it('rejects a source resolver from another Registry revision', async () => {
@@ -87,7 +104,7 @@ describe('canonical Config export', () => {
 
   it('preserves canonical graph props, relation placement, and Registry lock', async () => {
     const { adapter, compilation } = await fixture((document) => {
-      const page = document.pagesById.home!
+      const page = document.surfacesById.home!
       page.graph.props = { authoringSurface: 'customer-profile' }
       page.graph.root[0]!.placement = {
         basis: '42%',
@@ -96,29 +113,30 @@ describe('canonical Config export', () => {
       }
     })
     const exported = createCanonicalProjectConfigExport(compilation, adapter.sourceResolver)
-    const pageFile = exported.files[normalizeProjectPath('pages/home/form.config.ts')]
+    const surfaceFile = exported.files[normalizeProjectPath('surfaces/home/form.config.ts')]
     const projectFile = exported.files[normalizeProjectPath('project.config.ts')]
-    expect(pageFile?.kind).toBe('text')
+    expect(surfaceFile?.kind).toBe('text')
     expect(projectFile?.kind).toBe('text')
-    if (pageFile?.kind !== 'text' || projectFile?.kind !== 'text')
+    if (surfaceFile?.kind !== 'text' || projectFile?.kind !== 'text')
       return
 
-    expect(pageFile.content).toContain('export const pageCompilation: PageCompilation = {')
-    expect(pageFile.content).toContain('authoringSurface: "customer-profile"')
-    expect(pageFile.content).toContain('placement: {')
-    expect(pageFile.content).toContain('basis: "42%"')
-    expect(pageFile.content).toContain('lane: "main"')
-    expect(pageFile.content).toContain('semanticHash: ')
-    expect(projectFile.content).toContain('export const pageConfigs = {')
-    expect(projectFile.content).toContain('version: 5')
+    expect(surfaceFile.content).toContain('export const surfaceCompilation: SurfaceCompilation = {')
+    expect(surfaceFile.content).toContain('authoringSurface: "customer-profile"')
+    expect(surfaceFile.content).toContain('placement: {')
+    expect(surfaceFile.content).toContain('basis: "42%"')
+    expect(surfaceFile.content).toContain('lane: "main"')
+    expect(surfaceFile.content).toContain('semanticHash: ')
+    expect(projectFile.content).toContain('export const surfaceConfigs = {')
+    expect(projectFile.content).toContain('surfaces: [')
+    expect(projectFile.content).toContain('irVersion: 5')
     expect(projectFile.content).toContain('registryLock: {')
-    expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
+    expect(() => parse(surfaceFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
     expect(() => parse(projectFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
   })
 
   it('rejects configuration props that write HTML into generated DOM', async () => {
     const { adapter, compilation } = await fixture((document) => {
-      const node = Object.values(document.pagesById.home!.graph.nodesById)[0]!
+      const node = Object.values(document.surfacesById.home!.graph.nodesById)[0]!
       node.props.innerHTML = '<img src=x onerror=alert(1)>'
     })
     expect(() => createCanonicalProjectSourceExport(compilation, adapter.sourceResolver))
@@ -134,12 +152,12 @@ describe('canonical standalone Source export', () => {
 
     expect(exported.entry).toBe(normalizeProjectPath('src/main.ts'))
     expect(paths.filter(path => !path.startsWith('src/runtime/'))).toEqual([
-      'src/data/index.ts',
-      'src/pages/home/Page.vue',
-      'src/pages/home/validation.ts',
+      'src/surfaces/home/Surface.vue',
+      'src/surfaces/home/validation.ts',
       'index.html',
       'package.json',
       'src/App.vue',
+      'src/prototype-context.ts',
       'src/router.ts',
       'src/main.ts',
       'src/styles.css',
@@ -147,7 +165,8 @@ describe('canonical standalone Source export', () => {
       'tsconfig.json',
       'vite.config.ts',
     ])
-    expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/i)
+    expect((exported.files[normalizeProjectPath('src/App.vue')] as { content: string }).content)
+      .toContain(`from '@moluoxixi/config-form-prototype-runtime/vue'`)
     expect(paths).toContain('src/runtime/expression/services/evaluate.ts')
 
     const runtimeSources = getConfigFormRuntimeSources()
@@ -163,6 +182,7 @@ describe('canonical standalone Source export', () => {
     if (manifest?.kind === 'text') {
       expect(JSON.parse(manifest.content).dependencies).toEqual({
         '@lucide/vue': '^1.28.0',
+        '@moluoxixi/config-form-prototype-runtime': '^0.1.0',
         '@moluoxixi/zod3-to-rule': '^0.1.2',
         'element-plus': '^2.9.1',
         'vue': expect.any(String),
@@ -178,7 +198,7 @@ describe('canonical standalone Source export', () => {
         expect(parseSfc(file.content).errors).toEqual([])
     }
 
-    const { wrapper } = await generatedPage(exported)
+    const { wrapper } = await generatedSurface(exported)
     expect(wrapper.get('[data-field]').attributes('data-label-position')).toBe('left')
     const layout = wrapper.get('[data-config-form-responsive-layout]').attributes('style')
     expect(layout).toContain('--mx-config-form-label-width-desktop: 120px')
@@ -191,10 +211,10 @@ describe('canonical standalone Source export', () => {
 
   it('projects form-level readonly into generated field state', async () => {
     const { adapter, compilation } = await fixture((document) => {
-      document.pagesById.home!.graph.form.readonly = true
+      document.surfacesById.home!.graph.form.readonly = true
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const { wrapper, api } = await generatedPage(exported)
+    const { wrapper, api } = await generatedSurface(exported)
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.find('.mx-config-form__readonly').exists()).toBe(true)
     expect(Object.keys(api.getValues()).length).toBeGreaterThan(0)
@@ -202,7 +222,9 @@ describe('canonical standalone Source export', () => {
 
   it('preserves page order across generated files and router entries', async () => {
     const { adapter, compilation } = await fixture((document) => {
-      const home = document.pagesById[document.homePageId]!
+      const home = document.surfacesById[document.homeSurfaceId]!
+      if (home.kind !== 'page')
+        throw new Error('Expected the home Surface to be a page.')
       home.route = '/landing'
       const secondary = {
         ...structuredClone(home),
@@ -210,20 +232,20 @@ describe('canonical standalone Source export', () => {
         name: 'Secondary',
         route: '/secondary',
       }
-      document.pageOrder.push(secondary.id)
-      document.pagesById[secondary.id] = secondary
+      document.surfaceOrder.push(secondary.id)
+      document.surfacesById[secondary.id] = secondary
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
 
     expect(Object.keys(exported.files).filter(path => !path.startsWith('src/runtime/'))).toEqual([
-      'src/data/index.ts',
-      'src/pages/home/Page.vue',
-      'src/pages/home/validation.ts',
-      'src/pages/secondary/Page.vue',
-      'src/pages/secondary/validation.ts',
+      'src/surfaces/home/Surface.vue',
+      'src/surfaces/home/validation.ts',
+      'src/surfaces/secondary/Surface.vue',
+      'src/surfaces/secondary/validation.ts',
       'index.html',
       'package.json',
       'src/App.vue',
+      'src/prototype-context.ts',
       'src/router.ts',
       'src/main.ts',
       'src/styles.css',
@@ -237,6 +259,114 @@ describe('canonical standalone Source export', () => {
       return
     expect(router.content).toContain(`{ path: '/', redirect: "/landing" }`)
     expect(router.content.indexOf('name: "home"')).toBeLessThan(router.content.indexOf('name: "secondary"'))
+
+    const main = exported.files[normalizeProjectPath('src/main.ts')]
+    expect(main?.kind).toBe('text')
+    if (main?.kind === 'text')
+      expect(main.content).toContain('await router.isReady()')
+
+    const { wrapper } = await generatedSurface(exported, undefined, '/secondary')
+    expect(wrapper.get('.mx-prototype-host__page[data-active="true"]')
+      .attributes('data-surface-id')).toBe('secondary')
+  })
+
+  it('renders flat Dialog and Drawer assets through the shared Prototype host', async () => {
+    let actionNodeId = ''
+    const { adapter, compilation } = await fixture((document, activeAdapter) => {
+      const home = document.surfacesById.home!
+      if (home.kind !== 'page')
+        throw new Error('Expected the home Surface to be a page.')
+      const activatable = new Set(activeAdapter.registrySnapshot.components
+        .filter(component => component.contract.semanticTriggers.includes('activate'))
+        .map(component => component.key))
+      const actionNode = Object.values(home.graph.nodesById)
+        .find(node => activatable.has(node.component))
+      if (!actionNode)
+        throw new Error('Expected an activatable material in the built-in project.')
+      actionNodeId = actionNode.id
+      home.interactions = [{
+        kind: 'primaryUiAction',
+        id: 'open-dialog',
+        nodeId: actionNode.id,
+        trigger: 'activate',
+        action: { kind: 'open', targetSurfaceId: 'dialog', parameters: [] },
+      }]
+      document.surfaceOrder.push('dialog', 'drawer')
+      document.surfacesById.dialog = {
+        id: 'dialog',
+        name: 'Dialog',
+        kind: 'dialog',
+        presentation: {
+          kind: 'dialog',
+          title: 'Edit details',
+          width: { desktop: { value: 480, unit: 'px' } },
+          mask: true,
+          close: { escape: true, mask: true, button: true },
+        },
+        parameters: [],
+        outputs: [],
+        interactions: [{
+          kind: 'primaryUiAction',
+          id: 'open-drawer',
+          nodeId: actionNode.id,
+          trigger: 'activate',
+          action: { kind: 'open', targetSurfaceId: 'drawer', parameters: [] },
+        }],
+        graph: structuredClone(home.graph),
+      }
+      document.surfacesById.drawer = {
+        id: 'drawer',
+        name: 'Drawer',
+        kind: 'drawer',
+        presentation: {
+          kind: 'drawer',
+          title: 'Inspect details',
+          placement: 'right',
+          size: { desktop: { value: 40, unit: '%' } },
+          mask: true,
+          close: { escape: true, mask: true, button: true },
+        },
+        parameters: [],
+        outputs: [],
+        interactions: [],
+        graph: structuredClone(home.graph),
+      }
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+
+    expect(Object.keys(exported.files)).toEqual(expect.arrayContaining([
+      'src/surfaces/home/Surface.vue',
+      'src/surfaces/dialog/Surface.vue',
+      'src/surfaces/drawer/Surface.vue',
+    ]))
+    const router = exported.files[normalizeProjectPath('src/router.ts')]
+    expect(router?.kind).toBe('text')
+    if (router?.kind !== 'text')
+      return
+    expect(router.content).toContain('name: "home"')
+    expect(router.content).not.toContain('name: "dialog"')
+    expect(router.content).not.toContain('name: "drawer"')
+
+    const { wrapper } = await generatedSurface(exported)
+    await wrapper.get(`[data-surface-id="home"] [data-config-node-id="${actionNodeId}"]`).trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.mx-prototype-host__overlay--dialog').exists()).toBe(true)
+
+    const host = wrapper.findComponent({ name: 'PrototypeSurfaceHost' })
+    const hostApi = host.vm.$.exposed as unknown as PrototypeSurfaceHostExpose
+    const dialogInstanceId = hostApi.getSnapshot().session.overlayStack.at(-1)!
+    await hostApi.activate({
+      sourceInstanceId: dialogInstanceId,
+      sourceAddress: { nodeId: actionNodeId, scope: [] },
+      interactionId: 'open-drawer',
+    })
+    await flushPromises()
+    const snapshot = hostApi.getSnapshot()
+    expect(snapshot.diagnostics).toEqual([])
+    expect(snapshot.session.overlayStack).toHaveLength(2)
+    expect(wrapper.find('.mx-prototype-host__overlay--drawer').exists()).toBe(true)
+    expect(wrapper.findAll('.mx-prototype-host__overlay-layer').map(layer => layer.attributes('data-surface-id')))
+      .toEqual(['dialog', 'drawer'])
   })
 
   it('rejects a Source resolver from another Registry revision', async () => {
@@ -249,7 +379,7 @@ describe('canonical standalone Source export', () => {
 
   it('executes required, RuleSet, custom-validator, and validateOn semantics in generated source', async () => {
     const { adapter, compilation } = await fixture((document) => {
-      const name = Object.values(document.pagesById.home!.graph.nodesById)
+      const name = Object.values(document.surfacesById.home!.graph.nodesById)
         .find(node => node.kind === 'field' && node.field === 'name-field-4')
       if (!name || name.kind !== 'field')
         throw new Error('Expected the name field to exist.')
@@ -265,16 +395,16 @@ describe('canonical standalone Source export', () => {
       }
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const { wrapper, api, load } = await generatedPage(exported, (load) => {
-      load('src/pages/home/validation.ts').registerFieldValidator(
+    const { wrapper, api, load } = await generatedSurface(exported, (load) => {
+      load('src/surfaces/home/validation.ts').registerFieldValidator(
         'available-name',
         (value: unknown) => value === 'taken' ? 'Name is unavailable' : undefined,
       )
     })
     const nameField = 'name-field-4'
-    const name = Object.values(compilation.ir.pagesById.home!.nodesById).find(node => node.kind === 'field' && node.field === nameField)!
+    const name = Object.values(compilation.ir.surfacesById.home!.nodesById).find(node => node.kind === 'field' && node.field === nameField)!
     const address = { nodeId: name.id, scope: [] }
-    const validation = load('src/pages/home/validation.ts')
+    const validation = load('src/surfaces/home/validation.ts')
     expect(Object.values(validation.fieldValidation)).toContainEqual(expect.objectContaining({ validateOn: ['blur', 'submit'] }))
     for (const [value, error] of [['', 'Name is required'], ['ab', 'Name is too short'], ['taken', 'Name is unavailable']]) {
       api.setValues({ [nameField]: value })
@@ -295,7 +425,7 @@ describe('canonical standalone Source export', () => {
 
   it('preserves cascading desktop, tablet, and mobile layout for fields and containers', async () => {
     const { adapter, compilation } = await fixture((document, activeAdapter) => {
-      const page = document.pagesById.home!
+      const page = document.surfacesById.home!
       page.graph.form = {
         columns: 24,
         fieldSpan: 8,
@@ -311,7 +441,6 @@ describe('canonical standalone Source export', () => {
         component: 'element.section',
         kind: 'layout',
         props: { title: 'Responsive section' },
-        bindings: {},
         slots: { default: [] },
       }
       document.registryLock.components['element.section'] = structuredClone(
@@ -319,7 +448,7 @@ describe('canonical standalone Source export', () => {
       )
     })
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const { wrapper } = await generatedPage(exported)
+    const { wrapper } = await generatedSurface(exported)
     const layout = wrapper.get('[data-config-form-responsive-layout]').attributes('style')
     for (const [breakpoint, columns] of [['desktop', 24], ['tablet', 12], ['mobile', 4]])
       expect(layout).toContain(`--mx-config-form-columns-${breakpoint}: ${columns}`)

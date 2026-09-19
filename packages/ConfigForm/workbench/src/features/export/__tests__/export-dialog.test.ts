@@ -36,8 +36,9 @@ describe('export dialog', () => {
       props: {
         capture: () => input,
         currentCompilation: input.compilation,
-        currentPageId: input.compilation.snapshot.document.homePageId,
+        currentSurfaceId: input.compilation.snapshot.document.homeSurfaceId,
         mode: 'source',
+        readEmbedded: async () => undefined,
         theme: 'light',
       },
       global: {
@@ -49,7 +50,7 @@ describe('export dialog', () => {
     await flushPromises()
 
     expect(root.get('[role="tree"]').text()).toContain('package.json')
-    expect(root.get('[role="tree"]').text()).toContain('Page.vue')
+    expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
     expect(root.text()).toContain('Snapshot model revision 7')
     expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
@@ -61,12 +62,12 @@ describe('export dialog', () => {
     await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
     await flushPromises()
     expect(root.get('.config-json-view').text()).toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
-    await root.findAll('.el-segmented__item').find(item => item.text().includes('Current page'))!.trigger('click')
+    await root.findAll('.el-segmented__item').find(item => item.text().includes('Current Surface'))!.trigger('click')
     await flushPromises()
     expect(root.get('.config-json-view').text()).toContain('"graph"')
     expect(root.get('.config-json-view').text()).not.toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
 
-    await wrapper.setProps({ currentPageId: 'missing-page' })
+    await wrapper.setProps({ currentSurfaceId: 'missing-page' })
     await flushPromises()
     expect(root.get('[role="status"]').text()).toBe('The current page is unavailable in this export snapshot.')
     expect(root.findAll('button').find(button => button.text().trim() === 'Copy')!.attributes('disabled')).toBeDefined()

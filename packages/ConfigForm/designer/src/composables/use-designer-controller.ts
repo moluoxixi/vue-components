@@ -1,8 +1,8 @@
 import type {
   ModelDiagnostic,
   NodeSubgraph,
-  PageGraph,
-  PageNode,
+  SurfaceGraph,
+  SurfaceNode,
   ProjectCommand,
   ProjectCommandAction,
   ProjectOperation,
@@ -53,7 +53,7 @@ function targetForLocation(location: DesignNodeLocation, index: number): Designe
 function acceptsNode(
   registry: DesignerRegistry,
   material: DesignerMaterialDefinition | undefined,
-  node: PageNode,
+  node: SurfaceNode,
 ): string | undefined {
   if (material?.kind !== 'layout')
     return undefined
@@ -69,7 +69,7 @@ function toDesignerDiagnostics(diagnostics: readonly ModelDiagnostic[]): Designe
     path: [...(diagnostic.path ?? [])],
     severity: 'error',
     ...(diagnostic.nodeId ? { nodeId: diagnostic.nodeId } : {}),
-    ...(diagnostic.pageId ? { pageId: diagnostic.pageId } : {}),
+    ...(diagnostic.surfaceId ? { surfaceId: diagnostic.surfaceId } : {}),
   }))
 }
 
@@ -90,7 +90,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     : undefined)
   const selectedNodes = computed(() => selectedIds.value
     .map(nodeId => findDesignNode(graph.value, nodeId)?.node)
-    .filter((node): node is PageNode => Boolean(node)))
+    .filter((node): node is SurfaceNode => Boolean(node)))
   const selectedMaterial = computed(() => selectedNode.value
     ? options.registry().getMaterial(selectedNode.value.component)
     : undefined)
@@ -137,7 +137,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     options.onSelectionChange(primary, [...nextIds])
   }
 
-  function pruneSelection(nextGraph: PageGraph): void {
+  function pruneSelection(nextGraph: SurfaceGraph): void {
     // A selection requested for a node the graph had not published yet (the
     // insert command lands one propagation later) is applied as soon as that
     // node appears, so dropping a material selects it without a second click.
@@ -235,7 +235,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
       const fieldMap = businessKeys.duplicateMap(subgraph, target, idMap)
       return {
         type: 'node.duplicate',
-        pageId: options.pageId(),
+        surfaceId: options.surfaceId(),
         nodeId: location.node.id,
         target,
         idMap,
@@ -278,7 +278,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
           return false
         group.forEach((location, offset) => operations.push({
           type: 'node.move',
-          pageId: options.pageId(),
+          surfaceId: options.surfaceId(),
           nodeId: location.node.id,
           target: targetForLocation(location, first.index - 1 + offset),
         }))
@@ -290,7 +290,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
         }
         ;[...group].reverse().forEach((location, offset) => operations.push({
           type: 'node.move',
-          pageId: options.pageId(),
+          surfaceId: options.surfaceId(),
           nodeId: location.node.id,
           target: targetForLocation(location, last.index + 1 - offset),
         }))
@@ -308,7 +308,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
           return false
         group.forEach(location => operations.push({
           type: 'node.move',
-          pageId: options.pageId(),
+          surfaceId: options.surfaceId(),
           nodeId: location.node.id,
           target: { parentId: previous.id, slot },
         }))
@@ -321,7 +321,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
         return false
       group.forEach((location, offset) => operations.push({
         type: 'node.move',
-        pageId: options.pageId(),
+        surfaceId: options.surfaceId(),
         nodeId: location.node.id,
         target: targetForLocation(parentLocation, parentLocation.index + 1 + offset),
       }))
@@ -329,7 +329,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     return operations.length > 0 && dispatch(createOperationCommand('Move components', operations))
   }
 
-  function defaultTarget(node: PageNode): DesignerDropTarget {
+  function defaultTarget(node: SurfaceNode): DesignerDropTarget {
     const selected = selectedNode.value
     const material = selected ? options.registry().getMaterial(selected.component) : undefined
     const slot = acceptsNode(options.registry(), material, node)
@@ -371,7 +371,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     const insertTarget = target ?? defaultTarget(node)
     createDesignBusinessKeyAllocator(graph.value).assign(subgraph, insertTarget)
     const changed = dispatch(createInsertCommand(
-      options.pageId(),
+      options.surfaceId(),
       subgraph,
       insertTarget,
     ))
@@ -394,7 +394,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   function cutSelection(locations: DesignNodeLocation[]): boolean {
     if (rejectReadonly() || !copyToClipboard(locations))
       return false
-    return dispatch(createRemoveCommand(options.pageId(), locations.map(({ node }) => node.id)))
+    return dispatch(createRemoveCommand(options.surfaceId(), locations.map(({ node }) => node.id)))
   }
 
   function pasteClipboard(nodeId?: string): boolean {
@@ -410,7 +410,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
       ? targetForLocation(location, location.index + 1)
       : { parentId: null, index: graph.value.root.length } satisfies DesignerDropTarget
     const subgraph = remapDesignSubgraph(buffered, graph.value, target)
-    const changed = dispatch(createInsertCommand(options.pageId(), subgraph, target, { label: 'Paste component' }))
+    const changed = dispatch(createInsertCommand(options.surfaceId(), subgraph, target, { label: 'Paste component' }))
     if (changed) {
       const rootIds = subgraph.root.map(item => item.nodeId)
       emitSelection(rootIds, rootIds.at(-1))
@@ -429,7 +429,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     if (!location)
       return false
     if (action === 'remove')
-      return dispatch(createRemoveCommand(options.pageId(), locations.map(({ node }) => node.id)))
+      return dispatch(createRemoveCommand(options.surfaceId(), locations.map(({ node }) => node.id)))
     if (action === 'cut')
       return cutSelection(locations)
     if (action === 'copyToClipboard')

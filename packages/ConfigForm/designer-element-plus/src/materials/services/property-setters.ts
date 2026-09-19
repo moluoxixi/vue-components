@@ -61,7 +61,6 @@ export function choiceDefaultValueSetter(
     component: ElementChoiceDefaultSetter,
     componentProps: { kind: valueKind },
     optionsPath: ['props', 'options'],
-    optionSourcePath: ['props', 'optionSource'],
     valueKind,
   }
 }

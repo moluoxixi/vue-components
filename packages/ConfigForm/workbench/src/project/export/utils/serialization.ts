@@ -85,8 +85,8 @@ function valueType(value: unknown): string {
 export function formatValueModel(values: Record<string, unknown>): string {
   const entries = Object.entries(values)
   if (entries.length === 0)
-    return 'export type PageFormValues = Record<string, unknown>'
-  return `export interface PageFormValues {\n${entries.map(([key, value]) => `  ${quoteKey(key, propertyPath('initialValues', key))}: ${valueType(value)}`).join('\n')}\n}`
+    return 'export type SurfaceFormValues = Record<string, unknown>'
+  return `export interface SurfaceFormValues {\n${entries.map(([key, value]) => `  ${quoteKey(key, propertyPath('initialValues', key))}: ${valueType(value)}`).join('\n')}\n}`
 }
 
 /** Escape JSON embedded in script blocks before an HTML/SFC parser sees it. */

@@ -5,7 +5,7 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { VueWrapper } from '@vue/test-utils'
 import type { Component } from 'vue'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import type { ConfigFormRendererComponentProps, ConfigFormRendererExpose } from '../types'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -32,7 +32,7 @@ export function deferred<T = ConfigFormDataSourceHttpRequestOutput>() {
 export function source(overrides: Partial<ConfigFormDataSourceDefinition> = {}): ConfigFormDataSourceDefinition {
   return { id: 'choices', name: 'Choices', request: { url: '/choices' }, cacheTtlMs: 60_000, ...overrides }
 }
-export function plan(overrides: Partial<ConfigFormPageRuntimePlan> = {}): ConfigFormPageRuntimePlan {
+export function plan(overrides: Partial<ConfigFormSurfaceRuntimePlan> = {}): ConfigFormSurfaceRuntimePlan {
   return {
     optionBindings: [],
     runtime: { variables: [], dataSources: [] },
@@ -48,7 +48,7 @@ afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.exists() && wrapper.unmount())
 })
 export async function fixture(settings: {
-  plan?: ConfigFormPageRuntimePlan
+  plan?: ConfigFormSurfaceRuntimePlan
   values?: Record<string, unknown>
   props?: Partial<ConfigFormRendererComponentProps>
   configForm?: boolean

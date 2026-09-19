@@ -23,8 +23,9 @@ import {
 
 const EMPTY_CHANGE_SET: ProjectChangeSet = Object.freeze({
   project: false,
-  pageIds: Object.freeze([]),
-  nodeIds: Object.freeze([]),
+  surfaceIds: Object.freeze([]),
+  datasetIds: Object.freeze([]),
+  resourceIds: Object.freeze([]),
   nodeChanges: Object.freeze([]),
 })
 

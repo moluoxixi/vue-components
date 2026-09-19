@@ -93,7 +93,6 @@ function compatibleSetter(
     && left.max === right.max
     && left.step === right.step
     && samePath(left.optionsPath, right.optionsPath)
-    && samePath(left.optionSourcePath, right.optionSourcePath)
     && left.component === right.component
     && contractValueEqual(left.componentProps, right.componentProps)
     && optionsEqual(left.options, right.options)

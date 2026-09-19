@@ -22,8 +22,8 @@ Update it in the same change set when a task changes any of these contracts:
 
 - package ownership, package names, public subpaths, dependencies, or peer dependencies;
 - the Headless/Renderer path or the Runtime/Plugin path;
-- ProjectDocument, SurfaceGraph/PageGraph, Dataset, Headless node, interaction,
-  reaction, slot, option source, or extension metadata;
+- ProjectDocument, SurfaceGraph, Dataset, Resource, Headless node, Prototype
+  Interaction, slot, static options, or extension metadata;
 - material/component registries, naming rules, error codes, discovery, or precedence;
 - a capability reused by two or more ConfigForm packages.
 
@@ -32,8 +32,9 @@ implementation, package manifest, root README, public entries, build/type tests,
 architecture routing, release metadata, and current dependency diagram. Do not
 create an empty package, placeholder export, or README that implies installable
 behavior before then. In particular, the documented
-`@moluoxixi/config-form-prototype-runtime` and
-`@moluoxixi/config-form-source` remain target-only until their owning tasks land.
+`@moluoxixi/config-form-prototype-runtime` is current and must be documented
+with its root, `/session`, `/vue`, and `/vue/style` entries. The planned
+`@moluoxixi/config-form-source` remains target-only until its owning task lands.
 
 Before finishing a cross-package ConfigForm task, verify:
 
@@ -143,24 +144,27 @@ field name: `version`. `revision` is reserved for content/history cursors;
 `adapterVersion` and `contractVersion` are dependency/component identities.
 
 ```ts
-PROJECT_DOCUMENT_VERSION = 5
-PAGE_GRAPH_VERSION = 3
-REGISTRY_CONTRACT_SNAPSHOT_VERSION = 2
-CANONICAL_PROJECT_IR_VERSION = 4
-CONFIG_FORM_COMPILER_VERSION = '5.0.0'
-PAGE_TRANSFER_VERSION = 2
-PROJECT_ENTITY_CODEC_VERSION = 3
-CONFIG_FORM_EXPORT_GENERATOR_VERSION = '4.0.0'
-RUNTIME_HOST_PROTOCOL_VERSION = 6
+PROJECT_DOCUMENT_VERSION = 6
+SURFACE_GRAPH_VERSION = 1
+REGISTRY_CONTRACT_SNAPSHOT_VERSION = 3
+PROJECT_TRANSFER_VERSION = 1
+SURFACE_TRANSFER_VERSION = 1
+CANONICAL_PROJECT_IR_VERSION = 5
+CONFIG_FORM_COMPILER_VERSION = '6.0.0'
+PROJECT_ENTITY_CODEC_VERSION = 4
+CONFIG_FORM_EXPORT_GENERATOR_VERSION = '5.0.0'
+RUNTIME_HOST_PROTOCOL_VERSION = 7
+PROTOTYPE_SESSION_VERSION = 1
 ```
 
 The serialized field is always `version`:
 
 ```ts
 ProjectDocument.version = PROJECT_DOCUMENT_VERSION
-PageGraph.version = PAGE_GRAPH_VERSION
+SurfaceGraph.version = SURFACE_GRAPH_VERSION
 RegistryContractSnapshot.version = REGISTRY_CONTRACT_SNAPSHOT_VERSION
-PageTransferDocument.version = PAGE_TRANSFER_VERSION
+ProjectTransferEnvelope.version = PROJECT_TRANSFER_VERSION
+SurfaceTransferEnvelope.version = SURFACE_TRANSFER_VERSION
 ProjectTemplateManifest.version = 1
 ```
 
@@ -214,7 +218,7 @@ type CurrentContractResult<T, D> =
   `schemaVersion`, `protocolVersion`, and `storageSchemaVersion` are not
   compatibility aliases and must be rejected.
 - Cross-layer adaptation between two current contracts is allowed. For example,
-  projecting current PageGraph placement into the current Runtime `span` field
+  projecting current SurfaceGraph placement into the current Runtime `span` field
   is not backward compatibility.
 - Historical changelogs and archived task artifacts may describe removed
   contracts. Current README/spec documents and executable examples must not.

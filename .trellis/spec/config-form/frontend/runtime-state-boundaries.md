@@ -6,9 +6,9 @@ Apply to Headless, ConfigForm preprocessing, Renderer, Studio/Designer host
 integration, validation, Runtime Data lifecycle, component listeners, target
 Prototype Interaction, Preview, and generated Source.
 
-Production Runtime state and target Prototype session state are separate.
+Production Runtime state and Prototype session state are separate.
 Headless/Runtime continue to own form values, meta, validation, reactions, Data
-Source, and direct host listeners. Planned Prototype Runtime owns page history,
+Source, and direct host listeners. Prototype Runtime owns page history,
 Surface instances, parameters/results, and primary UI actions. Neither is a
 compatibility layer for the other.
 
@@ -28,7 +28,7 @@ createComponentListenerService({ mode })
 useRendererDataLifecycle({ props, emit, controller })
 ```
 
-Target persisted interaction channels:
+Current persisted interaction channels:
 
 ```ts
 type PrototypeInteraction =
@@ -94,7 +94,7 @@ Vue, Workbench state, or a mutable Registry.
 - Target Studio Dataset is static, project-level, and runtime-readonly. It does
   not reuse Data Source requests, cache, cancellation, lifecycle, or references.
 
-### 3.4 Target Prototype Interaction
+### 3.4 Prototype Interaction
 
 - State projection continuously derives `visible`, `disabled`, `readonly`,
   `required`, and Material-allowlisted display props. It runs on initialization
@@ -113,7 +113,7 @@ Vue, Workbench state, or a mutable Registry.
   node address for result routing and focus restoration; one node may have many
   runtime row addresses and different `open` bindings on semantic triggers.
 - Page history, overlay instances, parameters/results, and primary actions live
-  in planned Prototype Runtime, not Headless, production Runtime, Designer, or
+  in Prototype Runtime, not Headless, production Runtime, Designer, or
   iframe event forwarding.
 
 ### 3.5 Designer, Source, and validation

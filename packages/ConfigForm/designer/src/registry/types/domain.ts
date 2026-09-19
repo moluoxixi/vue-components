@@ -1,18 +1,22 @@
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type {
   ComponentContract,
+  MaterialDatasetBindingCapability,
+  MaterialResourceBindingCapability,
+  MaterialSemanticTrigger,
   FieldNode,
+  ElementNode,
   LayoutNode,
   ModelJsonObject,
   ModelJsonValue,
   NodeSubgraph,
-  PageNode,
+  SurfaceNode,
 } from '@moluoxixi/config-form-model'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 import type { DesignerDiagnostic } from '../../graph'
 
-export type DesignerNodeKind = PageNode['kind']
+export type DesignerNodeKind = SurfaceNode['kind']
 
 export type DesignerSetterControl
   = | 'text'
@@ -54,7 +58,6 @@ export interface DesignerPropertySetterDefinition {
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
   optionsPath?: string[]
-  optionSourcePath?: string[]
   valueKind?: DesignerDefaultValueKind
   integer?: boolean
   min?: number
@@ -170,14 +173,16 @@ export interface DesignerCreateNodeContext {
   field?: string
 }
 
-type DesignerOptionalNodeMaps = 'props' | 'bindings'
+type DesignerOptionalNodeMaps = 'props' | 'datasetBindings' | 'resourceBindings'
 export type DesignerFieldNodeTemplate = Omit<FieldNode, DesignerOptionalNodeMaps>
   & Partial<Pick<FieldNode, DesignerOptionalNodeMaps>>
 export type DesignerLayoutNodeTemplate = Omit<LayoutNode, DesignerOptionalNodeMaps>
   & Partial<Pick<LayoutNode, DesignerOptionalNodeMaps>>
+export type DesignerElementNodeTemplate = Omit<ElementNode, DesignerOptionalNodeMaps>
+  & Partial<Pick<ElementNode, DesignerOptionalNodeMaps>>
 export interface DesignerNodeSubgraphTemplate {
   root: NodeSubgraph['root']
-  nodesById: Record<string, DesignerFieldNodeTemplate | DesignerLayoutNodeTemplate>
+  nodesById: Record<string, DesignerFieldNodeTemplate | DesignerLayoutNodeTemplate | DesignerElementNodeTemplate>
 }
 
 export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> {
@@ -188,12 +193,17 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   category: string
   icon?: Component
   runtime: DesignerRuntimeMaterialBinding
+  /** Semantic triggers are declarative preview affordances, never callbacks. */
+  semanticTriggers?: MaterialSemanticTrigger[]
+  stateProjectionProperties?: string[][]
+  datasetBindings?: MaterialDatasetBindingCapability[]
+  resourceBindings?: MaterialResourceBindingCapability[]
   source?: DesignerSourceMaterialBinding
   designPolicy?: DesignerDesignPolicy
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]
-  analyze?: (node: Extract<PageNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
+  analyze?: (node: Extract<SurfaceNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
 }
 
 export interface DesignerFieldMaterialDefinition extends DesignerMaterialDefinitionBase<'field'> {
@@ -205,7 +215,11 @@ export interface DesignerLayoutMaterialDefinition extends DesignerMaterialDefini
   slots: DesignerMaterialSlotDefinition[]
 }
 
-export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition
+export interface DesignerElementMaterialDefinition extends DesignerMaterialDefinitionBase<'element'> {
+  createNode: (context: DesignerCreateNodeContext) => DesignerElementNodeTemplate
+}
+
+export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition | DesignerElementMaterialDefinition
 
 /** Runtime resolver entry. Vue components and functions never enter the contract snapshot. */
 export interface DesignerMaterialRuntimeBinding {

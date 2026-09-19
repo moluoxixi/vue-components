@@ -1,4 +1,4 @@
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, ProjectCommand } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { useDesignerController } from '../src/composables/use-designer-controller'
@@ -29,8 +29,8 @@ const registry = createDesignerRegistry({ materials: [
   },
 ] })
 
-const graph: PageGraph = {
-  version: 3,
+const graph: SurfaceGraph = {
+  version: 1,
   props: {},
   form: {},
   root: [
@@ -46,7 +46,7 @@ const graph: PageGraph = {
       component: 'test.section',
       kind: 'layout',
       props: {},
-      bindings: {},
+      datasetBindings: {},
       slots: { default: [{ nodeId: 'nested', placement: {} }] },
     },
     nested: field('nested'),
@@ -62,7 +62,7 @@ function field(id: string) {
     kind: 'field' as const,
     field: id,
     props: {},
-    bindings: {},
+    datasetBindings: {},
   }
 }
 
@@ -73,7 +73,7 @@ function mutableFixture() {
     graph: () => current.value,
     onDiagnostics: vi.fn(),
     onSelectionChange: vi.fn(),
-    pageId: () => 'home',
+    surfaceId: () => 'home',
     readonly: () => false,
     registry: () => registry,
   })
@@ -96,7 +96,7 @@ function controllerFixture() {
     graph: () => graph,
     onDiagnostics: vi.fn(),
     onSelectionChange: vi.fn(),
-    pageId: () => 'home',
+    surfaceId: () => 'home',
     readonly: () => false,
     registry: () => registry,
   })
@@ -142,8 +142,8 @@ describe('designer controller batch actions', () => {
     const resize = createNodePathCommand(graph, 'home', ['lead', 'sibling'], ['span'], 6)
     expect(resize.label).toBe('Resize components')
     expect(resize.actions).toEqual([
-      { type: 'node.resize', pageId: 'home', nodeId: 'lead', span: 6 },
-      { type: 'node.resize', pageId: 'home', nodeId: 'sibling', span: 6 },
+      { type: 'node.resize', surfaceId: 'home', nodeId: 'lead', span: 6 },
+      { type: 'node.resize', surfaceId: 'home', nodeId: 'sibling', span: 6 },
     ])
   })
 

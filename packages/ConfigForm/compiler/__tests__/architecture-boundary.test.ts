@@ -43,6 +43,8 @@ describe('compiler architecture boundary', () => {
     expect(source).not.toContain('@moluoxixi/config-form/renderer')
     expect(source).not.toContain('@config-form/workbench')
     expect(source).not.toMatch(/ConfigFormFlow|flowEvents|eventNames|RegisteredEventAction/)
+    expect(source).not.toMatch(/compileCanonicalPage|PageCompilation|CanonicalPageIdentity|pagesById|pageOrder|homePageId/)
+    expect(source).not.toMatch(/optionSource|bindings|conditions|reactions|page\.runtime/)
     expect(existsSync(resolve(sourceRoot, 'services/compile/services/flows.ts'))).toBe(false)
     expect(existsSync(resolve(sourceRoot, 'utils/flow.ts'))).toBe(false)
   })

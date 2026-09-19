@@ -66,7 +66,7 @@ describe('designer drag controller', () => {
         type: 'operation.apply',
         operations: [{
           type: 'node.move',
-          pageId: 'home',
+          surfaceId: 'home',
           nodeId: 'field-1',
           target: testCase.target,
         }],

@@ -1,0 +1,72 @@
+{
+  "name": "@moluoxixi/config-form-prototype-runtime",
+  "type": "module",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/prototype-runtime"
+  },
+  "sideEffects": [
+    "**/*.scss",
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./session": {
+      "source": "./src/session/index.ts",
+      "types": "./dist/src/session/index.d.ts",
+      "import": "./dist/session.js"
+    },
+    "./vue": {
+      "source": "./src/vue/index.ts",
+      "types": "./dist/src/vue/index.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./vue/style": {
+      "sass": "./src/vue/style/index.scss",
+      "style": "./src/vue/style/index.scss",
+      "default": "./src/vue/style/index.scss"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
+    "dev": "vite build --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@moluoxixi/config-form-compiler": "workspace:*",
+    "@moluoxixi/config-form-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "happy-dom": "catalog:dev",
+    "sass": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

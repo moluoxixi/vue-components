@@ -44,8 +44,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const pageManagerLoaded = ref(false)
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
-  const dataWorkspaceOpen = ref(false)
-  const dataDialogLoaded = ref(false)
   const appearanceDrawerOpen = ref(false)
   const themePreference = ref<WorkbenchThemePreference>(appearance.themePreference)
   const paletteFamily = ref<WorkbenchPaletteFamily>(appearance.paletteFamily)
@@ -111,20 +109,11 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     exportPreviewMode.value = mode
   }
 
-  function closeDataWorkspace(): void {
-    dataWorkspaceOpen.value = false
-  }
-
-  function openDataWorkspace(): void {
-    dataDialogLoaded.value = true
-    dataWorkspaceOpen.value = true
-  }
-
-  function closePageManager(): void {
+  function closeSurfaceManager(): void {
     pageManagerOpen.value = false
   }
 
-  function openPageManager(): void {
+  function openSurfaceManager(): void {
     pageManagerLoaded.value = true
     pageManagerOpen.value = true
   }
@@ -213,10 +202,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     closeAppearanceDrawer,
     clearNotice,
     closeExportPreview,
-    closeDataWorkspace,
-    dataDialogLoaded,
-    dataWorkspaceOpen,
-    closePageManager,
+    closeSurfaceManager,
     exportDialogLoaded,
     exportPreviewMode,
     localeId,
@@ -226,8 +212,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     notify,
     openAppearanceDrawer,
     openExportPreview,
-    openDataWorkspace,
-    openPageManager,
+    openSurfaceManager,
     pageManagerLoaded,
     pageManagerOpen,
     paletteFamily,

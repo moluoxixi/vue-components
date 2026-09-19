@@ -8,7 +8,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component, ComputedRef, Ref, ShallowRef, VNodeChild } from 'vue'
-import type { ConfigFormPageRuntimeOptionState } from '../../runtime'
+import type { ConfigFormSurfaceRuntimeOptionState } from '../../runtime'
 import type {
   ConfigFormComponentRegistration,
   ConfigFormControlBinding,
@@ -93,7 +93,7 @@ export interface RendererPipelineContext<TValues extends ConfigFormValues> {
   designGuard: DesignInteractionGuard
   editorBridge: RuntimeEditorBridgeState<TValues>
   formId: string
-  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormPageRuntimeOptionState | undefined
+  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormSurfaceRuntimeOptionState | undefined
   props: Readonly<ConfigFormRendererProps<TValues>>
   responsiveLabelWidths: ComputedRef<Record<ConfigFormBreakpoint, string>>
   responsiveLayouts: ComputedRef<Record<ConfigFormBreakpoint, ConfigFormResolvedLayout>>

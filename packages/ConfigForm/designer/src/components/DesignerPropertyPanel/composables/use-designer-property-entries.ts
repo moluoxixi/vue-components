@@ -1,4 +1,4 @@
-import type { FormSettings, PageNode } from '@moluoxixi/config-form-model'
+import type { FormSettings, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { InspectorSectionId, InspectorSectionProjection } from '../../../inspector'
 import type { DesignerPropertySetterDefinition, DesignerSetterOption } from '../../../registry'
 import type { DesignerPropertyFormEntry, DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from '../types'
@@ -124,7 +124,7 @@ export function useDesignerPropertyEntries(
     return !sectionEditable(section)
   }
 
-  function readNodePath(node: PageNode | undefined, path: string[]): unknown {
+  function readNodePath(node: SurfaceNode | undefined, path: string[]): unknown {
     if (node && path.length === 1 && path[0] === 'span')
       return findDesignNode(props.graph, node.id)?.placement.span
     let value: unknown = node

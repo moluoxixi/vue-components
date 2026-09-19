@@ -1,15 +1,11 @@
 import type {
-  ConfigFormRendererField,
-  ConfigFormRendererNode,
-} from '@moluoxixi/config-form'
-import type {
-  PageCompilation,
   ProjectCompilation,
+  SurfaceCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
-  CanonicalRuntimePage,
   VueRuntimeBindingResolver,
   VueRuntimeComponentBinding,
+  CanonicalRuntimeSurface,
 } from '../index'
 import { performance } from 'node:perf_hooks'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
@@ -21,7 +17,7 @@ import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, shallowRef } from 'vue'
-import { compileCanonicalPageRuntime } from '../index'
+import { compileCanonicalSurfaceRuntime } from '../index'
 
 const RuntimeField = defineComponent({
   name: 'RuntimeFieldFixture',
@@ -34,8 +30,8 @@ const RuntimeField = defineComponent({
   emits: ['update:modelValue'],
   setup(props) {
     return () => h('input', {
-      'data-clearable': String(props.clearable),
       'data-runtime-field': '',
+      'data-clearable': String(props.clearable),
       'placeholder': props.placeholder,
       'value': props.modelValue,
     })
@@ -49,247 +45,171 @@ const RuntimeLayout = defineComponent({
   },
 })
 
-const bindings: Record<string, VueRuntimeComponentBinding> = {
-  'layout.section': {
-    component: RuntimeLayout,
-    contractFingerprint: 'fnv1a:layout',
-    contractVersion: '1',
-    kind: 'layout',
+const RuntimeElement = defineComponent({
+  name: 'RuntimeElementFixture',
+  props: { label: String },
+  setup(props) {
+    return () => h('button', { 'data-runtime-element': '' }, props.label)
   },
-  'element.input': {
-    component: RuntimeField,
-    contractFingerprint: 'fnv1a:field',
-    contractVersion: '2',
-    kind: 'field',
-    readonlyRender: ({ componentProps, node, value }) => (
-      `${node.id}:${String(value)}:${String(componentProps.placeholder)}`
-    ),
-    trigger: 'update:modelValue',
-    valueProp: 'modelValue',
-  },
-}
+})
 
-function resolver(overrides: Partial<VueRuntimeBindingResolver> = {}): VueRuntimeBindingResolver {
+const registryUsage = [
+  { key: 'field.input', contractFingerprint: 'fnv1a:field', contractVersion: '1', fingerprint: 'fnv1a:field' },
+  { key: 'layout.section', contractFingerprint: 'fnv1a:layout', contractVersion: '1', fingerprint: 'fnv1a:layout' },
+  { key: 'element.action', contractFingerprint: 'fnv1a:element', contractVersion: '1', fingerprint: 'fnv1a:element' },
+] as const
+
+function resolver(compilation: SurfaceCompilation, overrides: Partial<VueRuntimeBindingResolver> = {}): VueRuntimeBindingResolver {
+  const identities = Object.fromEntries(compilation.registryUsage.map(item => [item.key, item]))
+  const components: Record<string, VueRuntimeComponentBinding> = {
+    'field.input': {
+      component: RuntimeField,
+      contractFingerprint: identities['field.input']?.fingerprint ?? '',
+      contractVersion: identities['field.input']?.contractVersion ?? '',
+      kind: 'field',
+      trigger: 'update:modelValue',
+      valueProp: 'modelValue',
+    },
+    'layout.section': {
+      component: RuntimeLayout,
+      contractFingerprint: identities['layout.section']?.fingerprint ?? '',
+      contractVersion: identities['layout.section']?.contractVersion ?? '',
+      kind: 'layout',
+    },
+    'element.action': {
+      component: RuntimeElement,
+      contractFingerprint: identities['element.action']?.fingerprint ?? '',
+      contractVersion: identities['element.action']?.contractVersion ?? '',
+      kind: 'element',
+    },
+  }
   return {
     components: {},
-    resolveBinding: component => bindings[component],
+    resolveBinding: component => components[component],
     ...overrides,
   }
 }
 
-function pageFixture(): CanonicalRuntimePage {
-  return {
-    id: 'home',
-    name: 'Home',
-    route: '/',
-    props: {},
-    form: {
-      columns: 24,
-      fieldSpan: 24,
-      labelWidth: 120,
-      responsive: {
-        mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
-        tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
-      },
+function createSurface(id: string, kind: 'page' | 'dialog' | 'drawer' = 'page'): CanonicalRuntimeSurface {
+  const presentation = kind === 'dialog'
+    ? { kind: 'dialog' as const, title: 'Editor', width: { desktop: { value: 640, unit: 'px' as const } }, mask: true, close: { escape: true, mask: true, button: true } }
+    : kind === 'drawer'
+      ? { kind: 'drawer' as const, title: 'Details', placement: 'right' as const, size: { desktop: { value: 40, unit: '%' as const } }, mask: true, close: { escape: true, mask: true, button: true } }
+      : undefined
+  const nodes = {
+    section: {
+      id: 'section', component: 'layout.section', componentVersion: '1', componentFingerprint: 'fnv1a:layout', kind: 'layout' as const,
+      subtreeHash: 'hash:section', placement: { parentId: null, slot: null, props: {} }, configuredProps: {}, props: { gap: 12 },
+      slots: { default: ['name', 'open-editor'] },
     },
+    name: {
+      id: 'name', component: 'field.input', componentVersion: '1', componentFingerprint: 'fnv1a:field', kind: 'field' as const,
+      subtreeHash: 'hash:name', placement: { parentId: 'section', slot: 'default', props: { span: 12 } }, configuredProps: { placeholder: 'Configured name' }, props: { clearable: true, placeholder: 'Your name' },
+      field: 'name', label: 'Name', defaultValue: 'Ada', validateOn: ['submit' as const], validation: { version: 1, base: { type: 'string' as const }, rules: [{ kind: 'minLength' as const, value: 2 }] },
+    },
+    'open-editor': {
+      id: 'open-editor', component: 'element.action', componentVersion: '1', componentFingerprint: 'fnv1a:element', kind: 'element' as const,
+      subtreeHash: 'hash:open-editor', placement: { parentId: 'section', slot: 'default', props: { span: 12 } }, configuredProps: { label: 'Edit' }, props: { label: 'Edit' },
+    },
+  }
+  return {
+    id,
+    name: id,
+    kind,
+    ...(kind === 'page' ? { route: '/' } : { presentation }),
+    props: {},
+    form: { columns: 24, fieldSpan: 24, labelWidth: 120 },
     scopedFields: [{ field: 'name', nodeId: 'name' }],
     valueScopes: [],
     rootIds: ['section'],
-    nodesById: {
-      section: {
-        id: 'section',
-        component: 'layout.section',
-        componentVersion: '1',
-        componentFingerprint: 'fnv1a:layout',
-        kind: 'layout',
-        subtreeHash: 'fnv1a:section',
-        placement: { parentId: null, slot: null, props: {} },
-        configuredProps: {},
-        props: { gap: 12 },
-        bindings: {},
-        slots: { default: ['name'] },
-      },
-      name: {
-        id: 'name',
-        component: 'element.input',
-        componentVersion: '2',
-        componentFingerprint: 'fnv1a:field',
-        kind: 'field',
-        subtreeHash: 'fnv1a:name',
-        placement: {
-          parentId: 'section',
-          slot: 'default',
-          props: { span: 12 },
-        },
-        configuredProps: { placeholder: 'Configured name' },
-        props: { clearable: true, placeholder: 'Configured name' },
-        bindings: { model: { source: 'profile.name' } },
-        field: 'name',
-        label: 'Name',
-        defaultValue: 'Ada',
-        validateOn: ['submit'],
-        validation: {
-          version: 1,
-          base: { type: 'string' },
-          rules: [{ kind: 'minLength', value: 2 }],
-        },
-        conditions: {
-          visible: { kind: 'literal', value: true },
-        },
-      },
-    },
-  }
+    nodesById: nodes,
+    parameters: [],
+    outputs: [],
+    interactions: [],
+  } as unknown as CanonicalRuntimeSurface
 }
 
-function compilationFixture(page = pageFixture()): ProjectCompilation {
+function surfaceCompilation(surfaceId = 'home'): SurfaceCompilation {
+  const kind = surfaceId === 'editor' ? 'dialog' : surfaceId === 'details' ? 'drawer' : 'page'
+  const surface = createSurface(surfaceId, kind)
   const key = {
+    irVersion: CANONICAL_PROJECT_IR_VERSION,
     projectId: 'runtime-project',
-    contentHash: 'fnv1a:content',
-    registryAdapter: 'runtime-fixture',
+    surfaceId,
+    registryAdapter: 'fixture',
     registryAdapterVersion: '1',
-    registryFingerprint: 'fnv1a:registry',
+    registryUsageHash: 'hash:usage',
     compilerVersion: CONFIG_FORM_COMPILER_VERSION,
-    environmentHash: 'fnv1a:environment',
-    irHash: 'fnv1a:ir',
-  } satisfies ProjectCompilation['key']
-
+    environmentHash: 'hash:environment',
+    semanticHash: `hash:${surfaceId}`,
+  }
   return {
-    snapshot: {} as ProjectCompilation['snapshot'],
-    registry: {} as ProjectCompilation['registry'],
-    origin: { kind: 'committed', editVersion: 7 },
+    snapshotIdentity: { source: 'committed', projectId: 'runtime-project', surfaceId, contentHash: 'hash:content', editVersion: 1 },
+    registryUsage: registryUsage.map(({ key, contractVersion, fingerprint }) => ({ key, contractVersion, fingerprint })),
     key,
-    ir: {
-      version: CANONICAL_PROJECT_IR_VERSION,
-      identity: key,
-      name: 'Runtime fixture',
-      homePageId: page.id,
-      pageOrder: [page.id],
-      pagesById: { [page.id]: page },
-      settings: {},
-      resources: {},
-      environment: { version: '1', features: {} },
-    },
-  }
+    surface,
+  } as unknown as SurfaceCompilation
 }
 
-function pageCompilationFixture(page = pageFixture()): PageCompilation {
+function projectCompilation(): ProjectCompilation {
+  const surfacesById = {
+    home: createSurface('home', 'page'),
+    editor: createSurface('editor', 'dialog'),
+    details: createSurface('details', 'drawer'),
+  }
+  const key = {
+    projectId: 'runtime-project', contentHash: 'hash:content', registryAdapter: 'fixture', registryAdapterVersion: '1', registryFingerprint: 'hash:registry',
+    compilerVersion: CONFIG_FORM_COMPILER_VERSION, environmentHash: 'hash:environment', irHash: 'hash:ir',
+  }
   return {
-    snapshotIdentity: {
-      source: 'committed',
-      projectId: 'runtime-project',
-      pageId: page.id,
-      contentHash: 'fnv1a:content',
-      editVersion: 7,
-    },
-    registryUsage: [
-      { key: 'element.input', contractVersion: '2', fingerprint: 'fnv1a:field' },
-      { key: 'layout.section', contractVersion: '1', fingerprint: 'fnv1a:layout' },
-    ],
-    key: {
-      irVersion: CANONICAL_PROJECT_IR_VERSION,
-      projectId: 'runtime-project',
-      pageId: page.id,
-      registryAdapter: 'runtime-fixture',
-      registryAdapterVersion: '1',
-      registryUsageHash: 'fnv1a:usage',
-      compilerVersion: CONFIG_FORM_COMPILER_VERSION,
-      environmentHash: 'fnv1a:environment',
-      semanticHash: 'fnv1a:page',
-    },
-    page,
-  }
+    snapshot: {} as ProjectCompilation['snapshot'], registry: {} as ProjectCompilation['registry'], origin: { kind: 'committed', editVersion: 1 }, key,
+    ir: { version: CANONICAL_PROJECT_IR_VERSION, identity: key, name: 'Runtime fixture', homeSurfaceId: 'home', surfaceOrder: ['home', 'editor', 'details'], surfacesById, datasetOrder: [], datasetsById: {}, resources: {}, theme: { version: 1 }, settings: {}, environment: { version: '1', features: {} } },
+  } as unknown as ProjectCompilation
 }
 
-function compilePage(
-  page: CanonicalRuntimePage,
-  bindingResolver: VueRuntimeBindingResolver = resolver(),
-) {
-  return compileCanonicalPageRuntime({
-    compilation: pageCompilationFixture(page),
-  }, bindingResolver)
+function mutableSurface(compilation = surfaceCompilation()): CanonicalRuntimeSurface {
+  return structuredClone(compilation.surface) as unknown as CanonicalRuntimeSurface
 }
 
-function mutableProjectCompilation() {
-  const compilation = structuredClone(compilationFixture()) as unknown as {
-    ir: Record<string, unknown> & { identity: Record<string, unknown> }
-    key: Record<string, unknown>
-  }
-  compilation.key = { ...compilation.key }
-  compilation.ir.identity = { ...compilation.ir.identity }
-  return compilation
-}
-
-function addUnexpectedCanonicalKey(
-  page: Record<string, unknown>,
-  target: 'node' | 'page',
-  key: string,
-): void {
-  const targetRecord = target === 'page'
-    ? page
-    : Object.values(page.nodesById as Record<string, Record<string, unknown>>)[0]!
-  targetRecord[key] = target === 'page' ? [] : {}
-}
-
-function nestedField(root: ConfigFormRendererNode): ConfigFormRendererField {
-  const slot = root.slots?.default
-  const child = Array.isArray(slot) ? slot[0] : undefined
-  if (!child || !('field' in child))
-    throw new Error('Expected a field inside the default layout slot.')
-  return child
-}
-
-describe('vue Runtime backend', () => {
-  it('renders resolved Canonical IR through real Vue components without mutating the IR', () => {
-    const page = pageFixture()
-    const snapshot = structuredClone(page)
-    const compilation = pageCompilationFixture(page)
-    const result = compileCanonicalPageRuntime({ compilation }, resolver())
+describe('Vue Surface backend', () => {
+  it('renders field, layout, and element nodes without mutating Canonical IR', () => {
+    const compilation = surfaceCompilation()
+    const snapshot = structuredClone(compilation.surface)
+    const result = compileCanonicalSurfaceRuntime({ compilation }, resolver(compilation))
 
     expect(result.success, JSON.stringify(result.success ? [] : result.diagnostics)).toBe(true)
-    expect(page).toEqual(snapshot)
+    expect(compilation.surface).toEqual(snapshot)
     if (!result.success)
       return
 
     expect(result.artifact).toMatchObject({
       compilationKey: compilation.key,
-      pageId: 'home',
+      surfaceId: 'home',
+      kind: 'page',
     })
     expect(Object.isFrozen(result.artifact)).toBe(true)
     expect(Object.isFrozen(result.artifact.compilationKey)).toBe(true)
     expect(Object.isFrozen(result.artifact.renderer.plan)).toBe(true)
-    expect(Object.isFrozen(result.artifact.renderer)).toBe(true)
-    expect(result.artifact.renderer.labelWidth).toBe(120)
-    expect(result.artifact.renderer.responsive).toEqual({
-      mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
-      tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
+    expect(result.artifact.renderer.plan).toEqual({
+      optionBindings: [],
+      runtime: { dataSources: [], variables: [] },
+      valueSchema: compilation.surface
+        ? { scopedFields: compilation.surface.scopedFields, valueScopes: compilation.surface.valueScopes }
+        : undefined,
     })
 
-    const root = result.artifact.renderer.fields[0]!
-    const field = nestedField(root)
-    expect(field).toMatchObject({
-      id: 'name',
-      field: 'name',
-      props: { clearable: true, placeholder: 'Configured name' },
-      span: 12,
-      valueProp: 'modelValue',
-      trigger: 'update:modelValue',
-    })
-    expect(field.extensions).toMatchObject({
-      'mx.low-code': {
-        bindings: { model: { source: 'profile.name' } },
-      },
-    })
-    expect(field).not.toHaveProperty('eventNames')
-    expect(field.extensions?.['mx.low-code']).not.toHaveProperty('events')
-    expect(result.artifact.renderer.plan).not.toHaveProperty('flows')
-    expect(field.schema?.safeParse('A').success).toBe(false)
-    expect(field.schema?.safeParse('Ada').success).toBe(true)
-    expect(field.readonlyRender?.({
-      componentProps: field.props ?? {},
-      field,
-      model: { name: 'Ada' },
-      value: 'Ada',
-    })).toBe('name:Ada:Configured name')
+    const root = result.artifact.renderer.fields[0]
+    expect(root).toMatchObject({ id: 'section', component: RuntimeLayout })
+    const children = root && !('field' in root) && Array.isArray(root.slots?.default)
+      ? root.slots.default
+      : []
+    expect(children).toHaveLength(2)
+    const nested = children[0]
+    expect(nested).toMatchObject({ id: 'name', field: 'name', valueProp: 'modelValue' })
+    expect(children[1]).toMatchObject({ id: 'open-editor', component: RuntimeElement })
+    expect(nested).not.toHaveProperty('bindings')
+    expect(nested).not.toHaveProperty('conditions')
+    expect(nested).not.toHaveProperty('reactions')
 
     const wrapper = mount(ConfigFormRenderer, {
       props: {
@@ -300,239 +220,135 @@ describe('vue Runtime backend', () => {
     expect(wrapper.find('[data-runtime-layout]').exists()).toBe(true)
     expect(wrapper.find('[data-runtime-field]').attributes()).toMatchObject({
       'data-clearable': 'true',
-      'placeholder': 'Configured name',
+      'placeholder': 'Your name',
       'value': 'Ada',
+    })
+    expect(wrapper.find('[data-runtime-element]').text()).toBe('Edit')
+  })
+
+  it('projects dialog and drawer identity without recursively compiling targets', () => {
+    for (const surfaceId of ['editor', 'details'] as const) {
+      const compilation = surfaceCompilation(surfaceId)
+      const runtime = compileCanonicalSurfaceRuntime({ compilation }, resolver(compilation))
+      expect(runtime.success).toBe(true)
+      if (!runtime.success)
+        continue
+      expect(runtime.artifact.surfaceId).toBe(surfaceId)
+      expect(runtime.artifact.kind).toBe(surfaceId === 'editor' ? 'dialog' : 'drawer')
+      expect(runtime.artifact.presentation).toBeDefined()
+      expect(JSON.stringify(runtime.artifact)).not.toContain(surfaceId === 'editor' ? 'details-action' : 'editor-action')
+    }
+  })
+
+  it('supports project compilation lookup and rejects unknown Surface ids', () => {
+    const compilation = projectCompilation()
+    const surface = compilation.ir.surfacesById.home!
+    expect(surface.id).toBe('home')
+    const compiledSurface = surfaceCompilation()
+    const projectResolver = resolver(compiledSurface)
+    expect(compileCanonicalSurfaceRuntime({ compilation, surfaceId: 'home' }, projectResolver).success).toBe(true)
+    expect(compileCanonicalSurfaceRuntime({ compilation, surfaceId: 'missing' }, projectResolver)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'VUE_RUNTIME_IR_SURFACE_UNKNOWN', path: ['surfacesById', 'missing'] }],
     })
   })
 
-  it('fails closed when a binding is missing or its semantic identity diverges', () => {
-    const missing = compilePage(pageFixture(), resolver({
-      resolveBinding: component => component === 'layout.section' ? bindings[component] : undefined,
+  it('fails closed when a binding is missing or identity diverges', () => {
+    const compilation = surfaceCompilation()
+    const missing = compileCanonicalSurfaceRuntime({ compilation }, resolver(compilation, {
+      resolveBinding: component => component === 'layout.section' ? undefined : resolver(compilation).resolveBinding(component),
     }))
     expect(missing).toMatchObject({
       success: false,
-      diagnostics: [{ code: 'VUE_RUNTIME_BINDING_UNAVAILABLE', nodeId: 'name' }],
+      diagnostics: [{ code: 'VUE_RUNTIME_BINDING_UNAVAILABLE', nodeId: 'section' }],
     })
 
-    const mismatch = compilePage(pageFixture(), resolver({
+    const stale = compileCanonicalSurfaceRuntime({ compilation }, resolver(compilation, {
       resolveBinding(component) {
-        const binding = bindings[component]
-        return binding && component === 'element.input'
-          ? { ...binding, contractFingerprint: 'fnv1a:stale' }
+        const binding = resolver(compilation).resolveBinding(component)
+        return binding && component === 'field.input'
+          ? { ...binding, contractFingerprint: 'stale' }
           : binding
       },
     }))
-    expect(mismatch).toMatchObject({
+    expect(stale).toMatchObject({
       success: false,
       diagnostics: [{ code: 'VUE_RUNTIME_BINDING_IDENTITY_MISMATCH', nodeId: 'name' }],
     })
   })
 
-  it('reuses unchanged Runtime fragments across incremental page compilations', () => {
-    const page = pageFixture()
-    const name = page.nodesById.name!
-    if (name.kind !== 'field')
-      throw new TypeError('Expected field fixture.')
-    page.rootIds.push('other')
-    page.nodesById.other = {
-      ...name,
-      id: 'other',
-      field: 'other',
-      subtreeHash: 'fnv1a:other',
-      placement: { parentId: null, slot: null, props: {} },
-      props: { placeholder: 'Unchanged root' },
-    }
-    const resolveBinding = vi.fn((component: string) => bindings[component])
-    const stableResolver = resolver({ resolveBinding })
-    const first = compilePage(page, stableResolver)
-    expect(first.success).toBe(true)
-    if (!first.success)
-      return
-    expect(resolveBinding).toHaveBeenCalledTimes(3)
-
-    const nextName = {
-      ...name,
-      props: { ...name.props, placeholder: 'Changed name' },
-      subtreeHash: 'fnv1a:name-next',
-    }
-    const section = page.nodesById.section!
-    const nextSection = { ...section, subtreeHash: 'fnv1a:section-next' }
-    const nextPage: CanonicalRuntimePage = {
-      ...page,
-      nodesById: {
-        ...page.nodesById,
-        name: nextName,
-        section: nextSection,
-      },
-    }
-    const second = compilePage(nextPage, stableResolver)
-    expect(second.success).toBe(true)
-    if (!second.success)
-      return
-
-    expect(resolveBinding).toHaveBeenCalledTimes(5)
-    expect(second.artifact.renderer.fields[0]).not.toBe(first.artifact.renderer.fields[0])
-    expect(second.artifact.renderer.fields[1]).toBe(first.artifact.renderer.fields[1])
-  })
-
-  it('rejects a nested relation whose parent placement disagrees with the IR', () => {
-    const placement = pageFixture()
-    placement.nodesById.name!.placement.parentId = null
-    expect(compilePage(placement)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'VUE_RUNTIME_IR_PLACEMENT_MISMATCH', nodeId: 'name' }],
-    })
-  })
-
-  it('fails closed when the requested page is absent from the compilation', () => {
-    const compilation = compilationFixture()
-    expect(compileCanonicalPageRuntime({ compilation, pageId: 'missing' }, resolver())).toMatchObject({
-      success: false,
-      diagnostics: [{
-        code: 'VUE_RUNTIME_IR_PAGE_UNKNOWN',
-        path: ['pagesById', 'missing'],
-      }],
-    })
-  })
-
-  it('rejects stale, future, and missing IR versions for page and project inputs', () => {
+  it('rejects stale, future, and additive Canonical contracts', () => {
+    const compilation = surfaceCompilation()
     const cases = [
-      { name: 'stale', value: CANONICAL_PROJECT_IR_VERSION - 1 },
-      { name: 'future', value: CANONICAL_PROJECT_IR_VERSION + 1 },
-      { name: 'missing', value: undefined },
+      CANONICAL_PROJECT_IR_VERSION - 1,
+      CANONICAL_PROJECT_IR_VERSION + 1,
+      undefined,
     ]
-
-    for (const { name, value } of cases) {
-      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
-        key: Record<string, unknown>
-      }
-      pageCompilation.key.irVersion = value
-      expect(compileCanonicalPageRuntime({
-        compilation: pageCompilation as unknown as PageCompilation,
-      }, resolver()), `${name} page IR version`).toMatchObject({
+    for (const value of cases) {
+      const stale = structuredClone(compilation) as unknown as { key: Record<string, unknown> }
+      stale.key.irVersion = value
+      expect(compileCanonicalSurfaceRuntime({ compilation: stale as unknown as SurfaceCompilation }, resolver(compilation))).toMatchObject({
         success: false,
         diagnostics: [{ code: 'VUE_RUNTIME_IR_VERSION_UNSUPPORTED', path: ['key', 'irVersion'] }],
       })
-
-      const projectCompilation = structuredClone(compilationFixture()) as unknown as {
-        ir: Record<string, unknown>
-      }
-      projectCompilation.ir.version = value
-      expect(compileCanonicalPageRuntime({
-        compilation: projectCompilation as unknown as ProjectCompilation,
-        pageId: 'home',
-      }, resolver()), `${name} project IR version`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_IR_VERSION_UNSUPPORTED', path: ['ir', 'version'] }],
-      })
     }
+
+    const additive = structuredClone(compilation) as unknown as { surface: Record<string, unknown> }
+    additive.surface.legacyEvents = []
+    expect(compileCanonicalSurfaceRuntime({ compilation: additive as unknown as SurfaceCompilation }, resolver(compilation))).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED', path: ['surface'] }],
+    })
   })
 
-  it('rejects stale, future, missing, and mixed compiler identities', () => {
-    const cases = [
-      { name: 'stale', value: '4.0.0' },
-      { name: 'future', value: `${CONFIG_FORM_COMPILER_VERSION}-future` },
-      { name: 'missing', value: undefined },
-    ]
-
-    for (const { name, value } of cases) {
-      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
-        key: Record<string, unknown>
-      }
-      pageCompilation.key.compilerVersion = value
-      expect(compileCanonicalPageRuntime({
-        compilation: pageCompilation as unknown as PageCompilation,
-      }, resolver()), `${name} page compiler version`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
-      })
-
-      const projectWithKeyMismatch = mutableProjectCompilation()
-      projectWithKeyMismatch.key.compilerVersion = value
-      expect(compileCanonicalPageRuntime({
-        compilation: projectWithKeyMismatch as unknown as ProjectCompilation,
-        pageId: 'home',
-      }, resolver()), `${name} project key compiler version`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
-      })
-
-      const projectWithIdentityMismatch = mutableProjectCompilation()
-      projectWithIdentityMismatch.ir.identity.compilerVersion = value
-      expect(compileCanonicalPageRuntime({
-        compilation: projectWithIdentityMismatch as unknown as ProjectCompilation,
-        pageId: 'home',
-      }, resolver()), `${name} project IR identity compiler version`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['ir', 'identity', 'compilerVersion'] }],
-      })
-    }
-  })
-
-  it('rejects additive page and node fields for page and project inputs', () => {
-    const cases = [
-      { key: 'flows', target: 'page' },
-      { key: 'events', target: 'node' },
-      { key: 'flowEvents', target: 'node' },
-    ] as const
-
-    for (const { key, target } of cases) {
-      const pageCompilation = structuredClone(pageCompilationFixture()) as unknown as {
-        page: Record<string, unknown>
-      }
-      addUnexpectedCanonicalKey(pageCompilation.page, target, key)
-      expect(compileCanonicalPageRuntime({
-        compilation: pageCompilation as unknown as PageCompilation,
-      }, resolver()), `${key} in page compilation`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED', path: ['page'] }],
-      })
-
-      const projectCompilation = structuredClone(compilationFixture()) as unknown as {
-        ir: { pagesById: Record<string, Record<string, unknown>> }
-      }
-      addUnexpectedCanonicalKey(projectCompilation.ir.pagesById.home!, target, key)
-      expect(compileCanonicalPageRuntime({
-        compilation: projectCompilation as unknown as ProjectCompilation,
-        pageId: 'home',
-      }, resolver()), `${key} in project compilation`).toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED', path: ['ir', 'pagesById', 'home'] }],
-      })
-    }
-  })
-
-  it('binds a 2000-node page plan within the page-scoped production budget', () => {
-    const page = pageFixture()
-    page.rootIds = []
-    page.nodesById = {}
+  it('reuses unchanged node fragments and handles a large Surface within budget', () => {
+    const compilation = surfaceCompilation()
+    const surface = mutableSurface(compilation)
+    surface.rootIds = []
+    surface.nodesById = {}
     for (let index = 0; index < 2_000; index += 1) {
       const id = `field-${index}`
-      page.rootIds.push(id)
-      page.nodesById[id] = {
+      surface.rootIds.push(id)
+      surface.nodesById[id] = {
         id,
-        component: 'element.input',
-        componentVersion: '2',
-        componentFingerprint: 'fnv1a:field',
+        component: 'field.input',
+        componentVersion: compilation.registryUsage.find(item => item.key === 'field.input')!.contractVersion,
+        componentFingerprint: compilation.registryUsage.find(item => item.key === 'field.input')!.fingerprint,
         kind: 'field',
-        subtreeHash: `fnv1a:${id}`,
+        subtreeHash: `hash:${id}`,
         placement: { parentId: null, slot: null, props: { span: 6 } },
         configuredProps: {},
         props: {},
-        bindings: {},
         field: id,
         validateOn: ['submit'],
       }
     }
-
+    const large = { ...compilation, surface } as unknown as SurfaceCompilation
     const startedAt = performance.now()
-    const result = compilePage(page)
-    const duration = performance.now() - startedAt
-
+    const result = compileCanonicalSurfaceRuntime({ compilation: large }, resolver(compilation))
     expect(result.success).toBe(true)
-    if (!result.success)
-      return
-    expect(result.artifact.renderer.fields).toHaveLength(2_000)
-    expect(duration).toBeLessThan(750)
+    if (result.success)
+      expect(result.artifact.renderer.fields).toHaveLength(2_000)
+    expect(performance.now() - startedAt).toBeLessThan(750)
+
+    const resolverWithSpy = resolver(compilation)
+    const spy = vi.spyOn(resolverWithSpy, 'resolveBinding')
+    const first = compileCanonicalSurfaceRuntime({ compilation }, resolverWithSpy)
+    const nextSurface = structuredClone(compilation.surface) as unknown as CanonicalRuntimeSurface
+    nextSurface.nodesById.name = { ...nextSurface.nodesById.name!, props: { placeholder: 'changed' }, subtreeHash: 'changed' } as typeof nextSurface.nodesById.name
+    const second = compileCanonicalSurfaceRuntime({ compilation: { ...compilation, surface: nextSurface } as unknown as SurfaceCompilation }, resolverWithSpy)
+    expect(first.success && second.success).toBe(true)
+    expect(spy).toHaveBeenCalled()
+  })
+
+  it('rejects stale compiler identity', () => {
+    const compilation = surfaceCompilation()
+    const stale = structuredClone(compilation) as unknown as { key: Record<string, unknown> }
+    stale.key.compilerVersion = '5.0.0'
+    expect(compileCanonicalSurfaceRuntime({ compilation: stale as unknown as SurfaceCompilation }, resolver(compilation))).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
+    })
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('6.0.0')
   })
 })

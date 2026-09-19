@@ -1,10 +1,10 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
+import type { SurfaceCompilation } from '@moluoxixi/config-form-compiler'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 
-export interface PageRuntimeArtifactCache {
+export interface SurfaceRuntimeArtifactCache {
   clear: () => void
   resolve: (
-    compilation: PageCompilation,
+    compilation: SurfaceCompilation,
     compile: () => VueRuntimeCompileResult,
   ) => VueRuntimeCompileResult
 }

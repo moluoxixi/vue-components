@@ -1,5 +1,4 @@
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ModelJsonObject, ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
 import type { DesignCommandPreview } from '../../../graph'
 import type { DesignerRegistry } from '../../../registry'
@@ -7,8 +6,8 @@ import type { ConfigFormBreakpoint } from './runtime'
 
 export interface DesignerCanvasProps {
   commandHint?: Component
-  graph: PageGraph
-  pageId: string
+  graph: SurfaceGraph
+  surfaceId: string
   registry: DesignerRegistry
   selectedId?: string
   selectedIds?: string[]
@@ -18,7 +17,5 @@ export interface DesignerCanvasProps {
   interactive?: boolean
   pasteAvailable?: boolean
   showInteractiveToggle?: boolean
-  model?: Record<string, unknown>
-  reactionProps?: ConfigFormReactionProjection['props']
-  reactionStates?: ConfigFormReactionProjection['states']
+  model?: ModelJsonObject
 }

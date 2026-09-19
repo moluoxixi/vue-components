@@ -1,10 +1,11 @@
 import type {
+  ConfigFormDataSourceDefinition,
   ConfigFormDataSourceState,
-  ConfigFormPageRuntimeConfiguration,
   ConfigFormScopedFieldDefinition,
   ConfigFormScopePath,
   ConfigFormValueInput,
   ConfigFormValueScopeDefinition,
+  ConfigFormVariableDefinition,
 } from '@moluoxixi/config-form-core'
 import type { ConfigFormComponentRegistration as HeadlessComponentRegistration, ConfigFormComponentRegistry as HeadlessComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { VNodeChild } from 'vue'
@@ -20,13 +21,13 @@ import type {
 } from '../../types'
 
 /** Compiler-owned natural value topology consumed by the Headless controller. */
-export interface ConfigFormPageRuntimeValueSchema {
+export interface ConfigFormSurfaceRuntimeValueSchema {
   readonly valueScopes: readonly ConfigFormValueScopeDefinition[]
   readonly scopedFields: readonly ConfigFormScopedFieldDefinition[]
 }
 
-/** A field whose options are supplied by one page data source. */
-export interface ConfigFormPageRuntimeOptionBinding {
+/** A field whose options are supplied by one Surface data source. */
+export interface ConfigFormSurfaceRuntimeOptionBinding {
   readonly nodeId: string
   readonly source: {
     readonly kind: 'dataSource'
@@ -35,17 +36,22 @@ export interface ConfigFormPageRuntimeOptionBinding {
   }
 }
 
-/**
- * Complete framework-neutral execution input for one compiled page.
- * Host capabilities such as action/source implementations stay outside this data plan.
- */
-export interface ConfigFormPageRuntimePlan {
-  readonly valueSchema: ConfigFormPageRuntimeValueSchema
-  readonly runtime: Readonly<ConfigFormPageRuntimeConfiguration>
-  readonly optionBindings: readonly ConfigFormPageRuntimeOptionBinding[]
+export interface ConfigFormSurfaceRuntimeConfiguration {
+  readonly variables: readonly ConfigFormVariableDefinition[]
+  readonly dataSources: readonly ConfigFormDataSourceDefinition[]
 }
 
-export interface ConfigFormPageRuntimeLoadOptions {
+/**
+ * Complete framework-neutral execution input for one compiled Surface.
+ * Host capabilities such as action/source implementations stay outside this data plan.
+ */
+export interface ConfigFormSurfaceRuntimePlan {
+  readonly valueSchema: ConfigFormSurfaceRuntimeValueSchema
+  readonly runtime: ConfigFormSurfaceRuntimeConfiguration
+  readonly optionBindings: readonly ConfigFormSurfaceRuntimeOptionBinding[]
+}
+
+export interface ConfigFormSurfaceRuntimeLoadOptions {
   readonly force?: boolean
   readonly params?: Readonly<Record<string, ConfigFormValueInput>>
   readonly scope?: ConfigFormScopePath
@@ -53,12 +59,12 @@ export interface ConfigFormPageRuntimeLoadOptions {
 }
 
 /** State projected onto an option-bound field instance. */
-export interface ConfigFormPageRuntimeOptionState extends ConfigFormDataSourceState {
+export interface ConfigFormSurfaceRuntimeOptionState extends ConfigFormDataSourceState {
   readonly options: readonly unknown[]
 }
 
 /** Consumer identity is separate from the stable business row scope. */
-export interface ConfigFormPageRuntimeDataSourceStateChange {
+export interface ConfigFormSurfaceRuntimeDataSourceStateChange {
   readonly state: ConfigFormDataSourceState
   readonly scope: ConfigFormScopePath
   readonly consumerKey: string

@@ -4,6 +4,8 @@ import type {
   ProjectDomainDispatchResult,
   ProjectDomainEngine,
   ProjectDomainSnapshot,
+  ProjectEmbeddedResourceRead,
+  ProjectEmbeddedResourceWrite,
   ProjectSnapshot,
 } from '@moluoxixi/config-form-model'
 import type {
@@ -15,6 +17,7 @@ import type {
   OpenProjectEditorSessionOptions,
   ProjectEditorSession,
   ProjectEditorSessionDispatchResult,
+  ProjectEditorSessionExecuteOptions,
   ProjectEditorSessionOptions,
   ProjectEditorSessionSaveOptions,
   ProjectEditorSessionSaveResult,
@@ -58,6 +61,7 @@ export function createProjectEditorSession(
     updatedAt: options.project.updatedAt,
   })
   let persistenceSnapshot: ProjectSaveCoordinatorSnapshot = saveCoordinator.snapshot
+  const pendingEmbeddedWrites = new Map<string, ProjectEmbeddedResourceWrite>()
   let batchDepth = 0
   let batchedDispatches = 0
   let batchedChangeSet: ProjectChangeSet | undefined
@@ -134,8 +138,52 @@ export function createProjectEditorSession(
     }
   }
 
-  function execute(command: ProjectCommand): ProjectEditorSessionDispatchResult {
-    return acceptDomainResult(engine.execute(command))
+  function embeddedWriteKey(resourceId: string, contentHash: string): string {
+    return `${resourceId}\0${contentHash}`
+  }
+
+  function cloneEmbeddedWrites(
+    writes: readonly ProjectEmbeddedResourceWrite[],
+  ): ProjectEmbeddedResourceWrite[] {
+    return writes.map(write => ({
+      resourceId: write.resourceId,
+      contentHash: write.contentHash,
+      bytes: new Uint8Array(write.bytes),
+    }))
+  }
+
+  function writesForDocument(
+    document: ProjectEditorSessionSnapshot['document'],
+  ): ProjectEmbeddedResourceWrite[] {
+    return cloneEmbeddedWrites([...pendingEmbeddedWrites.values()].filter((write) => {
+      const resource = document.resources[write.resourceId]
+      return resource?.kind === 'embedded'
+        && resource.contentHash === write.contentHash
+        && resource.byteLength === write.bytes.byteLength
+    }))
+  }
+
+  function execute(
+    command: ProjectCommand,
+    executeOptions: ProjectEditorSessionExecuteOptions = {},
+  ): ProjectEditorSessionDispatchResult {
+    const embeddedWrites = cloneEmbeddedWrites(executeOptions.embeddedWrites ?? [])
+    const result = acceptDomainResult(engine.execute(command))
+    if (result.changed) {
+      embeddedWrites.forEach((write) => {
+        const resource = result.snapshot.document.resources[write.resourceId]
+        if (resource?.kind !== 'embedded'
+          || resource.contentHash !== write.contentHash
+          || resource.byteLength !== write.bytes.byteLength) {
+          throw new TypeError(`Embedded Resource write does not match the command result: ${write.resourceId}`)
+        }
+        pendingEmbeddedWrites.set(
+          embeddedWriteKey(write.resourceId, write.contentHash),
+          write,
+        )
+      })
+    }
+    return result
   }
 
   function undo(): ProjectEditorSessionDispatchResult {
@@ -160,10 +208,12 @@ export function createProjectEditorSession(
       engine.sealHistoryGroup()
       engineSnapshot = engine.snapshot
     }
-    return sessionSaveResult(await saveCoordinator.save({
+    const embeddedWrites = writesForDocument(engineSnapshot.document)
+    const result = sessionSaveResult(await saveCoordinator.save({
       contentHash: engineSnapshot.contentHash,
       cursor: engineSnapshot.cursor,
       document: engineSnapshot.document,
+      embeddedWrites,
       editVersion: engineSnapshot.editVersion,
     }, {
       source: saveOptions.source,
@@ -173,6 +223,23 @@ export function createProjectEditorSession(
       cursor: engine.snapshot.cursor,
       editVersion: engine.snapshot.editVersion,
     })))
+    if (result.success) {
+      embeddedWrites.forEach((write) => {
+        pendingEmbeddedWrites.delete(embeddedWriteKey(write.resourceId, write.contentHash))
+      })
+    }
+    return result
+  }
+
+  async function readEmbedded(
+    input: ProjectEmbeddedResourceRead,
+  ): Promise<Uint8Array | undefined> {
+    if (input.projectId !== engineSnapshot.document.id)
+      return undefined
+    const pending = pendingEmbeddedWrites.get(embeddedWriteKey(input.resourceId, input.contentHash))
+    return pending
+      ? new Uint8Array(pending.bytes)
+      : await options.repository.readEmbedded(input)
   }
 
   return {
@@ -181,6 +248,7 @@ export function createProjectEditorSession(
     },
     batch,
     execute,
+    readEmbedded,
     redo,
     save,
     subscribe(listener) {

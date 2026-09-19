@@ -356,14 +356,14 @@ export function registerTypeScriptLanguageProviders(ownLanguageFeature: OwnLangu
           documentation: 'Create a complete public ConfigForm module.',
           insertText: `import { defineFields } from '@moluoxixi/config-form-headless'
 
-interface PageFormValues {
+interface SurfaceFormValues {
   name: string
 }
 
-const { defineField } = defineFields<PageFormValues>()
+const { defineField } = defineFields<SurfaceFormValues>()
 
 export const form = { columns: 24, fieldSpan: 24 }
-export const initialValues: PageFormValues = { name: '' }
+export const initialValues: SurfaceFormValues = { name: '' }
 export const fields = [
   defineField({ component: 'text', field: 'name', label: 'Name' }),
 ]`,

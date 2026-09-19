@@ -2,7 +2,7 @@ export type ExportMode = 'source' | 'config'
 
 export type ConfigViewMode = 'source' | 'json' | 'tree'
 
-export type ConfigJsonScope = 'page' | 'project'
+export type ConfigJsonScope = 'project' | 'surface'
 
 export type MobileFileView = 'tree' | 'code'
 

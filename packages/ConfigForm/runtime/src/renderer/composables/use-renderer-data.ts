@@ -8,7 +8,7 @@ import type {
   ConfigFormValueInput,
 } from '@moluoxixi/config-form-core'
 import type { ConfigFormFieldAddress, ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { ConfigFormPageRuntimeLoadOptions, ConfigFormPageRuntimeOptionState } from '../../runtime'
+import type { ConfigFormSurfaceRuntimeLoadOptions, ConfigFormSurfaceRuntimeOptionState } from '../../runtime'
 import type { ConfigFormRendererEmits, ConfigFormRendererProps } from '../types'
 import type { RendererControllerState } from '../types/internal'
 import {
@@ -249,7 +249,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     return source
   }
 
-  function prepareRequest(sourceId: string, params: ConfigFormPageRuntimeLoadOptions['params'], context: ConfigFormValueContext) {
+  function prepareRequest(sourceId: string, params: ConfigFormSurfaceRuntimeLoadOptions['params'], context: ConfigFormValueContext) {
     const source = requireSource(sourceId)
     const request = resolveConfigFormValueInput(source.request as unknown as ConfigFormValueInput, context)
     const resolvedParams = resolveConfigFormValueInput(params ?? {}, context)
@@ -288,7 +288,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
 
   async function loadConsumer(
     consumer: Consumer,
-    settings: ConfigFormPageRuntimeLoadOptions,
+    settings: ConfigFormSurfaceRuntimeLoadOptions,
     prepared: ReturnType<typeof prepareRequest>,
   ): Promise<ConfigFormDataSourceState> {
     const requestGeneration = consumer.requestGeneration + 1
@@ -368,7 +368,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     if (!enabled || !started || !options.canPublish())
       return
     const desired = new Set<string>()
-    const schedule = (key: string, sourceId: string, scope: ConfigFormScopePath, params?: ConfigFormPageRuntimeLoadOptions['params'], address?: ConfigFormFieldAddress): void => {
+    const schedule = (key: string, sourceId: string, scope: ConfigFormScopePath, params?: ConfigFormSurfaceRuntimeLoadOptions['params'], address?: ConfigFormFieldAddress): void => {
       let consumer: Consumer | undefined
       try {
         consumer = createConsumer(key, sourceId, scope, address)
@@ -413,7 +413,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     })
   }
 
-  async function loadDataSource(sourceId: string, settings: ConfigFormPageRuntimeLoadOptions = {}): Promise<ConfigFormDataSourceState> {
+  async function loadDataSource(sourceId: string, settings: ConfigFormSurfaceRuntimeLoadOptions = {}): Promise<ConfigFormDataSourceState> {
     const scope = settings.scope ?? []
     let consumer: Consumer | undefined
     try {
@@ -452,7 +452,7 @@ export function useRendererData<TValues extends ConfigFormValues>(options: {
     }
   }
 
-  function getOptionState(address: ConfigFormFieldAddress): ConfigFormPageRuntimeOptionState | undefined {
+  function getOptionState(address: ConfigFormFieldAddress): ConfigFormSurfaceRuntimeOptionState | undefined {
     void revision.value
     try {
       const consumer = consumers.get(`option:${options.controller().getInstanceKey(address)}`)

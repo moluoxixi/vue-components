@@ -5,7 +5,6 @@ import type {
 import type { ElementPlusDesignerRegistryOptions } from '../types'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
 import { ELEMENT_PLUS_DESIGNER_MATERIALS } from '../materials'
-import { createElementPlusOptionDiagnostics } from '../options'
 import { ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS } from './property-controls'
 
 export const elementPlusDesignerRegistryLayer: DesignerRegistryLayer = {
@@ -17,14 +16,9 @@ export const elementPlusDesignerRegistryLayer: DesignerRegistryLayer = {
 export function createElementPlusDesignerRegistry(
   options: ElementPlusDesignerRegistryOptions = {},
 ): DesignerRegistry {
-  const materials = ELEMENT_PLUS_DESIGNER_MATERIALS.map(material => (
-    ['element.select', 'element.radio', 'element.checkbox'].includes(material.key) && material.kind === 'field'
-      ? { ...material, analyze: createElementPlusOptionDiagnostics(options.optionResolver) }
-      : material
-  ))
   return createDesignerRegistry({
     materials: options.materials,
-    layers: [...(options.layers ?? []), { ...elementPlusDesignerRegistryLayer, materials }],
+    layers: [...(options.layers ?? []), elementPlusDesignerRegistryLayer],
     rendererNamespace: 'mx-element-config-form',
   })
 }

@@ -1,87 +1,76 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormReactionProjection,
-} from '@moluoxixi/config-form-core'
+  ProjectCompilation,
+  SurfaceCompilation,
+} from '@moluoxixi/config-form-compiler'
+import type {
+  ModelJsonObject,
+  ProjectId,
+  SurfaceId,
+} from '@moluoxixi/config-form-model'
+import type {
+  PrototypeDiagnostic,
+  PrototypeInstanceProjectionV1,
+  PrototypeNodeAddressV1,
+  PrototypeSessionCommand,
+  PrototypeSessionV1,
+  SurfaceInstanceId,
+} from '@moluoxixi/config-form-prototype-runtime/session'
 import type { WorkbenchAdapterId } from '../../adapters'
 import type { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
-import type { RuntimeHostDataCancelMessage, RuntimeHostDataRequestMessage, RuntimeHostDataResultMessage } from './data-rpc'
 
-export interface RuntimeHostIdentity {
+/** Stable identity shared by both directions of a Runtime Host connection. */
+export interface RuntimeHostIdentityV7 {
   hostId: string
-  pageId: string
-  projectId: string
+  projectId: ProjectId
   revision: string
 }
 
-export interface RuntimeHostMessageBase extends RuntimeHostIdentity {
+export interface RuntimeHostMessageBaseV7 extends RuntimeHostIdentityV7 {
   channel: typeof RUNTIME_HOST_CHANNEL
   version: typeof RUNTIME_HOST_PROTOCOL_VERSION
   sequence: number
 }
 
-export interface RuntimeHostFieldInstance {
-  nodeId: string
-  scope: Array<{ scopeId: string, rowId: string }>
+export interface RuntimeHostFieldInstanceV7 {
+  address: PrototypeNodeAddressV1
   instanceKey: string
-  valuePath: Array<string | number>
+  valuePath: readonly (string | number)[]
 }
 
-export interface RuntimeHostRuntimeStatePayload {
-  /** Captured only from Renderer.listFieldInstances(). Keys are opaque. */
-  fields: RuntimeHostFieldInstance[]
-  touched: string[]
-  validation: Record<string, string[]>
-  values: Record<string, unknown>
+export interface RuntimeHostFormStateSnapshotV7 {
+  fields: readonly RuntimeHostFieldInstanceV7[]
+  touched: readonly string[]
+  validation: Readonly<Record<string, readonly string[]>>
+  values: ModelJsonObject
 }
 
-export type RuntimeSubmitStatus = 'blocked' | 'failure' | 'invalid' | 'success'
-
-export interface RuntimeHostSubmitResultPayload extends RuntimeHostRuntimeStatePayload {
-  status: RuntimeSubmitStatus
-  requestId: string
-}
-
-export interface RuntimeHostSyncMessage extends RuntimeHostMessageBase {
-  type: 'sync'
+export interface RuntimeHostDesignSyncPayloadV7 {
   adapter: WorkbenchAdapterId
-  /** Only advertises an explicit parent request capability; never carries a function. */
-  dataSourceRequest?: boolean
-  compilation: PageCompilation
-  design?: {
-    breakpoint: 'desktop' | 'mobile' | 'tablet'
-    candidateId?: string
-    candidateUsesFallback?: boolean
-    canvasWidth?: number
-    variant: 'canvas' | 'drag-visual'
-  }
+  breakpoint: 'desktop' | 'tablet' | 'mobile'
+  candidateId?: string
+  candidateUsesFallback?: boolean
+  canvasWidth?: number
+  compilation: SurfaceCompilation
   locale: string
-  mode: 'design' | 'preview'
   namespace?: string
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   runtimeSessionKey: string
-  runtimeState: RuntimeHostRuntimeStatePayload
+  runtimeState: RuntimeHostFormStateSnapshotV7
+  variant: 'canvas' | 'drag-visual'
 }
 
-export interface RuntimeHostSubmitMessage extends RuntimeHostMessageBase {
-  type: 'submit'
-  requestId: string
+export interface RuntimeHostExperienceSyncPayloadV7 {
+  adapter: WorkbenchAdapterId
+  compilation: ProjectCompilation
+  locale: string
+  namespace?: string
+  session: PrototypeSessionV1
 }
 
-export interface RuntimeHostStateMessage extends RuntimeHostMessageBase {
-  type: 'state'
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
-  runtimeState: RuntimeHostRuntimeStatePayload
-}
-
-export type ParentToRuntimeHostMessage
-  = | RuntimeHostStateMessage
-    | RuntimeHostSubmitMessage
-    | RuntimeHostSyncMessage
-    | RuntimeHostDataResultMessage
-
-export interface RuntimeHostFieldChangePayload extends RuntimeHostFieldInstance {
-  field: string
-  values: Record<string, unknown>
+export interface RuntimeHostInstanceStatePayloadV7 extends RuntimeHostFormStateSnapshotV7 {
+  surfaceId: SurfaceId
+  stateRevision: number
+  focusedAddress?: PrototypeNodeAddressV1
+  projection: PrototypeInstanceProjectionV1
 }
 
 export interface RuntimeHostRectPayload {
@@ -95,19 +84,16 @@ export interface RuntimeHostRectPayload {
 
 export interface RuntimeHostGeometryPayload {
   layoutRect?: RuntimeHostRectPayload
-  nodes: Array<{
+  nodes: readonly {
     depth: number
     nodeId: string
     order: number
     path: string
     rect: RuntimeHostRectPayload
     slot?: string
-  }>
+  }[]
   surfaceRect: RuntimeHostRectPayload
-  viewport: {
-    height: number
-    width: number
-  }
+  viewport: { height: number, width: number }
 }
 
 export interface RuntimeHostDesignPointerPayload {
@@ -121,26 +107,75 @@ export interface RuntimeHostDesignPointerPayload {
   shiftKey: boolean
 }
 
-export type RuntimeHostToParentPayload
-  = | { type: 'ready' | 'mounted' }
-    | { type: 'geometry', payload: RuntimeHostGeometryPayload }
-    | { type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel' | 'designContextMenu', payload: RuntimeHostDesignPointerPayload }
-    | { type: 'runtimeState', payload: RuntimeHostRuntimeStatePayload }
-    | { type: 'submitResult', payload: RuntimeHostSubmitResultPayload }
-    | { type: 'submit', requestId: string, values: Record<string, unknown> }
-    | { type: 'fieldChange', payload: RuntimeHostFieldChangePayload }
-    | RuntimeHostDataRequestMessage
-    | RuntimeHostDataCancelMessage
-    | { type: 'error', code: string, message: string }
+export type ParentToRuntimeHostMessageV7 = RuntimeHostMessageBaseV7 & (
+  | {
+    type: 'design.sync'
+    surfaceId: SurfaceId
+    payload: RuntimeHostDesignSyncPayloadV7
+  }
+  | {
+    type: 'design.state'
+    surfaceId: SurfaceId
+    payload: RuntimeHostFormStateSnapshotV7
+  }
+  | {
+    type: 'experience.sync'
+    sessionId: string
+    payload: RuntimeHostExperienceSyncPayloadV7
+  }
+  | {
+    type: 'experience.command'
+    sessionId: string
+    command: PrototypeSessionCommand
+  }
+)
 
-export type RuntimeHostToParentMessage = RuntimeHostMessageBase & RuntimeHostToParentPayload
+export interface PrototypeTransitionSnapshotV1 {
+  session: PrototypeSessionV1
+  diagnostics: readonly PrototypeDiagnostic[]
+}
 
-export interface RuntimeHostMessageEventOptions<T extends RuntimeHostMessageBase> {
+export type RuntimeHostToParentMessageV7 = RuntimeHostMessageBaseV7 & (
+  | { type: 'ready' | 'mounted', mode: 'design' | 'experience' }
+  | {
+    type: 'design.geometry'
+    surfaceId: SurfaceId
+    payload: RuntimeHostGeometryPayload
+  }
+  | {
+    type: 'design.pointerDown' | 'design.pointerMove' | 'design.pointerUp' | 'design.pointerCancel' | 'design.contextMenu'
+    surfaceId: SurfaceId
+    payload: RuntimeHostDesignPointerPayload
+  }
+  | {
+    type: 'design.runtimeState'
+    surfaceId: SurfaceId
+    payload: RuntimeHostFormStateSnapshotV7
+  }
+  | {
+    type: 'experience.session'
+    sessionId: string
+    transition: PrototypeTransitionSnapshotV1
+  }
+  | {
+    type: 'experience.instanceState'
+    sessionId: string
+    instanceId: SurfaceInstanceId
+    payload: RuntimeHostInstanceStatePayloadV7
+  }
+  | { type: 'error', code: string, message: string }
+)
+
+export interface RuntimeHostMessageEventOptionsV7<T extends RuntimeHostMessageBaseV7> {
   guard: (value: unknown) => value is T
   hostId?: string
   origin: string
-  pageId?: string
-  projectId?: string
+  projectId?: ProjectId
   revision?: string
   source: MessageEventSource | null
 }
+
+/** Payload helper used by parent/child writers after the base is injected. */
+export type RuntimeHostPayloadV7<T> = T extends RuntimeHostMessageBaseV7
+  ? Omit<T, keyof RuntimeHostMessageBaseV7>
+  : never

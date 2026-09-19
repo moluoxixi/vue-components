@@ -1,27 +1,14 @@
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { AutoComplete, CheckboxGroup, RadioGroup, Select } from 'ant-design-vue'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import AntdAutoCompleteField from '../src/materials/components/AntdAutoCompleteField/index.vue'
 import AntdCheckboxField from '../src/materials/components/AntdCheckboxField/index.vue'
 import AntdChoiceDefaultSetter from '../src/materials/components/AntdChoiceDefaultSetter/index.vue'
 import AntdRadioField from '../src/materials/components/AntdRadioField/index.vue'
 import AntdSelectField from '../src/materials/components/AntdSelectField/index.vue'
-import {
-  ANTD_VUE_OPTION_RESOLVER_KEY,
-  createAntdVueOptionResolverContext,
-  readAntdVueOptionSource,
-} from '../src/options'
 
 describe('ant design vue designer fields', () => {
-  it('rejects non-JSON and circular provider params without recursive overflow', () => {
-    const circular: Record<string, unknown> = {}
-    circular.self = circular
-
-    expect(readAntdVueOptionSource({ kind: 'provider', key: 'projects', params: circular })).toBeUndefined()
-    expect(readAntdVueOptionSource({ kind: 'provider', key: 'projects', params: new Date() })).toBeUndefined()
-  })
-
   it('renders normalized options and forwards the native value event', async () => {
     const wrapper = mount(AntdSelectField, {
       props: {
@@ -48,21 +35,15 @@ describe('ant design vue designer fields', () => {
     expect(autoComplete.emitted('update:value')).toEqual([['b']])
   })
 
-  it('resolves dictionaries for fields and default-value controls', async () => {
-    const context = createAntdVueOptionResolverContext({
-      dictionaries: {
-        environments: [
-          { label: 'Playground', value: 'playground' },
-          { label: 'Production', value: 'production' },
-        ],
-      },
-    })
-    const global = { provide: { [ANTD_VUE_OPTION_RESOLVER_KEY as symbol]: context } }
-    const optionSource = { kind: 'dictionary' as const, key: 'environments' }
-    const select = mount(AntdSelectField, { global, props: { optionSource } })
-    const autoComplete = mount(AntdAutoCompleteField, { global, props: { optionSource } })
-    const radio = mount(AntdRadioField, { global, props: { optionSource } })
-    const checkbox = mount(AntdCheckboxField, { global, props: { optionSource } })
+  it('renders static options for fields and default-value controls', async () => {
+    const options = [
+      { label: 'Playground', value: 'playground' },
+      { label: 'Production', value: 'production' },
+    ]
+    const select = mount(AntdSelectField, { props: { options } })
+    const autoComplete = mount(AntdAutoCompleteField, { props: { options } })
+    const radio = mount(AntdRadioField, { props: { options } })
+    const checkbox = mount(AntdCheckboxField, { props: { options } })
     await flushPromises()
     expect(select.getComponent(Select).props('options')).toHaveLength(2)
     expect(autoComplete.getComponent(AutoComplete).props('options')).toHaveLength(2)
@@ -76,11 +57,9 @@ describe('ant design vue designer fields', () => {
       kind: 'field',
       component: 'antd.select',
       field: 'environment',
-      props: { optionSource },
-      bindings: {},
+      props: { options },
     }
     const setter = mount(AntdChoiceDefaultSetter, {
-      global,
       props: { kind: 'select', node },
     })
     await flushPromises()
@@ -89,30 +68,10 @@ describe('ant design vue designer fields', () => {
     expect(setter.findComponent({ name: 'ElSelect' }).exists()).toBe(true)
   })
 
-  it('renders empty, loading, and provider error states', async () => {
-    let resolveOptions: ((options: Array<{ label: string, value: string }>) => void) | undefined
-    const provider = vi.fn(() => new Promise<Array<{ label: string, value: string }>>((resolve) => {
-      resolveOptions = resolve
-    }))
-    const context = createAntdVueOptionResolverContext({ providers: { projects: provider } })
+  it('renders no choices for an empty static option list', () => {
     const wrapper = mount(AntdSelectField, {
-      global: { provide: { [ANTD_VUE_OPTION_RESOLVER_KEY as symbol]: context } },
-      props: { optionSource: { kind: 'provider', key: 'projects', params: { team: 'frontend' } } },
+      props: { options: [] },
     })
-    await flushPromises()
-    expect(wrapper.find('[aria-label="Loading options"]').exists()).toBe(true)
-    expect(provider).toHaveBeenCalledWith(expect.objectContaining({
-      key: 'projects',
-      params: { team: 'frontend' },
-      signal: expect.any(AbortSignal),
-    }))
-
-    resolveOptions?.([])
-    await flushPromises()
-    expect(wrapper.get('[role="status"]').attributes('aria-label')).toBe('No options')
-
-    await wrapper.setProps({ optionSource: { kind: 'provider', key: 'missing' } })
-    await flushPromises()
-    expect(wrapper.get('[role="alert"]').attributes('aria-label')).toContain('Unknown option provider')
+    expect(wrapper.getComponent(Select).props('options')).toEqual([])
   })
 })

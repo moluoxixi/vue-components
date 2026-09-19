@@ -4,7 +4,6 @@ import type {
   ConfigImportDiagnostic,
   PreparedConfigImport,
 } from '../../../../project'
-import type { PreviewRuntimeStateEvent } from '../../../../session'
 import type { JsonImportPaneEmits, JsonImportPaneProps } from '../../../../features/templates'
 import {
   CheckCircle2,
@@ -19,7 +18,7 @@ import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useWorkbenchController, useWorkbenchUiStore } from '../../../composables'
 import { MAX_IMPORT_SOURCE_BYTES } from '../../../../project'
-import PreviewRuntimeHostFrame from '../../PreviewRuntimeHostFrame/index.vue'
+import DesignRuntimeHostFrame from '../../DesignRuntimeHostFrame/index.vue'
 
 const props = defineProps<JsonImportPaneProps>()
 const emit = defineEmits<JsonImportPaneEmits>()
@@ -50,10 +49,10 @@ const ready = computed(() => Boolean(source.value.trim()) && !analyzing.value &&
 const hasErrors = computed(() => diagnostics.value.length > 0)
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('import.createProject', 'Create imported project')
-  : locale.value.t('import.createPage', 'Create imported page'))
+  : locale.value.t('import.createSurface', 'Create imported page'))
 const targetLabel = computed(() => props.target === 'project'
   ? locale.value.t('import.targetProject', 'Project')
-  : locale.value.t('import.targetPage', 'Page'))
+  : locale.value.t('import.targetSurface', 'Surface'))
 
 function projectIdentity(): string {
   const project = controller.currentProject.value
@@ -198,33 +197,8 @@ async function createImported(): Promise<void> {
   }
 }
 
-function handleRuntimeState(event: PreviewRuntimeStateEvent): void {
-  const candidate = prepared.value
-  if (!candidate || event.revision !== candidate.preview.revision)
-    return
-  prepared.value = {
-    ...candidate,
-    preview: {
-      ...candidate.preview,
-      runtimeState: structuredClone(event.state),
-    },
-  }
-}
-
-function handleFieldChange(payload: { values: Record<string, unknown> }): void {
-  const candidate = prepared.value
-  if (!candidate)
-    return
-  prepared.value = {
-    ...candidate,
-    preview: {
-      ...candidate.preview,
-      runtimeState: {
-        ...candidate.preview.runtimeState,
-        values: structuredClone(payload.values),
-      },
-    },
-  }
+function resolvePreviewCompilation() {
+  return prepared.value?.preview.compilation
 }
 
 watch(() => props.target, () => resetAnalysis(false))
@@ -272,7 +246,7 @@ onBeforeUnmount(() => {
           resize="none"
           spellcheck="false"
           :aria-label="locale.t('import.pasteLabel', 'Config Model JSON')"
-          :placeholder="locale.t('import.pastePlaceholder', 'Paste Project or Page JSON')"
+          :placeholder="locale.t('import.pastePlaceholder', 'Paste Project or Surface JSON')"
           @input="resetAnalysis(false)"
         />
         <div v-else ref="uploadPanel" class="json-import-upload">
@@ -325,10 +299,10 @@ onBeforeUnmount(() => {
               <div><dt>{{ locale.t('import.type', 'Type') }}</dt><dd>{{ targetLabel }}</dd></div>
               <div><dt>{{ locale.t('import.name', 'Name') }}</dt><dd>{{ prepared.summary.name }}</dd></div>
               <div><dt>{{ locale.t('template.adapter', 'Adapter') }}</dt><dd>{{ prepared.summary.adapter }}</dd></div>
-              <div><dt>{{ locale.t('import.pages', 'Pages') }}</dt><dd>{{ prepared.summary.pageCount }}</dd></div>
+              <div><dt>{{ locale.t('import.surfaces', 'Surfaces') }}</dt><dd>{{ prepared.summary.surfaceCount }}</dd></div>
               <div><dt>{{ locale.t('import.nodes', 'Nodes') }}</dt><dd>{{ prepared.summary.nodeCount }}</dd></div>
               <div><dt>{{ locale.t('import.resources', 'Resources') }}</dt><dd>{{ prepared.summary.resourceCount }}</dd></div>
-              <div><dt>PageGraph</dt><dd>v{{ prepared.summary.pageGraphVersion }}</dd></div>
+              <div><dt>SurfaceGraph</dt><dd>v{{ prepared.summary.surfaceGraphVersion }}</dd></div>
               <div v-if="prepared.summary.version"><dt>{{ locale.t('import.version', 'Project version') }}</dt><dd>v{{ prepared.summary.version }}</dd></div>
             </dl>
           </div>
@@ -340,19 +314,18 @@ onBeforeUnmount(() => {
 
         <div class="json-import-preview" :class="{ 'is-mobile-hidden': mobileStage !== 'preview' }">
           <header><div class="json-import-panel-title"><CheckCircle2 :size="17" aria-hidden="true" /><h2>{{ locale.t('import.preview', 'Preview') }}</h2></div></header>
-          <PreviewRuntimeHostFrame
+          <DesignRuntimeHostFrame
             v-if="prepared"
             :adapter="prepared.preview.adapter"
-            :compilation="prepared.preview.compilation"
+            breakpoint="desktop"
+            :camera-scale="1"
             :locale="locale.locale"
+            :model-value="prepared.preview.values"
             :namespace="prepared.preview.namespace"
-            :reaction-projection="prepared.preview.reactionProjection"
-            :revision="prepared.preview.revision"
-            :runtime-session-key="prepared.preview.runtimeSessionKey"
-            :runtime-state="prepared.preview.runtimeState"
+            :resolve-compilation="resolvePreviewCompilation"
             :title="locale.t('import.previewTitle', 'Imported page Runtime preview')"
-            @field-change="handleFieldChange"
-            @runtime-state="handleRuntimeState"
+            variant="canvas"
+            @error="ui.notify"
           />
           <div v-else class="json-import-empty"><FileJson2 :size="22" aria-hidden="true" /><span>{{ locale.t('import.previewUnavailable', 'Preview unavailable') }}</span></div>
         </div>

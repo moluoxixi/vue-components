@@ -19,7 +19,6 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
-      analyze: s.createAntdVueOptionDiagnostics(),
       setters: [
         s.choiceDefaultValueSetter('select'),
         s.optionsSetter,

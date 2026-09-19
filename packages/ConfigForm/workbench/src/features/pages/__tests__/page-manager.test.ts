@@ -5,19 +5,21 @@ import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createProjectDocumentFixture,
-  duplicateProjectPage,
+  duplicateProjectSurface,
 } from '../../../project/__tests__/fixtures'
-import { PageManager } from '../components'
+import { SurfaceManager } from '../components'
 
 function mountManager(project: ProjectDocument) {
-  return mount(PageManager, {
+  return mount(SurfaceManager, {
     props: {
       project,
       projects: [{
-        homePageId: project.homePageId,
+        homeSurfaceId: project.homeSurfaceId,
         id: project.id,
         name: project.name,
-        pageCount: project.pageOrder.length,
+        surfaceCount: project.surfaceOrder.length,
+        datasetCount: project.datasetOrder.length,
+        resourceCount: Object.keys(project.resources).length,
         registryLock: project.registryLock,
         repositoryRevision: 4,
         updatedAt: '2026-08-31T00:00:00.000Z',
@@ -40,14 +42,14 @@ describe('page manager', () => {
   it('emits page actions without mutating the project', async () => {
     const project = createProjectDocumentFixture()
     const wrapper = mountManager(project)
-    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Page name"]')
+    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Surface name"]')
     await name.setValue('Home page')
     await name.trigger('blur')
 
     expect(wrapper.emitted('action')?.[0]).toEqual([
-      { type: 'page.rename', pageId: 'home', name: 'Home page' },
+      { type: 'surface.rename', surfaceId: 'home', name: 'Home page' },
     ])
-    expect(project.pagesById.home!.name).toBe('Fixture project')
+    expect(project.surfacesById.home!.name).toBe('Fixture project')
 
     await wrapper.get('.el-select__wrapper').trigger('click')
     expect(overlayRoot().find('.el-select-dropdown').exists()).toBe(true)
@@ -56,11 +58,11 @@ describe('page manager', () => {
 
   it('requires an explicit confirmation before deleting a page', async () => {
     const base = createProjectDocumentFixture()
-    const page = base.pagesById[base.homePageId]!
-    const settings = duplicateProjectPage(page, 'settings', 'Settings', '/settings')
+    const page = base.surfacesById[base.homeSurfaceId]!
+    const settings = duplicateProjectSurface(page, 'settings', 'Settings', '/settings')
     const project = createProjectDocumentFixture({
-      pageOrder: [...base.pageOrder, settings.id],
-      pagesById: { ...base.pagesById, [settings.id]: settings },
+      surfaceOrder: [...base.surfaceOrder, settings.id],
+      surfacesById: { ...base.surfacesById, [settings.id]: settings },
     })
     const wrapper = mountManager(project)
     await wrapper.get('button[aria-label="Delete Settings"]').trigger('click')
@@ -69,7 +71,7 @@ describe('page manager', () => {
 
     await wrapper.get('.page-manager__confirm button.is-danger').trigger('click')
     expect(wrapper.emitted('action')?.[0]).toEqual([
-      { type: 'page.remove', pageId: 'settings' },
+      { type: 'surface.remove', surfaceId: 'settings' },
     ])
     wrapper.unmount()
   })
@@ -77,10 +79,10 @@ describe('page manager', () => {
   it('emits explicit project and page creation targets', async () => {
     const wrapper = mountManager(createProjectDocumentFixture())
     await wrapper.get('[data-create-trigger="page-manager-new-project"]').trigger('click')
-    await wrapper.get('[data-create-trigger="page-manager-new-page"]').trigger('click')
+    await wrapper.get('[data-create-trigger="page-manager-new-surface"]').trigger('click')
 
     expect(wrapper.emitted('createProject')).toHaveLength(1)
-    expect(wrapper.emitted('createPage')).toHaveLength(1)
+    expect(wrapper.emitted('createSurface')).toHaveLength(1)
     wrapper.unmount()
   })
 })

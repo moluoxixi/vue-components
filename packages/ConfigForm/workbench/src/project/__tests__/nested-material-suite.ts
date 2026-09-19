@@ -1,6 +1,6 @@
 import type { ConfigFormRendererExpose, ConfigFormRuntimeNodeMetadata } from '@moluoxixi/config-form'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { LayoutNode, PageGraph } from '@moluoxixi/config-form-model'
+import type { LayoutNode, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
 import type { NestedMaterialProvider } from './nested-material-fixture'
 import { ConfigFormRenderer, projectRendererDesignValueSchema } from '@moluoxixi/config-form'
@@ -22,7 +22,7 @@ export function testNestedMaterials(provider: NestedMaterialProvider): void {
       const scope = effectScope()
       const controller = scope.run(() => useDesignerController({
         graph: () => graph.value,
-        pageId: () => 'home',
+        surfaceId: () => 'home',
         registry: () => fixture.registry,
         readonly: () => false,
         onDiagnostics: vi.fn(),
@@ -30,7 +30,7 @@ export function testNestedMaterials(provider: NestedMaterialProvider): void {
         execute: (command) => {
           const result = engine.execute(JSON.parse(JSON.stringify(command)))
           expect(result.diagnostics).toEqual([])
-          graph.value = JSON.parse(JSON.stringify(engine.snapshot.document.pagesById.home!.graph)) as PageGraph
+          graph.value = JSON.parse(JSON.stringify(engine.snapshot.document.surfacesById.home!.graph)) as SurfaceGraph
           return result
         },
       }))!
@@ -72,7 +72,7 @@ export function testNestedMaterials(provider: NestedMaterialProvider): void {
     it('round-trips allowlisted props while preserving creation-only value scopes', () => {
       const fixture = createNestedMaterialFixture(provider)
       const engine = createProjectDomainEngine({ document: fixture.document, registry: fixture.contracts })
-      const currentGraph = () => JSON.parse(JSON.stringify(engine.snapshot.document.pagesById.home!.graph)) as PageGraph
+      const currentGraph = () => JSON.parse(JSON.stringify(engine.snapshot.document.surfacesById.home!.graph)) as SurfaceGraph
       const setters = fixture.registry.getMaterial(`${provider.prefix}.detail-table`)!.setters
       const originalScope = structuredClone((currentGraph().nodesById.orders as LayoutNode).valueScope)
       const values: Record<string, unknown> = { arrayDisplay: 'list', title: 'Invoice lines', readonly: true, disabled: true }

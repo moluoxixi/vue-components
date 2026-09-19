@@ -6,7 +6,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { PublicProps, VNode } from 'vue'
-import type { ConfigFormPageRuntimeDataSourceStateChange } from '../../runtime'
+import type { ConfigFormSurfaceRuntimeDataSourceStateChange } from '../../runtime'
 import type { ConfigFormRendererEmits } from './emits'
 import type { ConfigFormRendererExpose } from './expose'
 import type { ConfigFormRendererProps } from './props'
@@ -19,7 +19,7 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     onFieldChange?: (payload: ConfigFormFieldChangePayload<TValues>) => unknown
     onMetaChange?: (meta: ConfigFormMeta) => unknown
     onVariablesChange?: (variables: Readonly<Record<string, unknown>>) => unknown
-    onDataSourceStateChange?: (change: ConfigFormPageRuntimeDataSourceStateChange) => unknown
+    onDataSourceStateChange?: (change: ConfigFormSurfaceRuntimeDataSourceStateChange) => unknown
     onSubmit?: (values: TValues) => unknown
   }
 

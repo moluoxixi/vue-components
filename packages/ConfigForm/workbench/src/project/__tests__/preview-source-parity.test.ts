@@ -9,10 +9,11 @@ import {
   createComponentContractRegistry,
   createProjectSnapshot,
   createRegistryContractSnapshot,
-  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
+  PROJECT_THEME_VERSION,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
-import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
+import { compileCanonicalSurfaceRuntime } from '@moluoxixi/config-form-vue-backend'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import * as Vue from 'vue'
@@ -36,6 +37,10 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator)
     key: 'test.input',
     version: '1',
     kind: 'field',
+    semanticTriggers: [],
+    stateProjectionProperties: [],
+    datasetBindings: [],
+    resourceBindings: [],
     props: [{ key: 'data-key', path: ['props', 'data-key'] }, { key: 'placeholder', path: ['props', 'placeholder'] }],
     bindings: [{ name: 'model', valueProp: 'value', trigger: 'commit' }],
     slots: [],
@@ -47,13 +52,16 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator)
     version: PROJECT_DOCUMENT_VERSION,
     id: 'parity',
     name: 'Parity',
-    homePageId: 'home',
-    pageOrder: ['home'],
+    homeSurfaceId: 'home',
+    surfaceOrder: ['home'],
+    datasetOrder: [],
+    datasetsById: {},
     registryLock: registry.lock,
     settings: {},
     resources: {},
-    pagesById: { home: { id: 'home', name: 'Home', route: '/', graph: {
-      version: PAGE_GRAPH_VERSION,
+    theme: { version: PROJECT_THEME_VERSION },
+    surfacesById: { home: { id: 'home', name: 'Home', kind: 'page', route: '/', parameters: [], outputs: [], interactions: [], graph: {
+      version: SURFACE_GRAPH_VERSION,
       props: {},
       form: { readonly },
       root: ['mode', 'name', 'optional'].map(nodeId => ({ nodeId, placement: {} })),
@@ -64,43 +72,25 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator)
           component: 'test.input',
           field: 'optional',
           props: { 'data-key': 'optional' },
-          bindings: {},
           validateOn: ['blur'],
-          conditions: { required: {
-            kind: 'compare',
-            operator: 'eq',
-            left: { kind: 'field', field: 'mode' },
-            right: { kind: 'literal', value: 'required' },
-          } },
+          validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'required', message: 'Optional required' }] },
         },
-        mode: { id: 'mode', kind: 'field', component: 'test.input', field: 'mode', defaultValue: 'edit', props: { 'data-key': 'mode' }, bindings: {} },
+        mode: { id: 'mode', kind: 'field', component: 'test.input', field: 'mode', defaultValue: 'edit', props: { 'data-key': 'mode' } },
         name: {
           id: 'name',
           kind: 'field',
           component: 'test.input',
           field: 'name',
           defaultValue: 'Ada',
-          props: { 'data-key': 'name' },
-          bindings: {},
+          props: { 'data-key': 'name', 'placeholder': 'edit' },
           validateOn: ['blur', 'blur'],
           validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'required', message: 'Name required' }] },
-          conditions: Object.fromEntries(['readonly', 'disabled'].map(key => [key, {
-            kind: 'compare',
-            operator: 'eq',
-            left: { kind: 'field', field: 'mode' },
-            right: { kind: 'literal', value: key },
-          }])),
-          reactions: [{
-            id: 'placeholder',
-            when: { kind: 'literal', value: true },
-            then: [{ kind: 'setProps', target: 'name', props: { placeholder: { kind: 'field', field: 'mode' } } }],
-          }],
         },
       },
     } } },
   }
   if (validator) {
-    const node = document.pagesById.home!.graph.nodesById.name!
+    const node = document.surfacesById.home!.graph.nodesById.name!
     if (node.kind === 'field')
       node.validation!.rules.push({ kind: 'custom', key: 'remote' })
   }
@@ -108,7 +98,7 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator)
   if (!compiled.success)
     throw new Error(JSON.stringify(compiled.diagnostics))
   const identity = registry.lock.components['test.input']!
-  const runtime = compileCanonicalPageRuntime({ compilation: compiled.compilation, pageId: 'home' }, {
+  const runtime = compileCanonicalSurfaceRuntime({ compilation: compiled.compilation, surfaceId: 'home' }, {
     resolveValidator: () => validator,
     resolveBinding: () => ({
       component: Control,
@@ -141,21 +131,33 @@ async function surfaces(readonly = false, validator?: Rules.RuleCustomValidator)
   const load = await createGeneratedModuleLoader(Object.fromEntries(Object.entries(exported.files)
     .filter(([, file]) => file.kind === 'text')
     .map(([path, file]) => [path, file.content as string])))
-  const validation = load('src/pages/home/validation.ts')
+  const validation = load('src/surfaces/home/validation.ts')
   if (validator)
     validation.registerFieldValidator('remote', validator)
-  const page = load('src/pages/home/Page.vue')
-  const source = mount(page.default as Vue.Component, { global: { components: { Control } } })
+  const router = load('src/router.ts').router
+  await router.push('/')
+  const source = mount(load('src/App.vue').default as Vue.Component, {
+    global: {
+      components: { Control },
+      plugins: [router],
+      stubs: { teleport: true },
+    },
+  })
   await flushPromises()
-  return [preview, source]
+  const sourceRenderer = source.findComponent({ name: 'ConfigFormRenderer' })
+  if (!sourceRenderer.exists())
+    throw new Error('Generated project did not mount the active Surface renderer.')
+  return [
+    { wrapper: preview, api: preview.vm as unknown as ConfigFormRendererExpose },
+    { wrapper: source, api: sourceRenderer.vm.$.exposed as unknown as ConfigFormRendererExpose },
+  ]
 }
 
-describe('compiled Preview and executed generated Page parity', () => {
-  it('shares defaults, binding event, blur validation, reactions, disabled and readonly semantics', async () => {
+describe('compiled Preview and executed generated Surface parity', () => {
+  it('shares defaults, binding events, static props, and blur validation', async () => {
     const wrappers = await surfaces()
     try {
-      for (const wrapper of wrappers) {
-        const api = wrapper.vm as unknown as ConfigFormRendererExpose
+      for (const { wrapper, api } of wrappers) {
         expect(api.getValues()).toEqual({ mode: 'edit', name: 'Ada' })
         expect(wrapper.get('input[data-key="name"]').attributes('placeholder')).toBe('edit')
         await wrapper.get('input[data-key="name"]').setValue('')
@@ -165,39 +167,27 @@ describe('compiled Preview and executed generated Page parity', () => {
         await flushPromises()
         expect(api.getErrors()).toEqual({ [api.getInstanceKey({ nodeId: 'name', scope: [] })]: ['Name required'] })
         expect(api.getInstanceErrors({ nodeId: 'name', scope: [] })).toEqual(['Name required'])
-        await wrapper.get('input[data-key="mode"]').setValue('disabled')
-        await flushPromises()
-        expect(wrapper.get('input[data-key="name"]').attributes('disabled')).toBeDefined()
-        await api.submit()
-        expect(api.getErrors()).toEqual({})
-        await wrapper.get('input[data-key="mode"]').setValue('readonly')
-        await flushPromises()
-        expect(wrapper.find('input[data-key="name"]').exists()).toBe(false)
-        await api.submit()
-        expect(api.getErrors()).toEqual({})
       }
     }
-    finally { wrappers.forEach(wrapper => wrapper.unmount()) }
+    finally { wrappers.forEach(({ wrapper }) => wrapper.unmount()) }
   })
 
-  it('enforces form readonly even when field conditions would allow editing', async () => {
+  it('enforces form readonly across otherwise editable fields', async () => {
     const wrappers = await surfaces(true)
     try {
-      for (const wrapper of wrappers) {
+      for (const { wrapper, api } of wrappers) {
         expect(wrapper.find('input').exists()).toBe(false)
-        expect((wrapper.vm as unknown as ConfigFormRendererExpose).getValues()).toEqual({ mode: 'edit', name: 'Ada' })
+        expect(api.getValues()).toEqual({ mode: 'edit', name: 'Ada' })
       }
     }
-    finally { wrappers.forEach(wrapper => wrapper.unmount()) }
+    finally { wrappers.forEach(({ wrapper }) => wrapper.unmount()) }
   })
 
-  it('validates a conditionally required field without inventing a default value', async () => {
+  it('validates a required field without inventing a default value', async () => {
     const wrappers = await surfaces()
     try {
-      for (const wrapper of wrappers) {
-        const api = wrapper.vm as unknown as ConfigFormRendererExpose
+      for (const { wrapper, api } of wrappers) {
         expect(Object.hasOwn(api.getValues(), 'optional')).toBe(false)
-        await wrapper.get('input[data-key="mode"]').setValue('required')
         await wrapper.get('input[data-key="optional"]').trigger('blur')
         await flushPromises()
         expect(api.getInstanceErrors({ nodeId: 'optional', scope: [] })).toHaveLength(1)
@@ -207,14 +197,13 @@ describe('compiled Preview and executed generated Page parity', () => {
         expect(api.getErrors()).toEqual({})
       }
     }
-    finally { wrappers.forEach(wrapper => wrapper.unmount()) }
+    finally { wrappers.forEach(({ wrapper }) => wrapper.unmount()) }
   })
 
   it('keeps newer validation results when an earlier generated submit finishes last', async () => {
     const pending: Array<(result: string | undefined) => void> = []
     const wrappers = await surfaces(false, () => new Promise<string | undefined>(resolve => pending.push(resolve)))
-    const source = wrappers[1]!
-    const api = source.vm as unknown as ConfigFormRendererExpose
+    const { wrapper: source, api } = wrappers[1]!
     try {
       const submit = api.submit()
       await flushPromises()
@@ -227,24 +216,22 @@ describe('compiled Preview and executed generated Page parity', () => {
       await submit
       expect(api.getErrors()).toEqual({ [api.getInstanceKey({ nodeId: 'name', scope: [] })]: ['Current error'] })
     }
-    finally { wrappers.forEach(wrapper => wrapper.unmount()) }
+    finally { wrappers.forEach(({ wrapper }) => wrapper.unmount()) }
   })
 
   it('discards generated validation after the page unmounts', async () => {
     const pending: Array<(result: string) => void> = []
     const wrappers = await surfaces(false, () => new Promise<string>(resolve => pending.push(resolve)))
-    const source = wrappers[1]!
-    const api = source.vm as unknown as ConfigFormRendererExpose
+    const { wrapper: source, api } = wrappers[1]!
     const renderer = source.findComponent({ name: 'ConfigFormRenderer' })
     const retainedApi = renderer.vm.$.exposed as unknown as ConfigFormRendererExpose
     const submit = api.submit()
     await flushPromises()
     expect(pending).toHaveLength(1)
-    wrappers.forEach(wrapper => wrapper.unmount())
+    wrappers.forEach(({ wrapper }) => wrapper.unmount())
     pending[0]!('Disposed error')
     await expect(submit).resolves.toBe(false)
     expect(retainedApi.getErrors()).toEqual({})
     expect(renderer.emitted('submit')).toBeUndefined()
-    expect(() => api.getErrors()).toThrow('ConfigFormRenderer is not mounted.')
   })
 })

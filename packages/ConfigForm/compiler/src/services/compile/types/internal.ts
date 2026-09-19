@@ -1,9 +1,18 @@
-import type { PageGraph, RegistryContractComponentSnapshot, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
-import type { CanonicalNodeIR, SemanticCompilerDiagnostic, SemanticCompilerEnvironment } from '../../../types'
+import type {
+  DeepReadonly,
+  RegistryContractComponentSnapshot,
+  RegistryContractSnapshot,
+  SurfaceGraph,
+} from '@moluoxixi/config-form-model'
+import type {
+  CanonicalNodeIR,
+  SemanticCompilerDiagnostic,
+  SemanticCompilerEnvironment,
+} from '../../../types'
 
-export interface CompilePageContext {
-  pageId: string
-  graph: PageGraph
+export interface CompileSurfaceContext {
+  surfaceId: string
+  graph: DeepReadonly<SurfaceGraph>
   registry: ReadonlyMap<string, RegistryContractComponentSnapshot>
   diagnostics: SemanticCompilerDiagnostic[]
   nodesById: Record<string, CanonicalNodeIR>

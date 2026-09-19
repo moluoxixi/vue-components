@@ -1,35 +1,33 @@
 import type {
-  ConfigFormDataSourceDefinition,
   ConfigFormJsonObject,
   ConfigFormJsonValue,
-  ConfigFormPageRuntimeConfiguration,
-  ConfigFormReaction,
-  ConfigFormReactionCondition,
   ConfigFormScopedFieldDefinition,
-  ConfigFormValueInput,
+  ConfigFormScopePath,
+  ConfigFormScopeSelector,
   ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import type {
-  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
+  PROJECT_THEME_VERSION,
+  PROJECT_TRANSFER_VERSION,
   REGISTRY_CONTRACT_SNAPSHOT_VERSION,
+  SURFACE_GRAPH_VERSION,
+  SURFACE_TRANSFER_VERSION,
 } from '../constants'
 
 export type ModelJsonValue = ConfigFormJsonValue
 export type ModelJsonObject = ConfigFormJsonObject
-export type PageId = string
+export type ProjectId = string
+export type SurfaceId = string
+export type DatasetId = string
+export type ResourceId = string
+export type InteractionRuleId = string
+export type SurfaceInstanceId = string
 export type NodeId = string
 export type SlotName = string
 export type ComponentKey = string
-
-export type ConditionTarget = 'visible' | 'hidden' | 'required' | 'disabled' | 'readonly'
-export type ConditionExpression = ConfigFormReactionCondition
 export type ValidateTrigger = 'submit' | 'blur' | 'change'
-
-export interface RegisteredBinding extends ModelJsonObject {
-  source: string
-}
 
 export interface ResponsiveLayoutOverride {
   columns?: number
@@ -53,6 +51,9 @@ export interface FormSettings {
   responsive?: ResponsiveLayout
 }
 
+export type MaterialNodeKind = 'field' | 'layout' | 'element'
+export type MaterialSemanticTrigger = 'activate' | 'submit' | 'rowActivate' | 'itemActivate'
+
 export interface ComponentPropertyContract {
   key: string
   path: string[]
@@ -68,7 +69,7 @@ export interface ComponentBindingContract {
 
 export interface ComponentSlotContract {
   name: SlotName
-  accepts?: Array<'field' | 'layout'>
+  accepts?: MaterialNodeKind[]
   components?: ComponentKey[]
 }
 
@@ -77,10 +78,27 @@ export interface ComponentParentContract {
   slot: SlotName
 }
 
-export interface ComponentContract {
+export interface MaterialDatasetBindingCapability {
+  key: string
+  projectionKinds: DatasetProjection['kind'][]
+}
+
+export interface MaterialResourceBindingCapability {
+  key: string
+  mediaTypes?: string[]
+}
+
+export interface MaterialCapabilitiesV3 {
+  kind: MaterialNodeKind
+  semanticTriggers: MaterialSemanticTrigger[]
+  stateProjectionProperties: string[][]
+  datasetBindings: MaterialDatasetBindingCapability[]
+  resourceBindings: MaterialResourceBindingCapability[]
+}
+
+export interface ComponentContract extends MaterialCapabilitiesV3 {
   key: ComponentKey
   version: string
-  kind: 'field' | 'layout'
   props: ComponentPropertyContract[]
   bindings: ComponentBindingContract[]
   slots: ComponentSlotContract[]
@@ -103,7 +121,6 @@ export interface RegistryComponentLock {
 export interface RegistryLock {
   adapter: string
   version: string
-  /** Aggregate identity for diagnostics and cache keys. */
   fingerprint: string
   components: Record<ComponentKey, RegistryComponentLock>
 }
@@ -115,7 +132,6 @@ export interface RegistryContractComponentSnapshot {
   readonly contract: DeepReadonly<ComponentContract>
 }
 
-/** JSON-safe registry input shared by semantic compiler backends. */
 export interface RegistryContractSnapshot {
   readonly version: typeof REGISTRY_CONTRACT_SNAPSHOT_VERSION
   readonly adapter: string
@@ -128,103 +144,332 @@ export type RegistryContractSnapshotParseResult
   = | { success: true, data: RegistryContractSnapshot, diagnostics: [] }
     | { success: false, diagnostics: ModelDiagnostic[] }
 
-interface PageNodeBase {
-  id: NodeId
-  component: ComponentKey
-  props: ModelJsonObject
-  bindings: Record<string, RegisteredBinding>
-  extensions?: ModelJsonObject
-  conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
-  reactions?: ConfigFormReaction[]
-}
-
-/** Layout metadata owned by the parent-child relation, never by the child node. */
 export type NodePlacement = ModelJsonObject
 
 export interface SlotItem {
   nodeId: NodeId
   placement: NodePlacement
 }
-export interface ConfigFormFieldDataSourceOptionSource {
-  kind: 'dataSource'
-  dataSourceId: string
-  params?: Record<string, ConfigFormValueInput>
+
+export interface DatasetOptionsProjection {
+  kind: 'options'
+  labelPath: string[]
+  valuePath: string[]
+  disabledPath?: string[]
 }
 
-export type ConfigFormFieldOptionSource = ConfigFormFieldDataSourceOptionSource
+export interface DatasetTableProjection {
+  kind: 'table'
+  rowKeyPath: string[]
+  columns: Array<{ key: string, valuePath: string[] }>
+}
 
-export interface FieldNode extends PageNodeBase {
+export interface DatasetListProjection {
+  kind: 'list'
+  itemKeyPath: string[]
+  titlePath?: string[]
+  descriptionPath?: string[]
+}
+
+export type DatasetProjection = DatasetOptionsProjection | DatasetTableProjection | DatasetListProjection
+
+export interface DatasetReference<T extends DatasetProjection = DatasetProjection> {
+  datasetId: DatasetId
+  projection: T
+}
+
+export interface StaticResourceReference {
+  resourceId: ResourceId
+}
+
+interface SurfaceNodeBase {
+  id: NodeId
+  component: ComponentKey
+  props: ModelJsonObject
+  extensions?: ModelJsonObject
+  datasetBindings?: Record<string, DatasetReference>
+  resourceBindings?: Record<string, StaticResourceReference>
+}
+
+export interface SurfaceFieldNode extends SurfaceNodeBase {
   kind: 'field'
   field: string
   label?: string
   defaultValue?: ModelJsonValue
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
-  optionSource?: ConfigFormFieldOptionSource
 }
 
-export interface LayoutNode extends PageNodeBase {
+export interface SurfaceLayoutNode extends SurfaceNodeBase {
   kind: 'layout'
   slots: Record<SlotName, SlotItem[]>
   valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
 
-export type PageNode = FieldNode | LayoutNode
+export interface SurfaceElementNode extends SurfaceNodeBase {
+  kind: 'element'
+}
 
-export interface PageGraph {
-  version: typeof PAGE_GRAPH_VERSION
+export type SurfaceNode = SurfaceFieldNode | SurfaceLayoutNode | SurfaceElementNode
+export type FieldNode = SurfaceFieldNode
+export type LayoutNode = SurfaceLayoutNode
+export type ElementNode = SurfaceElementNode
+
+export interface SurfaceGraph {
+  version: typeof SURFACE_GRAPH_VERSION
   props: ModelJsonObject
   form: FormSettings
   root: SlotItem[]
-  nodesById: Record<NodeId, PageNode>
+  nodesById: Record<NodeId, SurfaceNode>
 }
 
-export interface ProjectPage {
-  id: PageId
+export interface ProjectDataset {
+  id: DatasetId
   name: string
-  route: string
-  graph: PageGraph
-  runtime?: ConfigFormPageRuntimeConfiguration
+  description?: string
+  rows: ModelJsonObject[]
+  defaultProjection?: DatasetProjection
 }
 
-export interface ProjectResourceReference {
-  id: string
-  kind: string
-  uri: string
-  integrity?: string
-  metadata?: ModelJsonObject
+export interface ControlledLength {
+  value: number
+  unit: 'px' | '%' | 'rem' | 'vw' | 'vh'
 }
+
+export interface ResponsiveLength {
+  desktop: ControlledLength
+  tablet?: ControlledLength
+  mobile?: ControlledLength
+}
+
+export type ProjectThemeColor = string
+export type ProjectThemeSpacingKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type ProjectThemeRadiusKey = 'sm' | 'md' | 'lg'
+export type ProjectThemeShadowKey = 'sm' | 'md' | 'lg'
+
+export interface ProjectThemeShadow {
+  x: number
+  y: number
+  blur: number
+  spread: number
+  color: ProjectThemeColor
+}
+
+export interface ProjectTheme {
+  version: typeof PROJECT_THEME_VERSION
+  colors?: Partial<Record<
+    | 'primary' | 'success' | 'warning' | 'danger' | 'text' | 'textMuted'
+    | 'canvas' | 'surface' | 'surfaceRaised' | 'border',
+    ProjectThemeColor
+  >>
+  typography?: {
+    family?: 'system' | 'sans-serif' | 'serif' | 'monospace'
+    baseSize?: number
+    lineHeight?: number
+    bodyWeight?: 400 | 500 | 600 | 700
+    headingWeight?: 400 | 500 | 600 | 700
+  }
+  spacing?: Partial<Record<ProjectThemeSpacingKey, number>>
+  border?: { width?: number, style?: 'solid' | 'dashed' }
+  radius?: Partial<Record<ProjectThemeRadiusKey, number>>
+  shadows?: Partial<Record<ProjectThemeShadowKey, ProjectThemeShadow>>
+}
+
+export interface SurfaceParameterDefinition {
+  name: string
+  required: boolean
+  defaultValue?: ModelJsonValue
+}
+
+export interface SurfaceOutputDefinition {
+  name: string
+}
+
+export type SafeExpressionReferenceScope = 'values' | 'parameters' | 'result' | 'item'
+export type SafeExpressionFunction
+  = | 'coalesce' | 'length' | 'trim' | 'lower' | 'upper'
+    | 'includes' | 'startsWith' | 'endsWith'
+
+export type SafeExpressionNode
+  = | { kind: 'literal', value: ModelJsonValue }
+    | { kind: 'reference', scope: 'values', selector?: ConfigFormScopeSelector, path: string[] }
+    | { kind: 'reference', scope: Exclude<SafeExpressionReferenceScope, 'values'>, path: string[] }
+    | { kind: 'array', items: SafeExpressionNode[] }
+    | { kind: 'unary', operator: '!' | '-' | '+', operand: SafeExpressionNode }
+    | {
+      kind: 'binary'
+      operator: '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '>' | '>=' | '<' | '<=' | '&&' | '||'
+      left: SafeExpressionNode
+      right: SafeExpressionNode
+    }
+    | { kind: 'conditional', test: SafeExpressionNode, consequent: SafeExpressionNode, alternate: SafeExpressionNode }
+    | { kind: 'call', callee: SafeExpressionFunction, args: SafeExpressionNode[] }
+
+export interface SafeExpression {
+  version: 1
+  ast: SafeExpressionNode
+}
+
+export type StateProjectionTarget
+  = | { kind: 'state', nodeId: NodeId, key: 'visible' | 'disabled' | 'readonly' | 'required' }
+    | { kind: 'property', nodeId: NodeId, path: string[] }
+
+export interface StateProjectionRule {
+  kind: 'stateProjection'
+  id: InteractionRuleId
+  target: StateProjectionTarget
+  value: SafeExpression
+}
+
+export type ValueAction
+  = | { kind: 'set', targetFieldId: NodeId, value: SafeExpression }
+    | { kind: 'copy', sourceFieldId: NodeId, targetFieldId: NodeId }
+    | { kind: 'clear', targetFieldId: NodeId }
+
+export interface ValueChangeRule {
+  kind: 'valueChange'
+  id: InteractionRuleId
+  dependencies: NodeId[]
+  when?: SafeExpression
+  action: ValueAction
+}
+
+export interface ValidationGate {
+  scope: 'surface' | 'fields'
+  fieldIds?: NodeId[]
+}
+
+export interface SurfaceParameterBinding {
+  name: string
+  value: SafeExpression
+}
+
+export interface ResultAssignment {
+  targetFieldId: NodeId
+  value: SafeExpression
+}
+
+export interface NamedResultBinding {
+  resultName: string
+  assignments: ResultAssignment[]
+}
+
+export type PrimaryUiAction
+  = | { kind: 'navigate', targetSurfaceId: SurfaceId, parameters: SurfaceParameterBinding[] }
+    | { kind: 'back' }
+    | {
+      kind: 'open'
+      targetSurfaceId: SurfaceId
+      parameters: SurfaceParameterBinding[]
+      onResults?: NamedResultBinding[]
+    }
+    | { kind: 'closeCurrent', result?: { name: string, value: SafeExpression } }
+    | { kind: 'closeAll' }
+
+export interface PrimaryUiActionBinding {
+  kind: 'primaryUiAction'
+  id: InteractionRuleId
+  nodeId: NodeId
+  trigger: MaterialSemanticTrigger
+  validate?: ValidationGate
+  action: PrimaryUiAction
+}
+
+export type PrototypeInteraction = StateProjectionRule | ValueChangeRule | PrimaryUiActionBinding
+
+export interface ProjectSurfaceBase {
+  id: SurfaceId
+  name: string
+  graph: SurfaceGraph
+  parameters: SurfaceParameterDefinition[]
+  outputs: SurfaceOutputDefinition[]
+  interactions: PrototypeInteraction[]
+}
+
+export interface ProjectPageSurface extends ProjectSurfaceBase {
+  kind: 'page'
+  route: string
+}
+
+export interface SurfaceClosePolicy {
+  escape: boolean
+  mask: boolean
+  button: boolean
+}
+
+export interface ProjectDialogSurface extends ProjectSurfaceBase {
+  kind: 'dialog'
+  presentation: {
+    kind: 'dialog'
+    title: string
+    width: ResponsiveLength
+    mask: boolean
+    close: SurfaceClosePolicy
+  }
+}
+
+export interface ProjectDrawerSurface extends ProjectSurfaceBase {
+  kind: 'drawer'
+  presentation: {
+    kind: 'drawer'
+    title: string
+    placement: 'left' | 'right' | 'top' | 'bottom'
+    size: ResponsiveLength
+    mask: boolean
+    close: SurfaceClosePolicy
+  }
+}
+
+export type ProjectSurface = ProjectPageSurface | ProjectDialogSurface | ProjectDrawerSurface
+
+export interface ProjectEmbeddedResource {
+  id: ResourceId
+  name: string
+  kind: 'embedded'
+  fileName: string
+  mediaType: string
+  byteLength: number
+  contentHash: string
+}
+
+export interface ProjectUrlResource {
+  id: ResourceId
+  name: string
+  kind: 'url'
+  url: string
+  mediaType?: string
+  integrity?: string
+}
+
+export type ProjectResource = ProjectEmbeddedResource | ProjectUrlResource
 
 export interface ProjectDocument {
   version: typeof PROJECT_DOCUMENT_VERSION
-  id: string
+  id: ProjectId
   name: string
-  homePageId: PageId
-  pageOrder: PageId[]
-  pagesById: Record<PageId, ProjectPage>
+  homeSurfaceId: SurfaceId
+  surfaceOrder: SurfaceId[]
+  surfacesById: Record<SurfaceId, ProjectSurface>
+  datasetOrder: DatasetId[]
+  datasetsById: Record<DatasetId, ProjectDataset>
+  resources: Record<ResourceId, ProjectResource>
+  theme: ProjectTheme
   registryLock: RegistryLock
   settings: ModelJsonObject
-  resources: Record<string, ProjectResourceReference>
 }
 
 export type DeepReadonly<T> = T extends (...args: never[]) => unknown
   ? T
-  : T extends readonly (infer Item)[]
-    ? readonly DeepReadonly<Item>[]
-    : T extends object
-      ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
-      : T
+  : T extends readonly [infer Head, ...infer Tail]
+    ? readonly [DeepReadonly<Head>, ...DeepReadonly<Tail>]
+    : T extends readonly (infer Item)[]
+      ? readonly DeepReadonly<Item>[]
+      : T extends object
+        ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
+        : T
 
-/** Deeply readonly view of the versioned ProjectDocument wire format. */
 export type ReadonlyProjectDocument = DeepReadonly<ProjectDocument>
 
-/**
- * Immutable editor identity around one canonical ProjectDocument.
- *
- * `editVersion` is local domain-engine progress. It is intentionally distinct
- * from repository CAS state. `contentHash` identifies semantic document
- * content and excludes persistence revision/timestamp fields.
- */
 export interface ProjectSnapshot {
   readonly document: ReadonlyProjectDocument
   readonly editVersion: number
@@ -236,14 +481,13 @@ export interface ProjectDraftSnapshot {
   readonly draftId: string
   readonly document: ReadonlyProjectDocument
   readonly base: {
-    readonly projectId: string
+    readonly projectId: ProjectId
     readonly editVersion: number
     readonly contentHash: string
   }
   readonly draftHash: string
 }
 
-/** Compiler input identity; only ProjectSnapshot may enter history or persistence. */
 export type ProjectCompilationSnapshot = ProjectSnapshot | ProjectDraftSnapshot
 
 export interface NodeTarget {
@@ -254,14 +498,14 @@ export interface NodeTarget {
 
 export interface NodeSubgraph {
   root: SlotItem[]
-  nodesById: Record<NodeId, PageNode>
+  nodesById: Record<NodeId, SurfaceNode>
 }
 
 export interface CommonNodeSettings {
   component: ComponentKey
   extensions?: ModelJsonObject
-  conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
-  reactions?: ConfigFormReaction[]
+  datasetBindings?: Record<string, DatasetReference>
+  resourceBindings?: Record<string, StaticResourceReference>
 }
 
 export interface FieldNodeSettings extends CommonNodeSettings {
@@ -271,77 +515,77 @@ export interface FieldNodeSettings extends CommonNodeSettings {
   defaultValue?: ModelJsonValue
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
-  optionSource?: ConfigFormFieldOptionSource
 }
 
 export interface LayoutNodeSettings extends CommonNodeSettings {
   kind: 'layout'
   valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
-export type PageNodeSettings = FieldNodeSettings | LayoutNodeSettings
+
+export interface ElementNodeSettings extends CommonNodeSettings {
+  kind: 'element'
+}
+
+export type SurfaceNodeSettings = FieldNodeSettings | LayoutNodeSettings | ElementNodeSettings
 
 export type ProjectOperation
-  = | { type: 'page.add', page: ProjectPage, index?: number }
-    | { type: 'page.remove', pageId: PageId }
-    | { type: 'page.move', pageId: PageId, index: number }
-    | { type: 'page.rename', pageId: PageId, name: string }
-    | { type: 'page.route', pageId: PageId, route: string }
-    | { type: 'project.home', pageId: PageId }
+  = | { type: 'surface.add' | 'surface.copy', surface: ProjectSurface, index?: number }
+    | { type: 'surface.remove', surfaceId: SurfaceId }
+    | { type: 'surface.move', surfaceId: SurfaceId, index: number }
+    | { type: 'surface.rename', surfaceId: SurfaceId, name: string }
+    | { type: 'surface.route', surfaceId: SurfaceId, route: string }
+    | { type: 'surface.presentation', surfaceId: SurfaceId, presentation: ProjectDialogSurface['presentation'] | ProjectDrawerSurface['presentation'] }
+    | { type: 'surface.parameters', surfaceId: SurfaceId, parameters: SurfaceParameterDefinition[] }
+    | { type: 'surface.outputs', surfaceId: SurfaceId, outputs: SurfaceOutputDefinition[] }
+    | { type: 'surface.interactions', surfaceId: SurfaceId, interactions: PrototypeInteraction[] }
+    | { type: 'project.home', surfaceId: SurfaceId }
     | { type: 'project.settings', settings: ModelJsonObject }
-    | { type: 'page.props', pageId: PageId, props: ModelJsonObject }
-    | { type: 'page.form', pageId: PageId, form: FormSettings }
-    | { type: 'page.runtime', pageId: PageId, runtime?: ConfigFormPageRuntimeConfiguration }
-    | { type: 'node.insert', pageId: PageId, subgraph: NodeSubgraph, target: NodeTarget }
-    | { type: 'node.move', pageId: PageId, nodeId: NodeId, target: NodeTarget }
-    | { type: 'node.props', pageId: PageId, nodeId: NodeId, props: ModelJsonObject }
-    | { type: 'node.bindings', pageId: PageId, nodeId: NodeId, bindings: Record<string, RegisteredBinding> }
-    | {
-      type: 'node.config.remove'
-      pageId: PageId
-      nodeId: NodeId
-      property: 'bindings' | 'conditions' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
-      key?: string
-    }
-    | { type: 'node.placement', pageId: PageId, nodeId: NodeId, placement: NodePlacement }
-    | { type: 'node.settings', pageId: PageId, nodeId: NodeId, settings: PageNodeSettings }
-    | { type: 'node.remove', pageId: PageId, nodeId: NodeId }
+    | { type: 'project.theme', theme: ProjectTheme }
+    | { type: 'surface.props', surfaceId: SurfaceId, props: ModelJsonObject }
+    | { type: 'surface.form', surfaceId: SurfaceId, form: FormSettings }
+    | { type: 'dataset.add' | 'dataset.copy', dataset: ProjectDataset, index?: number }
+    | { type: 'dataset.remove', datasetId: DatasetId }
+    | { type: 'dataset.move', datasetId: DatasetId, index: number }
+    | { type: 'dataset.rename', datasetId: DatasetId, name: string }
+    | { type: 'dataset.replaceRows', datasetId: DatasetId, rows: ModelJsonObject[] }
+    | { type: 'dataset.setDefaultProjection', datasetId: DatasetId, projection?: DatasetProjection }
+    | { type: 'resource.add', resource: ProjectResource }
+    | { type: 'resource.remove', resourceId: ResourceId }
+    | { type: 'resource.rename', resourceId: ResourceId, name: string }
+    | { type: 'resource.replace', resourceId: ResourceId, resource: ProjectResource }
+    | { type: 'node.insert', surfaceId: SurfaceId, subgraph: NodeSubgraph, target: NodeTarget }
+    | { type: 'node.move', surfaceId: SurfaceId, nodeId: NodeId, target: NodeTarget }
+    | { type: 'node.props', surfaceId: SurfaceId, nodeId: NodeId, props: ModelJsonObject }
+    | { type: 'node.placement', surfaceId: SurfaceId, nodeId: NodeId, placement: NodePlacement }
+    | { type: 'node.settings', surfaceId: SurfaceId, nodeId: NodeId, settings: SurfaceNodeSettings }
+    | { type: 'node.remove', surfaceId: SurfaceId, nodeId: NodeId }
 
 export interface ProjectNodePatchValues {
-  conditions: Partial<Record<ConditionTarget, ConditionExpression>>
+  datasetBindings: Record<string, DatasetReference>
   defaultValue: ModelJsonValue
   extensions: ModelJsonObject
   field: string
   label: string
-  optionSource: ConfigFormFieldOptionSource
-  reactions: ConfigFormReaction[]
+  resourceBindings: Record<string, StaticResourceReference>
   validateOn: ValidateTrigger | ValidateTrigger[]
   validation: RuleSet
   valueScope: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
 }
+
 export type ProjectNodePatchKey = keyof ProjectNodePatchValues
 
-/**
- * JSON-safe semantic patch. `unset` is explicit because `undefined` is lost
- * across postMessage, JSON persistence, and command replay boundaries.
- */
 export interface ProjectNodePatch {
   set?: Partial<ProjectNodePatchValues>
   unset?: ProjectNodePatchKey[]
 }
 
-/**
- * User intent accepted by the domain command boundary. Actions may be
- * resolved against the current snapshot before one atomic transaction is
- * applied. Low-level operations remain available for already-normalized UI
- * intents; commands such as duplicate and patch deliberately stay semantic.
- */
 export type ProjectCommandAction
   = | { type: 'operation.apply', operations: ProjectOperation[] }
-    | { type: 'node.patch', pageId: PageId, nodeId: NodeId, patch: ProjectNodePatch }
-    | { type: 'node.resize', pageId: PageId, nodeId: NodeId, span: number | null }
+    | { type: 'node.patch', surfaceId: SurfaceId, nodeId: NodeId, patch: ProjectNodePatch }
+    | { type: 'node.resize', surfaceId: SurfaceId, nodeId: NodeId, span: number | null }
     | {
       type: 'node.duplicate'
-      pageId: PageId
+      surfaceId: SurfaceId
       nodeId: NodeId
       target: NodeTarget
       idMap: Record<NodeId, NodeId>
@@ -370,21 +614,21 @@ export interface ModelDiagnostic {
   code: string
   message: string
   path?: Array<string | number>
-  pageId?: PageId
+  projectId?: ProjectId
+  surfaceId?: SurfaceId
+  datasetId?: DatasetId
+  resourceId?: ResourceId
   nodeId?: NodeId
+  context?: Record<string, unknown>
 }
 
-/** Validated changed results are deeply frozen; clone before editing them. */
 export interface ProjectTransactionSuccess {
   success: true
   changed: boolean
   document: ProjectDocument
   inverse: ProjectTransaction
   diagnostics: ModelDiagnostic[]
-  changedProject: boolean
-  changedPageIds: PageId[]
-  changedNodeIds: NodeId[]
-  changedNodeChanges: ProjectNodeChange[]
+  changeSet: ProjectChangeSet
 }
 
 export interface ProjectTransactionFailure {
@@ -420,9 +664,9 @@ export interface ProjectHistoryResult {
 
 export interface ProjectChangeSet {
   project: boolean
-  pageIds: readonly PageId[]
-  nodeIds: readonly NodeId[]
-  /** Page-qualified semantic and relation changes used by incremental compilers. */
+  surfaceIds: readonly SurfaceId[]
+  datasetIds: readonly DatasetId[]
+  resourceIds: readonly ResourceId[]
   nodeChanges: readonly ProjectNodeChange[]
 }
 
@@ -432,19 +676,114 @@ export interface ProjectNodeRelation {
 }
 
 export interface ProjectNodeChange {
-  pageId: PageId
+  surfaceId: SurfaceId
   nodeId: NodeId
-  /** A move has no content changes; mixed edits use content with before/after. */
   kind: 'content' | 'insert' | 'move' | 'remove'
   before?: ProjectNodeRelation
   after?: ProjectNodeRelation
 }
 
-export interface ProjectPageValueSchema {
+export interface SurfaceValueSchema {
   valueScopes: ConfigFormValueScopeDefinition[]
   scopedFields: ConfigFormScopedFieldDefinition[]
 }
 
-export type ProjectPageRuntimeConfiguration = ConfigFormPageRuntimeConfiguration
-export type ProjectVariableDefinition = ConfigFormPageRuntimeConfiguration['variables'][number]
-export type ProjectDataSourceDefinition = ConfigFormDataSourceDefinition
+export interface PrototypeNodeAddressV1 {
+  nodeId: NodeId
+  scope: ConfigFormScopePath
+}
+
+export interface PrototypeSurfaceTopologyV1 {
+  nodeOrder: NodeId[]
+  ownerScopeIdByNodeId: Record<NodeId, NodeId | null>
+  valueScopes: ConfigFormValueScopeDefinition[]
+  scopedFields: ConfigFormScopedFieldDefinition[]
+}
+
+export interface PrototypeFieldInstanceAddressV1 {
+  address: PrototypeNodeAddressV1
+  valuePath: Array<string | number>
+}
+
+export interface PrototypeInstanceRuntimeSnapshotV1 {
+  nodeAddresses: PrototypeNodeAddressV1[]
+  fieldInstances: PrototypeFieldInstanceAddressV1[]
+}
+
+export interface ResourceTransferContentV1 {
+  encoding: 'base64'
+  data: string
+}
+
+export interface ProjectEmbeddedResourceRead {
+  projectId: ProjectId
+  resourceId: ResourceId
+  contentHash: string
+}
+
+export interface ProjectTransferEnvelopeV1 {
+  kind: 'config-form-project'
+  version: typeof PROJECT_TRANSFER_VERSION
+  document: ProjectDocument
+  embeddedContents: Array<{ resourceId: ResourceId, content: ResourceTransferContentV1 }>
+}
+
+export interface ProjectTransferReadResultV1 {
+  document: ProjectDocument
+  embeddedBytesByResourceId: Readonly<Record<ResourceId, Uint8Array>>
+}
+
+export interface ProjectTransferWriteInputV1 {
+  document: ReadonlyProjectDocument
+  readEmbedded: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
+}
+
+export interface SurfaceTransferEnvelopeV1 {
+  kind: 'config-form-surface'
+  version: typeof SURFACE_TRANSFER_VERSION
+  rootSurfaceId: SurfaceId
+  surfaceOrder: SurfaceId[]
+  surfacesById: Record<SurfaceId, ProjectSurface>
+  datasetOrder: DatasetId[]
+  datasetsById: Record<DatasetId, ProjectDataset>
+  resources: Record<ResourceId, ProjectResource>
+  embeddedContents: Array<{ resourceId: ResourceId, content: ResourceTransferContentV1 }>
+  registryLock: RegistryLock
+}
+
+export interface SurfaceTransferReadResultV1 extends Omit<SurfaceTransferEnvelopeV1, 'kind' | 'version' | 'embeddedContents'> {
+  embeddedBytesByResourceId: Readonly<Record<ResourceId, Uint8Array>>
+}
+
+export interface SurfaceTransferWriteInputV1 extends ProjectTransferWriteInputV1 {
+  rootSurfaceId: SurfaceId
+}
+
+export type ContractResult<T>
+  = | { success: true, data: T, diagnostics: [] }
+    | { success: false, diagnostics: ModelDiagnostic[] }
+
+export type ProjectReferenceTargetKind = 'surface' | 'dataset' | 'resource' | 'node'
+export type ProjectReferenceSourceKind
+  = | 'project-home'
+    | 'node-dataset-binding'
+    | 'node-resource-binding'
+    | 'interaction-node'
+    | 'interaction-field'
+    | 'interaction-surface'
+
+export interface ProjectReference {
+  sourceKind: ProjectReferenceSourceKind
+  targetKind: ProjectReferenceTargetKind
+  targetId: string
+  path: Array<string | number>
+  sourceSurfaceId?: SurfaceId
+  nodeId?: NodeId
+  interactionId?: InteractionRuleId
+}
+
+export interface SurfaceDependencyClosure {
+  surfaceIds: SurfaceId[]
+  datasetIds: DatasetId[]
+  resourceIds: ResourceId[]
+}

@@ -1,5 +1,5 @@
 export { createCompileCoordinator } from './coordinator'
 export {
-  compileCanonicalPage,
   compileCanonicalProject,
+  compileCanonicalSurface,
 } from './project'

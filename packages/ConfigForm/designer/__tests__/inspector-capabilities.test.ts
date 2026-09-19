@@ -1,4 +1,4 @@
-import type { ComponentContract, PageNode } from '@moluoxixi/config-form-model'
+import type { ComponentContract, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { describe, expect, it } from 'vitest'
 import { resolveInspectorCapabilities } from '../src/inspector'
@@ -6,37 +6,39 @@ import { resolveInspectorCapabilities } from '../src/inspector'
 function field(
   id: string,
   component: string,
-  values: Partial<Extract<PageNode, { kind: 'field' }>> = {},
-): Extract<PageNode, { kind: 'field' }> {
+  values: Partial<Extract<SurfaceNode, { kind: 'field' }>> = {},
+): Extract<SurfaceNode, { kind: 'field' }> {
   return {
     id,
     component,
     kind: 'field',
     field: id,
     props: {},
-    bindings: {},
     ...values,
   }
 }
 
-function layout(id: string, component: string): Extract<PageNode, { kind: 'layout' }> {
+function layout(id: string, component: string): Extract<SurfaceNode, { kind: 'layout' }> {
   return {
     id,
     component,
     kind: 'layout',
     props: {},
-    bindings: {},
     slots: { default: [] },
   }
 }
 
-function contract(key: string, kind: PageNode['kind']): ComponentContract {
+function contract(key: string, kind: SurfaceNode['kind']): ComponentContract {
   return {
     key,
     version: '1',
     kind,
     props: [],
     bindings: [],
+    semanticTriggers: kind === 'field' ? ['activate'] : [],
+    stateProjectionProperties: [],
+    datasetBindings: [],
+    resourceBindings: [],
     slots: kind === 'layout' ? [{ name: 'default' }] : [],
     allowedParents: [],
     defaults: {},
@@ -46,7 +48,7 @@ function contract(key: string, kind: PageNode['kind']): ComponentContract {
 function material(
   key: string,
   setters: DesignerPropertySetterDefinition[],
-  kind: PageNode['kind'] = 'field',
+  kind: SurfaceNode['kind'] = 'field',
 ): DesignerMaterialDefinition {
   if (kind === 'layout') {
     return {
@@ -59,6 +61,18 @@ function material(
       setters,
       slots: [{ name: 'default', title: 'Content' }],
       createNode: ({ id }) => ({ id, kind, component: key, slots: { default: [] } }),
+    }
+  }
+  if (kind === 'element') {
+    return {
+      key,
+      version: 1,
+      kind,
+      title: key,
+      category: 'Elements',
+      runtime: { component: 'div' },
+      setters,
+      createNode: ({ id }) => ({ id, kind: 'element', component: key, props: {} }),
     }
   }
   return {
@@ -76,9 +90,7 @@ function material(
 describe('resolveInspectorCapabilities', () => {
   it('always exposes exactly properties and validation without projecting advanced runtime configuration', () => {
     const node = field('name', 'test.input', {
-      bindings: { value: { source: 'profile.name' } },
-      conditions: { required: { kind: 'literal', value: true } },
-      reactions: [{ id: 'sync', enabled: true, when: { kind: 'literal', value: true }, then: [] }],
+      datasetBindings: {},
       validation: { version: 1, base: { type: 'string' }, rules: [] },
       validateOn: 'blur',
     })

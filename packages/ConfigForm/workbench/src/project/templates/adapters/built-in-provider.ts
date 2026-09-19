@@ -1,4 +1,4 @@
-import type { ProjectPage } from '@moluoxixi/config-form-model'
+import type { ProjectSurface } from '@moluoxixi/config-form-model'
 import type {
   BuiltInSeedDefinition,
   ProjectTemplateSeed,
@@ -14,11 +14,15 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
-  const page: ProjectPage = {
+  const surface: ProjectSurface = {
     id: 'template-page',
+    kind: 'page',
     name: definition.category === 'blank' ? 'Blank form' : 'Profile form',
     route: '/',
     graph: definition.category === 'blank' ? createBlankGraph() : createProfileGraph(definition.adapter),
+    parameters: [],
+    outputs: [],
+    interactions: [],
   }
   return {
     manifest: {
@@ -32,11 +36,11 @@ function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
       tags: [...definition.tags],
       registry: {
         adapter: definition.adapter,
-        components: Object.values(page.graph.nodesById).map(node => ({ key: node.component })),
+        components: Object.values(surface.graph.nodesById).map(node => ({ key: node.component })),
       },
-      preview: { preferredViewport: 'desktop', pageId: page.id },
+      preview: { preferredViewport: 'desktop', surfaceId: surface.id },
     },
-    page,
+    surface,
   }
 }
 

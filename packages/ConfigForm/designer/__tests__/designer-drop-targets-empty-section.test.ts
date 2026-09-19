@@ -1,14 +1,14 @@
-import type { PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDragSource, DesignerRuntimeNodeGeometry } from '../src/components/DesignerCanvas/types'
 import { describe, expect, it } from 'vitest'
 import { effectScope, ref } from 'vue'
 import { useDesignerCanvasDropTargets } from '../src/components/DesignerCanvas/composables/use-designer-canvas-drop-targets'
 
-const inputNode: PageNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {}, bindings: {} }
-const sectionNode: PageNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, bindings: {}, slots: { default: [] } }
-const candidate: PageNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, bindings: {} }
+const inputNode: SurfaceNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {} }
+const sectionNode: SurfaceNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, slots: { default: [] } }
+const candidate: SurfaceNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {} }
 
-const graph: PageGraph = {
+const graph: SurfaceGraph = {
   version: 1,
   props: {},
   form: {} as never,
@@ -34,7 +34,7 @@ function createHarness() {
   const targets = scope.run(() => useDesignerCanvasDropTargets({
     activeSource: () => ({ type: 'material', materialKey: 'element.input', candidateId: 'cand-1' } satisfies DesignerDragSource),
     cameraViewportRef: ref<HTMLElement>(),
-    candidateCommandForSource: (_source, target) => ({ id: 'preview', label: 'preview', actions: [{ type: 'operation.apply', operations: [{ type: 'node.insert', pageId: 'page', subgraph: { root: [], nodesById: {} }, target }] }] } as never),
+    candidateCommandForSource: (_source, target) => ({ id: 'preview', label: 'preview', actions: [{ type: 'operation.apply', operations: [{ type: 'node.insert', surfaceId: 'surface', subgraph: { root: [], nodesById: {} }, target }] }] } as never),
     candidateNode: () => candidate,
     candidatePreview: command => ({ command, graph }),
     dragController: undefined,

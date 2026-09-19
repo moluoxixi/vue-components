@@ -1,1 +1,1 @@
-export const PAGE_TRANSFER_VERSION = 2 as const
+export const SURFACE_TRANSFER_VERSION = 1 as const

@@ -7,9 +7,10 @@ import type {
 } from '@moluoxixi/config-form-model'
 import {
   createMemoryProjectRepository,
-  PAGE_GRAPH_VERSION,
   PROJECT_DOCUMENT_VERSION,
   ProjectRepositoryError,
+  registryLockFingerprint,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { createProjectEditorSession, openProjectEditorSession } from '..'
@@ -19,15 +20,19 @@ function projectDocument(): ProjectDocument {
     version: PROJECT_DOCUMENT_VERSION,
     id: 'project',
     name: 'Project',
-    homePageId: 'home',
-    pageOrder: ['home'],
-    pagesById: {
+    homeSurfaceId: 'home',
+    surfaceOrder: ['home'],
+    surfacesById: {
       home: {
         id: 'home',
         name: 'Home',
+        kind: 'page',
         route: '/',
+        parameters: [],
+        outputs: [],
+        interactions: [],
         graph: {
-          version: PAGE_GRAPH_VERSION,
+          version: SURFACE_GRAPH_VERSION,
           props: {},
           form: {},
           root: [],
@@ -35,12 +40,15 @@ function projectDocument(): ProjectDocument {
         },
       },
     },
+    datasetOrder: [],
+    datasetsById: {},
     registryLock: {
       adapter: 'element-plus',
       version: '2.9.1',
-      fingerprint: 'fnv1a:registry',
+      fingerprint: registryLockFingerprint({}),
       components: {},
     },
+    theme: { version: 1 },
     settings: {},
     resources: {},
   }
@@ -56,7 +64,7 @@ function renameCommand(
     label: 'Rename page',
     actions: [{
       type: 'operation.apply',
-      operations: [{ type: 'page.rename', pageId: 'home', name }],
+      operations: [{ type: 'surface.rename', surfaceId: 'home', name }],
     }],
     ...(mergeKey ? { mergeKey } : {}),
   }
@@ -66,7 +74,7 @@ describe('projectEditorSession', () => {
   it('keeps edits made during save outside the captured commit and merge group', async () => {
     const durable = createMemoryProjectRepository()
     const initial = projectDocument()
-    const project = await durable.create({ document: initial })
+    const project = await durable.create({ document: initial, embeddedContents: [] })
     let releaseCommit!: () => void
     const commitGate = new Promise<void>((resolve) => {
       releaseCommit = resolve
@@ -81,6 +89,7 @@ describe('projectEditorSession', () => {
       list: () => durable.list(),
       listVersions: id => durable.listVersions(id),
       pruneVersions: (id, policy) => durable.pruneVersions(id, policy),
+      readEmbedded: input => durable.readEmbedded(input),
       setVersionLabel: input => durable.setVersionLabel(input),
       async commit(input: ProjectRepositoryCommitInput): Promise<ProjectRepositoryCommitResult> {
         await commitGate
@@ -93,29 +102,29 @@ describe('projectEditorSession', () => {
       createCommitId: () => 'save-captured',
       nowMs: () => 100,
     })
-    session.execute(renameCommand('label-a', 'Landing', 'page:home:name'))
+    session.execute(renameCommand('label-a', 'Landing', 'surface:home:name'))
 
     const savePromise = session.save({ source: 'manual', sealHistoryGroup: true })
     expect(session.snapshot.saving).toBe(true)
-    session.execute(renameCommand('label-b', 'Landing updated', 'page:home:name'))
+    session.execute(renameCommand('label-b', 'Landing updated', 'surface:home:name'))
     releaseCommit()
 
     const saved = await savePromise
     expect(saved).toMatchObject({ success: true, newerEdits: true, repositoryRevision: 1 })
-    expect((await durable.get(initial.id))?.document.pagesById.home?.name).toBe('Landing')
-    expect(session.snapshot.document.pagesById.home?.name).toBe('Landing updated')
+    expect((await durable.get(initial.id))?.document.surfacesById.home?.name).toBe('Landing')
+    expect(session.snapshot.document.surfacesById.home?.name).toBe('Landing updated')
     expect(session.snapshot.dirty).toBe(true)
-    expect(session.snapshot).not.toHaveProperty('currentPageId')
+    expect(session.snapshot).not.toHaveProperty('currentSurfaceId')
 
     expect(session.undo().changed).toBe(true)
-    expect(session.snapshot.document.pagesById.home?.name).toBe('Landing')
+    expect(session.snapshot.document.surfacesById.home?.name).toBe('Landing')
     expect(session.snapshot.dirty).toBe(false)
   })
 
   it('surfaces repository conflicts without losing the local project', async () => {
     const repository = createMemoryProjectRepository()
     const initial = projectDocument()
-    const project = await repository.create({ document: initial })
+    const project = await repository.create({ document: initial, embeddedContents: [] })
     const session = createProjectEditorSession({ project, repository })
     session.execute(renameCommand('local-edit', 'Local'))
     const remote = createProjectEditorSession({ project, repository })
@@ -127,15 +136,63 @@ describe('projectEditorSession', () => {
     if (saved.success)
       return
     expect(saved.error.code).toBe('PROJECT_REVISION_CONFLICT')
-    expect(session.snapshot.document.pagesById.home?.name).toBe('Local')
+    expect(session.snapshot.document.surfacesById.home?.name).toBe('Local')
     expect(session.snapshot.dirty).toBe(true)
-    expect((await repository.get(initial.id))?.document.pagesById.home?.name).toBe('Remote')
+    expect((await repository.get(initial.id))?.document.surfacesById.home?.name).toBe('Remote')
+  })
+
+  it('stages embedded bytes with their command until the document is saved', async () => {
+    const repository = createMemoryProjectRepository()
+    const initial = projectDocument()
+    const project = await repository.create({ document: initial, embeddedContents: [] })
+    const session = createProjectEditorSession({ project, repository })
+    const bytes = new Uint8Array([1, 2, 3])
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+    const contentHash = `sha256:${[...digest].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
+    const write = { resourceId: 'logo', contentHash, bytes }
+
+    const result = session.execute({
+      id: 'import-resource',
+      label: 'Import Resource',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{
+          type: 'resource.add',
+          resource: {
+            id: 'logo',
+            name: 'Logo',
+            kind: 'embedded',
+            fileName: 'logo.bin',
+            mediaType: 'application/octet-stream',
+            byteLength: bytes.byteLength,
+            contentHash,
+          },
+        }],
+      }],
+    }, { embeddedWrites: [write] })
+    write.bytes[0] = 9
+
+    expect(result.changed).toBe(true)
+    await expect(session.readEmbedded({
+      projectId: initial.id,
+      resourceId: 'logo',
+      contentHash,
+    })).resolves.toEqual(new Uint8Array([1, 2, 3]))
+    expect((await session.save({ source: 'manual', sealHistoryGroup: true })).success).toBe(true)
+    await expect(repository.readEmbedded({
+      projectId: initial.id,
+      resourceId: 'logo',
+      contentHash,
+    })).resolves.toEqual(new Uint8Array([1, 2, 3]))
+
+    expect(session.undo().changed).toBe(true)
+    expect(session.snapshot.document.resources).toEqual({})
   })
 
   it('publishes one snapshot for a batched multi-dispatch history walk', async () => {
     const repository = createMemoryProjectRepository()
     const initial = projectDocument()
-    const project = await repository.create({ document: initial })
+    const project = await repository.create({ document: initial, embeddedContents: [] })
     const session = createProjectEditorSession({ project, repository })
     session.execute(renameCommand('edit-a', 'First'))
     session.execute(renameCommand('edit-b', 'Second'))
@@ -144,8 +201,8 @@ describe('projectEditorSession', () => {
     const published: Array<{ name: string | undefined, precise: boolean }> = []
     const unsubscribe = session.subscribe((snapshot, changeSet) => {
       published.push({
-        name: snapshot.document.pagesById.home?.name,
-        precise: changeSet.pageIds.length > 0,
+        name: snapshot.document.surfacesById.home?.name,
+        precise: changeSet.surfaceIds.length > 0,
       })
     })
     published.length = 0
@@ -173,7 +230,7 @@ describe('projectEditorSession', () => {
   it('opens repository documents and rejects missing projects', async () => {
     const repository = createMemoryProjectRepository()
     const initial = projectDocument()
-    await repository.create({ document: initial })
+    await repository.create({ document: initial, embeddedContents: [] })
     const session = await openProjectEditorSession({ projectId: initial.id, repository })
     expect(session.snapshot.document).toEqual(initial)
 

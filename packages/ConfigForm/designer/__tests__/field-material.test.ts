@@ -1,4 +1,4 @@
-import { pageGraphSchema } from '@moluoxixi/config-form-model'
+import { surfaceGraphSchema } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
   createDesignerRegistry,
@@ -99,8 +99,8 @@ describe('designer field material', () => {
 
     const registry = createDesignerRegistry({ materials: [material] })
     const subgraph = registry.createSubgraph(material.key, { id: 'registered', field: 'profile' })
-    expect(() => pageGraphSchema.parse({
-      version: 3,
+    expect(() => surfaceGraphSchema.parse({
+      version: 1,
       props: {},
       form: {},
       root: subgraph.root,

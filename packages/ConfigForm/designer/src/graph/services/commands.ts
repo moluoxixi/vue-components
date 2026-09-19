@@ -1,7 +1,7 @@
 import type {
   ModelJsonObject,
   NodeSubgraph,
-  PageGraph,
+  SurfaceGraph,
   ProjectCommand,
   ProjectCommandAction,
   ProjectNodePatchKey,
@@ -34,44 +34,44 @@ export function createOperationCommand(
 }
 
 export function createInsertCommand(
-  pageId: string,
+  surfaceId: string,
   subgraph: NodeSubgraph,
   target: DesignerDropTarget,
   options: { id?: string, label?: string } = {},
 ): ProjectCommand {
   return createOperationCommand(
     options.label ?? 'Insert component',
-    [{ type: 'node.insert', pageId, subgraph, target }],
+    [{ type: 'node.insert', surfaceId, subgraph, target }],
     { id: options.id },
   )
 }
 
 export function createMoveCommand(
-  pageId: string,
+  surfaceId: string,
   nodeId: string,
   target: DesignerDropTarget,
   options: { id?: string, label?: string } = {},
 ): ProjectCommand {
   return createOperationCommand(
     options.label ?? 'Move component',
-    [{ type: 'node.move', pageId, nodeId, target }],
+    [{ type: 'node.move', surfaceId, nodeId, target }],
     { id: options.id },
   )
 }
 
-export function createRemoveCommand(pageId: string, nodeIds: string[]): ProjectCommand {
+export function createRemoveCommand(surfaceId: string, nodeIds: string[]): ProjectCommand {
   return createOperationCommand(
     nodeIds.length === 1 ? 'Remove component' : 'Remove components',
-    nodeIds.map(nodeId => ({ type: 'node.remove', pageId, nodeId })),
+    nodeIds.map(nodeId => ({ type: 'node.remove', surfaceId, nodeId })),
   )
 }
 
-export function createResizeCommand(pageId: string, nodeId: string, span: number | null): ProjectCommand {
+export function createResizeCommand(surfaceId: string, nodeId: string, span: number | null): ProjectCommand {
   return {
     id: createDesignerCommandId('resize'),
     label: 'Resize component',
-    mergeKey: `resize:${pageId}:${nodeId}`,
-    actions: [{ type: 'node.resize', pageId, nodeId, span }],
+    mergeKey: `resize:${surfaceId}:${nodeId}`,
+    actions: [{ type: 'node.resize', surfaceId, nodeId, span }],
   }
 }
 
@@ -105,8 +105,8 @@ function assignPath(root: ModelJsonObject, path: string[], value: unknown): Mode
 }
 
 export function createNodePathCommand(
-  graph: PageGraph,
-  pageId: string,
+  graph: SurfaceGraph,
+  surfaceId: string,
   nodeIds: string[],
   path: string[],
   value: unknown,
@@ -122,8 +122,8 @@ export function createNodePathCommand(
     return {
       id: createDesignerCommandId('resize'),
       label: nodeIds.length === 1 ? 'Resize component' : 'Resize components',
-      mergeKey: `resize:${pageId}:${[...nodeIds].sort().join(',')}`,
-      actions: nodeIds.map(nodeId => ({ type: 'node.resize', pageId, nodeId, span })),
+      mergeKey: `resize:${surfaceId}:${[...nodeIds].sort().join(',')}`,
+      actions: nodeIds.map(nodeId => ({ type: 'node.resize', surfaceId, nodeId, span })),
     }
   }
 
@@ -135,11 +135,11 @@ export function createNodePathCommand(
       const props = nestedPath.length === 0
         ? cloneRecord(value as ModelJsonObject | undefined)
         : assignPath(node.props, nestedPath, value)
-      return { type: 'operation.apply', operations: [{ type: 'node.props', pageId, nodeId, props }] }
+      return { type: 'operation.apply', operations: [{ type: 'node.props', surfaceId, nodeId, props }] }
     }
     return {
       type: 'node.patch',
-      pageId,
+      surfaceId,
       nodeId,
       patch: value === undefined
         ? { unset: [writableRoot as ProjectNodePatchKey] }
@@ -150,14 +150,14 @@ export function createNodePathCommand(
   return {
     id: createDesignerCommandId('property'),
     label: nodeIds.length === 1 ? 'Update component' : 'Update components',
-    mergeKey: `property:${pageId}:${[...nodeIds].sort().join(',')}:${path.join('.')}`,
+    mergeKey: `property:${surfaceId}:${[...nodeIds].sort().join(',')}:${path.join('.')}`,
     actions,
   }
 }
 
 export function createFormCommand(
-  graph: PageGraph,
-  pageId: string,
+  graph: SurfaceGraph,
+  surfaceId: string,
   changes: Record<string, unknown>,
 ): ProjectCommand {
   const form = structuredClone(graph.form) as Record<string, unknown>
@@ -168,8 +168,8 @@ export function createFormCommand(
       form[key] = structuredClone(value)
   })
   return createOperationCommand('Update form', [{
-    type: 'page.form',
-    pageId,
+    type: 'surface.form',
+    surfaceId,
     form,
-  }], { mergeKey: `form:${pageId}:${Object.keys(changes).sort().join(',')}` })
+  }], { mergeKey: `form:${surfaceId}:${Object.keys(changes).sort().join(',')}` })
 }

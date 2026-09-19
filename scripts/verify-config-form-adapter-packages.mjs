@@ -30,7 +30,7 @@ const publicContractPackages = [
   {
     directory: 'model',
     exports: [
-      'PAGE_GRAPH_VERSION',
+      'SURFACE_GRAPH_VERSION',
       'PROJECT_DOCUMENT_VERSION',
       'assertProjectDocument',
       'parseProjectDocument',
@@ -38,7 +38,9 @@ const publicContractPackages = [
     name: '@moluoxixi/config-form-model',
     types: [
       'ComponentContract',
-      'PageGraph',
+      'ProjectSurface',
+      'SurfaceGraph',
+      'SurfaceNode',
       'ProjectCommand',
       'ProjectDocument',
       'ProjectSnapshot',
@@ -55,8 +57,9 @@ const publicContractPackages = [
     name: '@moluoxixi/config-form-compiler',
     types: [
       'CanonicalNodeIR',
-      'CanonicalPageIR',
+      'CanonicalSurfaceIR',
       'CanonicalProjectIR',
+      'SurfaceCompilation',
       'CompileCanonicalProjectResult',
     ],
   },
@@ -100,28 +103,14 @@ const adapters = [
       'ANTD_VUE_DESIGNER_MATERIALS',
       'ANTD_VUE_DESIGNER_MATERIAL_REGISTRY',
       'ANTD_VUE_DESIGNER_ZH_CN',
-      'ANTD_VUE_OPTION_RESOLVER_KEY',
       'antdVueDesignerRegistryLayer',
       'createAntdVueDesignerRegistry',
-      'createAntdVueOptionDiagnostics',
-      'createAntdVueOptionResolverContext',
-      'createAntdVueOptionResolverPlugin',
       'normalizeAntdVueOptions',
-      'provideAntdVueOptionResolver',
-      'readAntdVueOptionSource',
-      'useAntdVueOptionResolverContext',
-      'useAntdVueResolvedOptions',
     ],
     name: '@moluoxixi/config-form-designer-antd-vue',
     types: [
       'AntdVueDesignerRegistryOptions',
       'AntdVueDesignerOption',
-      'AntdVueOptionProvider',
-      'AntdVueOptionProviderContext',
-      'AntdVueOptionResolverConfig',
-      'AntdVueOptionSource',
-      'AntdVueOptionStatus',
-      'AntdVueResolvedOptionState',
     ],
   },
   {
@@ -131,29 +120,15 @@ const adapters = [
       'ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY',
       'ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS',
       'ELEMENT_PLUS_DESIGNER_ZH_CN',
-      'ELEMENT_PLUS_OPTION_RESOLVER_KEY',
       'createElementPlusDesignerRegistry',
-      'createElementPlusOptionDiagnostics',
-      'createElementPlusOptionResolverContext',
-      'createElementPlusOptionResolverPlugin',
       'elementPlusDesignerRegistryLayer',
       'elementPlusOptionKey',
       'normalizeElementPlusOptions',
-      'provideElementPlusOptionResolver',
-      'readElementPlusOptionSource',
-      'useElementPlusOptionResolverContext',
-      'useElementPlusResolvedOptions',
     ],
     name: '@moluoxixi/config-form-designer-element-plus',
     types: [
       'ElementPlusDesignerRegistryOptions',
       'ElementPlusDesignerOption',
-      'ElementPlusOptionProvider',
-      'ElementPlusOptionProviderContext',
-      'ElementPlusOptionResolverConfig',
-      'ElementPlusOptionSource',
-      'ElementPlusOptionStatus',
-      'ElementPlusResolvedOptionState',
     ],
   },
   {
@@ -284,6 +259,114 @@ function verifyPublicContractPackages() {
     finally {
       rmSync(consumerDir, { force: true, recursive: true })
     }
+  }
+}
+
+function verifyPrototypeRuntimePackage() {
+  const packageDir = resolve(rootDir, 'packages', 'ConfigForm', 'prototype-runtime')
+  const manifest = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8'))
+  const requiredExports = {
+    '.': ['PROTOTYPE_SESSION_VERSION'],
+    './session': [
+      'PROTOTYPE_SESSION_VERSION',
+      'initializePrototypeSession',
+      'reducePrototypeSession',
+      'readPrototypeSessionCommand',
+    ],
+    './vue': [
+      'PrototypeSurfaceHost',
+      'createPrototypeVueControllerRegistry',
+      'createPrototypeVueHostController',
+    ],
+  }
+
+  for (const [subpath, names] of Object.entries(requiredExports)) {
+    const exportEntry = manifest.exports?.[subpath]
+    if (!exportEntry?.import || !exportEntry?.types)
+      fail(`${manifest.name} must expose import and types for ${subpath}`)
+    if (!existsSync(resolve(packageDir, exportEntry.import)) || !existsSync(resolve(packageDir, exportEntry.types)))
+      fail(`${manifest.name} ${subpath} build output or declarations are missing`)
+
+    const specifier = subpath === '.' ? manifest.name : `${manifest.name}${subpath.slice(1)}`
+    const importCheck = `
+      const loaded = await import(${JSON.stringify(specifier)})
+      const missing = ${JSON.stringify(names)}.filter(name => !(name in loaded))
+      if (missing.length > 0) throw new Error('Missing public exports: ' + missing.join(','))
+    `
+    const result = spawnSync(process.execPath, ['--input-type=module', '--eval', importCheck], {
+      cwd: packageDir,
+      encoding: 'utf8',
+    })
+    if (result.status !== 0)
+      fail(`${manifest.name} ${subpath} self-reference failed: ${result.stderr || result.stdout}`)
+  }
+
+  const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-prototype-runtime-smoke-'))
+  try {
+    writeFileSync(resolve(consumerDir, 'consumer.ts'), `
+      import { PROTOTYPE_SESSION_VERSION } from ${JSON.stringify(manifest.name)}
+      import {
+        initializePrototypeSession,
+        reducePrototypeSession,
+        readPrototypeSessionCommand,
+      } from ${JSON.stringify(`${manifest.name}/session`)}
+      import {
+        createPrototypeVueControllerRegistry,
+        createPrototypeVueHostController,
+      } from ${JSON.stringify(`${manifest.name}/vue`)}
+      import type {
+        PrototypeProjectContextV1,
+        PrototypeSessionCommand,
+        PrototypeSessionV1,
+        PrototypeSurfaceContractV1,
+        PrototypeTransition,
+      } from ${JSON.stringify(`${manifest.name}/session`)}
+      import type {
+        PrototypeVueHostOptions,
+        PrototypeVueHostController,
+      } from ${JSON.stringify(`${manifest.name}/vue`)}
+
+      void [
+        PROTOTYPE_SESSION_VERSION,
+        initializePrototypeSession,
+        reducePrototypeSession,
+        readPrototypeSessionCommand,
+        createPrototypeVueControllerRegistry,
+        createPrototypeVueHostController,
+      ]
+      type PublicTypes = [
+        PrototypeProjectContextV1,
+        PrototypeSessionCommand,
+        PrototypeSessionV1,
+        PrototypeSurfaceContractV1,
+        PrototypeTransition,
+        PrototypeVueHostOptions,
+        PrototypeVueHostController,
+      ]
+      const publicTypes: PublicTypes | undefined = undefined
+      void publicTypes
+    `)
+    writeFileSync(resolve(consumerDir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: {
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        noEmit: true,
+        skipLibCheck: false,
+        strict: true,
+        target: 'ES2022',
+      },
+      files: ['./consumer.ts'],
+    }, null, 2))
+    const tscPath = resolve(rootDir, 'node_modules', 'typescript', 'bin', 'tsc')
+    const typeResult = spawnSync(process.execPath, [tscPath, '--project', resolve(consumerDir, 'tsconfig.json')], {
+      cwd: consumerDir,
+      encoding: 'utf8',
+    })
+    if (typeResult.status !== 0)
+      fail(`${manifest.name} TypeScript consumer failed: ${typeResult.stderr || typeResult.stdout}`)
+  }
+  finally {
+    rmSync(consumerDir, { force: true, recursive: true })
   }
 }
 
@@ -442,6 +525,7 @@ function verifyRuntimePackage() {
 
 verifyPublishedSourceFiles()
 verifyPublicContractPackages()
+verifyPrototypeRuntimePackage()
 verifyRuntimePackage()
 
 for (const adapter of adapters) {

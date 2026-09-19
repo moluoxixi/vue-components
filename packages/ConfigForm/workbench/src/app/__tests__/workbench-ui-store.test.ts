@@ -36,8 +36,7 @@ describe('workbench UI store', () => {
     const ui = createWorkbenchUiStore({ locale: { locale: 'en-US' } })
 
     ui.openExportPreview('source')
-    ui.openPageManager()
-    ui.openDataWorkspace()
+    ui.openSurfaceManager()
     ui.notify('Saved')
     ui.togglePreview()
     ui.setThemePreference('dark')
@@ -50,8 +49,6 @@ describe('workbench UI store', () => {
     expect(ui.exportPreviewMode.value).toBe('source')
     expect(ui.pageManagerLoaded.value).toBe(true)
     expect(ui.pageManagerOpen.value).toBe(true)
-    expect(ui.dataDialogLoaded.value).toBe(true)
-    expect(ui.dataWorkspaceOpen.value).toBe(true)
     expect(ui.message.value).toBe('Saved')
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.mobileStudioView.value).toBe('pages')
@@ -109,15 +106,12 @@ describe('workbench UI store', () => {
     ui.togglePreview()
     ui.previewExpanded.value = true
     ui.togglePreview()
-    ui.openPageManager()
-    ui.closePageManager()
-    ui.openDataWorkspace()
-    ui.closeDataWorkspace()
+    ui.openSurfaceManager()
+    ui.closeSurfaceManager()
 
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.previewExpanded.value).toBe(false)
     expect(ui.pageManagerOpen.value).toBe(false)
-    expect(ui.dataWorkspaceOpen.value).toBe(false)
   })
 
   it('publishes a one-shot actionable notice without turning it into document state', () => {

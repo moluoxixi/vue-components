@@ -1,4 +1,4 @@
-import type { FieldNode, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { FieldNode, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDiagnostic } from '../../graph'
 import type {
   AnalyzeDesignGraphOptions,
@@ -46,16 +46,6 @@ export function resolveDesignerDefaultOptionValues(
 ): unknown[] | undefined {
   if (!setter.optionsPath)
     return undefined
-  const source = setter.optionSourcePath ? readPath(node, setter.optionSourcePath) : undefined
-  if (
-    typeof source === 'object'
-    && source !== null
-    && !Array.isArray(source)
-    && (source as Record<string, unknown>).kind !== 'static'
-  ) {
-    return undefined
-  }
-
   const options = readPath(node, setter.optionsPath)
   if (!Array.isArray(options))
     return []
@@ -111,7 +101,7 @@ function analyzeFieldDefault(
 }
 
 function validateSlotChild(
-  child: PageNode,
+  child: SurfaceNode,
   slot: DesignerMaterialSlotDefinition,
   path: Array<string | number>,
 ): DesignerDiagnostic[] {
@@ -150,7 +140,7 @@ export function isDesignerMaterialPlacementAllowed(
 }
 
 export function analyzeDesignGraph(
-  graph: PageGraph,
+  graph: SurfaceGraph,
   registry: DesignerRegistry,
   options: AnalyzeDesignGraphOptions = {},
 ): DesignerDiagnostic[] {
@@ -201,15 +191,8 @@ export function analyzeDesignGraph(
       return
     }
 
-    if (node.conditions?.required || node.conditions?.disabled || node.conditions?.readonly) {
-      diagnostics.push(designerDiagnostic(
-        'DESIGNER_LAYOUT_CONDITION_INVALID',
-        'Layout nodes only support visible and hidden conditions',
-        [...path, 'conditions'],
-        'error',
-        node.id,
-      ))
-    }
+    if (node.kind === 'element')
+      return
 
     if (material.kind !== 'layout')
       return

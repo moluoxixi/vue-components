@@ -1,7 +1,7 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectSummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 
-export interface PageManagerDialogProps {
+export interface SurfaceManagerDialogProps {
   project?: ReadonlyProjectDocument
   projects: ProjectSummary[]
   busy?: boolean

@@ -7,10 +7,9 @@ export interface CanonicalConfigExport {
 
 /** Host implementations are deliberately excluded from the exported data. */
 export interface ConfigRuntimeBindingRequirement {
-  kind: 'component' | 'validator' | 'dataSource'
+  kind: 'component' | 'validator'
   ref: string
-  pageId: string
+  surfaceId: string
   path: Array<string | number>
   nodeId?: string
-  sourceId?: string
 }

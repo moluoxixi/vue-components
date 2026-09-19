@@ -31,6 +31,7 @@ describe('export snapshot', () => {
 
     expect(snapshot.compilation).toBe(input.compilation)
     expect(snapshot.generatorVersion).toBe(CONFIG_FORM_EXPORT_GENERATOR_VERSION)
+    expect(snapshot.generatorVersion).toBe('5.0.0')
     expect(snapshot.source.entry).toBe(normalizeProjectPath('src/main.ts'))
     expect(snapshot.config.entry).toBe(normalizeProjectPath('project.config.ts'))
     expect(Object.isFrozen(snapshot)).toBe(true)
@@ -100,7 +101,7 @@ describe('export snapshot', () => {
 
   it('feeds frozen Source bytes to the archive', async () => {
     const snapshot = buildExportSnapshot(await fixture())
-    const pagePath = normalizeProjectPath('src/pages/home/Page.vue')
+    const pagePath = normalizeProjectPath('src/surfaces/home/Surface.vue')
     const page = snapshot.source.files[pagePath]
     expect(page?.kind).toBe('text')
     if (page?.kind !== 'text')
@@ -110,7 +111,7 @@ describe('export snapshot', () => {
       files: snapshot.source.files,
       name: snapshot.compilation.ir.name,
     }))
-    expect(strFromU8(archive['customer-app/src/pages/home/Page.vue']!)).toBe(page.content)
+    expect(strFromU8(archive['customer-app/src/surfaces/home/Surface.vue']!)).toBe(page.content)
   })
 
   it('uses preferred, entry, first text, then first file fallback order', async () => {

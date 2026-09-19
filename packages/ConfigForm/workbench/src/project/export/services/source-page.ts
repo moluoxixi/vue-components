@@ -1,12 +1,12 @@
 import type {
   StandaloneSourceNode,
-  StandaloneSourcePage,
   StandaloneSourceRegistry,
+  StandaloneSourceSurface,
 } from '../types/source'
 import { resolveSourceComponentDefinition } from './source-registry'
 import { scriptJson } from './source-serialization'
 
-function collectSourceBindings(
+function collectSourceComponentBindings(
   nodes: StandaloneSourceNode[],
   registry: StandaloneSourceRegistry,
   target = new Map<string, ReturnType<typeof resolveSourceComponentDefinition>['binding']>(),
@@ -15,88 +15,347 @@ function collectSourceBindings(
     if (!target.has(node.component))
       target.set(node.component, structuredClone(resolveSourceComponentDefinition(node, registry).binding))
     if (node.kind === 'layout')
-      Object.values(node.slots).forEach(children => collectSourceBindings(children, registry, target))
+      Object.values(node.slots).forEach(children => collectSourceComponentBindings(children, registry, target))
   }
   return target
 }
 
 export function appSource(
-  page: StandaloneSourcePage,
+  surface: StandaloneSourceSurface,
   registry: StandaloneSourceRegistry,
 ): string {
-  const pageConfiguration = page
-  const bindings = Object.fromEntries([...collectSourceBindings(page.root, registry)]
+  const componentBindings = Object.fromEntries([...collectSourceComponentBindings(surface.root, registry)]
     .sort(([left], [right]) => left.localeCompare(right)))
   return `<script setup lang="ts">
-import type { ConfigFormRendererExpose } from '../../runtime/vue/renderer'
-import { createSourceDataSourceRequest } from '../../data'
+import type { ConfigFormFieldChangePayload } from '../../runtime/headless'
+import type {
+  ConfigFormRendererExpose,
+  ConfigFormRendererProps,
+} from '../../runtime/vue/renderer'
+import type {
+  MaterialSemanticTrigger,
+  ModelJsonObject,
+  ModelJsonValue,
+  PrimaryUiActionBinding,
+  PrototypeInstanceProjectionV1,
+  PrototypeNodeAddressV1,
+} from '@moluoxixi/config-form-prototype-runtime/session'
+import type { PrototypeVueSurfaceRendererBindings } from '@moluoxixi/config-form-prototype-runtime/vue'
 import { createConfigFormModel } from '../../runtime/headless'
 import { createSourceRendererConfig } from '../../runtime/source-page'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '../../runtime/vue/renderer'
-import { resolveComponent, shallowRef, useTemplateRef } from 'vue'
+import {
+  cloneJson,
+  createPrototypeInstanceRuntimeSnapshot,
+} from '@moluoxixi/config-form-prototype-runtime/session'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  resolveComponent,
+  shallowRef,
+  toRaw,
+  useTemplateRef,
+} from 'vue'
 import { resolveFieldValidation } from './validation'
 
-const pageName = ${scriptJson(page.name)}
-const submitted = shallowRef('')
-const values = shallowRef<Record<string, unknown>>({})
+const surfaceConfiguration = ${scriptJson(surface, 2)} as const
+const surfaceId = ${scriptJson(surface.id)}
+const surfaceKind = ${scriptJson(surface.kind)}
+const props = defineProps<{ prototype: PrototypeVueSurfaceRendererBindings }>()
+
+function clonePrototypeContract<T>(value: T): T {
+  return cloneJson(value as unknown as ModelJsonValue) as unknown as T
+}
+
+const root = useTemplateRef<HTMLElement>('root')
+const rendererRef = useTemplateRef<ConfigFormRendererExpose<ModelJsonObject>>('renderer')
+const values = shallowRef<ModelJsonObject>(cloneJson(toRaw(props.prototype.values)))
+const projection = shallowRef<PrototypeInstanceProjectionV1>(clonePrototypeContract(toRaw(props.prototype.projection)))
+const rendererRevision = ref(0)
+let disposed = false
+let unregister: (() => void) | undefined
 const model = createConfigFormModel(values)
-const rendererRef = useTemplateRef<ConfigFormRendererExpose>('renderer')
 const rendererConfig = createSourceRendererConfig({
-  bindings: ${scriptJson(bindings, 2)},
-  page: ${scriptJson(pageConfiguration, 2)},
+  components: ${scriptJson(componentBindings, 2)} as const,
+  surface: surfaceConfiguration,
   resolveComponent,
   resolveFieldValidation,
 })
-const onRequest: typeof globalThis.fetch = (...args) => globalThis.fetch(...args)
-const dataSourceHost = { request: createSourceDataSourceRequest(onRequest, () => document.baseURI) }
-function handleSubmit(next: Record<string, unknown>): void {
-  submitted.value = JSON.stringify(next, null, 2)
+
+type RuntimeReactionProjection = NonNullable<ConfigFormRendererProps<ModelJsonObject>['reactionProjection']>
+interface PrototypeScopeEntry {
+  readonly scopeId: string
+  readonly rowId: string
 }
+
+function sameScope(
+  left: readonly PrototypeScopeEntry[],
+  right: readonly PrototypeScopeEntry[],
+): boolean {
+  return left.length === right.length && left.every((entry, index) => (
+    entry.scopeId === right[index]?.scopeId && entry.rowId === right[index]?.rowId
+  ))
+}
+
+function sameRowPath(address: PrototypeNodeAddressV1, rowIds: readonly string[]): boolean {
+  return address.scope.length === rowIds.length
+    && address.scope.every((entry: PrototypeScopeEntry, index: number) => entry.rowId === rowIds[index])
+}
+
+function primaryBindings(trigger: MaterialSemanticTrigger): PrimaryUiActionBinding[] {
+  return props.prototype.surface.interactions.filter(
+    (interaction): interaction is PrimaryUiActionBinding => (
+      interaction.kind === 'primaryUiAction' && interaction.trigger === trigger
+    ),
+  )
+}
+
+function eventOrigin(event: Event): Element | undefined {
+  if (event.type === 'submit' && 'submitter' in event && event.submitter instanceof Element)
+    return event.submitter
+  return event.target instanceof Element ? event.target : undefined
+}
+
+function rowIdsFor(element: Element): string[] {
+  const rowIds: string[] = []
+  let current: Element | null = element
+  while (current && current !== root.value) {
+    if (current.hasAttribute('data-config-form-row')) {
+      const rowId = current.getAttribute('data-row-id')
+      if (rowId)
+        rowIds.unshift(rowId)
+    }
+    current = current.parentElement
+  }
+  return rowIds
+}
+
+function addressFor(nodeId: string, element?: Element): PrototypeNodeAddressV1 | undefined {
+  const candidates = props.prototype.instance.runtime.nodeAddresses
+    .filter(address => address.nodeId === nodeId)
+  if (!element)
+    return candidates.length === 1 ? clonePrototypeContract(toRaw(candidates[0]!)) : undefined
+  const rowIds = rowIdsFor(element)
+  const address = candidates.find(candidate => sameRowPath(candidate, rowIds))
+  return address ? clonePrototypeContract(toRaw(address)) : undefined
+}
+
+function semanticSource(trigger: MaterialSemanticTrigger, event: Event): {
+  address: PrototypeNodeAddressV1
+  binding: PrimaryUiActionBinding
+} | undefined {
+  const bindings = primaryBindings(trigger)
+  if (bindings.length === 0)
+    return undefined
+  const origin = eventOrigin(event)
+  const nodeElement = origin?.closest('[data-config-node-id]')
+  if (nodeElement && root.value?.contains(nodeElement)) {
+    const nodeId = nodeElement.getAttribute('data-config-node-id')
+    const binding = bindings.find(candidate => candidate.nodeId === nodeId)
+    const address = nodeId ? addressFor(nodeId, nodeElement) : undefined
+    return binding && address ? { address, binding } : undefined
+  }
+  if (trigger !== 'submit' || bindings.length !== 1)
+    return undefined
+  const binding = bindings[0]!
+  const address = addressFor(binding.nodeId)
+  return address ? { address, binding } : undefined
+}
+
+async function activateSemantic(trigger: MaterialSemanticTrigger, event: Event): Promise<void> {
+  if (disposed)
+    return
+  const source = semanticSource(trigger, event)
+  if (!source)
+    return
+  await props.prototype.activate({
+    sourceAddress: source.address,
+    interactionId: source.binding.id,
+  })
+}
+
+function handleActivate(event: MouseEvent): void {
+  const origin = eventOrigin(event)
+  if (
+    event.defaultPrevented
+    || event.button !== 0
+    || origin?.closest('[disabled], [aria-disabled="true"], [data-config-form-row-action]')
+  ) {
+    return
+  }
+  void activateSemantic('activate', event)
+}
+
+function handleSubmit(event: Event): void {
+  void activateSemantic('submit', event)
+}
+
+function projectionKey(address: PrototypeNodeAddressV1): string {
+  void rendererRevision.value
+  try {
+    return rendererRef.value?.getInstanceKey(address) ?? address.nodeId
+  }
+  catch {
+    return address.nodeId
+  }
+}
+
+function setNestedProperty(target: Record<string, unknown>, path: readonly string[], value: ModelJsonValue): void {
+  let current = target
+  path.forEach((segment, index) => {
+    if (index === path.length - 1) {
+      current[segment] = cloneJson(value)
+      return
+    }
+    const child = current[segment]
+    if (typeof child === 'object' && child !== null && !Array.isArray(child)) {
+      current = child as Record<string, unknown>
+      return
+    }
+    const next: Record<string, unknown> = {}
+    current[segment] = next
+    current = next
+  })
+}
+
+const reactionProjection = computed<RuntimeReactionProjection>(() => {
+  const states: RuntimeReactionProjection['states'] = {}
+  const projectedProps: RuntimeReactionProjection['props'] = {}
+  projection.value.forEach((entry) => {
+    const key = projectionKey(entry.address)
+    if (Object.keys(entry.states).length > 0)
+      states[key] = { ...entry.states }
+    if (entry.properties.length > 0) {
+      const target: Record<string, unknown> = {}
+      entry.properties.forEach(property => setNestedProperty(target, property.path, property.value))
+      projectedProps[key] = target
+    }
+  })
+  return { values: values.value, props: projectedProps, states, validate: [] }
+})
+
+function replaceValues(nextValues: ModelJsonObject): void {
+  values.value = cloneJson(toRaw(nextValues))
+}
+
+function replaceProjection(nextProjection: PrototypeInstanceProjectionV1): void {
+  projection.value = clonePrototypeContract(toRaw(nextProjection))
+}
+
+function focus(address: PrototypeNodeAddressV1): void {
+  void nextTick(() => {
+    if (disposed)
+      return
+    const instances = rendererRef.value?.listFieldInstances(address.nodeId) ?? []
+    const fieldIndex = instances.findIndex(instance => sameScope(instance.address.scope, address.scope))
+    const field = fieldIndex < 0 ? undefined : instances[fieldIndex]
+    const shells = Array.from(root.value?.querySelectorAll<HTMLElement>('[data-field]') ?? [])
+      .filter(element => element.dataset.field === field?.field)
+    const shell = fieldIndex < 0 ? undefined : shells[fieldIndex]
+    const target = shell?.querySelector<HTMLElement>(
+      'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? shell ?? root.value
+    target?.focus()
+  })
+}
+
+async function validateFields(addresses: readonly PrototypeNodeAddressV1[]): Promise<boolean> {
+  const renderer = rendererRef.value
+  if (!renderer)
+    return false
+  const results = await Promise.all(addresses.map(address => renderer.validateInstance(address)))
+  return results.every(Boolean)
+}
+
+function resolveChangedAddress(
+  payload: ConfigFormFieldChangePayload<ModelJsonObject>,
+): PrototypeNodeAddressV1 | undefined {
+  if (payload.address)
+    return clonePrototypeContract(toRaw(payload.address))
+  const candidates = rendererRef.value?.listFieldInstances()
+    .filter(instance => instance.field === payload.field) ?? []
+  const scope = payload.scope ?? []
+  return candidates.find(instance => sameScope(instance.address.scope, scope))?.address
+}
+
+function handleFieldChange(payload: ConfigFormFieldChangePayload<ModelJsonObject>): void {
+  const nextValues = cloneJson(toRaw(payload.values))
+  values.value = nextValues
+  const address = resolveChangedAddress(payload)
+  if (!address)
+    throw new Error('Generated Surface field change has no live node address: ' + payload.field + '.')
+  const runtime = createPrototypeInstanceRuntimeSnapshot(
+    props.prototype.surface,
+    nextValues,
+    props.prototype.createRowIdFactory(),
+  )
+  if (!runtime.success)
+    throw new Error(runtime.diagnostics.map(item => item.message).join('\\n'))
+  props.prototype.valuesChanged({
+    values: nextValues,
+    runtime: runtime.data,
+    originScope: clonePrototypeContract(toRaw(payload.scope ?? address.scope)),
+    changedAddresses: [clonePrototypeContract(toRaw(address))],
+  })
+}
+
+onMounted(() => {
+  unregister = props.prototype.registerController({
+    replaceValues: replacement => replaceValues(replacement.values),
+    replaceProjection,
+    validateSurface: () => rendererRef.value?.validate() ?? false,
+    validateFields,
+    focus,
+    dispose: () => {
+      disposed = true
+    },
+  })
+  rendererRevision.value += 1
+})
+
+onBeforeUnmount(() => {
+  disposed = true
+  unregister?.()
+})
 
 defineExpose(createConfigFormRendererExpose(rendererRef))
 </script>
 
 <template>
-  <main class="source-page">
-    <header class="source-header">
-      <p class="source-kicker">Generated Vue page</p>
-      <h1>{{ pageName }}</h1>
-      <p>Standalone source generated from the committed design model.</p>
-    </header>
+  <div
+    ref="root"
+    class="source-surface"
+    :data-surface-id="surfaceId"
+    :data-surface-kind="surfaceKind"
+    @click="handleActivate"
+    @submit="handleSubmit"
+  >
     <ConfigFormRenderer
       ref="renderer"
-      v-bind="rendererConfig"
       :model="model"
-      :data-source-host="dataSourceHost"
-      @submit="handleSubmit"
-    >
-      <button class="source-submit" type="submit">Save</button>
-    </ConfigFormRenderer>
-    <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
-  </main>
+      :reaction-projection="reactionProjection"
+      mode="preview"
+      v-bind="rendererConfig"
+      @field-change="handleFieldChange"
+    />
+  </div>
 </template>
 `
 }
 
-/** Generic projection only; field state, lifecycle, validation and data stay in the shared renderer. */
-export function standalonePageRuntimeSource(): string {
-  return `import type {
-  ConfigFormPageRuntimeConfiguration,
-  ConfigFormReaction,
-  ConfigFormReactionCondition,
-  ConfigFormScopedFieldDefinition,
-  ConfigFormValueScopeDefinition,
-} from './core'
-import type { ConfigFormFieldValidator, ConfigFormValues } from './headless'
+/** Static Surface projection; Prototype interactions remain owned by the shared Prototype Runtime. */
+export function standaloneSurfaceRuntimeSource(): string {
+  return `import type { ConfigFormFieldValidator } from './headless'
 import type {
   ConfigFormComponentRegistration,
   ConfigFormComponentRegistry,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
 } from './vue/renderer'
-import type { ConfigFormPageRuntimePlan } from './vue/runtime'
 import type { Component } from 'vue'
-import { evaluateConfigFormReactionCondition } from './reaction'
 import { defineComponent, h } from 'vue'
 
 interface SourceComponentBinding {
@@ -120,10 +379,7 @@ interface SourceNodeBase {
   component: string
   props: Record<string, unknown>
   extensions?: Record<string, unknown>
-  bindings: Record<string, unknown>
   placement: Record<string, unknown>
-  conditions?: Partial<Record<'disabled' | 'hidden' | 'readonly' | 'required' | 'visible', ConfigFormReactionCondition>>
-  reactions?: ConfigFormReaction[]
 }
 
 interface SourceFieldNode extends SourceNodeBase {
@@ -132,22 +388,28 @@ interface SourceFieldNode extends SourceNodeBase {
   label?: string
   defaultValue?: unknown
   validation?: unknown
-  optionSource?: ConfigFormPageRuntimePlan['optionBindings'][number]['source']
-  validateOn: Array<'blur' | 'change' | 'submit'>
+  validateOn: readonly ('blur' | 'change' | 'submit')[]
 }
 
 interface SourceLayoutNode extends SourceNodeBase {
   kind: 'layout'
-  slots: Record<string, SourceNode[]>
-  valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'>
+  slots: Readonly<Record<string, readonly SourceNode[]>>
+  valueScope?: {
+    kind: 'array' | 'object'
+    field: string
+    itemKey?: string
+    minItems?: number
+    maxItems?: number
+  }
 }
 
-type SourceNode = SourceFieldNode | SourceLayoutNode
+interface SourceElementNode extends SourceNodeBase {
+  kind: 'element'
+}
 
-interface SourcePageConfiguration {
-  id: string
-  name: string
-  route: string
+type SourceNode = SourceFieldNode | SourceLayoutNode | SourceElementNode
+
+interface SourceSurfaceConfiguration {
   form: {
     readonly?: boolean
     inline?: boolean
@@ -158,14 +420,10 @@ interface SourcePageConfiguration {
     labelWidth?: number
     responsive?: ConfigFormRendererProps['responsive']
   }
-  root: SourceNode[]
-  runtime: ConfigFormPageRuntimeConfiguration
-  scopedFields: ConfigFormScopedFieldDefinition[]
-  valueScopes: ConfigFormValueScopeDefinition[]
-  optionBindings: ConfigFormPageRuntimePlan['optionBindings']
+  root: readonly SourceNode[]
 }
 
-interface SourceFieldRuntimeValidation {
+interface SourceFieldValidation {
   validateOn: Array<'blur' | 'change' | 'submit'>
   required?: boolean
   requiredMessage?: string
@@ -174,10 +432,10 @@ interface SourceFieldRuntimeValidation {
 }
 
 interface CreateSourceRendererConfigInput {
-  bindings: Record<string, SourceComponentBinding>
-  page: SourcePageConfiguration
+  components: Readonly<Record<string, SourceComponentBinding>>
+  surface: SourceSurfaceConfiguration
   resolveComponent: (name: string) => Component | string
-  resolveFieldValidation: (nodeId: string) => SourceFieldRuntimeValidation
+  resolveFieldValidation: (nodeId: string) => SourceFieldValidation
 }
 
 function resolveSourceComponent(
@@ -260,32 +518,21 @@ function layoutStyle(node: SourceLayoutNode, render: SourceComponentBinding['ren
   return {}
 }
 
-function condition(source: ConfigFormReactionCondition | undefined) {
-  return source === undefined
-    ? undefined
-    : (values: ConfigFormValues) => evaluateConfigFormReactionCondition(source, values)
-}
-
-function extensions(node: SourceNode): Record<string, unknown> | undefined {
-  const bindingMetadata = Object.keys(node.bindings).length
-    ? { bindings: structuredClone(node.bindings) }
-    : undefined
-  const result = {
-    ...(node.extensions ? structuredClone(node.extensions) : {}),
-    ...(bindingMetadata ? { 'mx.low-code': bindingMetadata } : {}),
-  }
-  return Object.keys(result).length ? result : undefined
+function nodeExtensions(node: SourceNode): Record<string, unknown> | undefined {
+  if (!node.extensions || Object.keys(node.extensions).length === 0)
+    return undefined
+  return structuredClone(node.extensions)
 }
 
 function rendererNode(
   node: SourceNode,
-  bindings: Record<string, SourceComponentBinding>,
+  components: Readonly<Record<string, SourceComponentBinding>>,
   resolveFieldValidation: CreateSourceRendererConfigInput['resolveFieldValidation'],
 ): ConfigFormRendererNode {
-  const binding = bindings[node.component]
+  const binding = components[node.component]
   if (!binding)
     throw new Error('Missing generated component binding: ' + node.component)
-  const metadata = extensions(node)
+  const extensions = nodeExtensions(node)
   const common = {
     id: node.id,
     component: node.component,
@@ -293,11 +540,8 @@ function rendererNode(
       ...structuredClone(node.props),
       ...(node.kind === 'layout' ? { style: [node.props.style, layoutStyle(node, binding.render)] } : {}),
     },
-    ...(metadata ? { extensions: metadata } : {}),
-    ...(node.reactions ? { reactions: structuredClone(node.reactions) } : {}),
+    ...(extensions ? { extensions } : {}),
     ...(typeof node.placement.span === 'number' ? { span: node.placement.span } : {}),
-    ...(node.conditions?.visible ? { visible: condition(node.conditions.visible) } : {}),
-    ...(node.conditions?.hidden ? { hidden: condition(node.conditions.hidden) } : {}),
   }
   if (node.kind === 'layout') {
     return {
@@ -305,10 +549,13 @@ function rendererNode(
       ...(node.valueScope ? { valueScope: structuredClone(node.valueScope) } : {}),
       slots: Object.fromEntries(Object.entries(node.slots).map(([name, children]) => [
         name,
-        children.map(child => rendererNode(child, bindings, resolveFieldValidation)),
+        children.map(child => rendererNode(child, components, resolveFieldValidation)),
       ])),
     } as ConfigFormRendererNode
   }
+  if (node.kind === 'element')
+    return common as ConfigFormRendererNode
+
   const validation = resolveFieldValidation(node.id)
   return {
     ...common,
@@ -316,14 +563,10 @@ function rendererNode(
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
     validateOn: [...validation.validateOn],
-    ...(node.conditions?.required
-      ? { required: condition(node.conditions.required) }
-      : validation.required === undefined ? {} : { required: validation.required }),
+    ...(validation.required === undefined ? {} : { required: validation.required }),
     ...(validation.requiredMessage === undefined ? {} : { requiredMessage: validation.requiredMessage }),
     ...(validation.schema === undefined ? {} : { schema: validation.schema }),
     ...(validation.validator === undefined ? {} : { validator: validation.validator }),
-    ...(node.conditions?.disabled ? { disabled: condition(node.conditions.disabled) } : {}),
-    ...(node.conditions?.readonly ? { readonly: condition(node.conditions.readonly) } : {}),
     ...(binding.valueProp ? { valueProp: binding.valueProp } : {}),
     ...(binding.trigger ? { trigger: binding.trigger } : {}),
     ...(binding.blurTrigger ? { blurTrigger: binding.blurTrigger } : {}),
@@ -333,7 +576,7 @@ function rendererNode(
 export function createSourceRendererConfig(
   input: CreateSourceRendererConfigInput,
 ): Omit<ConfigFormRendererProps, 'model'> {
-  const components: ConfigFormComponentRegistry = Object.fromEntries(Object.entries(input.bindings).map(([key, binding]) => {
+  const components: ConfigFormComponentRegistry = Object.fromEntries(Object.entries(input.components).map(([key, binding]) => {
     const registration: ConfigFormComponentRegistration = {
       component: resolveSourceComponent(binding, input.resolveComponent),
       ...(binding.staticProps ? { props: structuredClone(binding.staticProps) } : {}),
@@ -343,26 +586,17 @@ export function createSourceRendererConfig(
     }
     return [key, registration]
   }))
-  const plan: ConfigFormPageRuntimePlan = Object.freeze({
-    optionBindings: Object.freeze(structuredClone(input.page.optionBindings)),
-    runtime: Object.freeze(structuredClone(input.page.runtime)),
-    valueSchema: Object.freeze({
-      scopedFields: Object.freeze(structuredClone(input.page.scopedFields)),
-      valueScopes: Object.freeze(structuredClone(input.page.valueScopes)),
-    }),
-  })
   return {
     components,
-    fields: input.page.root.map(node => rendererNode(node, input.bindings, input.resolveFieldValidation)),
-    plan,
-    ...(input.page.form.readonly === undefined ? {} : { readonly: input.page.form.readonly }),
-    ...(input.page.form.inline === undefined ? {} : { inline: input.page.form.inline }),
-    ...(input.page.form.columns === undefined ? {} : { columns: input.page.form.columns }),
-    ...(input.page.form.gap === undefined ? {} : { gap: input.page.form.gap }),
-    ...(input.page.form.fieldSpan === undefined ? {} : { fieldSpan: input.page.form.fieldSpan }),
-    ...(input.page.form.labelPosition === undefined ? {} : { labelPosition: input.page.form.labelPosition }),
-    ...(input.page.form.labelWidth === undefined ? {} : { labelWidth: input.page.form.labelWidth }),
-    ...(input.page.form.responsive === undefined ? {} : { responsive: structuredClone(input.page.form.responsive) }),
+    fields: input.surface.root.map(node => rendererNode(node, input.components, input.resolveFieldValidation)),
+    ...(input.surface.form.readonly === undefined ? {} : { readonly: input.surface.form.readonly }),
+    ...(input.surface.form.inline === undefined ? {} : { inline: input.surface.form.inline }),
+    ...(input.surface.form.columns === undefined ? {} : { columns: input.surface.form.columns }),
+    ...(input.surface.form.gap === undefined ? {} : { gap: input.surface.form.gap }),
+    ...(input.surface.form.fieldSpan === undefined ? {} : { fieldSpan: input.surface.form.fieldSpan }),
+    ...(input.surface.form.labelPosition === undefined ? {} : { labelPosition: input.surface.form.labelPosition }),
+    ...(input.surface.form.labelWidth === undefined ? {} : { labelWidth: input.surface.form.labelWidth }),
+    ...(input.surface.form.responsive === undefined ? {} : { responsive: structuredClone(input.surface.form.responsive) }),
   }
 }
 `

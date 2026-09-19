@@ -2,17 +2,13 @@
 import type { AntdRadioFieldEmits, AntdRadioFieldProps } from '../../../types'
 import { RadioGroup } from 'ant-design-vue'
 import { computed } from 'vue'
-import { useAntdVueResolvedOptions } from '../../../options'
-import AntdOptionState from '../AntdOptionState/index.vue'
+import { normalizeAntdVueOptions } from '../../../options'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<AntdRadioFieldProps>()
 
-const state = useAntdVueResolvedOptions(
-  computed(() => props.optionSource),
-  computed(() => props.options),
-)
+const options = computed(() => normalizeAntdVueOptions(props.options))
 
 const emit = defineEmits<AntdRadioFieldEmits>()
 </script>
@@ -23,9 +19,8 @@ const emit = defineEmits<AntdRadioFieldEmits>()
       v-bind="$attrs"
       data-designer-selection-target
       :value="value"
-      :options="state.options"
+      :options="options"
       @update:value="emit('update:value', $event)"
     />
-    <AntdOptionState :state="state" />
   </span>
 </template>

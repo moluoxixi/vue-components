@@ -7,7 +7,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
-import type { ConfigFormPageRuntimePlan } from '../../runtime'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import type {
   ConfigFormComponentRegistry,
   ConfigFormControlBindingResolver,
@@ -25,8 +25,8 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   /** read() must access Vue reactive state; write() must commit synchronously. */
   model: ConfigFormModelAdapter<TValues>
   fields: ConfigFormRendererNode<TValues>[]
-  /** Complete compiled page data/value execution input. */
-  plan?: ConfigFormPageRuntimePlan
+  /** Complete compiled Surface data/value execution input. */
+  plan?: ConfigFormSurfaceRuntimePlan
   dataSourceHost?: ConfigFormDataSourceHost
   components?: ConfigFormComponentRegistry
   defaultValues?: Partial<TValues>

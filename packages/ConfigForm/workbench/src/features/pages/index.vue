@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { PageManagerDialogEmits, PageManagerDialogProps } from './types'
+import type { SurfaceManagerDialogEmits, SurfaceManagerDialogProps } from './types'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick } from 'vue'
-import { PageManager } from './components'
+import { SurfaceManager } from './components'
 
-const props = defineProps<PageManagerDialogProps>()
+const props = defineProps<SurfaceManagerDialogProps>()
 
-const emit = defineEmits<PageManagerDialogEmits>()
+const emit = defineEmits<SurfaceManagerDialogEmits>()
 
-const dialogTitle = computed(() => createDesignerLocale(props.locale).t('pageManager.title', 'Pages'))
+const dialogTitle = computed(() => createDesignerLocale(props.locale).t('pageManager.title', 'Surfaces'))
 
 async function restoreCreationFocus(): Promise<void> {
   if (!props.returnFocusKey)
@@ -37,13 +37,13 @@ async function restoreCreationFocus(): Promise<void> {
     <template #header="{ titleId }">
       <span :id="titleId" class="sr-only">{{ dialogTitle }}</span>
     </template>
-    <PageManager
+    <SurfaceManager
       :project="project"
       :projects="projects"
       :busy="busy"
       :locale="locale"
       @close="emit('close')"
-      @create-page="emit('createPage')"
+      @create-surface="emit('createSurface')"
       @create-project="emit('createProject')"
       @open-project="emit('openProject', $event)"
       @action="emit('action', $event)"

@@ -1,7 +1,7 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
+import type { SurfaceCompilation } from '@moluoxixi/config-form-compiler'
 import type { DesignCommandPreview } from '@moluoxixi/config-form-designer'
 import type {
-  PageGraph,
+  SurfaceGraph,
   ProjectChangeSet,
   ProjectCommand,
   ProjectHistorySummary,
@@ -19,14 +19,14 @@ import type {
 
 export interface WorkbenchDesignSessionOptions {
   getAdapter: () => WorkbenchAdapter | undefined
-  getPageId: () => string
+  getSurfaceId: () => string
   getProjectSession: () => ProjectEditorSession | undefined
   getSnapshot: () => ProjectEditorSessionSnapshot | undefined
   setDiagnostic: (message: string) => void
 }
 
 export interface WorkbenchDesignPublication {
-  compilation?: PageCompilation
+  compilation?: SurfaceCompilation
   runtime: VueRuntimeCompileResult
 }
 
@@ -35,7 +35,7 @@ export interface WorkbenchDesignSession {
     execute: (command: ProjectCommand) => { changed: boolean, diagnostics: ReturnType<ProjectEditorSession['execute']>['diagnostics'] }
     preview: (command: ProjectCommand) => DesignCommandPreview | undefined
   }
-  readonly compilation: ShallowRef<PageCompilation | undefined>
+  readonly compilation: ShallowRef<SurfaceCompilation | undefined>
   readonly historyControl: ComputedRef<{
     canRedo: boolean
     canUndo: boolean
@@ -48,17 +48,17 @@ export interface WorkbenchDesignSession {
   readonly selectedIds: Ref<string[]>
   accept: (
     snapshot: ProjectEditorSessionSnapshot,
-    pageId: string,
+    surfaceId: string,
     changeSet?: ProjectChangeSet,
   ) => WorkbenchDesignPublication
   clear: () => void
   configure: (adapter: WorkbenchAdapter) => void
   dispose: () => void
-  getCompilation: (command?: ProjectCommand) => PageCompilation | undefined
+  getCompilation: (command?: ProjectCommand) => SurfaceCompilation | undefined
 }
 
 export interface CandidateProjection {
-  compilation: PageCompilation
-  graph: PageGraph
+  compilation: SurfaceCompilation
+  graph: SurfaceGraph
   runtime: VueRuntimeCompileResult
 }

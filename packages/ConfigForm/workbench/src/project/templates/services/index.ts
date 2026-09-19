@@ -7,7 +7,7 @@ export {
   registryLockFromSnapshot,
 } from './catalog'
 export {
-  instantiateTemplatePage,
   instantiateTemplateProject,
+  instantiateTemplateSurface,
   prepareTemplatePreview,
 } from './instantiate'

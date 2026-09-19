@@ -1,38 +1,45 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type {
-  ConfigFormDataSourceHost,
-  ConfigFormReactionProjection,
-} from '@moluoxixi/config-form-core'
+import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { WorkbenchAdapterId } from '../../adapters'
 import type {
-  PreviewRuntimeIdentity,
-  PreviewRuntimeStateEvent,
-  PreviewRuntimeSubmitEvent,
-  PreviewRuntimeSubmitResultEvent,
-} from '../../session'
-import type { RuntimeHostFieldChangePayload, RuntimeHostRuntimeStatePayload } from './protocol'
+  RuntimeHostExperienceSyncPayloadV7,
+  RuntimeHostInstanceStatePayloadV7,
+  PrototypeTransitionSnapshotV1,
+} from './protocol'
 
-export interface PreviewRuntimeFieldChangeEvent extends PreviewRuntimeIdentity, RuntimeHostFieldChangePayload {}
-
-export interface PreviewRuntimeHostFrameProps {
+/** Parent-side props for the Experience Runtime Host iframe. */
+export interface ExperienceRuntimeHostFrameProps {
   adapter: WorkbenchAdapterId
-  compilation: PageCompilation
-  dataSourceHost?: ConfigFormDataSourceHost
+  compilation: ProjectCompilation
   locale: string
   namespace?: string
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   revision: string
-  runtimeSessionKey: string
-  runtimeState: RuntimeHostRuntimeStatePayload
+  session: RuntimeHostExperienceSyncPayloadV7['session']
+  sessionId: string
   title: string
 }
 
-export interface PreviewRuntimeHostFrameEmits {
+export interface ExperienceRuntimeHostFrameEmits {
   error: [error: Error]
-  fieldChange: [payload: PreviewRuntimeFieldChangeEvent]
-  mounted: [event: PreviewRuntimeIdentity]
-  ready: [event: PreviewRuntimeIdentity]
-  runtimeState: [event: PreviewRuntimeStateEvent]
-  submit: [event: PreviewRuntimeSubmitEvent]
-  submitResult: [event: PreviewRuntimeSubmitResultEvent]
+  instanceState: [event: ExperienceRuntimeInstanceStateEvent]
+  mounted: [event: ExperienceRuntimeHostIdentityEvent]
+  ready: [event: ExperienceRuntimeHostIdentityEvent]
+  session: [event: ExperienceRuntimeSessionEvent]
 }
+
+export interface ExperienceRuntimeHostIdentityEvent {
+  hostId: string
+  projectId: string
+  revision: string
+  sessionId: string
+}
+
+export interface ExperienceRuntimeSessionEvent extends ExperienceRuntimeHostIdentityEvent {
+  transition: PrototypeTransitionSnapshotV1
+}
+
+export interface ExperienceRuntimeInstanceStateEvent extends ExperienceRuntimeHostIdentityEvent {
+  instanceId: string
+  payload: RuntimeHostInstanceStatePayloadV7
+}
+
+export type ExperienceRuntimeHostFrameCompilation = ProjectCompilation

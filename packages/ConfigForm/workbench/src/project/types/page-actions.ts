@@ -1,7 +1,7 @@
-export type ProjectPageAction
-  = | { type: 'page.rename', pageId: string, name: string }
-    | { type: 'page.route', pageId: string, route: string }
-    | { type: 'page.home', pageId: string }
-    | { type: 'page.move', pageId: string, index: number }
-    | { type: 'page.duplicate', pageId: string }
-    | { type: 'page.remove', pageId: string }
+export type ProjectSurfaceAction
+  = | { type: 'surface.rename', surfaceId: string, name: string }
+    | { type: 'surface.route', surfaceId: string, route: string }
+    | { type: 'surface.home', surfaceId: string }
+    | { type: 'surface.move', surfaceId: string, index: number }
+    | { type: 'surface.duplicate', surfaceId: string }
+    | { type: 'surface.remove', surfaceId: string }

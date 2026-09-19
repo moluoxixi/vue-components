@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
@@ -27,12 +27,16 @@ const componentRegistry = createComponentContractRegistry([{
   kind: 'field',
   props: [],
   bindings: [],
+  semanticTriggers: ['activate'],
+  stateProjectionProperties: [],
+  datasetBindings: [],
+  resourceBindings: [],
   slots: [],
   allowedParents: [],
   defaults: {},
 }], { adapter: 'test', version: '1' })
-const graph: PageGraph = {
-  version: 3,
+const graph: SurfaceGraph = {
+  version: 1,
   props: {},
   form: {},
   root: [
@@ -46,7 +50,7 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'first',
       props: {},
-      bindings: {},
+      datasetBindings: {},
     },
     second: {
       id: 'second',
@@ -54,7 +58,7 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'second',
       props: {},
-      bindings: {},
+      datasetBindings: {},
     },
   },
 }
@@ -76,7 +80,7 @@ function mountSurface() {
         redo,
         undo,
       },
-      pageId: 'home',
+      surfaceId: 'home',
       registry,
     },
     slots: {

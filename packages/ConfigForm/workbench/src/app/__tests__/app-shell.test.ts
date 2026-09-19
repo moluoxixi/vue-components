@@ -56,7 +56,7 @@ function createUi() {
   return {
     appearanceDrawerOpen: ref(false),
     closeAppearanceDrawer: vi.fn(),
-    closePageManager: vi.fn(),
+    closeSurfaceManager: vi.fn(),
     pageManagerOpen: ref(false),
     paletteFamily: ref('ink'),
     resolvedTheme: ref('dark'),
@@ -109,7 +109,7 @@ describe('workbench app shell', () => {
     await wrapper.get('[data-created]').trigger('click')
     await nextTick()
     expect(wrapper.find('[data-shell]').exists()).toBe(true)
-    expect(ui.closePageManager).toHaveBeenCalledOnce()
+    expect(ui.closeSurfaceManager).toHaveBeenCalledOnce()
     expect(document.activeElement).toBe(wrapper.get('[data-designer-entry]').element)
   })
 

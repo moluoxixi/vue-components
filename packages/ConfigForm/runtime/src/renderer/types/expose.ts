@@ -5,7 +5,7 @@ import type {
   ConfigFormFieldKey,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { ConfigFormPageRuntimeLoadOptions, ConfigFormPageRuntimeOptionState } from '../../runtime'
+import type { ConfigFormSurfaceRuntimeLoadOptions, ConfigFormSurfaceRuntimeOptionState } from '../../runtime'
 
 export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = ConfigFormValues>
   extends Pick<
@@ -47,7 +47,7 @@ export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = Con
   getVariables: () => Readonly<Record<string, unknown>>
   /** Latest started consumer for this source/scope; per-field state uses getOptionState. */
   getDataSourceState: (sourceId: string, options?: { scope?: ConfigFormScopePath }) => ConfigFormDataSourceState
-  loadDataSource: (sourceId: string, options?: ConfigFormPageRuntimeLoadOptions) => Promise<ConfigFormDataSourceState>
-  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormPageRuntimeOptionState | undefined
+  loadDataSource: (sourceId: string, options?: ConfigFormSurfaceRuntimeLoadOptions) => Promise<ConfigFormDataSourceState>
+  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormSurfaceRuntimeOptionState | undefined
   scrollToField: (field: ConfigFormFieldKey<TValues> | string) => void
 }

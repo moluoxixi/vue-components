@@ -1,12 +1,14 @@
-import type { NodeSubgraph, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { NodeSubgraph, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
 import { findDesignNode } from '../utils'
 
-function businessKey(node: PageNode): string | undefined {
-  return node.kind === 'field' ? node.field : node.valueScope?.field
+function businessKey(node: SurfaceNode): string | undefined {
+  if (node.kind === 'field')
+    return node.field
+  return node.kind === 'layout' ? node.valueScope?.field : undefined
 }
 
-function ownerAtTarget(graph: PageGraph, target: DesignerDropTarget): string | undefined {
+function ownerAtTarget(graph: SurfaceGraph, target: DesignerDropTarget): string | undefined {
   let parent = target.parentId ? graph.nodesById[target.parentId] : undefined
   while (parent) {
     if (parent.kind === 'layout' && parent.valueScope)
@@ -16,7 +18,7 @@ function ownerAtTarget(graph: PageGraph, target: DesignerDropTarget): string | u
   return undefined
 }
 
-export function createDesignBusinessKeyAllocator(graph: PageGraph) {
+export function createDesignBusinessKeyAllocator(graph: SurfaceGraph) {
   const keys = new Map<string | undefined, Set<string>>()
   const keysFor = (owner: string | undefined): Set<string> => {
     let used = keys.get(owner)
@@ -30,7 +32,7 @@ export function createDesignBusinessKeyAllocator(graph: PageGraph) {
     nodes: NodeSubgraph['nodesById'],
     ids: readonly string[],
     owner: string | undefined,
-    onKey: (node: PageNode, key: string, owner: string | undefined) => void,
+    onKey: (node: SurfaceNode, key: string, owner: string | undefined) => void,
   ): void {
     for (const id of ids) {
       const node = nodes[id]
@@ -69,7 +71,7 @@ export function createDesignBusinessKeyAllocator(graph: PageGraph) {
           const next = allocate(key, [owner], copy)
           if (node.kind === 'field')
             node.field = next
-          else if (node.valueScope)
+          else if (node.kind === 'layout' && node.valueScope)
             node.valueScope.field = next
         })
     },

@@ -1,4 +1,4 @@
-import type { PageGraph, PageNode, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, SurfaceNode, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
 import type { DesignerDropTarget, DesignNodeLocation } from '../../../graph'
 import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry, DesignerRuntimeRect } from '../types'
@@ -17,11 +17,11 @@ interface UseDesignerCanvasDropTargetsOptions {
   activeSource: () => DesignerDragSource | undefined
   cameraViewportRef: Ref<HTMLElement | undefined>
   candidateCommandForSource: (source: DesignerDragSource | undefined, target: DesignerDropTarget) => ProjectCommand | undefined
-  candidateNode: () => PageNode | undefined
+  candidateNode: () => SurfaceNode | undefined
   candidatePreview: DesignerCanvasProps['candidatePreview']
   dragController: DesignerDragController | undefined
-  graph: () => PageGraph
-  nodeForDragSource: (source: DesignerDragSource | undefined) => PageNode | undefined
+  graph: () => SurfaceGraph
+  nodeForDragSource: (source: DesignerDragSource | undefined) => SurfaceNode | undefined
   onGeometryChange: () => void
   registry: () => DesignerCanvasProps['registry']
   runtimeNodeGeometry: () => DesignerRuntimeNodeGeometry[]
@@ -32,7 +32,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
   let autoScrollFrame: number | undefined
   let autoScrollPoint: DesignerPointerPosition | undefined
 
-  function acceptedSlot(parent: PageNode, node: PageNode) {
+  function acceptedSlot(parent: SurfaceNode, node: SurfaceNode) {
     if (parent.kind !== 'layout')
       return undefined
     const material = options.registry().getMaterial(parent.component)
@@ -84,7 +84,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     for (let index = 0; index <= graph.root.length; index += 1)
       targets.push({ parentId: null, index })
 
-    const visit = (items: PageGraph['root']): void => {
+    const visit = (items: SurfaceGraph['root']): void => {
       for (const item of items) {
         const parent = graph.nodesById[item.nodeId]
         if (!parent || parent.kind !== 'layout')

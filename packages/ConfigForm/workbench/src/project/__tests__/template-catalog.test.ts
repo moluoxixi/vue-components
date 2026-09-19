@@ -1,4 +1,4 @@
-import type { RegistryContractSnapshot } from '@moluoxixi/config-form-model'
+import type { ProjectSurface, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
 import type { ProjectIdentityFactory } from '..'
 import type { ProjectTemplateCatalogEntry, TemplateCatalogProvider } from '../templates'
 import {
@@ -6,15 +6,17 @@ import {
   registryLockFingerprint,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
+import { loadWorkbenchAdapter } from '../../adapters'
 import {
   analyzeTemplateEligibility,
   builtInTemplateCatalogProvider,
   createTemplateCatalogService,
   filterTemplateCatalog,
   getProjectTemplateSeedFingerprint,
-  instantiateTemplatePage,
   instantiateTemplateProject,
+  instantiateTemplateSurface,
   parseProjectTemplateSeed,
+  prepareTemplatePreview,
 } from '../templates'
 import { createRegistryLockFixture } from './fixtures'
 
@@ -60,7 +62,7 @@ describe('template catalog', () => {
     ])
     expect(templates.map(template => template.manifest.category)).toEqual(['blank', 'starter', 'blank', 'starter'])
     expect(JSON.parse(JSON.stringify(await builtInTemplateCatalogProvider.list()))).toHaveLength(4)
-    expect(templates.filter(template => template.manifest.category === 'blank').every(template => Object.keys(template.page.graph.nodesById).length === 0)).toBe(true)
+    expect(templates.filter(template => template.manifest.category === 'blank').every(template => Object.keys(template.surface.graph.nodesById).length === 0)).toBe(true)
   })
 
   it('filters display metadata, tags, category, and provider without mutating entries', async () => {
@@ -96,37 +98,191 @@ describe('template catalog', () => {
       message: expect.stringContaining('must resolve to an array'),
     })
 
-    const unsafe = JSON.parse('{"manifest":{"id":"unsafe"},"page":{"__proto__":{"polluted":true}}}')
+    const unsafe = JSON.parse('{"manifest":{"id":"unsafe"},"surface":{"__proto__":{"polluted":true}}}')
     expect(parseProjectTemplateSeed(unsafe, 'test')).toMatchObject({ code: 'TEMPLATE_UNSAFE_KEY' })
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
   })
 
   it('rejects nested manifest extensions and removed event-domain fields at the catalog boundary', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
-    const extended = structuredClone({ manifest: source.manifest, page: source.page })
+    const extended = structuredClone({ manifest: source.manifest, surface: source.surface })
     Object.assign(extended.manifest.preview, { executable: 'not-part-of-the-contract' })
     expect(parseProjectTemplateSeed(extended, 'test')).toMatchObject({
       code: 'TEMPLATE_INVALID',
       path: 'manifest.preview',
     })
 
-    const unsupported = structuredClone({ manifest: source.manifest, page: source.page }) as unknown as {
+    const unsupported = structuredClone({ manifest: source.manifest, surface: source.surface }) as unknown as {
       manifest: typeof source.manifest
-      page: Record<string, unknown>
+      surface: Record<string, unknown>
     }
-    unsupported.page.flows = []
+    unsupported.surface.flows = []
     expect(parseProjectTemplateSeed(unsupported, 'test')).toMatchObject({
       code: 'TEMPLATE_SEED_INVALID',
-      path: `pagesById.${source.page.id}`,
+      path: 'surface',
     })
   })
+
+  it('parses and remaps Dialog and Drawer Surface templates without fabricating a Page project', async () => {
+    const source = (await builtIns()).find(item => item.manifest.id === 'element-blank')!
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    const shared = {
+      graph: structuredClone(source.surface.graph),
+      interactions: [],
+      name: 'Overlay seed',
+      outputs: [],
+      parameters: [],
+    }
+    const overlays: ProjectSurface[] = [{
+      ...shared,
+      id: 'dialog-seed',
+      kind: 'dialog',
+      presentation: {
+        kind: 'dialog',
+        title: 'Dialog seed',
+        width: { desktop: { value: 480, unit: 'px' } },
+        mask: true,
+        close: { escape: true, mask: true, button: true },
+      },
+    }, {
+      ...shared,
+      id: 'drawer-seed',
+      kind: 'drawer',
+      presentation: {
+        kind: 'drawer',
+        title: 'Drawer seed',
+        placement: 'right',
+        size: { desktop: { value: 40, unit: '%' } },
+        mask: true,
+        close: { escape: true, mask: true, button: true },
+      },
+    }]
+
+    for (const overlay of overlays) {
+      const parsed = parseProjectTemplateSeed({
+        manifest: {
+          ...structuredClone(source.manifest),
+          id: `element-${overlay.kind}-overlay`,
+          preview: {
+            ...structuredClone(source.manifest.preview),
+            surfaceId: overlay.id,
+          },
+        },
+        surface: overlay,
+      }, 'test')
+      expect(parsed).not.toHaveProperty('code')
+      if ('code' in parsed)
+        continue
+      const template = { providerId: 'test', ...parsed }
+      const instantiated = instantiateTemplateSurface(template, {
+        id: `created-${overlay.kind}`,
+        identityFactory: deterministicFactory(overlay.kind),
+        name: `Created ${overlay.kind}`,
+      })
+      expect(instantiated).toMatchObject({
+        id: `created-${overlay.kind}`,
+        kind: overlay.kind,
+        name: `Created ${overlay.kind}`,
+      })
+      expect(analyzeTemplateEligibility(template, {
+        registry: adapter.registrySnapshot,
+        target: 'surface',
+      })).toEqual({ eligible: true, diagnostics: [] })
+      expect(analyzeTemplateEligibility(template, {
+        registry: adapter.registrySnapshot,
+        target: 'project',
+      })).toMatchObject({
+        eligible: false,
+        diagnostics: [{ code: 'TEMPLATE_TARGET_KIND_INVALID' }],
+      })
+      expect(() => instantiateTemplateProject(template, {
+        name: `Invalid ${overlay.kind} project`,
+        registryLock: adapter.componentRegistry.lock,
+      })).toThrow('TEMPLATE_TARGET_KIND_INVALID')
+      expect(() => prepareTemplatePreview(template, adapter)).toThrow('TEMPLATE_TARGET_KIND_INVALID')
+    }
+  })
+
+  it('remaps a template self-reference and rejects external Surface targets', async () => {
+    const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
+    const selfReferencing = structuredClone(source)
+    const nodeId = selfReferencing.surface.graph.root[0]!.nodeId
+    selfReferencing.surface.interactions = [{
+      kind: 'primaryUiAction',
+      id: 'navigate-self',
+      nodeId,
+      trigger: 'activate',
+      action: {
+        kind: 'navigate',
+        targetSurfaceId: selfReferencing.surface.id,
+        parameters: [],
+      },
+    }]
+    const parsed = parseProjectTemplateSeed({
+      manifest: selfReferencing.manifest,
+      surface: selfReferencing.surface,
+    }, 'test')
+    expect(parsed).not.toHaveProperty('code')
+    if ('code' in parsed)
+      return
+    const instantiated = instantiateTemplateSurface({ providerId: 'test', ...parsed }, {
+      id: 'self-remapped',
+      identityFactory: deterministicFactory('self'),
+      name: 'Self remapped',
+      route: '/self-remapped',
+    })
+    expect(instantiated.interactions[0]).toMatchObject({
+      kind: 'primaryUiAction',
+      action: { kind: 'navigate', targetSurfaceId: 'self-remapped' },
+    })
+
+    const external = structuredClone(selfReferencing)
+    const action = external.surface.interactions[0]
+    if (!action || action.kind !== 'primaryUiAction' || action.action.kind !== 'navigate')
+      throw new TypeError('Template Surface reference fixture is invalid.')
+    action.action.targetSurfaceId = 'external-surface'
+    expect(parseProjectTemplateSeed({
+      manifest: external.manifest,
+      surface: external.surface,
+    }, 'test')).toMatchObject({
+      code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
+      path: 'surface',
+    })
+  })
+
+  it.each(['dataset', 'resource'] as const)(
+    'rejects standalone template %s references without an asset mapping',
+    async (kind) => {
+      const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
+      const seed = structuredClone(source)
+      const node = seed.surface.graph.nodesById['profile-role']!
+      if (kind === 'dataset') {
+        node.datasetBindings = {
+          options: {
+            datasetId: 'external-dataset',
+            projection: { kind: 'options', labelPath: ['label'], valuePath: ['value'] },
+          },
+        }
+      }
+      else {
+        node.resourceBindings = { media: { resourceId: 'external-resource' } }
+      }
+      expect(parseProjectTemplateSeed({
+        manifest: seed.manifest,
+        surface: seed.surface,
+      }, 'test')).toMatchObject({
+        code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
+        path: 'surface',
+      })
+    },
+  )
 
   it('accepts only the current manifest version and fingerprints seed content', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     for (const version of [undefined, 0, 2]) {
-      const input = structuredClone({ manifest: source.manifest, page: source.page }) as unknown as {
+      const input = structuredClone({ manifest: source.manifest, surface: source.surface }) as unknown as {
         manifest: Record<string, unknown>
-        page: ProjectTemplateCatalogEntry['page']
+        surface: ProjectTemplateCatalogEntry['surface']
       }
       if (version === undefined)
         delete input.manifest.version
@@ -141,7 +297,7 @@ describe('template catalog', () => {
     const first = getProjectTemplateSeedFingerprint(source)
     expect(getProjectTemplateSeedFingerprint(structuredClone(source))).toBe(first)
     const changed = structuredClone(source)
-    changed.page.name = 'Changed seed'
+    changed.surface.name = 'Changed seed'
     expect(getProjectTemplateSeedFingerprint(changed)).not.toBe(first)
   })
 
@@ -150,7 +306,7 @@ describe('template catalog', () => {
     const maximumProvider = {
       id: 'maximum',
       list: async () => Array.from({ length: 256 }, (_, index) => {
-        const seed = structuredClone({ manifest: source.manifest, page: source.page })
+        const seed = structuredClone({ manifest: source.manifest, surface: source.surface })
         seed.manifest.id = `maximum-${index}`
         seed.manifest.order = index
         return seed
@@ -171,11 +327,11 @@ describe('template catalog', () => {
       message: expect.stringContaining('256-template limit'),
     })
 
-    const maximumSeed = structuredClone({ manifest: source.manifest, page: source.page })
+    const maximumSeed = structuredClone({ manifest: source.manifest, surface: source.surface })
     maximumSeed.manifest.tags = Array.from({ length: 4096 }, (_, index) => `tag-${index}`)
     expect(parseProjectTemplateSeed(maximumSeed, 'test')).not.toHaveProperty('code')
 
-    const oversizedSeed = structuredClone({ manifest: source.manifest, page: source.page })
+    const oversizedSeed = structuredClone({ manifest: source.manifest, surface: source.surface })
     oversizedSeed.manifest.tags = Array.from({ length: 4097 }, (_, index) => `tag-${index}`)
     oversizedSeed.manifest.tags[0] = undefined as unknown as string
     expect(parseProjectTemplateSeed(oversizedSeed, 'test')).toMatchObject({
@@ -184,7 +340,7 @@ describe('template catalog', () => {
     })
 
     for (const order of [-1, 1.5]) {
-      const invalidOrder = structuredClone({ manifest: source.manifest, page: source.page })
+      const invalidOrder = structuredClone({ manifest: source.manifest, surface: source.surface })
       invalidOrder.manifest.order = order
       expect(parseProjectTemplateSeed(invalidOrder, 'test')).toMatchObject({
         code: 'TEMPLATE_INVALID',
@@ -199,7 +355,7 @@ describe('template catalog', () => {
     expect(analyzeTemplateEligibility(template, { registry, target: 'project' })).toEqual({ eligible: true, diagnostics: [] })
     const ineligible = analyzeTemplateEligibility(template, {
       registry,
-      target: 'page',
+      target: 'surface',
       targetLock: createRegistryLockFixture('antd-vue'),
     })
     expect(ineligible.eligible).toBe(false)
@@ -212,7 +368,7 @@ describe('template catalog', () => {
     expect(missing.diagnostics[0]).toMatchObject({ code: 'TEMPLATE_REGISTRY_COMPONENT_MISSING' })
   })
 
-  it('creates isolated project, page, node, and field identities from one immutable seed', async () => {
+  it('creates isolated project, Surface, node, and field identities from one immutable seed', async () => {
     const template = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const seedJson = JSON.stringify(template)
     const first = instantiateTemplateProject(template, {
@@ -225,16 +381,16 @@ describe('template catalog', () => {
       name: 'Second',
       registryLock: createRegistryLockFixture('element-plus'),
     })
-    const firstPage = first.pagesById[first.homePageId]!
-    const secondPage = second.pagesById[second.homePageId]!
+    const firstSurface = first.surfacesById[first.homeSurfaceId]!
+    const secondSurface = second.surfacesById[second.homeSurfaceId]!
     expect(first.id).not.toBe(second.id)
-    expect(firstPage.id).not.toBe(secondPage.id)
-    expect(Object.keys(firstPage.graph.nodesById)).not.toEqual(Object.keys(secondPage.graph.nodesById))
-    expect(Object.values(firstPage.graph.nodesById).map(node => node.kind === 'field' ? node.field : '')).not.toEqual(
-      Object.values(secondPage.graph.nodesById).map(node => node.kind === 'field' ? node.field : ''),
+    expect(firstSurface.id).not.toBe(secondSurface.id)
+    expect(Object.keys(firstSurface.graph.nodesById)).not.toEqual(Object.keys(secondSurface.graph.nodesById))
+    expect(Object.values(firstSurface.graph.nodesById).map(node => node.kind === 'field' ? node.field : '')).not.toEqual(
+      Object.values(secondSurface.graph.nodesById).map(node => node.kind === 'field' ? node.field : ''),
     )
-    firstPage.name = 'Changed'
-    expect(secondPage.name).toBe('Second')
+    firstSurface.name = 'Changed'
+    expect(secondSurface.name).toBe('Second')
     expect(JSON.stringify(template)).toBe(seedJson)
   })
 
@@ -243,7 +399,7 @@ describe('template catalog', () => {
     const registryLock = createRegistryLockFixture('element-plus')
     registryLock.components['element.input-number'] = {
       contractVersion: '1',
-      fingerprint: 'fnv1a:element-input-number',
+      fingerprint: 'fnv1a:00000004',
     }
     registryLock.fingerprint = registryLockFingerprint(registryLock.components)
 
@@ -264,16 +420,16 @@ describe('template catalog', () => {
       name: 'Readable identities',
       registryLock: createRegistryLockFixture('element-plus'),
     })
-    const page = project.pagesById[project.homePageId]!
+    const surface = project.surfacesById[project.homeSurfaceId]!
 
     expect(project.id).toMatch(/^element-profile-/)
-    expect(page.id).toMatch(new RegExp(`^${template.page.id}-`))
-    expect(Object.keys(page.graph.nodesById)).toEqual(expect.arrayContaining([
+    expect(surface.id).toMatch(new RegExp(`^${template.surface.id}-`))
+    expect(Object.keys(surface.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.stringMatching(/^profile-name-/),
       expect.stringMatching(/^profile-role-/),
       expect.stringMatching(/^profile-active-/),
     ]))
-    expect(Object.values(page.graph.nodesById)
+    expect(Object.values(surface.graph.nodesById)
       .filter(node => node.kind === 'field')
       .map(node => node.field)).toEqual(expect.arrayContaining([
       expect.stringMatching(/^name-/),
@@ -282,33 +438,34 @@ describe('template catalog', () => {
     ]))
   })
 
-  it('remaps typed condition and reaction references without adding event metadata', async () => {
+  it('remaps validation and Prototype Interaction references without adding event metadata', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const template = structuredClone(source)
-    const name = template.page.graph.nodesById['profile-name']!
-    const role = template.page.graph.nodesById['profile-role']!
+    const name = template.surface.graph.nodesById['profile-name']!
+    const role = template.surface.graph.nodesById['profile-role']!
     if (name.kind !== 'field' || role.kind !== 'field')
       throw new TypeError('Profile template field fixture is invalid.')
-    name.conditions = {
-      visible: {
-        kind: 'compare',
-        operator: 'eq',
-        left: { kind: 'field', field: 'role' },
-        right: { kind: 'literal', value: 'developer' },
+    template.surface.interactions = [
+      {
+        kind: 'stateProjection',
+        id: 'show-name',
+        target: { kind: 'state', nodeId: name.id, key: 'visible' },
+        value: { version: 1, ast: { kind: 'literal', value: true } },
       },
-    }
-    name.reactions = [{
-      id: 'sync-name',
-      when: { kind: 'literal', value: true },
-      then: [{ kind: 'setValue', target: 'role', value: { kind: 'field', field: 'name' } }],
-    }]
+      {
+        kind: 'valueChange',
+        id: 'sync-name',
+        dependencies: [name.id],
+        action: { kind: 'copy', sourceFieldId: name.id, targetFieldId: role.id },
+      },
+    ]
     name.validation = {
       version: 1,
       base: { type: 'string' },
       rules: [{ kind: 'compare', field: 'role', operator: 'neq' }],
     }
-    const remapped = instantiateTemplatePage(template, {
-      id: 'new-page',
+    const remapped = instantiateTemplateSurface(template, {
+      id: 'new-surface',
       identityFactory: deterministicFactory('mapped'),
       name: 'Mapped',
       route: '/mapped',
@@ -326,16 +483,21 @@ describe('template catalog', () => {
     if (mappedName?.kind !== 'field' || mappedRole?.kind !== 'field')
       throw new TypeError('Remapped profile fields are missing.')
     expect(mappedName.validation?.rules[0]).toMatchObject({ kind: 'compare', field: mappedRole.field })
-    expect(mappedName.conditions?.visible).toMatchObject({
-      kind: 'compare',
-      left: { field: mappedRole.field },
+    expect(remapped.interactions[0]).toMatchObject({
+      kind: 'stateProjection',
+      target: { nodeId: mappedName.id },
     })
-    expect(mappedName.reactions?.[0]?.id).not.toBe('sync-name')
-    expect(mappedName.reactions?.[0]?.then[0]).toMatchObject({
-      kind: 'setValue',
-      target: mappedRole.field,
-      value: { kind: 'field', field: mappedName.field },
+    expect(remapped.interactions[0]?.id).not.toBe('show-name')
+    expect(remapped.interactions[1]).toMatchObject({
+      kind: 'valueChange',
+      dependencies: [mappedName.id],
+      action: {
+        kind: 'copy',
+        sourceFieldId: mappedName.id,
+        targetFieldId: mappedRole.id,
+      },
     })
+    expect(remapped.interactions[1]?.id).not.toBe('sync-name')
     expect(role.field).toBe('role')
   })
 })

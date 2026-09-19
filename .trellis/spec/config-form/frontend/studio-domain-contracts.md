@@ -7,10 +7,13 @@ it before implementing or changing Surface assets, Dataset services, Prototype
 Interaction, Experience sessions, import/export, Preview transport, generated
 Source, or the related package boundaries.
 
-This is a target contract, not a statement that the types or packages below
-already exist. The current repository is Page-only. Each implementation task
-must switch its owned readers and writers atomically to these shapes; it must
-not expose a partial target API or a compatibility union.
+This document contains both current foundation contracts and later Studio
+contracts. Surface assets, ProjectDocument v6, Registry v3, compilation,
+transfer, Runtime Host v7, and Prototype Runtime session v1 are current.
+Dataset/Resource authoring workflows, the complete Studio asset/interaction UI,
+and the Source package remain later stages. Each implementation task switches
+its owned readers and writers atomically and must not expose a compatibility
+union.
 
 The target product creates JSON-safe demos. Production HTTP, authentication,
 asynchronous side effects, and business functions remain in exported/host
@@ -1171,7 +1174,7 @@ Studio ----------------------------------+
   +---- provider-neutral input --> Source
 ```
 
-- `@moluoxixi/config-form-prototype-runtime` is the planned shared owner for
+- `@moluoxixi/config-form-prototype-runtime` is the shared owner for
   page history, overlay instances, parameters/results, and UI-action reduction.
   Root and `/session` are DOM-free; `/vue` and `/vue/style` own Vue hosts,
   overlay integration, focus, and masks.
@@ -1184,12 +1187,12 @@ Studio ----------------------------------+
   Source and Designer do not depend on one another.
 - Studio is a private composition root. Public packages never import it.
 
-The contract task documents both planned packages but must not create empty
-package directories, manifests, placeholder exports, or release entries.
+The planned Source package must not be represented by an empty directory,
+manifest, placeholder export, or release entry before its implementation lands.
 
 ## 5. Version and Atomic-Cut Contract
 
-| Contract | Current baseline | Target identity | Owning implementation task |
+| Contract | Pre-cut baseline | Current / reviewed identity | Owning implementation task |
 | --- | --- | --- | --- |
 | ProjectDocument | `5` | `6` | surface-foundation |
 | PageGraph / SurfaceGraph | `PageGraph 3` | `SurfaceGraph 1` | surface-foundation |

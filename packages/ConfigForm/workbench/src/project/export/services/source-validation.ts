@@ -15,7 +15,7 @@ function collectFieldValidation(
         validateOn: [...node.validateOn],
       }
     }
-    else {
+    else if (node.kind === 'layout') {
       Object.values(node.slots).forEach(children => collectFieldValidation(children, target))
     }
   }

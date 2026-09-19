@@ -5,7 +5,6 @@ import type {
   ProjectTemplateCategory,
   TemplateEligibilityResult,
 } from '../../../project'
-import type { PreviewRuntimeStateEvent } from '../../../session'
 import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../../../features/templates'
 import type { TemplateEligibilityCacheEntry, TemplateEligibilityDisplayStatus } from './types'
 import {
@@ -32,7 +31,7 @@ import {
   prepareTemplatePreview,
 } from '../../../project'
 import WorkbenchAppearancePopover from '../WorkbenchAppearancePopover.vue'
-import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
+import DesignRuntimeHostFrame from '../DesignRuntimeHostFrame/index.vue'
 import { JsonImportPane, TemplateCatalogPanel } from './components'
 import { useTemplateViewport } from './composables'
 
@@ -74,7 +73,7 @@ const mobilePaneOptions = computed(() => [
   { label: locale.value.t('template.catalog', 'Catalog'), value: 'catalog' },
   { label: locale.value.t('template.details', 'Details'), value: 'details', disabled: !selectedTemplate.value },
 ])
-const registryContextFingerprint = computed(() => props.target === 'page'
+const registryContextFingerprint = computed(() => props.target === 'surface'
   ? controller.currentProject.value?.registryLock.fingerprint ?? 'missing-project-registry'
   : 'new-project')
 const eligibilityStatuses = computed<Readonly<Record<string, TemplateEligibilityDisplayStatus>>>(() => (
@@ -110,10 +109,10 @@ const filteredTemplates = computed(() => {
 
 const creationTitle = computed(() => props.target === 'project'
   ? locale.value.t('template.createProject', 'Create project')
-  : locale.value.t('template.createPage', 'Create page'))
+  : locale.value.t('template.createSurface', 'Create page'))
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('template.createProjectAction', 'Create project')
-  : locale.value.t('template.createPageAction', 'Create page'))
+  : locale.value.t('template.createSurfaceAction', 'Create page'))
 const createUnavailableReason = computed(() => {
   if (loadingPreview.value)
     return locale.value.t('template.checkingEligibility', 'Checking Registry requirements')
@@ -235,19 +234,8 @@ function handleEscape(event: KeyboardEvent): void {
   }
 }
 
-function handleRuntimeState(event: PreviewRuntimeStateEvent): void {
-  if (!preview.value || event.revision !== preview.value.revision)
-    return
-  preview.value = { ...preview.value, runtimeState: structuredClone(event.state) }
-}
-
-function handleFieldChange(payload: { field: string, values: Record<string, unknown> }): void {
-  if (!preview.value)
-    return
-  preview.value = {
-    ...preview.value,
-    runtimeState: { ...preview.value.runtimeState, values: structuredClone(payload.values) },
-  }
+function resolvePreviewCompilation() {
+  return preview.value?.compilation
 }
 
 async function prepareSelectedTemplate(): Promise<void> {
@@ -270,7 +258,7 @@ async function prepareSelectedTemplate(): Promise<void> {
     eligibility.value = analyzeTemplateEligibility(template, {
       registry: adapter.registrySnapshot,
       target: props.target,
-      ...(props.target === 'page' && controller.currentProject.value
+      ...(props.target === 'surface' && controller.currentProject.value
         ? { targetLock: structuredClone(controller.currentProject.value.registryLock) }
         : {}),
     })
@@ -306,7 +294,7 @@ async function createSelected(): Promise<void> {
     const name = templateName(template)
     const created = props.target === 'project'
       ? await controller.createProjectFromTemplate(template, name)
-      : await controller.createPageFromTemplate(template, name)
+      : await controller.createSurfaceFromTemplate(template, name)
     if (created)
       emit('created')
   }
@@ -581,20 +569,18 @@ onBeforeUnmount(() => {
               <span>{{ previewError }}</span>
               <ElButton native-type="button" @click="prepareSelectedTemplate">{{ locale.t('template.retryPreview', 'Retry preview') }}</ElButton>
             </div>
-            <PreviewRuntimeHostFrame
+            <DesignRuntimeHostFrame
               v-else-if="preview"
               :adapter="preview.adapter"
-              :compilation="preview.compilation"
+              :breakpoint="selectedTemplate?.manifest.preview.preferredViewport ?? 'desktop'"
+              :camera-scale="1"
               :locale="locale.locale"
+              :model-value="preview.values"
               :namespace="preview.namespace"
-              :reaction-projection="preview.reactionProjection"
-              :revision="preview.revision"
-              :runtime-session-key="preview.runtimeSessionKey"
-              :runtime-state="preview.runtimeState"
+              :resolve-compilation="resolvePreviewCompilation"
               :title="locale.t('template.previewTitle', '{name} Runtime preview', { name: templateName(selectedTemplate) })"
+              variant="canvas"
               @error="previewError = $event.message"
-              @field-change="handleFieldChange"
-              @runtime-state="handleRuntimeState"
             />
           </div>
 

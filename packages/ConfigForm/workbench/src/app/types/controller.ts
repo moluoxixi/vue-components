@@ -1,19 +1,22 @@
-import type { ConfigFormDataSourceHost, ConfigFormValueContext } from '@moluoxixi/config-form-core'
 import type { createDesignerLocale, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { PageGraph, ProjectPage, ProjectSummary } from '@moluoxixi/config-form-model'
+import type {
+  ProjectEmbeddedResourceRead,
+  ProjectSurface,
+  ProjectSummary,
+  SurfaceGraph,
+} from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
-import type { DataReferenceField } from '../../features/data'
 import type { ProjectEditorSessionSnapshot, ProjectRecoveryDraftSummary } from '../../project'
 import type { createWorkbenchDesignSession, createWorkbenchExportService, PreviewSession } from '../../session'
 import type { StudioLayerEntry } from '../../studio'
 import type { createWorkbenchCreationCommands } from '../services/controller-creation'
-import type { createWorkbenchPageCommands } from '../services/controller-page-commands'
+import type { createWorkbenchSurfaceCommands } from '../services/controller-page-commands'
 import type { createWorkbenchPersistenceCommands } from '../services/controller-persistence'
 import type { createWorkbenchProjectBinding } from '../services/controller-project-binding'
 
 type CreationCommands = ReturnType<typeof createWorkbenchCreationCommands>
-type PageCommands = ReturnType<typeof createWorkbenchPageCommands>
+type SurfaceCommands = ReturnType<typeof createWorkbenchSurfaceCommands>
 type PersistenceCommands = ReturnType<typeof createWorkbenchPersistenceCommands>
 type ProjectBinding = ReturnType<typeof createWorkbenchProjectBinding>
 
@@ -37,8 +40,8 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
 }
 
 export interface WorkbenchController extends
-  Pick<CreationCommands, 'createFromJsonImport' | 'createPageFromTemplate' | 'createProjectFromTemplate' | 'prepareJsonImport'>,
-  Pick<PageCommands, 'handlePageAction' | 'selectPageFromDesigner'>,
+  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProjectFromTemplate' | 'prepareJsonImport'>,
+  Pick<SurfaceCommands, 'handleSurfaceAction' | 'selectSurfaceFromDesigner'>,
   Pick<PersistenceCommands, | 'createNamedCheckpoint'
   | 'discardRecoveryDraft'
   | 'inspectProjectVersion'
@@ -55,22 +58,18 @@ export interface WorkbenchController extends
   componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']>
   configError: Ref<string>
   currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined>
-  currentGraph: ComputedRef<PageGraph | undefined>
-  currentPage: ComputedRef<ProjectPage | undefined>
-  currentPageId: Ref<string>
-  dataTestContext: ComputedRef<ConfigFormValueContext>
-  dataSourceHost: ConfigFormDataSourceHost
+  currentGraph: ComputedRef<SurfaceGraph | undefined>
+  currentSurface: ComputedRef<ProjectSurface | undefined>
+  currentSurfaceId: Ref<string>
   modelRevision: ComputedRef<number>
-  requestDataSource: NonNullable<ConfigFormDataSourceHost['request']>
   designerFieldNames: ComputedRef<string[]>
-  dataReferenceFields: ComputedRef<DataReferenceField[]>
   designerLayers: ComputedRef<StudioLayerEntry[]>
   dirty: ComputedRef<boolean>
-  executeProjectCommand: ProjectBinding['executeProjectCommand']
   getCurrentAdapterId: () => WorkbenchAdapterId
   initialized: Ref<boolean>
   localeOptions: ComputedRef<DesignerLocaleOptions>
   previewState: ComputedRef<{ label: string, tone: 'error' | 'live' }>
+  readEmbeddedResource: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
   registry: ComputedRef<WorkbenchAdapter['designerRegistry']>
   repositoryRevision: ComputedRef<number>
   recoveryDrafts: ShallowRef<WorkbenchRecoveryDraftSummary[]>

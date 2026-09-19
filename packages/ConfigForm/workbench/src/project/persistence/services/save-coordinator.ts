@@ -124,6 +124,11 @@ export function createProjectSaveCoordinator(
     }
 
     const document = assertProjectDocument(capture.document)
+    const embeddedWrites = capture.embeddedWrites.map(write => ({
+      resourceId: write.resourceId,
+      contentHash: write.contentHash,
+      bytes: new Uint8Array(write.bytes),
+    }))
     saving = true
     lastError = undefined
     publish()
@@ -131,6 +136,7 @@ export function createProjectSaveCoordinator(
       const committed = await repository.commit({
         commandId,
         document,
+        embeddedWrites,
         expectedRepositoryRevision: repositoryRevision,
         id: document.id,
         metadata,

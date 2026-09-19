@@ -1,86 +1,46 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { PageGraph } from '@moluoxixi/config-form-model'
-import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
-import type { ComputedRef, Ref, ShallowRef } from 'vue'
+import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  RuntimeHostFieldInstance,
-  RuntimeHostRuntimeStatePayload,
-  RuntimeHostSubmitResultPayload,
+  PrototypeDiagnostic,
+  PrototypeSessionV1,
+  SurfaceInstanceId,
+} from '@moluoxixi/config-form-prototype-runtime/session'
+import type { Ref, ShallowRef } from 'vue'
+import type {
+  ExperienceRuntimeHostIdentityEvent,
+  ExperienceRuntimeInstanceStateEvent,
+  ExperienceRuntimeSessionEvent,
+  RuntimeHostInstanceStatePayloadV7,
 } from '../../runtime-host'
-import type { PreviewFieldContracts } from '../../types'
-import type { PagePreviewProjection } from './projection'
 
-export type { PreviewFieldContract, PreviewFieldContracts, PreviewScopeContract } from '../../types'
-export type PreviewValidationState = Record<string, string[]>
-
-export interface LastReadyPreview {
-  readonly compilation: PageCompilation
-  readonly fieldContracts: PreviewFieldContracts
-  readonly runtimeState: RuntimeHostRuntimeStatePayload
-  readonly scopeKey: string
-}
+export type PreviewInstanceStateMap = Readonly<
+  Record<SurfaceInstanceId, RuntimeHostInstanceStatePayloadV7>
+>
 
 export interface PreviewSessionAcceptInput {
-  readonly adapter: string
-  readonly compilation?: PageCompilation
-  readonly editVersion: number
-  readonly graph: PageGraph
-  readonly pageId: string
-  readonly projectId: string
-  readonly repositoryRevision: number
-  readonly runtime: VueRuntimeCompileResult
-}
-
-export interface PreviewRuntimeIdentity {
-  readonly hostId: string
-  readonly pageId: string
-  readonly projectId: string
+  readonly compilation: ProjectCompilation
   readonly revision: string
-}
-
-export type PreviewRuntimeSubmitEvent = PreviewRuntimeIdentity & { requestId: string } & (
-  | { phase: 'request' }
-  | { phase: 'success', values: Record<string, unknown> }
-)
-
-export interface PreviewRuntimeStateEvent extends PreviewRuntimeIdentity {
-  readonly state: RuntimeHostRuntimeStatePayload
-}
-
-export interface PreviewRuntimeSubmitResultEvent extends PreviewRuntimeIdentity {
-  readonly result: RuntimeHostSubmitResultPayload
-}
-
-export interface PreviewSubmission {
-  readonly requestId: string
-  readonly fields: readonly RuntimeHostFieldInstance[]
-  readonly revisionKey: string
-  readonly status: 'blocked' | 'failure' | 'invalid' | 'success'
-  readonly submittedAt: number
-  readonly touched: readonly string[]
-  readonly validation: Readonly<PreviewValidationState>
-  readonly values: Record<string, unknown>
+  readonly session: PrototypeSessionV1
+  readonly sessionId: string
 }
 
 export interface PreviewSession {
-  readonly lastSubmission: ShallowRef<PreviewSubmission | undefined>
-  readonly projection: ShallowRef<PagePreviewProjection | undefined>
-  readonly revisionKey: ComputedRef<string>
-  readonly runtimeState: ComputedRef<RuntimeHostRuntimeStatePayload>
-  readonly touched: ShallowRef<readonly string[]>
-  readonly validation: ShallowRef<Readonly<PreviewValidationState>>
-  readonly values: Ref<Record<string, unknown>>
-  accept: (input: PreviewSessionAcceptInput) => PagePreviewProjection | undefined
-  clear: (reason?: unknown) => void
-  clearSubmission: () => void
+  readonly activeHost: ShallowRef<ExperienceRuntimeHostIdentityEvent | undefined>
+  readonly compilation: ShallowRef<ProjectCompilation | undefined>
+  readonly diagnostics: ShallowRef<readonly PrototypeDiagnostic[]>
+  readonly error: ShallowRef<Error | undefined>
+  readonly instanceStates: ShallowRef<PreviewInstanceStateMap>
+  readonly mounted: Ref<boolean>
+  readonly ready: Ref<boolean>
+  readonly revision: ShallowRef<string>
+  readonly session: ShallowRef<PrototypeSessionV1 | undefined>
+  readonly sessionId: ShallowRef<string>
+  accept: (input: PreviewSessionAcceptInput) => void
+  clear: () => void
   dispose: () => void
-  getCompilation: () => PageCompilation | undefined
-  getRuntimeModel: () => Record<string, unknown>
-  handleFieldChange: (payload: import('../../runtime-host').PreviewRuntimeFieldChangeEvent) => void
-  handleRuntimeMounted: (event: PreviewRuntimeIdentity) => void
-  handleRuntimeReady: (event: PreviewRuntimeIdentity) => void
-  handleRuntimeState: (event: PreviewRuntimeStateEvent) => void
-  handleSubmit: (event: PreviewRuntimeSubmitEvent) => void
-  handleSubmitResult: (event: PreviewRuntimeSubmitResultEvent) => void
-  updateRuntimeModel: (value: Record<string, unknown>) => void
+  getInstanceState: (instanceId: SurfaceInstanceId) => RuntimeHostInstanceStatePayloadV7 | undefined
+  handleInstanceState: (event: ExperienceRuntimeInstanceStateEvent) => void
+  handleRuntimeError: (error: unknown) => void
+  handleRuntimeMounted: (event: ExperienceRuntimeHostIdentityEvent) => void
+  handleRuntimeReady: (event: ExperienceRuntimeHostIdentityEvent) => void
+  handleSession: (event: ExperienceRuntimeSessionEvent) => void
 }

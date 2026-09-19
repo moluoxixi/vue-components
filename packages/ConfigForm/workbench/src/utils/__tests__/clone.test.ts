@@ -8,5 +8,7 @@ describe('cloneWorkbenchJson', () => {
     const clone = cloneWorkbenchJson(source)
     expect(clone).toEqual({ profile: { name: 'Ada' }, tags: ['designer'] })
     expect(clone).not.toBe(source)
+    expect(clone.profile).not.toBe(source.profile)
+    expect(clone.tags).not.toBe(source.tags)
   })
 })

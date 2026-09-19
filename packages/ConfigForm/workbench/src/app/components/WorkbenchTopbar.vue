@@ -37,7 +37,7 @@ const saveAccessibleLabel = computed(() => saveUnavailableReason.value
   : locale.value.t('save.menu', 'Save options'))
 let narrowTopbarQuery: MediaQueryList | undefined
 
-function updatePageManagerPlacement(event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void {
+function updateSurfaceManagerPlacement(event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void {
   pageManagerInOverflow.value = event.matches
 }
 
@@ -45,20 +45,20 @@ onMounted(() => {
   if (typeof window.matchMedia !== 'function')
     return
   narrowTopbarQuery = window.matchMedia('(max-width: 700px)')
-  updatePageManagerPlacement(narrowTopbarQuery)
-  narrowTopbarQuery.addEventListener('change', updatePageManagerPlacement)
+  updateSurfaceManagerPlacement(narrowTopbarQuery)
+  narrowTopbarQuery.addEventListener('change', updateSurfaceManagerPlacement)
 })
 
-onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updatePageManagerPlacement))
+onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updateSurfaceManagerPlacement))
 
-type MobileAction = 'newPage' | 'openAppearance' | 'openPages' | 'toggleLocale'
+type MobileAction = 'newSurface' | 'openAppearance' | 'openSurfaces' | 'toggleLocale'
 
 function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
     mobileMenuTrigger.value?.$el?.focus()
     switch (action) {
-      case 'newPage': emit('newPage', 'topbar-mobile-menu'); break
-      case 'openPages': emit('openPages'); break
+      case 'newSurface': emit('newSurface', 'topbar-mobile-menu'); break
+      case 'openSurfaces': emit('openSurfaces'); break
       case 'toggleLocale': emit('toggleLocale'); break
       case 'openAppearance': emit('openAppearance'); break
     }
@@ -92,19 +92,19 @@ function chooseExport(mode: WorkbenchExportMode): void {
       <strong>Workbench</strong>
     </div>
 
-    <div v-if="project && currentPage" class="workspace-context" :aria-label="locale.t('workbench.context', 'Current project and page')">
+    <div v-if="project && currentSurface" class="workspace-context" :aria-label="locale.t('workbench.context', 'Current project and Surface')">
       <span>{{ project.name }}</span>
-      <strong>{{ currentPage.name }}</strong>
+      <strong>{{ currentSurface.name }}</strong>
     </div>
 
     <div class="topbar-actions">
-      <WorkbenchCommandHint v-if="project" :label="locale.t('pages.manage', 'Manage pages')">
+      <WorkbenchCommandHint v-if="project" :label="locale.t('surfaces.manage', 'Manage Surfaces')">
         <ElButton
           native-type="button"
           class="mobile-page-manager-button"
-          :aria-label="locale.t('pages.manage', 'Manage pages')"
+          :aria-label="locale.t('surfaces.manage', 'Manage Surfaces')"
           circle
-          @click="emit('openPages')"
+          @click="emit('openSurfaces')"
         >
           <Files :size="17" aria-hidden="true" />
         </ElButton>
@@ -112,10 +112,10 @@ function chooseExport(mode: WorkbenchExportMode): void {
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-        <WorkbenchCommandHint :label="locale.t('pages.new', 'New page')">
-          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('pages.new', 'New page')" :title="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" @click="emit('newPage', 'topbar-new-page')">
+        <WorkbenchCommandHint :label="locale.t('surfaces.new', 'New Surface')">
+          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('surfaces.new', 'New Surface')" :title="locale.t('surfaces.new', 'New Surface')" data-create-trigger="topbar-new-surface" @click="emit('newSurface', 'topbar-new-surface')">
             <Plus :size="17" aria-hidden="true" />
-            <span class="topbar-command-label">{{ locale.t('pages.new', 'New page') }}</span>
+            <span class="topbar-command-label">{{ locale.t('surfaces.new', 'New Surface') }}</span>
           </ElButton>
         </WorkbenchCommandHint>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
@@ -200,8 +200,8 @@ function chooseExport(mode: WorkbenchExportMode): void {
               <ElDropdownItem v-if="project" class="topbar-status-item" disabled>
                 <span role="status">v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}</span>
               </ElDropdownItem>
-              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openPages"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
-              <ElDropdownItem command="newPage"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></ElDropdownItem>
+              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openSurfaces"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('surfaces.manage', 'Manage Surfaces') }}</span></ElDropdownItem>
+              <ElDropdownItem command="newSurface"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('surfaces.new', 'New Surface') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></ElDropdownItem>
               <ElDropdownItem command="openAppearance"><Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span></ElDropdownItem>
             </ElDropdownMenu>

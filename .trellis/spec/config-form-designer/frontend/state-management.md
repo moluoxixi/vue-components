@@ -1122,156 +1122,140 @@ surface compensating-delete failure instead of replacing the original error.
 
 ### 13.1 Scope / Trigger
 
-Apply this contract when changing Workbench Project/Page JSON import, strict
+Apply this contract when changing Workbench Project/Surface JSON import, strict
 version gates, creation-workspace diagnostics, isolated import preview, or the
-Project/Page JSON export scope. Import is an explicit Workbench ingress; it is
-not Repository compatibility.
+Project/Surface JSON export scope. Import is an explicit Workbench ingress; it
+is not Repository compatibility.
 
 ### 13.2 Signatures
 
 ```ts
 prepareConfigImport(options: {
   source: string
-  target: 'page' | 'project'
-  currentProject?: ProjectDocument
+  target: 'surface' | 'project'
+  currentProject?: ProjectDocumentV6
 }): Promise<PrepareConfigImportResult>
 
-preflightProjectDocument(
-  document: ProjectDocument,
-  registry: RegistryContractSnapshot,
-): void
+guardConfigImportSourceBytes(bytes: number): ConfigImportDiagnostic[]
+guardCanonicalConfigImportBudgets(payload: {
+  target: 'surface' | 'project'
+  envelope: unknown
+}): ConfigImportDiagnostic[]
 
-createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean>
-
-const PAGE_TRANSFER_VERSION = 2 as const
-
-interface PageTransferDocument {
-  kind: 'config-form-page'
-  version: typeof PAGE_TRANSFER_VERSION
-  registryLock: RegistryLock
-  page: ProjectPage
-}
+const PROJECT_TRANSFER_VERSION = 1 as const
+const SURFACE_TRANSFER_VERSION = 1 as const
+const MAX_IMPORT_SOURCE_BYTES = 96 * 1024 * 1024
 ```
 
 `PreparedConfigImport` is the only value allowed to cross from import analysis
-into creation. A prepared page carries the captured host project id and content
-hash; a prepared project carries only a current, validated `ProjectDocument`.
+into creation. A prepared Surface captures the host project identity/content
+hash and carries its complete remapped dependency closure plus copied embedded
+bytes. A prepared Project carries the validated remapped document and copied
+embedded bytes.
 
 ### 13.3 Contracts
 
-- Project creation accepts Project JSON only; page creation accepts one strict
-  `PageTransferDocument` only. Source, bare ProjectPage/PageGraph, Vue, ZIP,
-  HTML, JavaScript, Workspace Application,
-  old, missing, future, and unknown versions fail closed without shape guessing.
-- Project import accepts exactly Project v5. Page import requires
-  `kind: 'config-form-page'`, current Page transfer `version`, a current
-  Registry subset lock, and a `ProjectPage` whose graph is PageGraph v3. Project v4,
-  Page transfer v1, PageGraph v2, and every other non-current shape are rejected; no import
-  migration record, migration UI, migration parser, or migration callback exists.
-- Processing order is source bytes → `JSON.parse` → iterative structure/key
-  guard → exact version gate → current schema → exact adapter/Registry validation →
-  fresh identity → current schema → Compiler preview. Raw strings and guarded
-  `unknown` values never enter Runtime, Repository, or Project Command.
-- Budgets are 2 MiB UTF-8 source, depth 64, array length 4096, 100000 total
-  structural entries, 128 pages, and 4096 nodes. All depths reject
-  `__proto__`, `prototype`, and `constructor` with a stable code and JSON path.
-- Depth, array, and total-entry budgets apply to the guarded parsed JSON. Page
-  and node budgets apply after the current schema has parsed the canonical
-  payload. Do not count arbitrary `pagesById` / `nodesById` keys in opaque
-  metadata.
-- Project import requires an exact current Registry lock. Adapter version,
-  aggregate fingerprint, component key set, and every component
-  `contractVersion`/fingerprint must match the active Registry before identity
-  remapping. Do not migrate components or rebuild an incompatible source lock.
-  Page transfer `registryLock.components` contains exactly the distinct
-  components used by `page`; its aggregate fingerprint is computed over that
-  subset. Adapter/version and each component contract/fingerprint must exactly
-  match both the active Registry and corresponding entries in the target
-  project lock. Extra or missing subset keys are invalid.
-- Imported project/page/node/field/reaction identities are fresh. Only typed
-  references are rewritten. Project resources keep ids,
-  URIs, integrity, and opaque metadata inside the new project namespace.
-- Fresh identities remain within the Model identifier length limit even when a
-  valid source id already occupies the full limit. Production identity
-  generation keeps a bounded readable prefix plus UUID and monotonic sequence;
-  truncation must not make two generated identities equal.
-- Project creation uses Repository create/open/delete compensation. Page
-  preparation captures the host project id and content hash; both async result
-  publication and final `page.add` reject stale identity. One successful page
-  import is one Project Command and one Undo.
-- Final creation preflight compiles the complete candidate project through the
-  project-layer helper. A non-home-page compile failure blocks Repository
-  `create` and `page.add`; Controller must not import the Compiler directly.
-- JSON and Tree export scopes read either the whole Project or current Page
-  from one pinned `ProjectCompilation.snapshot.document`; copy, tree, and
-  download must not select different revisions. If the selected current Page
-  is absent from that pinned snapshot, show an unavailable state and disable
-  copy/download rather than exporting an empty file.
-- Current-page JSON export emits `PageTransferDocument` with `version: 2`, never a bare
-  `ProjectPage`. It derives the Registry subset lock from the same pinned
-  project snapshot and selected page used for JSON, Tree, copy, and download.
+- Project creation accepts only `ProjectTransferEnvelopeV1`; Surface creation
+  accepts only `SurfaceTransferEnvelopeV1`. Bare ProjectDocument, Surface,
+  SurfaceGraph, old Page transfer, Vue, ZIP, HTML, JavaScript, old, missing,
+  future, and mixed versions fail closed without shape guessing or migration.
+- Processing order is raw UTF-8 byte gate -> `JSON.parse` -> iterative
+  structure/key guard -> exact Project/Surface transfer discriminator ->
+  canonical Surface/node budget -> Model strict async Reader -> exact
+  adapter/Registry validation -> complete identity remap -> current Project
+  validation -> complete Project compilation preview.
+- The raw JSON safety ceiling is 96 MiB, leaving bounded envelope headroom above
+  the canonical base64 expansion of the Model's 50 MiB decoded Resource total.
+  Model remains the owner of Resource limits: 10 MiB per embedded Resource,
+  256 embedded Resources, and 50 MiB decoded total. Workbench must not impose a
+  smaller content limit that makes a Model-valid transfer impossible to import.
+- Structural budgets remain depth 64, array length 4096, and 100000 total
+  entries. Canonical budgets remain 128 Surfaces and 4096 nodes across the
+  transferred Surface set. Count nodes only at
+  `document.surfacesById[*].graph.nodesById` or
+  `surfacesById[*].graph.nodesById`; metadata keys with the same spelling are
+  opaque and excluded.
+- Project import requires the full exact active Registry lock. Surface transfer
+  carries exactly the closure component subset; adapter/version and every
+  component contract/fingerprint must match the target Registry. Neither path
+  rebuilds, widens, or repairs a source lock.
+- Fresh maps cover Surface, node, field, Dataset, Resource, and interaction/rule
+  identity before any reference is rewritten. The complete candidate is then
+  validated and compiled; failure publishes no metadata, bytes, history, or
+  selection.
+- Project creation uses Repository create/open/delete compensation. Surface
+  preparation captures the host project identity/content hash; stale analysis
+  cannot publish. One successful Surface import enters the current editor
+  session as one Model command and one Undo step.
+- Surface embedded bytes are copied into editor-session staging before control
+  returns to the caller. Recovery Draft reads staged bytes first. Autosave
+  commits the imported metadata and staged bytes atomically, and Undo restores
+  both the editor snapshot and persisted Repository state without reopening a
+  new session or clearing history.
+- JSON and source export scopes read the whole Project or current Surface from
+  one pinned `ProjectCompilation`; copy, tree, download, and ZIP must not select
+  different revisions. A missing selected Surface renders unavailable state
+  rather than exporting an empty file.
 
 ### 13.4 Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| Source exceeds a byte/structure budget or contains an unsafe key | Stable import diagnostic with an escaped JSON path; no adapter load or preview |
-| Project v4, Page transfer v1, or PageGraph v2 is supplied | Reject with `IMPORT_VERSION_UNSUPPORTED` at the version field; no preview or create action |
-| Bare ProjectPage/PageGraph or old/future Page transfer schema is supplied | Reject with format/version diagnostic; do not infer or wrap it |
-| Current PageGraph contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
-| Opaque metadata contains a property named `nodesById` | Preserve it without adding to the canonical node count |
-| Generated identity source is already 128 characters | Produce a unique, schema-valid bounded identity |
-| Any candidate page, including a non-home page, fails compilation | Reject before Repository create or Project Command |
-| Dynamic page/node/component/slot key contains punctuation | Escape the key in diagnostic JSON paths |
-| Project Registry lock differs from the active Registry in any identity field | Reject as Registry-incompatible; never repair and continue |
-| Page transfer Registry subset contains extra/missing keys or mismatched aggregate fingerprint | Reject as Registry-incompatible before identity remap |
-| Current Page is absent from the pinned export snapshot | Render unavailable status; disable JSON copy/download |
+| Raw JSON is 96 MiB / first byte above | Accept the source byte gate / `IMPORT_SOURCE_TOO_LARGE` before file read or parse |
+| Structure exceeds depth/array/entry budget or contains an unsafe key | Stable import diagnostic with escaped JSON path; no adapter load or preview |
+| Project/Surface transfer is old, future, missing, mixed, or Page-era | Reject at discriminator/version; no inference, migration, or wrapper |
+| Canonical closure has 128/129 Surfaces | Accept / `IMPORT_SURFACE_LIMIT_EXCEEDED` before Model Reader |
+| Canonical closure has 4096/4097 nodes | Accept / `IMPORT_NODE_LIMIT_EXCEEDED` before Model Reader |
+| Opaque metadata contains `surfacesById` or `nodesById` | Preserve it without adding to canonical counts |
+| Embedded Resource is 10 MiB / first byte above, or total is 50 MiB / first byte above | Accept / Model `resource_content_invalid`; publish no partial bytes |
+| Project Registry or Surface subset differs from active contracts | Reject before identity remap; never repair and continue |
+| Surface analysis becomes stale before create | Reject with unchanged document, bytes, history, and selection |
+| Surface import succeeds, then Undo runs once | Restore the pre-import editor and Repository state in the same session |
 
 ### 13.5 Good / Base / Bad Cases
 
-- Good: analyze a current Page transfer envelope, exact-match its Registry
-  subset, validate the PageGraph v3 4096-node budget, remap bounded identities,
-  compile the full host candidate, then submit one `page.add` Command.
-- Base: opaque resource metadata contains strings and keys that resemble Model
-  identities; preserve it unchanged and exclude it from page/node budgets.
-- Bad: migrate Project v3/Page v1, rebuild a stale Registry lock, count every
-  property named `nodesById`, append a UUID to an already maximum-length id,
-  compile only `homePageId`, or let a missing pinned Page download as empty JSON.
+- Good: read a current Surface closure, enforce exact canonical budgets, copy
+  bytes, remap every typed identity, compile the full candidate, then submit one
+  undoable command whose autosave atomically publishes metadata and bytes.
+- Base: a no-Resource Project transfer carries `embeddedContents: []` and
+  imports without invoking an embedded-byte reader.
+- Bad: retain a 2 MiB Workbench gate, count arbitrary metadata keys, import a
+  Page envelope, direct-commit and reopen after Surface import, or publish
+  metadata before bytes are available.
 
 ### 13.6 Tests Required
 
-- Exact and first-over-limit security boundaries, all unsafe keys, syntax,
-  current/old/future Project and Page transfer versions, bare-page rejection,
-  exact Registry subset identity failures, identity
-  references, canonical 4096/4097 node budgets, opaque metadata lookalikes,
-  escaped dynamic paths, and a maximum-length source identity.
-- Property-based Project/Page stringify→prepare→identity-normalized semantic
-  round trips over the complete document, plus arbitrary JSON proving no
+- Exact and first-over-limit raw/structure/Surface/node/Resource boundaries,
+  all unsafe keys, syntax, current/old/future/mixed transfer versions, and
+  canonical metadata lookalikes.
+- Project/Surface stringify -> prepare -> identity-normalized semantic round
+  trips, plus arbitrary JSON and hostile getter/Proxy inputs proving no
   non-diagnostic exception escapes.
-- Controller tests cover imported-project activation compensation and stale
-  page analyze→edit/switch→create with unchanged document/history/selection.
-  Final preflight must also reject a non-home-page compiler failure before any
-  Repository create or Project Command.
-- Component and browser tests cover paste/file, current-version diagnostics,
-  isolated preview, both adapters/locales/themes, 1440/900/390 overflow,
-  keyboard focus, and accessible names/live regions. Export tests cover a Page
-  disappearing from the pinned snapshot with copy/download disabled.
+- Controller tests assert stale analysis is inert; successful Surface import
+  increments history once; one Undo restores selection/document/Repository;
+  caller byte mutation cannot alter staging; recovery/autosave publish the
+  captured bytes atomically.
+- Component/browser tests cover paste/file, current-version diagnostics,
+  isolated preview, both adapters/locales/themes, responsive overflow,
+  keyboard focus, accessible names/live regions, and missing pinned Surface
+  export behavior.
 
 ### 13.7 Wrong vs Correct
 
 Wrong:
 
 ```ts
+if (sourceBytes > 2 * 1024 * 1024) reject()
 const nodes = countPropertiesNamed(parsed, 'nodesById')
-compileCanonicalPage({ snapshot, pageId: document.homePageId, registry })
-repository.create({ document })
+await repository.commit(imported)
+await openProject(imported.id)
 ```
 
 Correct:
 
 ```ts
-const canonical = validateCurrentContract(parsed)
-assertCanonicalImportBudget(canonical)
-preflightProjectDocument(canonical.document, adapter.registrySnapshot)
-repository.create({ document: canonical.document })
+guardConfigImportSourceBytes(sourceBytes)
+guardCanonicalConfigImportBudgets({ target, envelope })
+const prepared = await readCurrentTransfer(envelope)
+await editorSession.dispatch(createSurfaceImportCommand(prepared))
 ```

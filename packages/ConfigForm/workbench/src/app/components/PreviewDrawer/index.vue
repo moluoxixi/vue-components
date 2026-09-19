@@ -1,94 +1,46 @@
 <script setup lang="ts">
 import type {
-  PreviewRuntimeHostFrameExpose,
+  ExperienceRuntimeHostIdentityEvent,
 } from '../../../runtime-host'
-import type { PreviewRuntimeIdentity } from '../../../session'
 import type {
   PreviewDrawerEmits,
   PreviewDrawerProps,
 } from '../../../studio'
 import {
-  Check,
-  Clipboard,
   Maximize2,
   Minimize2,
   Monitor,
-  Send,
   Smartphone,
   Tablet,
-  Trash2,
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
 
 const props = defineProps<PreviewDrawerProps>()
 const emit = defineEmits<PreviewDrawerEmits>()
 
-const runtimeHost = useTemplateRef<PreviewRuntimeHostFrameExpose>('runtimeHost')
-const runtimeReady = ref(false)
 let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
 const dialogWidth = computed(() => 'min(calc(100vw - 24px), clamp(720px, 78vw, 1200px))')
-const submitUnavailableReason = computed(() => !props.compilation || !runtimeReady.value
-  ? locale.value.t('preview.submitUnavailable', 'Preview is not ready to submit')
-  : undefined)
-const submissionJson = computed(() => {
-  if (!props.lastSubmission)
-    return ''
-  try {
-    return JSON.stringify(props.lastSubmission.values, null, 2)
-  }
-  catch {
-    return locale.value.t('preview.resultUnavailable', 'Submission values cannot be formatted.')
-  }
-})
-const submissionValidation = computed(() => Object.entries(props.lastSubmission?.validation ?? {}))
-const submissionStatusLabel = computed(() => props.lastSubmission?.status === 'success'
-  ? locale.value.t('preview.submitSuccess', 'Submitted successfully')
-  : props.lastSubmission?.status === 'blocked'
-    ? locale.value.t('preview.submitBlocked', 'Submission blocked')
-    : props.lastSubmission?.status === 'failure'
-      ? locale.value.t('preview.submitFailure', 'Submission failed')
-      : locale.value.t('preview.submitInvalid', 'Validation failed'))
+const runtimeAvailable = computed(() => Boolean(
+  props.adapter
+  && props.compilation
+  && props.revision
+  && props.session
+  && props.sessionId,
+))
 const viewports = computed(() => [
   { icon: Monitor, id: 'desktop' as const, label: locale.value.t('preview.desktop', 'Desktop preview') },
   { icon: Tablet, id: 'tablet' as const, label: locale.value.t('preview.tablet', 'Tablet preview') },
   { icon: Smartphone, id: 'mobile' as const, label: locale.value.t('preview.mobile', 'Mobile preview') },
 ])
 
-function submitForm(): void {
-  runtimeHost.value?.submit()
-}
-
-async function copySubmission(): Promise<void> {
-  if (!props.lastSubmission)
-    return
-  if (!navigator.clipboard) {
-    emit('error', new Error(locale.value.t('preview.copyUnavailable', 'Clipboard access is unavailable.')))
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(submissionJson.value)
-    emit('message', locale.value.t('preview.copySuccess', 'Submission JSON copied.'))
-  }
-  catch (error) {
-    emit('error', error)
-  }
-}
-
-function handleRuntimeReady(event: PreviewRuntimeIdentity): void {
-  if (event.revision !== props.projection?.current.revisionKey)
-    return
-  runtimeReady.value = true
-  emit('ready', event)
-}
-
-function handleRuntimeError(error: Error): void {
-  runtimeReady.value = false
-  emit('error', error)
+function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
+  if (event.revision === props.revision && event.sessionId === props.sessionId)
+    emit('ready', event)
 }
 
 function guardDialogClose(done: () => void): void {
@@ -104,11 +56,6 @@ function handleDialogClose(): void {
     emit('close')
 }
 
-watch(
-  () => [props.adapter, props.compilation, props.projection?.current.revisionKey],
-  () => runtimeReady.value = false,
-)
-
 watch(() => props.open, (open, wasOpen) => {
   if (open) {
     returnFocus = document.activeElement instanceof HTMLElement
@@ -122,7 +69,6 @@ watch(() => props.open, (open, wasOpen) => {
     void nextTick(() => target.focus())
 })
 </script>
-
 
 <template>
   <ElDialog
@@ -141,163 +87,91 @@ watch(() => props.open, (open, wasOpen) => {
     close-on-press-escape
     :show-close="false"
     :before-close="guardDialogClose"
-    :aria-label="locale.t('preview.page', 'Page preview')"
+    :aria-label="locale.t('preview.page', 'Surface preview')"
     aria-labelledby="preview-dialog-title"
     @close="handleDialogClose"
   >
     <aside
-      v-if="open"
       class="preview-pane"
-      :class="{ 'is-expanded': expanded, 'is-result-empty': !lastSubmission }"
+      :class="{ 'is-expanded': expanded }"
       role="complementary"
-      :aria-label="locale.t('preview.page', 'Page preview')"
+      :aria-label="locale.t('preview.page', 'Surface preview')"
     >
       <header class="pane-header">
-      <div class="preview-heading">
-        <strong id="preview-dialog-title">{{ locale.t('preview.title', 'Preview') }}</strong>
-        <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
-          <span aria-hidden="true" />
-          {{ state.label }}
-        </span>
-      </div>
-      <div class="preview-toolbar">
-        <div class="preview-viewport-switch" role="group" :aria-label="locale.t('preview.viewport', 'Preview viewport')">
-          <WorkbenchCommandHint
-            v-for="item in viewports"
-            :key="item.id"
-            :label="item.label"
-          >
-            <button
-              type="button"
-              :aria-label="item.label"
-              :aria-pressed="viewport === item.id"
-              :title="item.label"
-              @click="emit('update:viewport', item.id)"
+        <div class="preview-heading">
+          <strong id="preview-dialog-title">{{ locale.t('preview.title', 'Preview') }}</strong>
+          <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
+            <span aria-hidden="true" />
+            {{ state.label }}
+          </span>
+        </div>
+        <div class="preview-toolbar">
+          <div class="preview-viewport-switch" role="group" :aria-label="locale.t('preview.viewport', 'Preview viewport')">
+            <WorkbenchCommandHint
+              v-for="item in viewports"
+              :key="item.id"
+              :label="item.label"
             >
-              <component :is="item.icon" :size="15" aria-hidden="true" />
+              <button
+                type="button"
+                :aria-label="item.label"
+                :aria-pressed="viewport === item.id"
+                :title="item.label"
+                @click="emit('update:viewport', item.id)"
+              >
+                <component :is="item.icon" :size="15" aria-hidden="true" />
+              </button>
+            </WorkbenchCommandHint>
+          </div>
+          <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
+            {{ locale.t('preview.exit', 'Exit preview') }}
+          </button>
+          <WorkbenchCommandHint :label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')">
+            <button
+              class="preview-expand-button"
+              type="button"
+              :title="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
+              :aria-label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
+              @click="emit('update:expanded', !expanded)"
+            >
+              <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
+              <Maximize2 v-else :size="16" aria-hidden="true" />
+            </button>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint :label="locale.t('preview.close', 'Close preview')">
+            <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" @click="emit('close')">
+              <X :size="16" aria-hidden="true" />
             </button>
           </WorkbenchCommandHint>
         </div>
-        <WorkbenchCommandHint :label="locale.t('preview.submit', 'Submit preview form')" :disabled-reason="submitUnavailableReason">
-          <button type="button" :aria-disabled="submitUnavailableReason ? 'true' : undefined" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="!submitUnavailableReason && submitForm()">
-            <Send :size="15" aria-hidden="true" />
-          </button>
-        </WorkbenchCommandHint>
-        <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
-          {{ locale.t('preview.exit', 'Exit preview') }}
-        </button>
-        <WorkbenchCommandHint :label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')">
-          <button
-            class="preview-expand-button"
-            type="button"
-            :title="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
-            :aria-label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
-            @click="emit('update:expanded', !expanded)"
-          >
-            <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
-            <Maximize2 v-else :size="16" aria-hidden="true" />
-          </button>
-        </WorkbenchCommandHint>
-        <WorkbenchCommandHint :label="locale.t('preview.close', 'Close preview')">
-          <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" @click="emit('close')">
-            <X :size="16" aria-hidden="true" />
-          </button>
-        </WorkbenchCommandHint>
-      </div>
       </header>
+
       <div class="preview-body">
-      <div class="preview-canvas">
-        <div class="preview-stage" :data-viewport="viewport">
-          <div v-if="compilation && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
-            <strong>{{ locale.t('preview.showingLastValid', 'Showing last valid preview') }}</strong>
-            <p v-if="configError">{{ configError }}</p>
-            <p
-              v-for="diagnostic in projection?.compileResult.success === false ? projection.compileResult.diagnostics : []"
-              :key="`${diagnostic.code}-${diagnostic.path.join('.')}`"
-            >
-              {{ diagnostic.message }}
-            </p>
-          </div>
-          <PreviewRuntimeHostFrame
-            v-if="adapter && compilation && projection"
-            :key="adapter"
-            ref="runtimeHost"
-            :adapter="adapter"
-            :compilation="compilation"
-            :data-source-host="dataSourceHost"
-            :locale="locale.locale"
-            :runtime-state="runtimeState"
-            :namespace="namespace"
-            :reaction-projection="reactionProjection"
-            :revision="projection?.current.revisionKey ?? ''"
-            :runtime-session-key="projection.current.runtimeSessionKey"
-            :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
-            @error="handleRuntimeError"
-            @field-change="emit('fieldChange', $event)"
-            @mounted="emit('runtimeMounted', $event)"
-            @ready="handleRuntimeReady"
-            @runtime-state="emit('runtimeState', $event)"
-            @submit="emit('submit', $event)"
-            @submit-result="emit('submitResult', $event)"
-          />
-          <div v-else class="preview-errors">
-            <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
-            <p v-for="diagnostic in projection?.compileResult.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">
-              {{ diagnostic.message }}
-            </p>
+        <div class="preview-canvas">
+          <div class="preview-stage" :data-viewport="viewport">
+            <PreviewRuntimeHostFrame
+              v-if="runtimeAvailable && adapter && compilation && session"
+              :key="`${adapter}:${sessionId}:${revision}`"
+              :adapter="adapter"
+              :compilation="compilation"
+              :locale="locale.locale"
+              :namespace="namespace"
+              :revision="revision"
+              :session="session"
+              :session-id="sessionId"
+              :title="locale.t('preview.runtimeFrame', 'Surface preview runtime')"
+              @error="emit('error', $event)"
+              @instance-state="emit('instanceState', $event)"
+              @mounted="emit('mounted', $event)"
+              @ready="handleRuntimeReady"
+              @session="emit('session', $event)"
+            />
+            <div v-else class="preview-errors" role="status">
+              <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
+              <p>{{ state.label }}</p>
+            </div>
           </div>
         </div>
-      </div>
-      <section class="preview-results" data-preview-results :aria-label="locale.t('preview.inspection', 'Preview results')">
-        <header class="preview-results-header">
-          <div>
-            <strong>{{ locale.t('preview.results', 'Submission results') }}</strong>
-            <span v-if="lastSubmission" class="preview-result-status" :data-status="lastSubmission.status" role="status" aria-live="polite">
-              <Check v-if="lastSubmission.status === 'success'" :size="13" aria-hidden="true" />
-              <span v-else aria-hidden="true">!</span>
-              {{ submissionStatusLabel }}
-            </span>
-          </div>
-          <div v-if="lastSubmission" class="preview-results-actions">
-            <button type="button" :title="locale.t('preview.copy', 'Copy submission JSON')" :aria-label="locale.t('preview.copy', 'Copy submission JSON')" @click="copySubmission">
-              <Clipboard :size="14" aria-hidden="true" />
-              <span>{{ locale.t('preview.copy', 'Copy') }}</span>
-            </button>
-            <button type="button" :title="locale.t('preview.clearResult', 'Clear submission result')" :aria-label="locale.t('preview.clearResult', 'Clear submission result')" @click="emit('clearSubmission')">
-              <Trash2 :size="14" aria-hidden="true" />
-              <span>{{ locale.t('preview.clearResult', 'Clear') }}</span>
-            </button>
-          </div>
-        </header>
-        <div id="preview-submission-panel">
-        <template v-if="lastSubmission">
-          <div class="preview-result-toolbar">
-            <span>{{ locale.t('preview.submittedAt', 'Submitted {time}', { time: new Date(lastSubmission.submittedAt).toLocaleTimeString(locale.locale) }) }}</span>
-            <button type="button" class="preview-submit-again" :disabled="!compilation || !runtimeReady" @click="submitForm">
-              <Send :size="13" aria-hidden="true" />
-              {{ locale.t('preview.submitAgain', 'Submit again') }}
-            </button>
-          </div>
-          <pre class="preview-result-json" data-preview-submission-json>{{ submissionJson }}</pre>
-          <div v-if="lastSubmission.touched.length > 0" class="preview-result-section">
-            <strong>{{ locale.t('preview.touched', 'Touched fields') }}</strong>
-            <span v-for="field in lastSubmission.touched" :key="field" class="preview-result-chip">{{ field }}</span>
-          </div>
-          <div v-if="submissionValidation.length > 0" class="preview-result-section preview-result-validation">
-            <strong>{{ locale.t('preview.validation', 'Validation') }}</strong>
-            <ul>
-              <li v-for="[field, errors] in submissionValidation" :key="field">
-                <span>{{ field }}</span>
-                <span>{{ errors.join(', ') }}</span>
-              </li>
-            </ul>
-          </div>
-        </template>
-        <p v-else class="preview-results-empty">
-          {{ locale.t('preview.noSubmission', 'No submission') }}
-        </p>
-        </div>
-      </section>
       </div>
     </aside>
   </ElDialog>

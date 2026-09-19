@@ -24,7 +24,9 @@ const pnpmCli = process.env.npm_execpath
 const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
 const temporaryRoots: string[] = []
+let coreTarball: string
 let rulesTarball: string
+let prototypeRuntimeTarball: string
 
 async function runPnpm(args: string[], cwd: string): Promise<string> {
   return new Promise<string>((resolvePromise, rejectPromise) => {
@@ -79,8 +81,18 @@ async function generatedProject(adapterId: 'antd-vue' | 'element-plus'): Promise
 beforeAll(async () => {
   const root = await mkdtemp(join(tmpdir(), 'config-form-rules-package-'))
   temporaryRoots.push(root)
+  coreTarball = resolve(root, 'core.tgz')
   rulesTarball = resolve(root, 'rules.tgz')
+  prototypeRuntimeTarball = resolve(root, 'prototype-runtime.tgz')
+  await runPnpm(
+    ['pack', '--out', coreTarball],
+    fileURLToPath(new URL('../../../../core/', import.meta.url)),
+  )
   await runPnpm(['pack', '--out', rulesTarball], fileURLToPath(new URL('../../../../../zod3-to-rule/', import.meta.url)))
+  await runPnpm(
+    ['pack', '--out', prototypeRuntimeTarball],
+    fileURLToPath(new URL('../../../../prototype-runtime/', import.meta.url)),
+  )
 })
 
 afterAll(async () => {
@@ -114,7 +126,11 @@ describe('canonical exported projects', () => {
       expect(manifest.dependencies['@moluoxixi/zod3-to-rule']).toBe('^0.1.2')
       const workspaceManifest = JSON.parse(await readFile(new URL('../../../../../../package.json', import.meta.url), 'utf8'))
       expect(manifest.packageManager).toBe(workspaceManifest.packageManager)
-      manifest.pnpm = { overrides: { '@moluoxixi/zod3-to-rule': `file:${rulesTarball.replaceAll('\\', '/')}` } }
+      manifest.pnpm = { overrides: {
+        '@moluoxixi/config-form-core': `file:${coreTarball.replaceAll('\\', '/')}`,
+        '@moluoxixi/config-form-prototype-runtime': `file:${prototypeRuntimeTarball.replaceAll('\\', '/')}`,
+        '@moluoxixi/zod3-to-rule': `file:${rulesTarball.replaceAll('\\', '/')}`,
+      } }
       await writeFile(packagePath, JSON.stringify(manifest, null, 2))
       const version = await runPnpm(['--version'], root)
       expect(`pnpm@${version}`).toBe(workspaceManifest.packageManager)
@@ -124,7 +140,10 @@ describe('canonical exported projects', () => {
       await runPnpm(['run', 'build'], root)
 
       const appSource = await readFile(resolve(root, 'src/App.vue'), 'utf8')
-      expect(appSource).not.toMatch(/ConfigForm|config-form|form\.config/)
+      expect(appSource).toContain(`from '@moluoxixi/config-form-prototype-runtime/vue'`)
+      expect(appSource).toContain('<PrototypeSurfaceHost')
+      expect(appSource).not.toContain('reducePrototypeSession')
+      expect(appSource).not.toContain('form.config')
       expect(existsSync(resolve(root, 'dist/index.html'))).toBe(true)
       const assets = resolve(root, 'dist/assets')
       const cssFiles = (await readdir(assets)).filter(path => path.endsWith('.css'))
