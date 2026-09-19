@@ -1166,3 +1166,26 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 47: 完成 ConfigForm 原始源码与绑定导出
+
+**Date**: 2026-09-20
+**Task**: 完成 ConfigForm 原始源码与绑定导出
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成独立 Source 包及只读 Viewer；默认导出原始 Vue 工程，另提供不含运行核心的 ConfigForm bindings；补齐校验、资源、交互投影、嵌套初始值和 Workbench 集成，并保留用户 JSON 导入导出改动未提交。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `038271fa` | (see git log) |
+| `7a04139c` | (see git log) |
+
+### Status
+
+[OK] **Completed**
