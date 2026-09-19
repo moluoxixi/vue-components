@@ -1,9 +1,9 @@
-import type { WorkspaceArchiveInput } from '../types'
+import type { SourceArchiveInput } from '../types'
 import { zip } from 'fflate'
 import { safeProjectSlug } from '../../utils'
 import { sourceFileBytes } from './file-content'
 
-export async function createWorkspaceArchive(input: WorkspaceArchiveInput): Promise<Uint8Array> {
+export async function createSourceArchive(input: SourceArchiveInput): Promise<Uint8Array> {
   const root = safeProjectSlug(input.name)
   const entries = Object.fromEntries(input.files.map(file => [
     `${root}/${file.path}`,

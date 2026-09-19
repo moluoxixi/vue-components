@@ -38,6 +38,9 @@ outside every persisted contract in this document.
 `SurfaceAsset` is not a Material. `SurfaceInstance` is not persisted. Dataset is
 not Runtime Data Source. Prototype Interaction is not a component event or
 business handler. Types and reference fields must preserve these distinctions.
+The production Runtime Data Source names an HTTP result `response` throughout
+its value-reference contract (`kind: 'response'`, `context.response`,
+`$response`, and `usesResponse`); the removed event spelling is not accepted.
 
 ## 3. Target Signatures
 
@@ -1279,7 +1282,6 @@ entries, architecture routing, generated-consumer gates, and release metadata.
 | Recovery Draft | `1` | `2` | surface-foundation |
 | Page transfer / Surface transfer | `Page 2` | `Surface 1` | surface-foundation |
 | Runtime Host protocol | `6` | `7` | surface-foundation |
-| Workbench export generator | `4.0.0` | `5.0.0` | surface-foundation; source-package moves ownership only |
 | Project transfer | absent | `1` | surface-foundation; studio-datasets supplies embedded content |
 | Dataset transfer | absent | `1` | studio-datasets |
 | Resource transfer | absent | `1` | studio-datasets |

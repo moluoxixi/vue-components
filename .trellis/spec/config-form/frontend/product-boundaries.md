@@ -87,6 +87,9 @@ Studio ----------------------------------+
   demonstrates local UI behavior without HTTP or host functions.
 - Source is a one-way handoff from Studio to runnable Vue/TypeScript. Edited
   source is not imported back into Designer.
+- The default handoff is `RawSourceFileSetV1`: readable Vue, Vue Router, and
+  target UI-library source with no ConfigForm dependency. The optional
+  `ConfigBindingFileSetV1` contains public ConfigForm binding configuration only.
 - Designer edits one current Surface in the target architecture. Studio owns
   project assets, persistence, Design/Experience switching, and host commands.
 
@@ -154,6 +157,8 @@ Studio ----------------------------------+
 - Source does not emit HTTP placeholders, handler stubs, string action refs,
   event metadata, or Flow plans. It preserves complete local demo behavior for
   accepted Source inputs.
+- Neither file-set kind contains an App/Router/session/reducer/overlay runtime
+  copy. ConfigForm bindings do not embed a second executable demo core.
 - The Source package owns separate provider-neutral component-resolver and async
   embedded-resource-reader inputs. Studio reads adapter metadata and Repository
   content and injects both implementations at its composition root. URL

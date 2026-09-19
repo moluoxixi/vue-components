@@ -89,6 +89,10 @@ Vue, Workbench state, or a mutable Registry.
 - Data Source `prepare/start/refresh/reset/cancelScope/stop` belongs to the Data
   runtime composable and normal form lifecycle. It never constructs a synthetic
   component or Data Source event.
+- An HTTP result enters value resolution only as `response`: references use
+  `kind: 'response'`, context uses `response`, expressions use `$response`, and
+  dependency metadata uses `usesResponse`. The removed `event/$event` response
+  contract fails closed; normal Vue listener `$event` remains unrelated.
 - Unmount stops owned work, disposes the controller, and suppresses late
   publication.
 - Target Studio Dataset is static, project-level, and runtime-readonly. It does

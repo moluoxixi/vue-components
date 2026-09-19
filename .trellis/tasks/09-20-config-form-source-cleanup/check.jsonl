@@ -1,0 +1,7 @@
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"检查 raw source/config bindings 分离且无旧 generator/viewer 回生"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查快照原子性、Source archive、下载与只读 Viewer 门禁"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查没有事件编辑、事件转发、handler registry 或运行核心复制"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查 SourceFileSet、response 语义、版本与失败原子性"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查 Core 公共 API、Changeset 和 package graph 一致性"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"检查旧 Workspace/generatorVersion/Config editor 合同已从当前规范清除"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查未留下双 archive API、兼容 alias 或重复测试所有权"}

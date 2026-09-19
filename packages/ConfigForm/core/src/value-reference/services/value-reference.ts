@@ -21,7 +21,7 @@ const REFERENCE_ROOTS: ReadonlyMap<string, 'field' | 'variable'> = new Map([
   ['$fields', 'field'],
   ['$variables', 'variable'],
 ])
-const REFERENCE_KINDS = new Set(['literal', 'field', 'variable', 'event', 'expression'])
+const REFERENCE_KINDS = new Set(['literal', 'field', 'variable', 'response', 'expression'])
 const FIELD_SCOPES = new Set<ConfigFormValueReferenceScope>(['current', 'parent', 'root'])
 
 interface TraversalState {
@@ -37,7 +37,7 @@ interface ExpressionReference {
 interface ExpressionAnalysis {
   ast: ConfigFormExpressionNode
   references: ExpressionReference[]
-  usesEvent: boolean
+  usesResponse: boolean
 }
 
 interface NormalizedRemap {
@@ -254,7 +254,7 @@ function parseReference(
           kind,
           variableId: readIdentity(values.get('variableId'), state, appendProperty(path, 'variableId'), depth + 1),
         }
-      case 'event':
+      case 'response':
         assertReferenceKeys(entries, ['kind', 'path'], path)
         return {
           kind,
@@ -299,12 +299,12 @@ function resolveReference(
         path,
         depth,
       )
-    case 'event': {
-      if (!Object.hasOwn(context, 'event'))
-        throw missingReference('event', reference.path.join('.'), path)
-      const resolution = readPath(context.event, reference.path)
+    case 'response': {
+      if (!Object.hasOwn(context, 'response'))
+        throw missingReference('response', reference.path.join('.'), path)
+      const resolution = readPath(context.response, reference.path)
       if (!resolution.found)
-        throw missingReference('event', reference.path.join('.'), path)
+        throw missingReference('response', reference.path.join('.'), path)
       return cloneResolvedValue(resolution.value, state, path, depth)
     }
     case 'expression':
@@ -347,17 +347,17 @@ function resolveExpression(
     }
   }
 
-  let event: unknown
-  if (analysis.usesEvent) {
-    if (!Object.hasOwn(context, 'event'))
-      throw missingReference('event', '$event', path)
-    event = cloneResolvedValue(context.event, state, path, depth)
+  let response: unknown
+  if (analysis.usesResponse) {
+    if (!Object.hasOwn(context, 'response'))
+      throw missingReference('response', '$response', path)
+    response = cloneResolvedValue(context.response, state, path, depth)
   }
 
   let value: unknown
   try {
     value = evaluateConfigFormExpression(analysis.ast, {
-      $event: event,
+      $response: response,
       $fields: fields,
       $variables: variables,
     })
@@ -396,7 +396,7 @@ function collectReference(
       })
       break
     case 'literal':
-    case 'event':
+    case 'response':
       break
   }
 }
@@ -420,7 +420,7 @@ function remapReference(
       return { kind: 'expression', source: printExpressionNode(transformed.node) }
     }
     case 'literal':
-    case 'event':
+    case 'response':
       return reference
   }
 }
@@ -445,7 +445,7 @@ function analyzeExpression(
   }
 
   const references: ExpressionReference[] = []
-  let usesEvent = false
+  let usesResponse = false
   const visit = (node: ConfigFormExpressionNode): void => {
     state.visits += 1
     if (state.visits > CONFIG_FORM_VALUE_MAX_VISITS) {
@@ -459,8 +459,8 @@ function analyzeExpression(
       case 'literal':
         return
       case 'identifier':
-        if (node.name === '$event') {
-          usesEvent = true
+        if (node.name === '$response') {
+          usesResponse = true
           return
         }
         if (REFERENCE_ROOTS.has(node.name))
@@ -479,8 +479,8 @@ function analyzeExpression(
             references.push({ id: node.property, kind })
             return
           }
-          if (node.object.name === '$event') {
-            usesEvent = true
+          if (node.object.name === '$response') {
+            usesResponse = true
             return
           }
         }
@@ -497,8 +497,8 @@ function analyzeExpression(
             references.push({ id: node.index.value, kind })
             return
           }
-          if (node.object.name === '$event') {
-            usesEvent = true
+          if (node.object.name === '$response') {
+            usesResponse = true
             if (node.index.kind === 'literal' && typeof node.index.value === 'string')
               assertSafePathSegment(node.index.value, path)
             else
@@ -528,13 +528,13 @@ function analyzeExpression(
         visit(node.alternate)
         return
       case 'call':
-        if (REFERENCE_ROOTS.has(node.callee) || node.callee === '$event')
+        if (REFERENCE_ROOTS.has(node.callee) || node.callee === '$response')
           throw dynamicExpressionReference(node.callee, path)
         node.args.forEach(visit)
     }
   }
   visit(ast)
-  return { ast, references, usesEvent }
+  return { ast, references, usesResponse }
 }
 
 function remapExpressionNode(

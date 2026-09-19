@@ -57,7 +57,46 @@ dialog behavior, and absence of Monaco from the Workbench initial static graph.
 
 ## Source Export Service Boundaries
 
-### Current ownership
+### 1. Scope / Trigger
+
+Apply this contract when changing Source generation integration, the export
+dialog/session, stale detection, copy, single-file download, or ZIP assembly.
+Workbench owns commands around a pinned export, not generation or source-code
+editing.
+
+### 2. Signatures
+
+Workbench is the authoritative owner of the in-memory export session:
+
+```ts
+interface ExportSnapshot {
+  readonly compilation: ProjectCompilation
+  readonly rawSource: RawSourceFileSetV1
+  readonly configBindings: ConfigBindingFileSetV1
+}
+
+interface SourceArchiveInput {
+  readonly files: readonly SourceFile[]
+  readonly name: string
+}
+```
+
+### 3. Contracts
+
+Snapshot freshness compares the complete `ProjectCompilation.key` and its
+committed `editVersion` or draft `baseEditVersion + draftId` origin. There is no
+generator-version identity: `SourceFileSetV1.version` owns the serialized file
+set contract, while an application-code update recreates the memory-only
+session. `sync()` may compare identities but must not compile; opening or
+explicitly refreshing Export builds both file sets before publishing either.
+Failure retains the previous complete snapshot and reports it as stale.
+
+Preview, copy, single-file download, and `createSourceArchive` /
+`downloadSourceArchive` read the same pinned file-set bytes. Text remains UTF-8;
+binary files remain canonical base64 and are decoded to fresh bytes. Archive
+roots use the safe project slug, filenames are stable, and object URLs are
+revoked only after the browser has had a task to consume the download. The old
+Workspace archive names are not aliases and must not be exported.
 
 The generator, `SourceFileSetV1`, file-tree model, and readonly
 `ConfigFormSourceViewer` belong to `@moluoxixi/config-form-source`.
@@ -83,11 +122,55 @@ The generator, `SourceFileSetV1`, file-tree model, and readonly
   editable Viewer are deleted; no wrapper, alias, deprecated export, or
   re-export remains.
 
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Current compilation is missing | Mark an existing snapshot stale and retain its files |
+| Compilation key, committed edit version, draft base version, or draft ID changes | Mark the snapshot stale without regenerating during `sync()` |
+| Either file-set generation fails | Publish neither result; retain the previous complete snapshot and expose the error |
+| File-set version/path/entry/content is invalid | Source returns diagnostics and Workbench publishes no partial snapshot |
+| A binary file is selected | Disable text copy and download the exact decoded bytes |
+| Archive name contains unsafe path characters | Use the safe project slug as the single archive root |
+| A removed generator-version or Workspace archive symbol appears | Fail the architecture gate; do not add an alias |
+
+### 5. Good / Base / Bad Cases
+
+- Good: one refresh builds `rawSource` and `configBindings` from the same
+  compilation, validates both, freezes them, and publishes them atomically.
+- Base: switching the selected file or output mode reads the pinned snapshot
+  without recompilation.
+- Bad: versioning an in-memory generator implementation, refreshing one output
+  independently, copying binary through a text getter, or restoring an old
+  Workspace wrapper.
+
+### 6. Tests Required
+
 Regression coverage includes Node import without DOM, deterministic
 generation for the same compilation/resolver, resolution failure with no
 partial files, installed generated-project typecheck/test/build, controlled
 Viewer selection, responsive layout, lazy Monaco, accessibility, and executed
-Experience/generated-project parity. String containment is not parity evidence.
+Experience/generated-project parity. It also independently covers committed
+and draft stale identity, atomic refresh failure, exact text/binary archive
+bytes, safe archive roots, deferred URL revocation, and the absence of old
+generator-version and Workspace archive symbols. String containment is not
+parity evidence.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+const rawSource = await generateVueSource(input)
+publish({ rawSource }) // ConfigForm bindings are still from an older compilation.
+```
+
+Correct:
+
+```ts
+const { rawSource, configBindings } = snapshot
+await downloadSourceArchive({ files: rawSource.files, name })
+```
 
 ---
 

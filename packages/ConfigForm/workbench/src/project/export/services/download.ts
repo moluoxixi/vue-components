@@ -1,7 +1,7 @@
 import type { SourceFile } from '@moluoxixi/config-form-source/generator'
-import type { DownloadSourceFileInput, WorkspaceArchiveInput } from '../types'
+import type { DownloadSourceFileInput, SourceArchiveInput } from '../types'
 import { safeProjectSlug } from '../../utils'
-import { createWorkspaceArchive } from './archive'
+import { createSourceArchive } from './archive'
 import { sourceFileBytes } from './file-content'
 
 function downloadBlob(blob: Blob, filename: string): string {
@@ -32,12 +32,12 @@ export function downloadSourceFile(input: DownloadSourceFileInput): string {
   return downloadBlob(sourceFileBlob(input.file, input.mime), input.filename)
 }
 
-async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): Promise<string> {
+async function downloadArchive(input: SourceArchiveInput, data: Uint8Array): Promise<string> {
   const filename = `${safeProjectSlug(input.name)}.zip`
   const bytes = Uint8Array.from(data)
   return downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename)
 }
 
-export async function downloadWorkspaceArchive(input: WorkspaceArchiveInput): Promise<string> {
-  return downloadArchive(input, await createWorkspaceArchive(input))
+export async function downloadSourceArchive(input: SourceArchiveInput): Promise<string> {
+  return downloadArchive(input, await createSourceArchive(input))
 }

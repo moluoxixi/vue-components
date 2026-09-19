@@ -8,9 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   buildExportSnapshot,
-  CONFIG_FORM_EXPORT_GENERATOR_VERSION,
   createExportSession,
-  createWorkspaceArchive,
+  createSourceArchive,
   isExportSnapshotStale,
   resolveExportSnapshotPath,
   sourceFileBytes,
@@ -46,10 +45,8 @@ describe('export snapshot', () => {
     const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
-    expect(snapshot.generatorVersion).toBe(CONFIG_FORM_EXPORT_GENERATOR_VERSION)
-    expect(snapshot.generatorVersion).toBe('source-file-set-v1')
-    expect(snapshot.rawSource).toMatchObject({ kind: 'raw-source', entry: 'src/main.ts' })
-    expect(snapshot.configBindings).toMatchObject({ kind: 'config-bindings', entry: 'src/bindings.ts' })
+    expect(snapshot.rawSource).toMatchObject({ version: 1, kind: 'raw-source', entry: 'src/main.ts' })
+    expect(snapshot.configBindings).toMatchObject({ version: 1, kind: 'config-bindings', entry: 'src/bindings.ts' })
     expect(Object.isFrozen(snapshot)).toBe(true)
     expect(Object.isFrozen(snapshot.rawSource.files)).toBe(true)
     expect(Object.isFrozen(snapshot.configBindings.files)).toBe(true)
@@ -67,7 +64,7 @@ describe('export snapshot', () => {
     expect(isExportSnapshotStale(snapshot, undefined)).toBe(true)
   })
 
-  it('treats compilation origin and generator version as snapshot identity', async () => {
+  it('treats committed and draft compilation origins as snapshot identity', async () => {
     const input = await fixture()
     const snapshot = await buildExportSnapshot(input)
     const revised = {
@@ -83,13 +80,10 @@ describe('export snapshot', () => {
       origin: { baseEditVersion: 8, draftId: 'draft-b', kind: 'draft' as const },
     } as ProjectCompilation
     const draftSnapshot = await buildExportSnapshot({ ...input, compilation: draft })
-    const nextGeneratorSnapshot = await buildExportSnapshot({ ...input, generatorVersion: '999.0.0' })
 
     expect(isExportSnapshotStale(snapshot, revised)).toBe(true)
     expect(isExportSnapshotStale(draftSnapshot, draft)).toBe(false)
     expect(isExportSnapshotStale(draftSnapshot, otherDraft)).toBe(true)
-    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation)).toBe(true)
-    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '999.0.0')).toBe(false)
   })
 
   it('decodes canonical binary files into fresh archive bytes', async () => {
@@ -104,7 +98,7 @@ describe('export snapshot', () => {
     exposed[1] = 1
 
     expect([...sourceFileBytes(file)]).toEqual([0, 127, 255])
-    const archive = unzipSync(await createWorkspaceArchive({
+    const archive = unzipSync(await createSourceArchive({
       files: [file],
       name: 'Binary snapshot',
     }))
@@ -118,7 +112,7 @@ describe('export snapshot', () => {
     if (page?.kind !== 'text')
       return
 
-    const archive = unzipSync(await createWorkspaceArchive({
+    const archive = unzipSync(await createSourceArchive({
       files: snapshot.rawSource.files,
       name: snapshot.compilation.ir.name,
     }))
@@ -160,20 +154,5 @@ describe('export snapshot', () => {
     expect(failed).toMatchObject({ success: false, error: 'generator failed' })
     expect(session.state.snapshot).toBe(pinned)
     expect(session.state.stale).toBe(true)
-  })
-
-  it('marks a pinned session stale when its generator changes', async () => {
-    const input = await fixture()
-    let generatorVersion: string = CONFIG_FORM_EXPORT_GENERATOR_VERSION
-    const session = createExportSession({
-      capture: () => input,
-      currentCompilation: () => input.compilation,
-      currentGeneratorVersion: () => generatorVersion,
-    })
-
-    expect((await session.refresh()).success).toBe(true)
-    expect(session.state.stale).toBe(false)
-    generatorVersion = '999.0.0'
-    expect(session.sync().stale).toBe(true)
   })
 })

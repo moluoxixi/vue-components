@@ -9,7 +9,6 @@ import type {
 export interface ExportSnapshot {
   readonly compilation: ProjectCompilation
   readonly configBindings: ConfigBindingFileSetV1
-  readonly generatorVersion: string
   readonly rawSource: RawSourceFileSetV1
 }
 
@@ -17,7 +16,6 @@ export interface BuildExportSnapshotInput {
   compilation: ProjectCompilation
   providerResolver: SourceProviderResolver
   resourceReader: SourceResourceReader
-  generatorVersion?: string
 }
 
 export interface ExportSessionState {
@@ -41,5 +39,4 @@ export interface CreateExportSessionOptions {
   build?: (input: BuildExportSnapshotInput) => Promise<ExportSnapshot>
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation: () => ProjectCompilation | undefined
-  currentGeneratorVersion?: () => string
 }

@@ -67,14 +67,14 @@ describe('config form data-source runtime', () => {
     })
   })
 
-  it('resolves the complete request through value references and maps the full response event', async () => {
+  it('resolves the complete request through value references and maps the full HTTP response', async () => {
     const endpoint = { value: '/orders' }
     const hostData = { items: [{ id: 7, name: 'Ada' }], meta: { total: 1 } }
     const request = vi.fn(async (_input: ConfigFormDataSourceHttpRequestInput, _signal: AbortSignal) => response(hostData))
     const runtime = createConfigFormDataSourceRuntime({
       host: { request },
       sources: [source({
-        mapping: { $ref: { kind: 'event', path: ['data', 'items'] } },
+        mapping: { $ref: { kind: 'response', path: ['data', 'items'] } },
         request: {
           url: { $ref: { kind: 'variable', variableId: 'endpoint' } },
           method: 'POST',
@@ -393,6 +393,24 @@ describe('config form data-source runtime', () => {
       host: {},
       sources: [source({ request: { url: new Date() as never } })],
     })).toThrowError(expect.objectContaining({ code: 'CONFIG_FORM_VALUE_INPUT_INVALID' }))
+
+    expect(() => createConfigFormDataSourceRuntime({
+      host: {},
+      sources: [source({ mapping: { $ref: { kind: 'event', path: ['data'] } } as never })],
+    })).toThrowError(expect.objectContaining({
+      code: 'CONFIG_FORM_VALUE_REFERENCE_INVALID',
+      path: 'sources[0].mapping.$ref.kind',
+    }))
+
+    expect(() => createConfigFormDataSourceRuntime({
+      host: {},
+      sources: [source({
+        mapping: { $ref: { kind: 'expression', source: '$event.data' } },
+      })],
+    })).toThrowError(expect.objectContaining({
+      code: 'CONFIG_FORM_VALUE_EXPRESSION_IDENTIFIER_UNTRACKABLE',
+      path: 'sources[0].mapping',
+    }))
 
     let deep: unknown = null
     for (let index = 0; index < 33; index += 1)

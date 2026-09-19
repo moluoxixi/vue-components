@@ -100,6 +100,9 @@ DOM；Viewer 桌面为左文件树/右源码，窄屏为 tree/code 切换，Mona
 `ConfigBindingFileSetV1` 只组合公开 ConfigForm adapter/model/config。两种文件集都不生成
 `src/runtime/**`，不复制 Compiler、Prototype Runtime、session reducer 或 overlay host。
 Workbench 只保留弹窗、刷新、复制、下载、ZIP 与通知等应用命令。
+其内存快照固定为 `ExportSnapshot { compilation, rawSource, configBindings }`，过期判定
+只比较完整 compilation key 与 committed/draft origin；文件集合同版本由
+`SourceFileSetV1.version` 持有，不再维护 Workbench generator 版本。
 
 ## 目标合同版本
 
@@ -116,7 +119,6 @@ Workbench 只保留弹窗、刷新、复制、下载、ZIP 与通知等应用命
 | IndexedDB manifest/entity codec  | `3`           | `4`              | Surface Foundation                                        |
 | Page transfer / Surface transfer | `Page 2`      | `Surface 1`      | Surface Foundation                                        |
 | Runtime Host protocol            | `6`           | `7`              | Surface Foundation                                        |
-| Workbench export generator       | `4.0.0`       | `5.0.0`          | Surface Foundation；Source 阶段仅迁移所有权               |
 | Project transfer                 | 不存在        | `1`              | Surface Foundation；Studio Datasets 提供 embedded content |
 | Dataset transfer                 | 不存在        | `1`              | Studio Datasets                                           |
 | Resource transfer                | 不存在        | `1`              | Studio Datasets                                           |

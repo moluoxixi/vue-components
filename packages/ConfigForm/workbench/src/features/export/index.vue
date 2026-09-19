@@ -8,8 +8,8 @@ import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import {
   createExportSession,
+  downloadSourceArchive,
   downloadSourceFile,
-  downloadWorkspaceArchive,
   resolveExportSnapshotPath,
 } from '../../project'
 import '@moluoxixi/config-form-source/viewer/style'
@@ -114,7 +114,7 @@ async function downloadBundle(): Promise<void> {
     return
   try {
     const suffix = props.mode === 'config' ? 'config-form-bindings' : 'vue-source'
-    const filename = await downloadWorkspaceArchive({
+    const filename = await downloadSourceArchive({
       name: `${current.compilation.ir.name}-${suffix}`,
       files: fileSet.files,
     })

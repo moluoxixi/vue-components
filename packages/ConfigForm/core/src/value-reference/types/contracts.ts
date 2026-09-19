@@ -6,8 +6,8 @@ export type ConfigFormValueReference
   = | { kind: 'literal', value: ConfigFormJsonValue }
     | { kind: 'field', nodeId: string, scope?: ConfigFormValueReferenceScope }
     | { kind: 'variable', variableId: string }
-    /** Data payload supplied while mapping a Data Source response. */
-    | { kind: 'event', path: string[] }
+    /** HTTP response supplied while mapping a Data Source result. */
+    | { kind: 'response', path: string[] }
     | { kind: 'expression', source: string }
 
 export interface ConfigFormValueReferenceWrapper {
@@ -28,8 +28,8 @@ export interface ConfigFormFieldResolution {
 export interface ConfigFormValueContext {
   fields?: Readonly<Record<string, unknown>>
   variables?: Readonly<Record<string, unknown>>
-  /** Current Data Source response payload; unrelated to component event forwarding. */
-  event?: unknown
+  /** Current HTTP response available while mapping a Data Source result. */
+  response?: unknown
   resolveField?: (
     nodeId: string,
     scope: ConfigFormValueReferenceScope,

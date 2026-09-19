@@ -116,7 +116,7 @@ Required regression coverage:
 - Every Provider selector or variable override remains below a themed Inspector scope.
 - Axe runs immediately after theme switching and reports zero WCAG 2 A/AA violations; tests must not wait for an unsafe
   color transition to finish.
-- Light Config export uses a light editor surface and readable text; Source Monaco follows the active IDE theme.
+- Light ConfigForm bindings export uses a light editor surface and readable text; Source Monaco follows the active IDE theme.
 - At 1440px, 900px, and 390px, Workbench root width does not overflow; narrow Designer Canvas and Preview runtime grids do
   not overflow their own containers.
 - At 900px, select a Canvas node before opening Preview, then interact with a real Preview provider control. The test must

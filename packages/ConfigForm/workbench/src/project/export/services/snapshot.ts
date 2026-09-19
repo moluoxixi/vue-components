@@ -22,8 +22,6 @@ import {
   generateVueSource,
 } from '@moluoxixi/config-form-source/generator'
 
-export const CONFIG_FORM_EXPORT_GENERATOR_VERSION = 'source-file-set-v1' as const
-
 function failureMessage(label: string, diagnostics: readonly { code: string, message: string }[]): string {
   const detail = diagnostics.map(item => `${item.code}: ${item.message}`).join('; ')
   return `${label} generation failed${detail ? `: ${detail}` : '.'}`
@@ -53,10 +51,6 @@ function freezeFileSet(fileSet: SourceFileSetV1): SourceFileSetV1 {
 }
 
 export async function buildExportSnapshot(input: BuildExportSnapshotInput): Promise<ExportSnapshot> {
-  const generatorVersion = input.generatorVersion ?? CONFIG_FORM_EXPORT_GENERATOR_VERSION
-  if (!generatorVersion.trim())
-    throw new Error('[config-form-workbench] export generator version is required')
-
   const generatorInput = {
     compilation: input.compilation,
     providerResolver: input.providerResolver,
@@ -74,7 +68,6 @@ export async function buildExportSnapshot(input: BuildExportSnapshotInput): Prom
   return Object.freeze({
     compilation: input.compilation,
     configBindings: freezeFileSet(bindingResult.data),
-    generatorVersion,
     rawSource: freezeFileSet(rawResult.data),
   })
 }
@@ -114,11 +107,9 @@ export function isSameCompilationOrigin(
 export function isExportSnapshotStale(
   snapshot: ExportSnapshot | undefined,
   current: ProjectCompilation | undefined,
-  currentGeneratorVersion: string = CONFIG_FORM_EXPORT_GENERATOR_VERSION,
 ): boolean {
   return !!snapshot && (
     !current
-    || snapshot.generatorVersion !== currentGeneratorVersion
     || !isSameCompilation(snapshot.compilation.key, current.key)
     || !isSameCompilationOrigin(snapshot.compilation.origin, current.origin)
   )
@@ -137,8 +128,6 @@ export function resolveExportSnapshotPath(
 
 export function createExportSession(options: CreateExportSessionOptions): ExportSession {
   const build = options.build ?? buildExportSnapshot
-  const currentGeneratorVersion = options.currentGeneratorVersion
-    ?? (() => CONFIG_FORM_EXPORT_GENERATOR_VERSION)
   const listeners = new Set<(state: ExportSessionState) => void>()
   let state: ExportSessionState = Object.freeze({ stale: false })
 
@@ -152,7 +141,6 @@ export function createExportSession(options: CreateExportSessionOptions): Export
     const stale = isExportSnapshotStale(
       state.snapshot,
       options.currentCompilation(),
-      currentGeneratorVersion(),
     )
     if (stale === state.stale)
       return state
@@ -172,7 +160,6 @@ export function createExportSession(options: CreateExportSessionOptions): Export
         stale: isExportSnapshotStale(
           snapshot,
           options.currentCompilation(),
-          currentGeneratorVersion(),
         ),
       })
       return { success: true, snapshot, state: next }
@@ -185,7 +172,6 @@ export function createExportSession(options: CreateExportSessionOptions): Export
         stale: isExportSnapshotStale(
           state.snapshot,
           options.currentCompilation(),
-          currentGeneratorVersion(),
         ),
       })
       return { success: false, error, state: next }

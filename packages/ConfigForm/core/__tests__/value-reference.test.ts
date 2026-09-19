@@ -23,7 +23,7 @@ function readValueError(run: () => unknown): ConfigFormValueReferenceError {
 }
 
 describe('config form value references', () => {
-  it('resolves recursive inputs, scoped fields, Data payload paths, and preserves null', () => {
+  it('resolves recursive inputs, scoped fields, Data Source response paths, and preserves null', () => {
     const resolveField = vi.fn((id: string, scope: string) => (
       id === 'title' && scope === 'parent'
         ? { found: true, value: { text: 'Parent' } }
@@ -32,12 +32,13 @@ describe('config form value references', () => {
     const input: ConfigFormValueInput = {
       title: { $ref: { kind: 'field', nodeId: 'title', scope: 'parent' } },
       variable: { $ref: { kind: 'variable', variableId: 'nullable' } },
-      eventId: { $ref: { kind: 'event', path: ['items', '0', 'id'] } },
+      responseId: { $ref: { kind: 'response', path: ['items', '0', 'id'] } },
+      responseTotal: { $ref: { kind: 'expression', source: '$response.meta.total' } },
       values: [false, 0, '', null],
     }
 
     const resolved = resolveConfigFormValueInput(input, {
-      event: { items: [{ id: 7 }] },
+      response: { items: [{ id: 7 }], meta: { total: 1 } },
       resolveField,
       variables: { nullable: null },
     })
@@ -45,7 +46,8 @@ describe('config form value references', () => {
     expect(resolved).toEqual({
       title: { text: 'Parent' },
       variable: null,
-      eventId: 7,
+      responseId: 7,
+      responseTotal: 1,
       values: [false, 0, '', null],
     })
     expect(resolveField).toHaveBeenCalledWith('title', 'parent')
@@ -166,7 +168,7 @@ describe('config form value references', () => {
     })).toEqual({ direct: 1, formula: '3field-old' })
   })
 
-  it('rejects removed Flow output references and expression roots', () => {
+  it('rejects removed Flow output and response-as-event contracts', () => {
     const direct = readValueError(() => collectConfigFormValueReferences(invalidInput({
       $ref: { kind: 'output', stepId: 'save' },
     })))
@@ -190,11 +192,27 @@ describe('config form value references', () => {
       code: 'CONFIG_FORM_VALUE_REMAP_INVALID',
       path: '$maps.outputs',
     })
+
+    const eventKind = readValueError(() => collectConfigFormValueReferences(invalidInput({
+      $ref: { kind: 'event', path: ['data'] },
+    })))
+    expect(eventKind).toMatchObject({
+      code: 'CONFIG_FORM_VALUE_REFERENCE_INVALID',
+      path: '$.$ref.kind',
+    })
+
+    const eventExpression = readValueError(() => collectConfigFormValueReferences({
+      $ref: { kind: 'expression', source: '$event.data' },
+    }))
+    expect(eventExpression).toMatchObject({
+      code: 'CONFIG_FORM_VALUE_EXPRESSION_IDENTIFIER_UNTRACKABLE',
+      path: '$',
+    })
   })
 
   it('diagnoses malformed, dynamic, untrackable, and unresolved expressions', () => {
     const dynamic = readValueError(() => collectConfigFormValueReferences({
-      $ref: { kind: 'expression', source: '$fields[$event.id]' },
+      $ref: { kind: 'expression', source: '$fields[$response.id]' },
     }))
     expect(dynamic).toMatchObject({
       code: 'CONFIG_FORM_VALUE_EXPRESSION_REFERENCE_DYNAMIC',

@@ -551,132 +551,25 @@ projectEditorSession.execute({
 Wrong: copy the remaining stale record into `node.bindings`, mix the repair with
 ordinary edits, or add a replacement value to `node.config.remove`.
 
-## 9. Readonly Export Snapshot Contract
+## 9. Source Export Ownership
 
-### 9.1 Scope / Trigger
+Designer owns neither source generation nor export-session state. It exposes a
+current `ProjectCompilation` through the Studio composition root and otherwise
+has no dependency on Source or Workbench.
 
-Apply this contract when changing Source/Config generation, the export dialog,
-single-file download, ZIP assembly, generator versions, or `WorkspaceFile`.
-Export is a reproducible-build boundary: every visible or downloaded artifact
-must belong to one exact editor snapshot and generator implementation.
+`@moluoxixi/config-form-source` owns `SourceFileSetV1`, deterministic raw Vue
+and ConfigForm binding generation, and the readonly Viewer. Workbench owns the
+pinned `ExportSnapshot`, stale detection, refresh, copy, file download, and ZIP
+commands. The authoritative snapshot and archive contract is maintained in
+`config-form-workbench/frontend/quality-guidelines.md`; do not duplicate it in
+Designer or add a generator version, Workspace file abstraction, editable
+source view, wrapper, alias, or compatibility path here.
 
-### 9.2 Signatures
-
-```ts
-interface ExportSnapshot {
-  readonly compilation: ProjectCompilation
-  readonly generatorVersion: string
-  readonly source: ExportFileSet
-  readonly config: ExportFileSet
-}
-
-interface CreateExportSessionOptions {
-  capture: () => BuildExportSnapshotInput | undefined
-  currentCompilation: () => ProjectCompilation | undefined
-  currentGeneratorVersion?: () => string
-}
-
-function isExportSnapshotStale(
-  snapshot: ExportSnapshot | undefined,
-  current: ProjectCompilation | undefined,
-  currentGeneratorVersion?: string,
-): boolean
-```
-
-### 9.3 Contracts
-
-- Snapshot identity includes `ProjectCompilation.key`, the complete committed
-  or draft `ProjectCompilation.origin`, and `generatorVersion`. A semantic key
-  match alone does not mean the authoring export is current.
-- `sync()` may compare identities but must not call `capture()` or compile the
-  whole project. Only opening or explicitly refreshing Export may generate
-  files.
-- Text and binary files are retained immutably. A binary `content` read returns
-  a defensive `Uint8Array` copy; mutating it cannot change later reads or ZIP
-  bytes.
-- File preview, copy, single-file download, and ZIP use the same pinned
-  `ExportFileSet`. Binary files are never coerced through a text getter.
-- Config source preserves `ProjectDocument.version`, `registryLock`, page
-  graph version/props, complete `SlotItem.placement`, node authoring metadata,
-  static props, bindings, validation, reactions, and Data configuration.
-  Runtime-compatible numeric `span` may also be promoted, but it does not
-  replace relation metadata. Generated files contain no handler stub, action
-  binding, event metadata, or action plan.
-- `__proto__`, `constructor`, and `prototype` are rejected by one shared Config
-  object-key guard in both generation and current Model parsing.
-- Object URLs are revoked on a later task after the anchor click. Synchronous
-  revocation is forbidden because browsers may not have consumed the URL yet.
-
-### 9.8 Feature Files and Barrel Rule
-
-Workbench and Designer follow the shared responsibility-based directory spec.
-A feature root contains its `index.ts`, optional `index.vue`, and named concern
-directories such as `types/`, `components/`, `composables/`, `state/`,
-`services/`, `schemas/`, `adapters/`, and `utils/`. Vue props/emits/expose/slots
-live under `types/`; they are not spread across the feature root or declared
-inline. Each present concern directory has one `index.ts`; unused concern
-directories are not created. Package roots re-export feature barrels and do not
-keep old subpath aliases. Architecture scans reject flat concern files,
+Workbench and Designer still follow the shared responsibility-based directory
+spec. Feature roots use named concern directories and one barrel per present
+concern; Vue props/emits/expose/slots live under `types/`. Package roots do not
+retain old subpath aliases, and architecture scans reject flat concern files,
 duplicate public names, and legacy/deprecated/migration/compat entry points.
-
-### 9.4 Validation & Error Matrix
-
-| Condition | Required result |
-| --- | --- |
-| Current compilation is missing | Existing snapshot is stale; retain its files |
-| Committed editVersion changes | Snapshot is stale even if semantic key is unchanged |
-| Draft base version or draftId changes | Snapshot is stale |
-| Generator version changes | Snapshot is stale |
-| Refresh generation fails | Preserve the previous complete snapshot and report the error |
-| Binary file is selected | Download exact bytes; text copy is disabled |
-| Unsafe Config object key appears at any depth | Fail generation with key and nested path |
-| Export entry path is absent | Reject the file set before publishing the snapshot |
-
-### 9.5 Good / Base / Bad Cases
-
-- Good: editing the model marks the open export stale, refresh atomically swaps
-  Source, Config, Tree, and ZIP to the new origin and generator version.
-- Base: switching files or Config Source/JSON/Tree views reads the existing
-  pinned snapshot without recompilation.
-- Bad: rebuilding only the selected file, pairing an old Config projection with
-  a new Source project, returning a retained `Uint8Array`, or serializing binary
-  content as an empty string.
-
-### 9.6 Tests Required
-
-- Unit: committed/draft origin and generator drift independently mark stale.
-- Unit: mutating the source buffer or a returned binary buffer cannot change a
-  subsequent read or archived bytes, including `0` and `255`.
-- Unit: text/binary Blob MIME and bytes, requested filename, and deferred URL
-  revocation are exact.
-- Unit: Config source preserves graph props, nested placement, Registry lock,
-  node metadata, bindings, validation, reactions, and Data configuration while
-  omitting handlers/event metadata/action plans; Babel parses every generated file.
-- Unit: all three unsafe keys fail in nested objects, `defineField`, and value
-  model generation.
-- Integration: Element Plus and Ant Design Vue standalone projects install,
-  type-check, and build from the pinned export.
-- Browser: Source/Config dialogs show a real tree and read-only Monaco, download
-  feedback succeeds, and the clean page has no warning/error logs.
-
-### 9.7 Wrong vs Correct
-
-Wrong:
-
-```ts
-const blob = new Blob([selectedFile.kind === 'text' ? selectedFile.content : ''])
-URL.revokeObjectURL(url)
-```
-
-Correct:
-
-```ts
-downloadWorkspaceFile({
-  file: snapshot.source.files[selectedPath]!,
-  filename: selectedPath.split('/').at(-1)!,
-})
-// The shared helper copies binary bytes and revokes the URL asynchronously.
-```
 
 ## 10. RuntimeHost Preview State Synchronization
 

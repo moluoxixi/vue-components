@@ -53,4 +53,11 @@ Data Source Runtime 解析声明式请求、依赖和响应映射，通过宿主
 
 value reference 可读取字段、variables、Data Source 响应映射上下文和安全表达式。Runtime 消费这些纯合同，但 Core 不读取 Vue 组件、DOM、Designer 文档或 Workbench 状态。
 
+Data Source 响应只通过 `response` 上下文暴露。直接路径引用使用 `kind: 'response'`，表达式使用 `$response`；旧 `kind: 'event'` 与 `$event` 不再接受：
+
+```ts
+const items = { $ref: { kind: 'response', path: ['data', 'items'] } }
+const total = { $ref: { kind: 'expression', source: '$response.data.total' } }
+```
+
 复杂组件事件不属于 Core。宿主直接在运行时 config 的 `props.onX` 中维护普通 Vue/TypeScript 函数。

@@ -1,0 +1,7 @@
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"执行双产物、无运行核心复制、Viewer 与 Workbench 所有权硬边界"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"执行 Source 快照、下载、Monaco 懒加载与 Workbench 组合根合同"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"执行 Demo Studio 无事件编排、程序员接管逻辑与源码单向交付边界"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"执行 SourceFileSet v1、双输出、诊断及 Data Source response 数据流合同"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"执行 Core 公开合同、包依赖方向和 current-contract-only 规则"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"移除 Designer 中过时的 Workspace 导出与 generatorVersion 规范"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对 Core response、Source generator、Workbench snapshot 和下载的跨层数据流"}

@@ -687,10 +687,9 @@ function mappingContext(
   response: ConfigFormDataSourceHttpRequestOutput,
 ): ConfigFormValueContext {
   return {
-    // `$event` is the current HTTP response payload for Data mapping only.
-    event: cloneRuntimeData(response, '$event'),
     fields: context.fields,
     resolveField: context.resolveField,
+    response: cloneRuntimeData(response, '$response'),
     variables: context.variables,
   }
 }

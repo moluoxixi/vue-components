@@ -154,7 +154,6 @@ SURFACE_TRANSFER_VERSION = 1
 CANONICAL_PROJECT_IR_VERSION = 5
 CONFIG_FORM_COMPILER_VERSION = '6.0.0'
 PROJECT_ENTITY_CODEC_VERSION = 4
-CONFIG_FORM_EXPORT_GENERATOR_VERSION = '5.0.0'
 RUNTIME_HOST_PROTOCOL_VERSION = 7
 PROTOTYPE_SESSION_VERSION = 1
 ```
@@ -227,6 +226,11 @@ type CurrentContractResult<T, D> =
 - A planned package name or entry may appear in target-contract documentation,
   but not in current install/import examples, package graphs, release lists, or
   runtime dependencies until a real implementation lands.
+- Data Source HTTP results use the response value-reference contract only:
+  `kind: 'response'`, `ConfigFormValueContext.response`, `$response`, and
+  `usesResponse`. The removed `event` form is not a compatibility spelling.
+  Vue template `$event`, component listeners, and `getValueFromEvent` remain
+  legal UI/value-binding concepts and are not Data Source response aliases.
 
 ### 4. Validation & Error Matrix
 
@@ -263,6 +267,11 @@ type CurrentContractResult<T, D> =
   the current schema.
 - Registry tests prove exact adapter/version/fingerprint/component-key and
   component-contract matching; no migration-required success branch exists.
+- Core value-reference behavior tests accept the response context and reject
+  removed `kind: 'event'` and `$event` inputs. A narrow architecture gate scans
+  only the value-reference contract/service and Data Source response injection
+  files for `context.event`, `$event`, and `usesEvent`; it does not scan or block
+  legitimate Vue event handling.
 - `pnpm test:config-form-packages` and the affected package build/typecheck/E2E
   gates run after every cross-package hard cut.
 
