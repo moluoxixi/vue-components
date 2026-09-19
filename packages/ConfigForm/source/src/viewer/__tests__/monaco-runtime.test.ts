@@ -48,7 +48,7 @@ vi.mock('monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution
 vi.mock('monaco-editor/esm/vs/basic-languages/scss/scss.contribution', () => ({}))
 vi.mock('monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution', () => ({}))
 
-describe('Monaco viewer runtime', () => {
+describe('monaco viewer runtime', () => {
   const disconnect = vi.fn()
   const observe = vi.fn()
 

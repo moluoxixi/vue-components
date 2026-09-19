@@ -27,75 +27,40 @@ tablet, and mobile visual baselines.
 
 ---
 
-## Monaco Vue SFC Language Services
+## Source Viewer Monaco Boundary
 
-The workbench keeps the visible `src/App.vue` model on the `vue` language so template HTML, folding, and embedded
-tokenization remain available. TypeScript semantics for `<script>` blocks use a hidden `typescript` mirror whose length and
-line breaks exactly match the SFC; all non-script characters are replaced with spaces. This makes TypeScript worker offsets
-safe to map directly back to the visible Vue model.
+Workbench no longer owns an editable Source workspace or Vue/TypeScript
+language-service layer. It lazy-loads the export dialog, which consumes the
+public readonly `ConfigFormSourceViewer`; the Viewer alone dynamically imports
+its Monaco runtime.
 
 Required contracts:
 
-- `MonacoEnvironment.getWorker(..., 'vue')` must return the bundled HTML worker because the custom Vue HTML language
-  service creates its worker with the `vue` label.
-- Vue script completion and Hover must query Monaco's TypeScript worker and the shared workbench declarations. A global
-  mixed Vue/ConfigForm completion list is forbidden because it leaks exports across named-import modules.
-- TypeScript Config semantic completion and Hover belong to Monaco's built-in TypeScript provider. The custom provider
-  is limited to ConfigForm snippets and project-manifest module paths that have no ambient declaration; it must not
-  duplicate worker exports or signatures.
-- Module-path completion may use the explicit workbench module allowlist for Vue/Config fallback, plus package names from
-  the current project manifest. Named-import completion must come from the declaration for the statement's actual module.
-- Installing the workbench worker router must preserve an existing `MonacoEnvironment` and delegate unknown labels to its
-  previous `getWorker`; TypeScript entries are de-duplicated before they are mapped to Monaco suggestions.
-- If modular loading misses Monaco's one-shot TypeScript language event, initialize the pinned Monaco `tsMode` with
-  `typescriptDefaults` before retrying `getTypeScriptWorker()`.
-- Mirror content must update with the SFC model and be disposed with it.
-- Every language used by an embedded SFC region must load its Monaco basic-language contribution explicitly;
-  language-service workers provide diagnostics and semantic features but do not provide syntax tokenization.
-- Vue SFC boundary rules must accept attributes on `<template>` as well as `<script>` and `<style>`, otherwise the
-  template falls back to the outer plain-text tokenizer and loses HTML highlighting.
-- `WorkspaceCodeEditor/services/language-features.ts` owns only singleton installation, warm-up, and reverse-order
-  disposal. TypeScript worker/mirror/provider behavior belongs to `typescript-language-features.ts`; Vue language
-  registration and the HTML service definition belong to `vue-language-definition.ts`.
+- Root and `/generator` imports never reach Vue DOM or Monaco. `/viewer` may use
+  Vue, while the Monaco editor implementation stays behind a literal dynamic
+  import inside the text-viewer boundary.
+- Only text files create Monaco models. Binary selections render the explicit
+  readonly binary state and never initialize Monaco.
+- The editor sets both `readOnly` and `domReadOnly`, loads only syntax-language
+  contributions, and exposes no completion, Hover, save, or content-change API.
+- A path/language change replaces and disposes the previous model; content and
+  theme changes update the active session. Unmount disposes the editor, model,
+  ResizeObserver/window listener, and ignores a late async load.
+- Monaco load failure falls back to focusable plain text without changing the
+  controlled `selectedPath` contract.
 
-Regression coverage must assert worker routing for `vue`, exact mirror offsets/newlines, named-import module detection,
-declaration isolation, manifest module merging, and real-browser completion/Hover for both Vue Source and TypeScript
-Config models. Config checks must also prove that worker-provided exports and field properties are visible without duplicate
-custom candidates. Lifecycle coverage must also prove reverse disposal, configure-after-dispose, and the pinned `tsMode`
-retry when Monaco reports `TypeScript not registered!`.
+Regression coverage must prove the lazy boundary, text/binary split, readonly
+options, update/disposal lifecycle, load-failure fallback, real-browser Source
+dialog behavior, and absence of Monaco from the Workbench initial static graph.
 
 ---
 
 ## Source Export Service Boundaries
 
-### Current implementation
+### Current ownership
 
-Until the independent Source package lands, the Workbench export facade keeps
-generation order and error semantics stable while private services consume the
-current flat Surface compilation:
-
-- `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
-- `source-page.ts` generates one Surface's Vue source and delegates layout serialization, Registry lookup, portability
-  validation, and dependency collection.
-- `source-portability.ts` recursively validates every nested node, static prop, and component resolution before source
-  generation.
-- `source-libraries.ts` recursively collects libraries and rejects conflicting declarations for the same package.
-- `source-registry.ts` centralizes component lookup and retains the public export error wording.
-
-Regression coverage must include invalid nested components/props, dependencies that appear only in child nodes,
-nested library conflicts, canonical Source snapshots, generated project execution, and byte-stable generated
-project/Surface files. Source must not emit handler stubs, action bindings, event metadata, or Flow plans.
-
-This is the current temporary Surface generator, not the final SourceFileSet or
-Dataset/Resource generator. It must not gain a compatibility layer while final
-ownership moves to the Source package.
-
-### Target ownership
-
-The final generator, `SourceFileSet`, file-tree model, and readonly
-`ConfigFormSourceViewer` move to planned
-`@moluoxixi/config-form-source` only after Surface, Dataset, interaction, and
-Prototype Runtime contracts are complete.
+The generator, `SourceFileSetV1`, file-tree model, and readonly
+`ConfigFormSourceViewer` belong to `@moluoxixi/config-form-source`.
 
 - Generator owns deterministic generation plus separate provider-neutral
   component-resolver and async embedded-resource-reader input contracts. It
@@ -110,13 +75,15 @@ Prototype Runtime contracts are complete.
 - Viewer renders a file tree and readonly code, with a desktop split and narrow
   tree/code switch. Its `selectedPath` is a required controlled v-model and
   Monaco loads only through the Viewer async boundary.
-- Generated projects and Studio Experience consume the same Prototype Runtime
-  session reducer and Dataset query implementation. Templates do not copy them.
-- The move is a hard ownership cut. Delete the old Workbench generator/Viewer
-  entry and use the Source package directly; no wrapper, alias, deprecated
-  export, or re-export remains.
+- Studio Experience consumes Prototype Runtime. Raw generated projects preserve
+  the same observable demo behavior as readable application code without
+  importing or copying a session reducer/runtime core; ConfigForm bindings
+  contain configuration only.
+- The move is a completed hard ownership cut. The old Workbench generator and
+  editable Viewer are deleted; no wrapper, alias, deprecated export, or
+  re-export remains.
 
-Target regression coverage includes Node import without DOM, deterministic
+Regression coverage includes Node import without DOM, deterministic
 generation for the same compilation/resolver, resolution failure with no
 partial files, installed generated-project typecheck/test/build, controlled
 Viewer selection, responsive layout, lazy Monaco, accessibility, and executed
@@ -134,25 +101,22 @@ outlive the project session which created it.
 ### 2. Signatures
 
 ```ts
-installMonacoWorkerEnvironment(): void
-disposeMonacoLanguageFeatures(): void
+loadMonacoViewerRuntime(): Promise<MonacoViewerRuntime>
 onExternalRevision(resolution, message): Promise<void>
 ```
 
-The current export workspace continues to load `WorkspaceCodeEditor` through a
-literal dynamic import. After Source extraction, the equivalent lazy boundary
-belongs inside the Source Viewer and Studio still owns the dialog. Persistence
+Workbench lazy-loads its export dialog, and the Source Viewer loads its Monaco
+runtime through a literal dynamic import. Studio still owns the dialog. Persistence
 callbacks may call controller commands only while their captured
 `ProjectEditorSession` is still the controller's active session.
 
 ### 3. Contracts
 
-- An absent `globalThis.MonacoEnvironment` is an uninitialized state. Never use `undefined === undefined` as proof that
-  the worker router was installed. Record the installed environment only after assigning the router.
-- Reuse the installed router while it remains current. If another integration replaces `MonacoEnvironment`, a later
-  editor mount wraps that new environment and delegates unknown labels to its `getWorker`.
-- Monaco completion providers, hover providers, and TypeScript extra libraries have one singleton disposer owner. Dispose
-  and reset them during HMR or an explicit test teardown, never from one editor instance while another can remain mounted.
+- Monaco is requested only after a text viewer mounts. A request that resolves
+  after unmount or after a newer request must not create an editor.
+- Every Viewer instance owns and disposes its editor model, observer/listener,
+  and late-load guard. The readonly Viewer installs no completion/Hover provider
+  or TypeScript extra library.
 - The Workbench production build checks the entry's complete static module graph, including HTML module preloads and
   transitive static imports. Monaco markers must exist only outside that initial graph.
 - A delayed external-revision callback validates both controller lifetime and captured session identity immediately before
@@ -162,9 +126,9 @@ callbacks may call controller commands only while their captured
 
 | Condition | Required result |
 | --- | --- |
-| First editor mount with no Monaco environment | Install the Workbench worker router |
-| Existing environment handles an unknown label | Delegate to its `getWorker` |
-| Environment is replaced after an editor mount | Wrap the replacement on the next install call |
+| Text viewer mounts | Dynamically load and mount one readonly Monaco session |
+| Viewer unmounts before the import resolves | Ignore the stale result and create no editor |
+| Binary file is selected | Render binary metadata; do not request Monaco |
 | Monaco marker is reachable from an entry preload/static import | Fail the Workbench build |
 | Monaco marker exists only in a lazy editor chunk | Pass the lazy-boundary check |
 | External reload resolves for the active session | Open the current project revision |
@@ -172,38 +136,24 @@ callbacks may call controller commands only while their captured
 
 ### 5. Good / Base / Bad Cases
 
-- Good: worker routing is installed before editor use, global registrations have one service owner, and editor models,
-  mirrors, subscriptions, and observers have explicit instance owners.
-- Base: reopening the export dialog reacquires the same lazy Monaco runtime without adding duplicate providers.
-- Bad: mark an undefined environment as already installed, scan only the entry file instead of its static dependency graph,
-  or let a callback from project A reopen A after project B is active.
+- Good: every readonly editor model, subscription, observer, and late-load guard
+  has an explicit Viewer-instance owner.
+- Base: reopening the export dialog reacquires the lazy Monaco module and creates
+  a fresh disposable Viewer session.
+- Bad: create Monaco for a binary file, scan only the entry file instead of its
+  static dependency graph, or let a callback from project A reopen A after
+  project B is active.
 
 ### 6. Tests Required
 
-- Happy-DOM tests cover first install without a previous environment, replacement/delegation, provider/extra-lib disposal,
-  model reuse, mirror synchronization, and full editor cleanup.
+- Happy-DOM tests cover delayed import after unmount, file/theme updates, model
+  replacement/disposal, ResizeObserver/listener cleanup, and load failure.
 - The Workbench build runs `scripts/verify-monaco-bundle.mjs` after Vite and the Element Plus bundle check.
 - Controller tests retain a superseded session callback, switch projects, invoke the callback, and assert the newer project
   remains active.
 - The readonly export Playwright scenario must finish with no browser errors; this is the real-worker regression gate.
 
 ### 7. Wrong vs Correct
-
-Wrong:
-
-```ts
-let installedEnvironment
-if (globalThis.MonacoEnvironment === installedEnvironment)
-  return
-```
-
-Correct:
-
-```ts
-let installedEnvironment: MonacoEnvironment | null = null
-if (installedEnvironment && globalThis.MonacoEnvironment === installedEnvironment)
-  return
-```
 
 Wrong:
 

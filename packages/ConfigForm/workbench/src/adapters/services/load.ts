@@ -2,11 +2,13 @@ import type { DesignerMaterialCapabilityRegistry, DesignerRegistry } from '@molu
 import type {
   ComponentContract,
   ComponentContractRegistry,
+  MaterialSemanticTrigger,
   RegistryContractSnapshot,
 } from '@moluoxixi/config-form-model'
 import type {
   SourceComponentResolution,
   SourceProviderResolver,
+  SourceSemanticListenerMap,
 } from '@moluoxixi/config-form-source/generator'
 import type {
   WorkbenchAdapter,
@@ -25,6 +27,30 @@ import { createWorkbenchVueRuntimeResolver } from './runtime-resolver'
 
 const adapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchAdapter>>()
 const runtimeAdapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchRuntimeAdapter>>()
+
+const providerSemanticListeners: Readonly<Record<
+  WorkbenchAdapterId,
+  Readonly<Partial<Record<MaterialSemanticTrigger, SourceSemanticListenerMap[MaterialSemanticTrigger]>>>
+>> = Object.freeze({
+  'antd-vue': Object.freeze({
+    activate: Object.freeze({ event: 'click', listenerProp: 'onClick', item: Object.freeze({ kind: 'none' }) }),
+    submit: Object.freeze({ event: 'submit', listenerProp: 'onSubmit', item: Object.freeze({ kind: 'none' }) }),
+  }),
+  'element-plus': Object.freeze({
+    activate: Object.freeze({ event: 'click', listenerProp: 'onClick', item: Object.freeze({ kind: 'none' }) }),
+    submit: Object.freeze({ event: 'submit', listenerProp: 'onSubmit', item: Object.freeze({ kind: 'none' }) }),
+  }),
+})
+
+function resolveSemanticListeners(
+  id: WorkbenchAdapterId,
+  triggers: readonly MaterialSemanticTrigger[],
+): SourceSemanticListenerMap {
+  const supported = providerSemanticListeners[id]
+  return Object.freeze(Object.fromEntries(triggers.flatMap(trigger => (
+    supported[trigger] ? [[trigger, supported[trigger]]] : []
+  ))))
+}
 
 function createWorkbenchComponentRegistry(
   id: WorkbenchAdapterId,
@@ -69,6 +95,7 @@ function createWorkbenchSourceResolver(
         render: source.binding.render,
         styleImports: library?.stylesheet ? [library.stylesheet] : [],
         dependencies: library ? { [library.packageName]: libraryVersion! } : {},
+        semanticListeners: resolveSemanticListeners(id, capability.contract.semanticTriggers),
         ...(source.defaultValue === undefined ? {} : { defaultValue: structuredClone(source.defaultValue) }),
         ...(library ? { library: { ...structuredClone(library), version: libraryVersion! } } : {}),
         ...(source.binding.options ? { options: structuredClone(source.binding.options) } : {}),

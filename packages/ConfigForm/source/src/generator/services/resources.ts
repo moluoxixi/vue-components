@@ -1,12 +1,8 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { ModelDiagnostic } from '@moluoxixi/config-form-model'
 import type { SourceBinaryFile, SourceResourceReader } from '../types'
+import type { CollectedSourceResources } from '../types/internal'
 import { safeSlug } from './serialization'
-
-export interface CollectedSourceResources {
-  files: readonly SourceBinaryFile[]
-  values: ReadonlyMap<string, { kind: 'embedded', fileName: string } | { kind: 'url', url: string }>
-}
 
 type ResourceResult
   = | { success: true, data: CollectedSourceResources }
@@ -24,8 +20,12 @@ function failure(
   }
 }
 
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input)
+}
+
 function extension(fileName: string): string | undefined {
-  const match = /\.([A-Za-z0-9]{1,16})$/.exec(fileName)
+  const match = /\.([A-Z0-9]{1,16})$/i.exec(fileName)
   return match?.[1]?.toLowerCase()
 }
 
@@ -111,6 +111,13 @@ export async function collectSourceResources(
         `Embedded Resource "${resourceId}" could not be read.`,
         resourceId,
         { reason: error instanceof Error ? error.message : String(error) },
+      )
+    }
+    if (!isRecord(result) || typeof result.success !== 'boolean') {
+      return failure(
+        'source_resource_read_failed',
+        `Embedded Resource "${resourceId}" returned an invalid reader result.`,
+        resourceId,
       )
     }
     if (!result.success) {

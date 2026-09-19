@@ -115,12 +115,13 @@ Runtime 会先完成自身的值绑定和校验记账，再调用同一触发上
 | Prototype Runtime              | 页面历史、Surface 实例栈、参数/结果事务和主要 UI 动作               |
 | Source                         | 无 DOM 的源码生成与只读源码 Viewer；复制/下载等命令仍由 Studio 负责 |
 
-规划中的共享体验包名为 `@moluoxixi/config-form-prototype-runtime`。其根入口和
-`/session` 必须无 DOM；Vue Surface/overlay host 位于 `/vue`，样式位于
-`/vue/style`。Studio Experience 与生成项目消费同一实现，生产 Runtime 不反向
-依赖它。
+共享体验包 `@moluoxixi/config-form-prototype-runtime` 已提供根入口和
+`/session`；两者无 DOM。Vue Surface/overlay host 位于 `/vue`，样式位于
+`/vue/style`。Studio Experience 消费该实现；导出的原生项目以可读应用源码保留
+相同行为，但不导入或复制该运行核心。生产 Runtime 不反向依赖它。
 
-规划中的源码包名为 `@moluoxixi/config-form-source`。Generator 接受稳定编译结果、
+源码包 `@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer` 和
+`/viewer/style` 入口。Generator 接受稳定编译结果、
 Source 自己拥有的同步 provider component resolver，以及异步 embedded Resource
 reader；Studio 只在应用组合根读取 adapter metadata 与 Repository 并分别注入。
 Source 自己校验 bytes、决定输出路径，URL 不由 generator 发起 fetch。Viewer 只显示
@@ -134,7 +135,9 @@ Source 自己校验 bytes、决定输出路径，URL 不由 generator 发起 fet
 - Component adapter 在创建项目时锁定；Element Plus 与 Ant Design Vue 维护共同基础
   能力，但各自的组件解析由组合根注入。
 - Source 必须保留 Demo 的 Surface、Dataset、校验和 Prototype Interaction 行为，
-  生成结果可直接安装运行。
+  其中原生 Vue 产物是可直接安装运行的应用；ConfigForm 产物是以 `src/bindings.ts`
+  为入口的配置模块和薄 Surface wrapper，不包含 App、router、页面历史、overlay 或
+  session，应用编排由程序员提供。
 - Source 不生成 HTTP 占位、handler stub、字符串 action ref 或待绑定事件元数据。
 - 源码是单向交接结果。修改后的源码不支持回导 Designer。
 

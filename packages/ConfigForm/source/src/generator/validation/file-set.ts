@@ -31,7 +31,7 @@ export function isSafeSourcePath(path: string): boolean {
     || path.includes('\0')
     || path.includes('\\')
     || path.startsWith('/')
-    || /^[A-Za-z]:/.test(path)
+    || /^[A-Z]:/i.test(path)
   ) {
     return false
   }
@@ -41,7 +41,7 @@ export function isSafeSourcePath(path: string): boolean {
 
 function isCanonicalBase64(value: string): boolean {
   return value.length % 4 === 0
-    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)
+    && /^(?:[A-Z0-9+/]{4})*(?:[A-Z0-9+/]{2}==|[A-Z0-9+/]{3}=)?$/i.test(value)
 }
 
 function readTextFile(input: Record<string, unknown>): SourceTextFile | undefined {

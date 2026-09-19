@@ -51,7 +51,7 @@ function createFileSet(): SourceFileSetV1 {
   }
 }
 
-describe('ConfigFormSourceViewer', () => {
+describe('config form source viewer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     monacoMocks.load.mockImplementation(async () => ({ mount: monacoMocks.mount }))

@@ -31,7 +31,7 @@ export function sourceAttributeString(value: string): string {
   const content = JSON.stringify(value)
     .slice(1, -1)
     .replaceAll('\\"', '\\u0022')
-    .replaceAll("'", "\\'")
+    .replaceAll('\'', '\\\'')
     .replaceAll('&', '\\u0026')
     .replaceAll('<', '\\u003c')
     .replaceAll('>', '\\u003e')
@@ -64,7 +64,7 @@ export function escapeHtml(value: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
+    .replaceAll('\'', '&#39;')
 }
 
 export function safeSlug(value: string, fallback: string): string {

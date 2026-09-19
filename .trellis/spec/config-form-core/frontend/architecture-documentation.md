@@ -33,8 +33,10 @@ architecture routing, release metadata, and current dependency diagram. Do not
 create an empty package, placeholder export, or README that implies installable
 behavior before then. In particular, the documented
 `@moluoxixi/config-form-prototype-runtime` is current and must be documented
-with its root, `/session`, `/vue`, and `/vue/style` entries. The planned
-`@moluoxixi/config-form-source` remains target-only until its owning task lands.
+with its root, `/session`, `/vue`, and `/vue/style` entries. The Source package
+`@moluoxixi/config-form-source` has also landed and must be documented with its
+root, `/generator`, `/viewer`, and `/viewer/style` entries plus its two distinct
+generated file-set kinds.
 
 Before finishing a cross-package ConfigForm task, verify:
 

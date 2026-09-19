@@ -31,6 +31,7 @@ const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', impo
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
 const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
 const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
+const sourceViewerStylesheet = readFileSync(new URL('../../../../source/src/viewer/style/index.scss', import.meta.url), 'utf8')
 const designerStylesheet = compile(
   fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
   { charset: false, loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
@@ -280,7 +281,10 @@ describe('workbench theme contract', () => {
       expect(cssRules(stylesheet).some(rule => rule.selector === selector
         && rule.body.includes('background: var(--wb-hover);'))).toBe(true)
     }
-    expect(stylesheet).toContain('.export-stale .el-button')
+    expect(selectorBlock('.export-source-viewer')).toContain('flex: 1 1 auto;')
+    expect(selectorBlock('.config-form-source-viewer__workspace', sourceViewerStylesheet))
+      .toContain('grid-template-columns: clamp(190px, 24vw, 280px) minmax(0, 1fr);')
+    expect(stylesheet).not.toContain('.config-form-source-viewer__workspace')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
     )).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
@@ -388,11 +392,14 @@ describe('workbench theme contract', () => {
     for (const selector of [
       '.export-menu-popover .el-dropdown-menu__item',
       '.mobile-action-popover .el-dropdown-menu__item',
-      '.project-file-tree .project-file-tree__row',
     ]) {
       expect(cssRules(stylesheet).some(rule => rule.selector.split(',')
         .some(item => item.trim() === selector) && rule.body.includes('min-height: 44px;'))).toBe(true)
     }
+    expect(stylesheet).not.toContain('.project-file-tree')
+    expect(sourceViewerStylesheet).toContain('@media (max-width: 720px)')
+    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'tree\'] .config-form-source-viewer__code-pane')
+    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'code\'] .config-form-source-viewer__tree-pane')
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(stylesheet).not.toContain('@container preview-runtime')
     expect(runtimeHostStylesheet).toContain('.page-preview-form')

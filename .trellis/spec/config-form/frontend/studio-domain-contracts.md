@@ -10,10 +10,10 @@ Source, or the related package boundaries.
 This document contains both current foundation contracts and later Studio
 contracts. Surface assets, ProjectDocument v6, Registry v3, compilation,
 transfer, Runtime Host v7, and Prototype Runtime session v1 are current.
-Dataset/Resource authoring workflows, the complete Studio asset/interaction UI,
-and the Source package remain later stages. Each implementation task switches
-its owned readers and writers atomically and must not expose a compatibility
-union.
+Dataset/Resource authoring workflows and the complete Studio asset/interaction
+UI remain later stages. The Source package and its two generated file-set kinds
+are current. Each implementation task switches its owned readers and writers
+atomically and must not expose a compatibility union.
 
 The target product creates JSON-safe demos. Production HTTP, authentication,
 asynchronous side effects, and business functions remain in exported/host
@@ -1041,7 +1041,7 @@ Closing or navigating never dispatches arbitrary component callbacks.
 
 ### 3.6 Source resolver
 
-The planned `@moluoxixi/config-form-source` package owns this provider-neutral
+The current `@moluoxixi/config-form-source` package owns this provider-neutral
 input contract:
 
 ```ts
@@ -1057,10 +1057,49 @@ interface SourceComponentRequest {
   contractFingerprint: string
 }
 
+interface SourceLibraryResolution {
+  packageName: string
+  plugin: string
+  version: string
+  stylesheet?: string
+}
+
+interface SourceOptionsResolution {
+  mode: 'prop' | 'children'
+  optionTag?: string
+  labelProp?: string
+  valueProp?: string
+}
+
 interface SourceComponentResolution {
   moduleSpecifier: string
   importName: string
+  tag: string
+  configComponent: string
+  render: 'component' | 'layout-flex' | 'layout-grid' | 'section'
   styleImports: readonly string[]
+  dependencies: Readonly<Record<string, string>>
+  semanticListeners?: Readonly<Partial<Record<MaterialSemanticTrigger, {
+    event: string
+    listenerProp: string
+    item:
+      | { kind: 'none' }
+      | { kind: 'argument', index: number }
+  }>>>
+  library?: SourceLibraryResolution
+  options?: SourceOptionsResolution
+  staticProps?: ModelJsonObject
+  defaultValue?: ModelJsonValue
+  valueProp?: string
+  trigger?: string
+  blurTrigger?: string
+}
+
+interface SourceConfigFormBindingResolution {
+  component: { moduleSpecifier: string, importName: string }
+  model: { moduleSpecifier: string, importName: string }
+  styleImports: readonly string[]
+  dependencies: Readonly<Record<string, string>>
 }
 
 type SourceResolutionResult<T> =
@@ -1073,6 +1112,7 @@ interface SourceProviderResolver {
   resolveComponent(
     request: SourceComponentRequest,
   ): SourceResolutionResult<SourceComponentResolution>
+  resolveConfigFormBinding(): SourceResolutionResult<SourceConfigFormBindingResolution>
 }
 
 interface SourceResourceReader {
@@ -1083,7 +1123,7 @@ interface SourceResourceReader {
   }): Promise<ContractResult<Uint8Array>>
 }
 
-interface GenerateConfigFormSourceInput {
+interface GenerateSourceInput {
   compilation: ProjectCompilation
   providerResolver: SourceProviderResolver
   resourceReader: SourceResourceReader
@@ -1106,17 +1146,26 @@ type SourceFile =
     contentBase64: string
   }
 
-interface SourceFileSetV1 {
+interface SourceFileSetBaseV1<TKind extends 'raw-source' | 'config-bindings'> {
   version: 1
+  kind: TKind
   entry: string
   files: readonly SourceFile[]
 }
 
+type RawSourceFileSetV1 = SourceFileSetBaseV1<'raw-source'>
+type ConfigBindingFileSetV1 = SourceFileSetBaseV1<'config-bindings'>
+type SourceFileSetV1 = RawSourceFileSetV1 | ConfigBindingFileSetV1
+
 readSourceFileSet(input: unknown): ContractResult<SourceFileSetV1>
 
-generateConfigFormSource(
-  input: GenerateConfigFormSourceInput,
-): Promise<ContractResult<SourceFileSetV1>>
+generateVueSource(
+  input: GenerateSourceInput,
+): Promise<ContractResult<RawSourceFileSetV1>>
+
+generateConfigFormBindings(
+  input: GenerateSourceInput,
+): Promise<ContractResult<ConfigBindingFileSetV1>>
 ```
 
 Studio reads the locked project adapter metadata only at its composition root,
@@ -1131,13 +1180,38 @@ generation with a stable diagnostic instead of guessing an import.
 `registryFingerprint = registryLock.fingerprint`; it is not a second adapter
 selector. Each component request also carries the matching locked contract
 version and fingerprint. `SourceProviderResolver` remains synchronous and only
-maps provider components/imports.
+maps provider components/imports plus the public ConfigForm binding imports.
+Every bare package specifier returned for a component module, ConfigForm binding
+module, `styleImports`, or `library.stylesheet` must have an own matching key in
+that resolution's `dependencies` record with a portable version. Missing style
+dependencies fail generation with `source_resolution_failed`; they must not be
+deferred to installation of the generated project.
+`semanticListeners` is provider-owned code-generation metadata, not a persisted
+Studio event domain: `activate`/`submit` carry no component payload, while
+`rowActivate`/`itemActivate` select one declared argument as the immediate
+readonly item. The generator never forwards arbitrary arguments or emits a
+handler registry.
+
+`generateVueSource` returns a runnable Vue/Vue Router project with entry
+`src/main.ts` that directly uses resolved provider components.
+`generateConfigFormBindings` returns configuration
+modules with entry `src/bindings.ts`; it emits no App, main, router, page-history,
+overlay host, session reducer, or generic action executor. Both outputs compile
+the complete canonical RuleSet, preserve scoped initial values, and fail before
+file assembly when a rule, regex, or named custom validator cannot be compiled.
+Nested scoped defaults and field rendering are supported. A compilation that
+requires address-scoped interaction settlement, projection, or result assignment
+that cannot yet be represented by the standalone generated app fails closed with
+`source_input_invalid`; it must not silently flatten row-local state into root
+values. Adding that capability requires a separate scope-address runtime contract
+and executed Preview/Source parity coverage.
 
 Embedded bytes are a separate asynchronous storage concern.
 `SourceResourceReader.readEmbedded` addresses the exact content version by
 project ID, resource ID, and hash, and returns a fresh byte copy. Source derives
-`assets/<resourceId>.<lowercase-extension>` from the stable ID and validated
-`fileName`, checks byte length and SHA-256, and encodes canonical base64 itself. A URL
+`src/assets/<safe-resource-id>[collision-suffix].<lowercase-extension>` from the
+stable ID and validated `fileName`, checks byte length and SHA-256, and encodes
+canonical base64 itself. A URL
 resource never calls the reader and is never fetched; generated code keeps its
 validated static URL and emits no binary file. Provider failure emits
 `source_resolution_failed`; missing or corrupt bytes emit
@@ -1178,17 +1252,18 @@ Studio ----------------------------------+
   page history, overlay instances, parameters/results, and UI-action reduction.
   Root and `/session` are DOM-free; `/vue` and `/vue/style` own Vue hosts,
   overlay integration, focus, and masks.
-- Studio Experience and generated projects use that package. They do not copy
-  its reducer or session model. Production Core/Headless/Runtime do not depend
-  on it.
+- Studio Experience uses that package. Generated raw source preserves the same
+  observable behavior as readable application code without importing or copying
+  its reducer/session model; bindings contain configuration only. Production
+  Core/Headless/Runtime do not depend on it.
 - Dataset validation and query execute in one shared pure service consumed by
   Preview and generated Source. Options/Table/List do not fork the algorithm.
 - Source owns resolver input types; Studio owns adapter-metadata adaptation.
   Source and Designer do not depend on one another.
 - Studio is a private composition root. Public packages never import it.
 
-The planned Source package must not be represented by an empty directory,
-manifest, placeholder export, or release entry before its implementation lands.
+Source is a current public package with real implementation, manifest, README,
+entries, architecture routing, generated-consumer gates, and release metadata.
 
 ## 5. Version and Atomic-Cut Contract
 
@@ -1314,6 +1389,7 @@ translated into these diagnostics.
 | Project transfer omits/duplicates/adds embedded content or attaches it to a URL | Reject the entire project before persistence |
 | Resource URL uses a dangerous scheme, credentials, or traversal | Reject Resource metadata/transfer |
 | Source resolver misses a component | `source_resolution_failed`; produce no partial file set |
+| Source resolver returns a bare module or style import without its package version in `dependencies` | `source_resolution_failed`; produce no partial file set |
 | Source generates an embedded Resource | Await exact hashed bytes, validate, derive a safe path, and emit one binary file |
 | Source generates a URL Resource | Keep the validated URL; never call the resource reader or fetch it |
 | Source resource read is missing/stale/corrupt | Emit resource diagnostic; resolve with no partial file set |
@@ -1504,7 +1580,13 @@ Correct:
 ```ts
 const resolver = createStudioResolver(project.registryLock, adapterMetadata)
 const resourceReader = createStudioResourceReader(repository)
-await generateConfigFormSource({
+await generateVueSource({
+  compilation,
+  providerResolver: resolver,
+  resourceReader,
+})
+
+await generateConfigFormBindings({
   compilation,
   providerResolver: resolver,
   resourceReader,

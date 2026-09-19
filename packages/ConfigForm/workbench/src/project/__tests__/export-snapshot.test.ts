@@ -49,7 +49,7 @@ describe('export snapshot', () => {
     expect(snapshot.generatorVersion).toBe(CONFIG_FORM_EXPORT_GENERATOR_VERSION)
     expect(snapshot.generatorVersion).toBe('source-file-set-v1')
     expect(snapshot.rawSource).toMatchObject({ kind: 'raw-source', entry: 'src/main.ts' })
-    expect(snapshot.configBindings).toMatchObject({ kind: 'config-bindings', entry: 'src/main.ts' })
+    expect(snapshot.configBindings).toMatchObject({ kind: 'config-bindings', entry: 'src/bindings.ts' })
     expect(Object.isFrozen(snapshot)).toBe(true)
     expect(Object.isFrozen(snapshot.rawSource.files)).toBe(true)
     expect(Object.isFrozen(snapshot.configBindings.files)).toBe(true)

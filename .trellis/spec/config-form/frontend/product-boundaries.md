@@ -15,11 +15,11 @@ asynchronous side effects, and business functions in exported or host
 Vue/TypeScript code.
 
 Status must always be explicit. Surface Foundation is current: ProjectDocument,
-Compiler, persistence, Runtime Host, and the existing generator use
-Page/Dialog/Drawer Surface assets, and
-`@moluoxixi/config-form-prototype-runtime` is importable. The Designer still has
-two Inspector sections. Full Studio asset/Dataset/Interaction authoring and
-`@moluoxixi/config-form-source` remain later delivery stages.
+Compiler, persistence, Runtime Host, and Source use Page/Dialog/Drawer Surface
+assets. `@moluoxixi/config-form-prototype-runtime` and
+`@moluoxixi/config-form-source` are importable. The Designer still has two
+Inspector sections; full Studio asset/Dataset/Interaction authoring remains a
+later delivery stage.
 
 The exact target domain shapes, versions, diagnostics, and tests are owned by
 [Studio Domain Contracts](./studio-domain-contracts.md).
@@ -145,11 +145,15 @@ Studio ----------------------------------+
   Prototype session, and Source generation accept only JSON-safe current-
   contract data. ProjectDocument stores Resource metadata; Project transfer
   carries embedded bytes so full project JSON is lossless.
-- Preview and generated projects consume the same Prototype Runtime session and
-  Dataset query implementation. Do not copy reducers or query engines into
-  templates.
+- Preview consumes Prototype Runtime. Raw generated projects preserve the same
+  observable local navigation, overlay, Dataset, validation, and accepted
+  interaction behavior as readable application code; source inputs that require
+  an unavailable address-scoped runtime fail closed instead of flattening
+  row-local state. They do not import or copy the Prototype Runtime, a session
+  reducer, or a generic execution core.
 - Source does not emit HTTP placeholders, handler stubs, string action refs,
-  event metadata, or Flow plans. It preserves complete local demo behavior.
+  event metadata, or Flow plans. It preserves complete local demo behavior for
+  accepted Source inputs.
 - The Source package owns separate provider-neutral component-resolver and async
   embedded-resource-reader inputs. Studio reads adapter metadata and Repository
   content and injects both implementations at its composition root. URL
@@ -165,7 +169,8 @@ Studio ----------------------------------+
   adapter, and does not own business side effects.
 - `@moluoxixi/config-form-prototype-runtime` exposes DOM-free root and
   `/session` entries; Vue Surface/overlay ownership is isolated in `/vue` and
-  `/vue/style`. Studio Experience and generated projects consume it.
+  `/vue/style`. Studio Experience consumes it; generated output neither imports
+  nor copies it.
 - Source generator does not import Designer, Workbench, concrete provider UI,
   Repository, Monaco, Vue DOM, or browser globals. Viewer dependencies stay
   under `/viewer`.
@@ -218,7 +223,8 @@ Studio ----------------------------------+
   registry in Preview.
 - Bad: rename Flow to “interaction pipeline” while retaining an action array.
 - Bad: accept `DatasetRow[]` in the versioned envelope Reader for convenience.
-- Bad: document planned Surface or Source exports as currently installable.
+- Bad: document any unimplemented package or public entry as currently
+  installable.
 
 ## 6. Tests Required
 
@@ -229,8 +235,8 @@ Studio ----------------------------------+
 - Studio contract tests reject arbitrary event metadata, functions, action
   arrays, Flow shapes, HTTP actions, and automatic initialization opens.
 - Preview/generated-project parity tests execute the same Surface navigation,
-  overlay, Dataset, validation, and interaction scenarios using shared runtime
-  implementations. String snapshots are not behavioral evidence.
+  overlay, Dataset, validation, and interaction scenarios and compare observable
+  behavior. String snapshots are not behavioral evidence.
 - Architecture tests enforce inward dependencies, DOM-free generator/session
   imports, Viewer-only Monaco, and absence of wrappers or compatibility paths.
 - Package tests, typechecks, builds, generated-consumer tests, release checks,

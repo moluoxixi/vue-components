@@ -40,7 +40,9 @@ export default defineConfig({
     rollupOptions: {
       external: [
         '@moluoxixi/config-form-compiler',
+        '@moluoxixi/config-form-core',
         '@moluoxixi/config-form-model',
+        '@moluoxixi/zod3-to-rule',
         'monaco-editor',
         /^monaco-editor\//,
         'vue',

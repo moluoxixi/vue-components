@@ -121,14 +121,18 @@ function handleKeydown(event: KeyboardEvent): void {
 
   const current = entries[index]!
   let nextId: string | undefined
-  if (event.key === 'ArrowDown')
+  if (event.key === 'ArrowDown') {
     nextId = entries[Math.min(entries.length - 1, index + 1)]?.node.id
-  else if (event.key === 'ArrowUp')
+  }
+  else if (event.key === 'ArrowUp') {
     nextId = entries[Math.max(0, index - 1)]?.node.id
-  else if (event.key === 'Home')
+  }
+  else if (event.key === 'Home') {
     nextId = entries[0]?.node.id
-  else if (event.key === 'End')
+  }
+  else if (event.key === 'End') {
     nextId = entries.at(-1)?.node.id
+  }
   else if (event.key === 'ArrowRight' && current.node.kind === 'directory') {
     if (!expandedIds.value.has(current.node.id))
       toggleDirectory(current.node.id, true)

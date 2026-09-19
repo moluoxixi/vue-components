@@ -13,6 +13,7 @@ import {
   validateResolverIdentity,
 } from './resolution'
 import { collectSourceResources } from './resources'
+import { compileSourceValidationPlan } from './validation'
 
 function inputFailure<T>(message: string, context?: Record<string, unknown>): ContractResult<T> {
   return {
@@ -61,6 +62,9 @@ export async function generateVueSource(input: GenerateSourceInput): GenerateVue
   const components = resolveSourceComponents(input.compilation, input.providerResolver)
   if (!components.success)
     return generatorFailure(components.diagnostics)
+  const validation = compileSourceValidationPlan(input.compilation)
+  if (!validation.success)
+    return generatorFailure(validation.diagnostics)
   const resources = await collectSourceResources(input.compilation, input.resourceReader)
   if (!resources.success)
     return generatorFailure(resources.diagnostics)
@@ -70,6 +74,7 @@ export async function generateVueSource(input: GenerateSourceInput): GenerateVue
       components.data.byKey,
       components.data.dependencies,
       resources.data,
+      validation.data,
     )
     return { success: true, data, diagnostics: [] }
   }
@@ -95,6 +100,9 @@ export async function generateConfigFormBindings(
   const binding = resolveConfigFormBinding(input.providerResolver)
   if (!binding.success)
     return generatorFailure(binding.diagnostics)
+  const validation = compileSourceValidationPlan(input.compilation)
+  if (!validation.success)
+    return generatorFailure(validation.diagnostics)
   const resources = await collectSourceResources(input.compilation, input.resourceReader)
   if (!resources.success)
     return generatorFailure(resources.diagnostics)
@@ -104,6 +112,7 @@ export async function generateConfigFormBindings(
       components.data.byKey,
       binding.data,
       resources.data,
+      validation.data,
     )
     return { success: true, data, diagnostics: [] }
   }

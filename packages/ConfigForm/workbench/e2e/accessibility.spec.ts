@@ -135,9 +135,11 @@ for (const adapter of ['element', 'antd'] as const) {
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
     await page.getByRole('button', { name: 'Export' }).click()
-    await page.getByRole('menuitem', { name: 'Export source' }).click()
-    await expect(page.getByRole('dialog', { name: 'Generated Vue source' })).toBeVisible()
-    await expect(page.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
+    await page.getByRole('menuitem', { name: 'Export raw Vue source' }).click()
+    const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
+    await expect(sourceDialog).toBeVisible()
+    await sourceDialog.getByRole('button', { name: 'Files', exact: true }).click()
+    await expect(sourceDialog.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
     await expectNoAccessibilityViolations(page, `${adapter} mobile source export`)
   })
 }

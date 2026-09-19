@@ -1,16 +1,14 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
-import type { ModelDiagnostic } from '@moluoxixi/config-form-model'
+import type { MaterialSemanticTrigger, ModelDiagnostic } from '@moluoxixi/config-form-model'
 import type {
   SourceComponentResolution,
   SourceConfigFormBindingResolution,
   SourceProviderResolver,
+  SourceSemanticListenerMap,
+  SourceSemanticListenerResolution,
 } from '../types'
+import type { ResolvedSourceComponents } from '../types/internal'
 import { isPortableVersion, packageNameFromSpecifier } from './serialization'
-
-export interface ResolvedSourceComponents {
-  byKey: ReadonlyMap<string, SourceComponentResolution>
-  dependencies: Readonly<Record<string, string>>
-}
 
 type ResolutionResult<T>
   = | { success: true, data: T }
@@ -28,7 +26,74 @@ function isRecord(input: unknown): input is Record<string, unknown> {
 }
 
 function isIdentifier(value: string): boolean {
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)
+  return /^[A-Z_$][\w$]*$/i.test(value)
+}
+
+const semanticTriggers = new Set<MaterialSemanticTrigger>([
+  'activate',
+  'submit',
+  'rowActivate',
+  'itemActivate',
+])
+
+function isRawEventName(value: string): boolean {
+  return /^[a-z][A-Za-z0-9]*(?:[-:][a-z][A-Za-z0-9]*)*$/.test(value)
+}
+
+function listenerPropForEvent(event: string): string {
+  const camelized = event.replace(/[-:]([a-z])/gu, (_, letter: string) => letter.toUpperCase())
+  return `on${camelized[0]?.toUpperCase() ?? ''}${camelized.slice(1)}`
+}
+
+function hasExactKeys(input: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(input).sort()
+  const expected = [...keys].sort()
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index])
+}
+
+function validateSemanticListener(
+  trigger: MaterialSemanticTrigger,
+  input: unknown,
+): input is SourceSemanticListenerResolution {
+  if (
+    !isRecord(input)
+    || !hasExactKeys(input, ['event', 'item', 'listenerProp'])
+    || typeof input.event !== 'string'
+    || !isRawEventName(input.event)
+    || typeof input.listenerProp !== 'string'
+    || !/^on[A-Z][A-Za-z0-9]*$/.test(input.listenerProp)
+    || input.listenerProp !== listenerPropForEvent(input.event)
+    || !isRecord(input.item)
+  ) {
+    return false
+  }
+
+  const expectsArgument = trigger === 'rowActivate' || trigger === 'itemActivate'
+  if (expectsArgument) {
+    return hasExactKeys(input.item, ['index', 'kind'])
+      && input.item.kind === 'argument'
+      && typeof input.item.index === 'number'
+      && Number.isSafeInteger(input.item.index)
+      && input.item.index >= 0
+  }
+  return hasExactKeys(input.item, ['kind']) && input.item.kind === 'none'
+}
+
+function validateSemanticListeners(
+  componentKey: string,
+  input: unknown,
+): string | undefined {
+  if (input === undefined)
+    return undefined
+  if (!isRecord(input))
+    return `Component "${componentKey}" returned invalid semantic listener metadata.`
+  for (const [key, listener] of Object.entries(input)) {
+    if (!semanticTriggers.has(key as MaterialSemanticTrigger))
+      return `Component "${componentKey}" returned an unknown semantic listener trigger "${key}".`
+    if (!validateSemanticListener(key as MaterialSemanticTrigger, listener))
+      return `Component "${componentKey}" returned an invalid semantic listener for "${key}".`
+  }
+  return undefined
 }
 
 function dependencyError(
@@ -50,7 +115,7 @@ function validateComponentResolution(
     || typeof resolution.moduleSpecifier !== 'string'
     || typeof resolution.importName !== 'string'
     || typeof resolution.tag !== 'string'
-    || !/^[A-Za-z][A-Za-z0-9._:-]*$/.test(resolution.tag)
+    || !/^[A-Z][\w.:-]*$/i.test(resolution.tag)
     || typeof resolution.configComponent !== 'string'
     || !resolution.configComponent.trim()
     || !['component', 'layout-flex', 'layout-grid', 'section'].includes(resolution.render)
@@ -67,9 +132,19 @@ function validateComponentResolution(
   const dependenciesMessage = dependencyError(resolution.dependencies)
   if (dependenciesMessage)
     return dependenciesMessage
+  const styleDependency = undeclaredImportDependency(
+    [
+      ...resolution.styleImports,
+      ...(resolution.library?.stylesheet ? [resolution.library.stylesheet] : []),
+    ],
+    resolution.dependencies,
+  )
+  if (styleDependency) {
+    return `Component "${componentKey}" style import "${styleDependency.specifier}" does not declare a version for "${styleDependency.packageName}".`
+  }
   if (resolution.moduleSpecifier) {
     const packageName = packageNameFromSpecifier(resolution.moduleSpecifier)
-    if (packageName && !resolution.dependencies[packageName])
+    if (packageName && !Object.hasOwn(resolution.dependencies, packageName))
       return `Component "${componentKey}" does not declare a version for "${packageName}".`
   }
   if (resolution.library) {
@@ -94,7 +169,72 @@ function validateComponentResolution(
       return `Component "${componentKey}" returned invalid options metadata.`
     }
   }
+  const semanticListenersMessage = validateSemanticListeners(componentKey, resolution.semanticListeners)
+  if (semanticListenersMessage)
+    return semanticListenersMessage
   return undefined
+}
+
+function undeclaredImportDependency(
+  specifiers: readonly string[],
+  dependencies: Readonly<Record<string, string>>,
+): { packageName: string, specifier: string } | undefined {
+  for (const specifier of specifiers) {
+    const packageName = packageNameFromSpecifier(specifier)
+    if (packageName && !Object.hasOwn(dependencies, packageName))
+      return { packageName, specifier }
+  }
+  return undefined
+}
+
+interface SemanticTriggerUsage {
+  nodeId: string
+  surfaceId: string
+  trigger: MaterialSemanticTrigger
+}
+
+function collectSemanticTriggerUsages(
+  compilation: ProjectCompilation,
+): ResolutionResult<ReadonlyMap<string, readonly SemanticTriggerUsage[]>> {
+  const usages = new Map<string, SemanticTriggerUsage[]>()
+  for (const surfaceId of compilation.ir.surfaceOrder) {
+    const surface = compilation.ir.surfacesById[surfaceId]
+    if (!surface)
+      return failure(`Compiled Surface "${surfaceId}" is missing.`)
+    for (const interaction of surface.interactions) {
+      if (interaction.kind !== 'primaryUiAction')
+        continue
+      const node = surface.nodesById[interaction.nodeId]
+      if (!node) {
+        return failure(`Primary UI action "${interaction.id}" targets a missing node.`, {
+          nodeId: interaction.nodeId,
+          surfaceId,
+          trigger: interaction.trigger,
+        })
+      }
+      const current = usages.get(node.component) ?? []
+      current.push({ nodeId: node.id, surfaceId, trigger: interaction.trigger })
+      usages.set(node.component, current)
+    }
+  }
+  return { success: true, data: usages }
+}
+
+function validateUsedSemanticListeners(
+  componentKey: string,
+  listeners: SourceSemanticListenerMap | undefined,
+  usages: readonly SemanticTriggerUsage[],
+): ResolutionResult<true> {
+  for (const usage of usages) {
+    const listener = listeners?.[usage.trigger]
+    if (!listener) {
+      return failure(
+        `Component "${componentKey}" does not resolve the used semantic trigger "${usage.trigger}".`,
+        { componentKey, ...usage },
+      )
+    }
+  }
+  return { success: true, data: true }
 }
 
 function mergeDependencies(
@@ -119,14 +259,19 @@ export function validateResolverIdentity(
     adapterVersion: compilation.key.registryAdapterVersion,
     registryFingerprint: compilation.key.registryFingerprint,
   }
+  const actual = resolver.adapter
   if (
-    resolver.adapter.adapter !== expected.adapter
-    || resolver.adapter.adapterVersion !== expected.adapterVersion
-    || resolver.adapter.registryFingerprint !== expected.registryFingerprint
+    !isRecord(actual)
+    || typeof actual.adapter !== 'string'
+    || typeof actual.adapterVersion !== 'string'
+    || typeof actual.registryFingerprint !== 'string'
+    || actual.adapter !== expected.adapter
+    || actual.adapterVersion !== expected.adapterVersion
+    || actual.registryFingerprint !== expected.registryFingerprint
   ) {
     return failure('Source provider identity does not match the compiled registry lock.', {
       expected,
-      received: { ...resolver.adapter },
+      received: isRecord(actual) ? { ...actual } : actual,
     })
   }
   return { success: true, data: true }
@@ -136,6 +281,9 @@ export function resolveSourceComponents(
   compilation: ProjectCompilation,
   resolver: SourceProviderResolver,
 ): ResolutionResult<ResolvedSourceComponents> {
+  const semanticTriggerUsages = collectSemanticTriggerUsages(compilation)
+  if (!semanticTriggerUsages.success)
+    return semanticTriggerUsages
   const contracts = new Map<string, { contractVersion: string, contractFingerprint: string }>()
   for (const surfaceId of compilation.ir.surfaceOrder) {
     const surface = compilation.ir.surfacesById[surfaceId]
@@ -174,11 +322,25 @@ export function resolveSourceComponents(
         reason: error instanceof Error ? error.message : String(error),
       })
     }
-    if (!result.success)
-      return failure(`Source resolver could not resolve component "${componentKey}": ${result.reason}`, { componentKey })
+    if (!isRecord(result) || typeof result.success !== 'boolean') {
+      return failure(`Source resolver returned an invalid result for component "${componentKey}".`, { componentKey })
+    }
+    if (!result.success) {
+      return failure(
+        `Source resolver could not resolve component "${componentKey}": ${typeof result.reason === 'string' ? result.reason : 'unknown reason'}`,
+        { componentKey },
+      )
+    }
     const validationMessage = validateComponentResolution(componentKey, result.value)
     if (validationMessage)
       return failure(validationMessage, { componentKey })
+    const semanticListenersResult = validateUsedSemanticListeners(
+      componentKey,
+      result.value.semanticListeners,
+      semanticTriggerUsages.data.get(componentKey) ?? [],
+    )
+    if (!semanticListenersResult.success)
+      return semanticListenersResult
     const dependencyMessage = mergeDependencies(dependencies, result.value.dependencies)
     if (dependencyMessage)
       return failure(dependencyMessage, { componentKey })
@@ -202,13 +364,19 @@ export function resolveConfigFormBinding(
       reason: error instanceof Error ? error.message : String(error),
     })
   }
-  if (!result.success)
-    return failure(`Source resolver could not resolve the ConfigForm binding: ${result.reason}`)
+  if (!isRecord(result) || typeof result.success !== 'boolean')
+    return failure('Source resolver returned an invalid ConfigForm binding result.')
+  if (!result.success) {
+    return failure(
+      `Source resolver could not resolve the ConfigForm binding: ${typeof result.reason === 'string' ? result.reason : 'unknown reason'}`,
+    )
+  }
   const value = result.value
-  const imports = [value.component, value.model]
   if (
     !isRecord(value)
-    || imports.some(item => !isRecord(item)
+    || !isRecord(value.component)
+    || !isRecord(value.model)
+    || [value.component, value.model].some(item => !isRecord(item)
       || typeof item.moduleSpecifier !== 'string'
       || !item.moduleSpecifier
       || typeof item.importName !== 'string'
@@ -222,9 +390,15 @@ export function resolveConfigFormBinding(
   const dependenciesMessage = dependencyError(value.dependencies)
   if (dependenciesMessage)
     return failure(dependenciesMessage)
-  for (const item of imports) {
+  const styleDependency = undeclaredImportDependency(value.styleImports, value.dependencies)
+  if (styleDependency) {
+    return failure(
+      `ConfigForm binding style import "${styleDependency.specifier}" does not declare a version for "${styleDependency.packageName}".`,
+    )
+  }
+  for (const item of [value.component, value.model]) {
     const packageName = packageNameFromSpecifier(item.moduleSpecifier)
-    if (packageName && !value.dependencies[packageName])
+    if (packageName && !Object.hasOwn(value.dependencies, packageName))
       return failure(`ConfigForm binding does not declare a version for "${packageName}".`)
   }
   return { success: true, data: value }

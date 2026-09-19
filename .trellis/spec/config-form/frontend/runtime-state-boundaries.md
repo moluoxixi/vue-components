@@ -124,10 +124,18 @@ Vue, Workbench state, or a mutable Registry.
 - Source defaults come only from Canonical fields. Missing defaults remain
   absent, bindings do not guess keys, form readonly dominates field state,
   hidden/disabled fields are filtered, and readonly fields skip validation.
-- Source validation checks request ownership, value snapshot, projection
-  revision, and Surface-instance lifetime before publishing errors/submission.
-- Preview and generated projects use the same Prototype session reducer and
-  Dataset query service. They do not maintain parallel state machines.
+- Source precompiles every canonical RuleSet before assembling either file set.
+  Raw source executes local field/surface validation before a primary action;
+  ConfigForm Surface wrappers call the public form expose and do not receive a
+  host-injected validation runtime. Invalid rules, regexes, or unresolved named
+  custom validators fail generation without partial files. Nested scoped
+  defaults and field rendering are preserved, while interactions that require
+  an unavailable address-scoped settlement/projection runtime fail closed
+  rather than flattening values across rows.
+- Preview uses the Prototype session reducer. Raw generated projects reproduce
+  the same observable local behavior in readable application code without
+  importing or copying that reducer; ConfigForm bindings export configuration
+  only and leave application orchestration to the consuming engineer.
 
 ## 4. Validation & Error Matrix
 
@@ -175,8 +183,9 @@ Vue, Workbench state, or a mutable Registry.
   closeCurrent/closeAll, parameters, named results, and missing instance no-op.
 - Preview/Source parity compiles the same Project, executes its Vue backend and
   generated project, and compares defaults, binding, validation, state/value
-  rules, Dataset views, navigation, overlays, and readonly behavior. String
-  snapshots do not substitute for executed tests.
+  rules, Dataset views, navigation, overlays, and readonly behavior. Behavioral
+  parity does not require a shared generated runtime, and string snapshots do
+  not substitute for executed tests.
 
 ## 7. Wrong vs Correct
 

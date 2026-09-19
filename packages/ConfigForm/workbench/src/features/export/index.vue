@@ -3,23 +3,23 @@ import type { SourceFile, SourceFileSetV1 } from '@moluoxixi/config-form-source/
 import type { ExportSessionState } from '../../project'
 import type { ExportDialogEmits, ExportDialogProps } from './types'
 import { Clipboard, Download, RefreshCw, X } from '@lucide/vue'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import '@moluoxixi/config-form-source/viewer/style'
 import {
   createExportSession,
   downloadSourceFile,
   downloadWorkspaceArchive,
   resolveExportSnapshotPath,
 } from '../../project'
+import '@moluoxixi/config-form-source/viewer/style'
 
 const props = defineProps<ExportDialogProps>()
 const emit = defineEmits<ExportDialogEmits>()
 
 const locale = computed(() => createDesignerLocale(props.locale))
 const rawSelectedPath = ref('src/main.ts')
-const bindingSelectedPath = ref('src/main.ts')
+const bindingSelectedPath = ref('src/bindings.ts')
 const exportSession = createExportSession({
   capture: () => props.capture(),
   currentCompilation: () => props.currentCompilation,

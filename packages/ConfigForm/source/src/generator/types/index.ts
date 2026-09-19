@@ -1,6 +1,7 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type {
   ContractResult,
+  MaterialSemanticTrigger,
   ModelJsonObject,
   ModelJsonValue,
   ProjectId,
@@ -66,6 +67,25 @@ export interface SourceOptionsResolution {
 
 export type SourceRenderKind = 'component' | 'layout-flex' | 'layout-grid' | 'section'
 
+export type SourceSemanticItemResolution
+  = | { readonly kind: 'none' }
+    | { readonly kind: 'argument', readonly index: number }
+
+/** Provider-owned event projection used only by generated source. */
+export interface SourceSemanticListenerResolution {
+  /** Raw Vue event name without directives or modifiers. */
+  readonly event: string
+  /** Public ConfigForm component listener prop for the same event. */
+  readonly listenerProp: string
+  /** How a row/item semantic trigger obtains its item from event arguments. */
+  readonly item: SourceSemanticItemResolution
+}
+
+export type SourceSemanticListenerMap = Readonly<Partial<Record<
+  MaterialSemanticTrigger,
+  SourceSemanticListenerResolution
+>>>
+
 export interface SourceComponentResolution {
   /** Empty for native HTML elements. Library plugins are installed once from `library`. */
   moduleSpecifier: string
@@ -79,6 +99,7 @@ export interface SourceComponentResolution {
   library?: SourceLibraryResolution
   options?: SourceOptionsResolution
   staticProps?: ModelJsonObject
+  semanticListeners?: SourceSemanticListenerMap
   defaultValue?: ModelJsonValue
   valueProp?: string
   trigger?: string
