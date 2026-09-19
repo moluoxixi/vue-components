@@ -71,8 +71,12 @@ if (!('kind' in snapshot)) {
 
 完整跨包架构见 [ConfigForm README](../README.md)。
 
-## 独立 Runtime 源码
+## Source 边界
 
-`getConfigFormRuntimeSources()` 返回构建时收集的 Core、Headless 与 Vue Runtime 源码及完整相对导入闭包。Source backend 将这些文件写入导出工程的 `src/runtime`，页面只生成实例级适配器，因此导出无需安装 ConfigForm，也无需维护第二套解释器。
+Compiler 只产出 Canonical IR，不收集、打包或导出 Core、Headless、Vue Runtime 源码。
+`@moluoxixi/config-form-source` 直接消费 `ProjectCompilation`：默认生成 Vue 与目标 UI
+组件源码，另行生成只引用公开 ConfigForm 包的绑定源码；两种产物都不会写入
+`src/runtime` 或复制运行核心。
 
-代码态组件 listener 由宿主直接写入 Runtime config 的 `props.onX`，不进入 Canonical IR 或 Source 序列化。当前 Canonical IR 版本为 `5`，编译器版本为 `6.0.0`。
+代码态组件 listener 由宿主直接写入 Runtime config 的 `props.onX`，不进入 Canonical IR
+或 Source 序列化。当前 Canonical IR 版本为 `5`，编译器版本为 `6.0.0`。

@@ -240,17 +240,30 @@ describe('workbench service boundaries', () => {
   it('keeps full-project compilation lazy and snapshot-scoped in Export Service', async () => {
     const { adapter, snapshot } = await fixture()
     let current = snapshot
+    const readEmbedded = vi.fn(async () => undefined)
     const service = createWorkbenchExportService({
       getAdapter: () => adapter,
       getSnapshot: () => current,
+      readEmbedded,
     })
 
     service.sync(snapshot)
     expect(service.compilation.value).toBeUndefined()
     const first = service.capture()
     expect(first?.compilation.origin).toEqual({ kind: 'committed', editVersion: 3 })
+    expect(first?.providerResolver).toBe(adapter.sourceProviderResolver)
     expect(service.getCompilation()).toBe(first?.compilation)
     expect(service.capture()?.compilation).toBe(first?.compilation)
+
+    const resourceRequest = {
+      projectId: snapshot.document.id,
+      resourceId: 'missing-resource',
+      contentHash: `sha256:${'0'.repeat(64)}`,
+    }
+    await expect(first?.resourceReader.readEmbedded(resourceRequest)).resolves.toMatchObject({
+      success: false,
+    })
+    expect(readEmbedded).toHaveBeenCalledWith(resourceRequest)
 
     current = {
       ...snapshot,

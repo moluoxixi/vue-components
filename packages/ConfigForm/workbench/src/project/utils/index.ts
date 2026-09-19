@@ -1,2 +1,1 @@
-export * from './file-tree'
-export * from './path'
+export * from './slug'

@@ -46,25 +46,18 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'plugin-element-plus': ['index.ts'],
   'prototype-runtime': [],
   'runtime': ['index.vue'],
+  'source': [],
   'vue-backend': ['index.ts'],
   'workbench': [
     'adapter-styles.d.ts',
     'App.vue',
     'components.d.ts',
     'main.ts',
-    'monaco-internal.d.ts',
   ],
 }
 const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
-const generatedTypeTemplateFiles = new Set([
-  'workbench/src/project/export/services/source-validation.ts',
-])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
-  'workbench/src/features/export/components/WorkspaceCodeEditor/services/typescript-language-features.ts': [
-    ['depre', 'cated'].join(''),
-    ['Depre', 'cated'].join(''),
-  ],
 }
 
 function collectProductTextFiles(directory: string): string[] {
@@ -113,8 +106,8 @@ function hasLocalEntry(directory: string): boolean {
  * Reports whether a module declares an exported `interface`/`type` at its top level.
  *
  * The check parses TypeScript instead of matching text so that type declarations
- * embedded in generated-source template literals (for example `runtime-source/services/sources.ts`
- * and `export/services/config-page.ts`) are not mistaken for real contracts of the module
+ * embedded in generated-source template literals (for example
+ * `source/src/generator/services/emitter.ts`) are not mistaken for real contracts of the module
  * that happens to contain the template.
  */
 function declaresExportedType(source: string): boolean {
@@ -358,8 +351,7 @@ describe('workbench production architecture boundary', () => {
       if (!normalized.endsWith('.ts')
         || normalized.endsWith('.d.ts')
         || normalized.includes('/types/')
-        || normalized.endsWith('/index.ts')
-        || generatedTypeTemplateFiles.has(normalized)) {
+        || normalized.endsWith('/index.ts')) {
         return []
       }
       const source = readFileSync(path, 'utf8')

@@ -52,6 +52,26 @@ describe('configForm dependency direction', () => {
     expect(hits).toEqual([])
   })
 
+  it('keeps the Source generator independent from UI and application packages', () => {
+    const source = resolve(root, 'packages/ConfigForm/source/src/generator')
+    const graph = createModuleGraph(source)
+    const forbidden = /^(?:vue|monaco-editor|element-plus|ant-design-vue|@config-form\/workbench|@moluoxixi\/config-form-(?:designer|designer-element-plus|designer-antd-vue|prototype-runtime))/
+    const hits = []
+    for (const [file, module] of graph.modules) {
+      if (file.includes('__tests__') || file.endsWith('.d.ts'))
+        continue
+      for (const specifier of module.specifiers) {
+        if (forbidden.test(specifier))
+          hits.push(`${relative(root, file)}: ${specifier}`)
+      }
+      for (const dependency of module.dependencies) {
+        if (inside(dependency, resolve(root, 'packages/ConfigForm')) && !inside(dependency, source))
+          hits.push(`${relative(root, file)}: private cross-package import ${relative(root, dependency)}`)
+      }
+    }
+    expect(hits).toEqual([])
+  })
+
   it('keeps Workbench lazy features independent of the app composition root', () => {
     const source = resolve(root, 'packages/ConfigForm/workbench/src')
     const graph = createModuleGraph(source)

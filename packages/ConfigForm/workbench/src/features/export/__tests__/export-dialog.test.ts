@@ -2,7 +2,7 @@
 
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { ExportDialog } from '..'
@@ -21,7 +21,15 @@ async function createInput(): Promise<BuildExportSnapshotInput> {
   })
   if (!compiled.success)
     throw new Error(compiled.diagnostics[0]?.message ?? 'Compilation failed.')
-  return { compilation: compiled.compilation, resolver: adapter.sourceResolver }
+  return {
+    compilation: compiled.compilation,
+    providerResolver: adapter.sourceProviderResolver,
+    resourceReader: {
+      async readEmbedded() {
+        return { success: true, data: new Uint8Array(), diagnostics: [] }
+      },
+    },
+  }
 }
 
 describe('export dialog', () => {
@@ -36,13 +44,11 @@ describe('export dialog', () => {
       props: {
         capture: () => input,
         currentCompilation: input.compilation,
-        currentSurfaceId: input.compilation.snapshot.document.homeSurfaceId,
         mode: 'source',
-        readEmbedded: async () => undefined,
         theme: 'light',
       },
       global: {
-        stubs: { WorkspaceCodeEditor: true },
+        stubs: { SourceTextViewer: true },
       },
     })
     const root = new DOMWrapper(target)
@@ -51,27 +57,18 @@ describe('export dialog', () => {
 
     expect(root.get('[role="tree"]').text()).toContain('package.json')
     expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
+    expect(root.get('.export-dialog-heading h2').text()).toBe('Raw Vue source')
     expect(root.text()).toContain('Snapshot model revision 7')
     expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(root.get('[role="tree"]').text()).toContain('project.config.ts')
-    expect(root.get('[role="tree"]').text()).toContain('form.config.ts')
-
-    await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
-    await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
-    await root.findAll('.el-segmented__item').find(item => item.text().includes('Current Surface'))!.trigger('click')
-    await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain('"graph"')
-    expect(root.get('.config-json-view').text()).not.toContain(`"version": ${PROJECT_DOCUMENT_VERSION}`)
-
-    await wrapper.setProps({ currentSurfaceId: 'missing-page' })
-    await flushPromises()
-    expect(root.get('[role="status"]').text()).toBe('The current page is unavailable in this export snapshot.')
-    expect(root.findAll('button').find(button => button.text().trim() === 'Copy')!.attributes('disabled')).toBeDefined()
-    expect(root.findAll('button').find(button => button.text().trim() === 'Download')!.attributes('disabled')).toBeDefined()
+    expect(root.get('.export-dialog-heading h2').text()).toBe('ConfigForm binding source')
+    expect(root.get('[role="tree"]').text()).toContain('config.ts')
+    expect(root.get('[role="tree"]').text()).toContain('package.json')
+    expect(root.find('.config-json-view').exists()).toBe(false)
+    expect(root.find('.config-json-scope').exists()).toBe(false)
+    expect(root.find('.config-view-tabs').exists()).toBe(false)
 
     wrapper.unmount()
     target.remove()

@@ -58,7 +58,6 @@ const {
   handleSurfaceAction,
   localeOptions,
   previewState,
-  readEmbeddedResource,
   registry,
   repositoryRevision,
   recoveryDrafts,
@@ -476,10 +475,8 @@ watch(recoveryDrafts, (drafts) => {
       v-if="exportDialogLoaded"
       :capture="captureExportSnapshotInput"
       :current-compilation="getCurrentExportCompilation()"
-      :current-surface-id="currentSurfaceId"
       :locale="localeOptions"
       :mode="exportPreviewMode"
-      :read-embedded="readEmbeddedResource"
       :theme="resolvedTheme"
       @close="closeExportPreview"
       @message="message = $event"

@@ -6,8 +6,8 @@ import type {
   ComponentContractRegistry,
   RegistryContractSnapshot,
 } from '@moluoxixi/config-form-model'
+import type { SourceProviderResolver } from '@moluoxixi/config-form-source/generator'
 import type { VueRuntimeBindingResolver } from '@moluoxixi/config-form-vue-backend'
-import type { CanonicalSourceBindingResolver } from '../../project/export'
 
 export type WorkbenchAdapterId = 'antd-vue' | 'element-plus'
 
@@ -17,7 +17,7 @@ export interface WorkbenchAdapter {
   locale: DesignerLocaleOptions
   registrySnapshot: RegistryContractSnapshot
   runtimeResolver: VueRuntimeBindingResolver
-  sourceResolver: CanonicalSourceBindingResolver
+  sourceProviderResolver: SourceProviderResolver
 }
 
 export interface WorkbenchRuntimeAdapter {

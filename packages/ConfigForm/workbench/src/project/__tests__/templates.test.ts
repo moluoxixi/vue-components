@@ -1,7 +1,6 @@
 import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { normalizeProjectPath } from '..'
 import { createWorkspaceArchive } from '../export'
 import {
   getBuiltInTemplateSeed,
@@ -80,12 +79,14 @@ describe('project templates', () => {
   })
 
   it('archives an explicit readonly generated file set under one safe root', async () => {
-    const entry = normalizeProjectPath('src/main.ts')
     const archive = unzipSync(await createWorkspaceArchive({
       name: 'Element profile fixture',
-      files: {
-        [entry]: { content: 'export {}\n', kind: 'text', language: 'typescript' },
-      },
+      files: [{
+        path: 'src/main.ts',
+        content: 'export {}\n',
+        kind: 'text',
+        language: 'typescript',
+      }],
     }))
 
     expect(Object.keys(archive)).toEqual(['element-profile-fixture/src/main.ts'])

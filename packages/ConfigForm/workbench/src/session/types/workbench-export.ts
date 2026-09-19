@@ -1,4 +1,5 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { ProjectRepository } from '@moluoxixi/config-form-model'
 import type { ShallowRef } from 'vue'
 import type { WorkbenchAdapter } from '../../adapters'
 import type {
@@ -9,6 +10,7 @@ import type {
 export interface WorkbenchExportServiceOptions {
   getAdapter: () => WorkbenchAdapter | undefined
   getSnapshot: () => ProjectEditorSessionSnapshot | undefined
+  readEmbedded: ProjectRepository['readEmbedded']
 }
 
 export interface WorkbenchExportService {

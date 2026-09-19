@@ -5,9 +5,9 @@ import type {
   RegistryContractSnapshot,
 } from '@moluoxixi/config-form-model'
 import type {
-  CanonicalSourceBindingResolver,
-  CanonicalSourceComponentBinding,
-} from '../../project/export'
+  SourceComponentResolution,
+  SourceProviderResolver,
+} from '@moluoxixi/config-form-source/generator'
 import type {
   WorkbenchAdapter,
   WorkbenchAdapterId,
@@ -17,7 +17,10 @@ import {
   createComponentContractRegistry,
   createRegistryContractSnapshot,
 } from '@moluoxixi/config-form-model'
-import { WORKBENCH_SOURCE_LIBRARY_VERSIONS } from '../constants'
+import {
+  WORKBENCH_CONFIG_FORM_BINDING_VERSIONS,
+  WORKBENCH_SOURCE_LIBRARY_VERSIONS,
+} from '../constants'
 import { createWorkbenchVueRuntimeResolver } from './runtime-resolver'
 
 const adapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchAdapter>>()
@@ -34,11 +37,16 @@ function createWorkbenchComponentRegistry(
 }
 
 function createWorkbenchSourceResolver(
+  id: WorkbenchAdapterId,
   capabilities: DesignerMaterialCapabilityRegistry,
   registrySnapshot: RegistryContractSnapshot,
-): CanonicalSourceBindingResolver {
+): SourceProviderResolver {
   const contracts = new Map(registrySnapshot.components.map(component => [component.key, component]))
-  const bindings = new Map<string, CanonicalSourceComponentBinding>()
+  const bindings = new Map<string, {
+    contractFingerprint: string
+    contractVersion: string
+    resolution: SourceComponentResolution
+  }>()
   capabilities.capabilities.forEach((capability) => {
     const contract = contracts.get(capability.contract.key)
     if (!contract)
@@ -51,27 +59,74 @@ function createWorkbenchSourceResolver(
     if (library && !libraryVersion)
       throw new Error(`Workbench source library has no declared current version: ${library.packageName}`)
     bindings.set(capability.contract.key, {
-      component: capability.contract.key,
       contractFingerprint: contract.fingerprint,
       contractVersion: contract.contractVersion,
-      configComponent: source.binding.configComponent,
-      tag: source.binding.tag,
-      render: source.binding.render,
-      ...(source.defaultValue === undefined ? {} : { defaultValue: structuredClone(source.defaultValue) }),
-      ...(library ? { library: { ...structuredClone(library), version: libraryVersion! } } : {}),
-      ...(source.binding.options ? { options: structuredClone(source.binding.options) } : {}),
-      ...(source.binding.staticProps ? { staticProps: structuredClone(source.binding.staticProps) } : {}),
-      ...(source.trigger ? { trigger: source.trigger } : {}),
-      ...(source.valueProp ? { valueProp: source.valueProp } : {}),
-      ...(capability.runtime.binding.blurTrigger ? { blurTrigger: capability.runtime.binding.blurTrigger } : {}),
+      resolution: {
+        moduleSpecifier: library?.packageName ?? '',
+        importName: library?.plugin ?? '',
+        configComponent: source.binding.configComponent,
+        tag: source.binding.tag,
+        render: source.binding.render,
+        styleImports: library?.stylesheet ? [library.stylesheet] : [],
+        dependencies: library ? { [library.packageName]: libraryVersion! } : {},
+        ...(source.defaultValue === undefined ? {} : { defaultValue: structuredClone(source.defaultValue) }),
+        ...(library ? { library: { ...structuredClone(library), version: libraryVersion! } } : {}),
+        ...(source.binding.options ? { options: structuredClone(source.binding.options) } : {}),
+        ...(source.binding.staticProps ? { staticProps: structuredClone(source.binding.staticProps) } : {}),
+        ...(source.trigger ? { trigger: source.trigger } : {}),
+        ...(source.valueProp ? { valueProp: source.valueProp } : {}),
+        ...(capability.runtime.binding.blurTrigger ? { blurTrigger: capability.runtime.binding.blurTrigger } : {}),
+      },
     })
   })
-  return Object.freeze({
-    adapter: registrySnapshot.adapter,
-    adapterVersion: registrySnapshot.adapterVersion,
-    registryFingerprint: registrySnapshot.fingerprint,
-    resolveBinding: (component: string) => bindings.get(component),
-  })
+  const adapterPackage = id === 'element-plus'
+    ? '@moluoxixi/config-form-element'
+    : '@moluoxixi/config-form-antd-vue'
+  const adapterComponent = id === 'element-plus' ? 'ElementConfigForm' : 'AntdConfigForm'
+  const adapterStyle = `${adapterPackage}/styles`
+  const adapterVersion = WORKBENCH_CONFIG_FORM_BINDING_VERSIONS.adapter[id]
+  const uiVersion = WORKBENCH_SOURCE_LIBRARY_VERSIONS[id === 'element-plus' ? 'element-plus' : 'ant-design-vue']!
+  const uiPackage = id === 'element-plus' ? 'element-plus' : 'ant-design-vue'
+  const resolver: SourceProviderResolver = {
+    adapter: {
+      adapter: registrySnapshot.adapter,
+      adapterVersion: registrySnapshot.adapterVersion,
+      registryFingerprint: registrySnapshot.fingerprint,
+    },
+    resolveComponent(request) {
+      const binding = bindings.get(request.componentKey)
+      if (!binding)
+        return { success: false, reason: `Unknown component: ${request.componentKey}` }
+      if (
+        binding.contractVersion !== request.contractVersion
+        || binding.contractFingerprint !== request.contractFingerprint
+      ) {
+        return { success: false, reason: `Locked component contract changed: ${request.componentKey}` }
+      }
+      return { success: true, value: binding.resolution }
+    },
+    resolveConfigFormBinding() {
+      return {
+        success: true,
+        value: {
+          component: { moduleSpecifier: adapterPackage, importName: adapterComponent },
+          model: {
+            moduleSpecifier: '@moluoxixi/config-form-headless',
+            importName: 'createConfigFormModel',
+          },
+          styleImports: [adapterStyle],
+          dependencies: {
+            '@moluoxixi/config-form': WORKBENCH_CONFIG_FORM_BINDING_VERSIONS.runtime,
+            '@moluoxixi/config-form-headless': WORKBENCH_CONFIG_FORM_BINDING_VERSIONS.headless,
+            [adapterPackage]: adapterVersion,
+            [uiPackage]: uiVersion,
+            'zod': WORKBENCH_CONFIG_FORM_BINDING_VERSIONS.zod,
+          },
+        },
+      }
+    },
+  }
+  return Object.freeze(resolver)
 }
 
 function createWorkbenchRuntimeBindings(
@@ -113,7 +168,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       ...runtime,
       designerRegistry,
       locale: adapter.ANTD_VUE_DESIGNER_ZH_CN,
-      sourceResolver: createWorkbenchSourceResolver(capabilities, runtime.registrySnapshot),
+      sourceProviderResolver: createWorkbenchSourceResolver(id, capabilities, runtime.registrySnapshot),
     }
   }
 
@@ -130,7 +185,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
     ...runtime,
     designerRegistry,
     locale: adapter.ELEMENT_PLUS_DESIGNER_ZH_CN,
-    sourceResolver: createWorkbenchSourceResolver(capabilities, runtime.registrySnapshot),
+    sourceProviderResolver: createWorkbenchSourceResolver(id, capabilities, runtime.registrySnapshot),
   }
 }
 

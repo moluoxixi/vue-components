@@ -1,4 +1,5 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { SourceResourceReader } from '@moluoxixi/config-form-source/generator'
 import type {
   BuildExportSnapshotInput,
   ProjectEditorSessionSnapshot,
@@ -26,6 +27,21 @@ export function createWorkbenchExportService(
   options: WorkbenchExportServiceOptions,
 ): WorkbenchExportService {
   const compilation = shallowRef<ProjectCompilation>()
+  const resourceReader: SourceResourceReader = {
+    async readEmbedded(input) {
+      const bytes = await options.readEmbedded(input)
+      return bytes
+        ? { success: true, data: Uint8Array.from(bytes), diagnostics: [] }
+        : {
+            success: false,
+            diagnostics: [{
+              code: 'resource_missing',
+              message: `Embedded Resource "${input.resourceId}" is unavailable.`,
+              resourceId: input.resourceId,
+            }],
+          }
+    },
+  }
 
   function sync(snapshot: ProjectEditorSessionSnapshot): void {
     if (compilation.value && !matchesSnapshot(compilation.value, snapshot))
@@ -51,7 +67,11 @@ export function createWorkbenchExportService(
           return result.compilation
         })()
     return next
-      ? { compilation: next, resolver: adapter.sourceResolver }
+      ? {
+          compilation: next,
+          providerResolver: adapter.sourceProviderResolver,
+          resourceReader,
+        }
       : undefined
   }
 

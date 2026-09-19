@@ -68,6 +68,7 @@ export function createWorkbenchController(
   const exportService = createWorkbenchExportService({
     getAdapter: () => currentAdapter.value,
     getSnapshot: () => projectSessionSnapshot.value,
+    readEmbedded: input => repository.value?.readEmbedded(input) ?? Promise.resolve(undefined),
   })
   const localeOptions = computed(() => createWorkbenchLocaleOptions(
     ui.localeId.value,

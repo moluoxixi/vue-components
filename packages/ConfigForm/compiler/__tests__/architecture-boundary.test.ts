@@ -21,7 +21,7 @@ describe('compiler architecture boundary', () => {
     }
 
     expect(files).toEqual([])
-    expect(directories).toEqual(['constants', 'defaults', 'runtime-source', 'schemas', 'services', 'types', 'utils'])
+    expect(directories).toEqual(['constants', 'defaults', 'schemas', 'services', 'types', 'utils'])
     directories.forEach((directory) => {
       expect(existsSync(resolve(sourceRoot, directory, 'index.ts'))).toBe(true)
     })
@@ -45,6 +45,8 @@ describe('compiler architecture boundary', () => {
     expect(source).not.toMatch(/ConfigFormFlow|flowEvents|eventNames|RegisteredEventAction/)
     expect(source).not.toMatch(/compileCanonicalPage|PageCompilation|CanonicalPageIdentity|pagesById|pageOrder|homePageId/)
     expect(source).not.toMatch(/optionSource|bindings|conditions|reactions|page\.runtime/)
+    expect(source).not.toMatch(/getConfigFormRuntimeSources|import\.meta\.glob/)
+    expect(existsSync(resolve(sourceRoot, 'runtime-source'))).toBe(false)
     expect(existsSync(resolve(sourceRoot, 'services/compile/services/flows.ts'))).toBe(false)
     expect(existsSync(resolve(sourceRoot, 'utils/flow.ts'))).toBe(false)
   })

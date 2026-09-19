@@ -1,12 +1,20 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { SourceBinaryFile } from '@moluoxixi/config-form-source/generator'
 import type { BuildExportSnapshotInput } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { buildExportSnapshot, CONFIG_FORM_EXPORT_GENERATOR_VERSION, createExportFileSet, createExportSession, createWorkspaceArchive, isExportSnapshotStale, resolveExportSnapshotPath } from '../export'
+import {
+  buildExportSnapshot,
+  CONFIG_FORM_EXPORT_GENERATOR_VERSION,
+  createExportSession,
+  createWorkspaceArchive,
+  isExportSnapshotStale,
+  resolveExportSnapshotPath,
+  sourceFileBytes,
+} from '../export'
 import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
@@ -21,27 +29,37 @@ async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput>
   })
   if (!result.success)
     throw new Error(result.diagnostics[0]?.message ?? 'Compilation failed.')
-  return { compilation: result.compilation, resolver: adapter.sourceResolver }
+  return {
+    compilation: result.compilation,
+    providerResolver: adapter.sourceProviderResolver,
+    resourceReader: {
+      async readEmbedded() {
+        return { success: true, data: new Uint8Array(), diagnostics: [] }
+      },
+    },
+  }
 }
 
 describe('export snapshot', () => {
-  it('builds frozen Source and Config file sets from one compilation', async () => {
+  it('builds frozen raw Vue and ConfigForm binding file sets from one compilation', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
     expect(snapshot.generatorVersion).toBe(CONFIG_FORM_EXPORT_GENERATOR_VERSION)
-    expect(snapshot.generatorVersion).toBe('5.0.0')
-    expect(snapshot.source.entry).toBe(normalizeProjectPath('src/main.ts'))
-    expect(snapshot.config.entry).toBe(normalizeProjectPath('project.config.ts'))
+    expect(snapshot.generatorVersion).toBe('source-file-set-v1')
+    expect(snapshot.rawSource).toMatchObject({ kind: 'raw-source', entry: 'src/main.ts' })
+    expect(snapshot.configBindings).toMatchObject({ kind: 'config-bindings', entry: 'src/main.ts' })
     expect(Object.isFrozen(snapshot)).toBe(true)
-    expect(Object.isFrozen(snapshot.source.files)).toBe(true)
-    expect(Object.isFrozen(snapshot.config.files)).toBe(true)
+    expect(Object.isFrozen(snapshot.rawSource.files)).toBe(true)
+    expect(Object.isFrozen(snapshot.configBindings.files)).toBe(true)
+    expect(snapshot.rawSource.files.every(Object.isFrozen)).toBe(true)
+    expect(snapshot.configBindings.files.every(Object.isFrozen)).toBe(true)
   })
 
   it('detects compilation drift without replacing pinned content', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
     const next = await fixture('Changed customer app')
 
     expect(isExportSnapshotStale(snapshot, input.compilation)).toBe(false)
@@ -51,7 +69,7 @@ describe('export snapshot', () => {
 
   it('treats compilation origin and generator version as snapshot identity', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
     const revised = {
       ...input.compilation,
       origin: { editVersion: 9, kind: 'committed' as const },
@@ -64,8 +82,8 @@ describe('export snapshot', () => {
       ...draft,
       origin: { baseEditVersion: 8, draftId: 'draft-b', kind: 'draft' as const },
     } as ProjectCompilation
-    const draftSnapshot = buildExportSnapshot({ ...input, compilation: draft })
-    const nextGeneratorSnapshot = buildExportSnapshot({ ...input, generatorVersion: '999.0.0' })
+    const draftSnapshot = await buildExportSnapshot({ ...input, compilation: draft })
+    const nextGeneratorSnapshot = await buildExportSnapshot({ ...input, generatorVersion: '999.0.0' })
 
     expect(isExportSnapshotStale(snapshot, revised)).toBe(true)
     expect(isExportSnapshotStale(draftSnapshot, draft)).toBe(false)
@@ -74,51 +92,43 @@ describe('export snapshot', () => {
     expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '999.0.0')).toBe(false)
   })
 
-  it('does not expose mutable retained binary bytes', async () => {
-    const path = normalizeProjectPath('assets/payload.bin')
-    const source = new Uint8Array([0, 127, 255])
-    const fileSet = createExportFileSet(path, {
-      [path]: { content: source, kind: 'binary' },
+  it('decodes canonical binary files into fresh archive bytes', async () => {
+    const file: SourceBinaryFile = Object.freeze({
+      kind: 'binary',
+      path: 'assets/payload.bin',
+      mediaType: 'application/octet-stream',
+      encoding: 'base64',
+      contentBase64: 'AH//',
     })
-    source[0] = 42
-
-    const file = fileSet.files[path]
-    expect(file?.kind).toBe('binary')
-    if (file?.kind !== 'binary')
-      return
-    expect([...file.content]).toEqual([0, 127, 255])
-    const exposed = file.content
+    const exposed = sourceFileBytes(file)
     exposed[1] = 1
-    expect([...file.content]).toEqual([0, 127, 255])
-    expect(Object.isFrozen(file)).toBe(true)
 
+    expect([...sourceFileBytes(file)]).toEqual([0, 127, 255])
     const archive = unzipSync(await createWorkspaceArchive({
-      files: fileSet.files,
+      files: [file],
       name: 'Binary snapshot',
     }))
     expect([...archive['binary-snapshot/assets/payload.bin']!]).toEqual([0, 127, 255])
   })
 
-  it('feeds frozen Source bytes to the archive', async () => {
-    const snapshot = buildExportSnapshot(await fixture())
-    const pagePath = normalizeProjectPath('src/surfaces/home/Surface.vue')
-    const page = snapshot.source.files[pagePath]
+  it('feeds frozen raw-source bytes to the archive', async () => {
+    const snapshot = await buildExportSnapshot(await fixture())
+    const page = snapshot.rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')
     expect(page?.kind).toBe('text')
     if (page?.kind !== 'text')
       return
 
     const archive = unzipSync(await createWorkspaceArchive({
-      files: snapshot.source.files,
+      files: snapshot.rawSource.files,
       name: snapshot.compilation.ir.name,
     }))
     expect(strFromU8(archive['customer-app/src/surfaces/home/Surface.vue']!)).toBe(page.content)
   })
 
   it('uses preferred, entry, first text, then first file fallback order', async () => {
-    const snapshot = buildExportSnapshot(await fixture())
-    const preferred = normalizeProjectPath('package.json')
-    expect(resolveExportSnapshotPath(snapshot.source, preferred)).toBe(preferred)
-    expect(resolveExportSnapshotPath(snapshot.source, normalizeProjectPath('missing.txt'))).toBe(snapshot.source.entry)
+    const snapshot = await buildExportSnapshot(await fixture())
+    expect(resolveExportSnapshotPath(snapshot.rawSource, 'package.json')).toBe('package.json')
+    expect(resolveExportSnapshotPath(snapshot.rawSource, 'missing.txt')).toBe(snapshot.rawSource.entry)
   })
 
   it('keeps the last complete snapshot when refresh fails', async () => {
@@ -130,10 +140,10 @@ describe('export snapshot', () => {
     const session = createExportSession({
       capture: () => capture,
       currentCompilation: () => current,
-      build(input) {
+      async build(input) {
         if (fail)
           throw new Error('generator failed')
-        return buildExportSnapshot(input)
+        return await buildExportSnapshot(input)
       },
     })
 

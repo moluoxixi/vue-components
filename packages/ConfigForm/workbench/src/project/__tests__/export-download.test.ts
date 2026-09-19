@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { downloadWorkspaceFile, workspaceFileBlob } from '../export'
+import { downloadSourceFile, sourceFileBlob } from '../export'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -10,11 +10,20 @@ afterEach(() => {
 })
 
 describe('export downloads', () => {
-  it('creates exact text and binary blobs without sharing binary storage', async () => {
-    const text = workspaceFileBlob({ content: 'const value = 1\n', kind: 'text' })
-    const source = new Uint8Array([0, 1, 127, 255])
-    const binary = workspaceFileBlob({ content: source, kind: 'binary' })
-    source.fill(9)
+  it('creates exact text and binary blobs from Source files', async () => {
+    const text = sourceFileBlob({
+      kind: 'text',
+      path: 'src/main.ts',
+      language: 'typescript',
+      content: 'const value = 1\n',
+    })
+    const binary = sourceFileBlob({
+      kind: 'binary',
+      path: 'assets/payload.bin',
+      mediaType: 'application/octet-stream',
+      encoding: 'base64',
+      contentBase64: 'AAF//w==',
+    })
 
     expect(text.type).toBe('text/plain;charset=utf-8')
     expect(await text.text()).toBe('const value = 1\n')
@@ -32,8 +41,14 @@ describe('export downloads', () => {
       expect(this.href).toContain('blob:config-form-export')
     })
 
-    expect(downloadWorkspaceFile({
-      file: { content: new Uint8Array([0, 255]), kind: 'binary' },
+    expect(downloadSourceFile({
+      file: {
+        kind: 'binary',
+        path: 'assets/payload.bin',
+        mediaType: 'application/octet-stream',
+        encoding: 'base64',
+        contentBase64: 'AP8=',
+      },
       filename: 'payload.bin',
     })).toBe('payload.bin')
 

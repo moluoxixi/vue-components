@@ -1,22 +1,21 @@
 # @config-form/workbench
 
-Workbench 是当前仓库内部的 Project 编辑、Preview、Config 导出和集成验证应用。它是
+Workbench 是当前仓库内部的 Project 编辑、Preview、源码导出和集成验证应用。它是
 ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖导入。Surface Foundation
-已将其持久化、Preview、缓存和生成器身份切换为 Surface；完整 Studio 资产 UI 与独立
-Source Viewer 仍由后续任务负责。
+已将持久化、Preview 与缓存切换为 Surface；源码生成和只读查看由独立
+`@moluoxixi/config-form-source` 包提供。
 
 ## 当前实现
 
 - 组合公开的 Model、Compiler、Vue backend、Runtime、Designer 与 provider adapter。
-- `ProjectDocument v6`、持久化、Preview Runtime Host、缓存和 Config generator 都以
+- `ProjectDocument v6`、持久化、Preview Runtime Host、缓存和 Source generator 都以
   Surface 为身份；默认 Designer Inspector 只有 `properties` 与 `validation`。
 - Preview 验证结构、布局、绑定、校验、同步 reaction、Runtime Data Source 和
   readonly 行为，不复现未注入的宿主函数。
 - 动态 Runtime Data Source 仍属于生产 Runtime 的代码态能力，不进入 Studio Demo 合同。
-  当前 Workbench 的临时 Config/Source 导出会逐步迁移到独立 Source 包；本任务不创建
-  Source package 或兼容 wrapper。
-- Source/Config 只处理 JSON-safe 配置，不生成 handler stub、字符串 action 引用、
-  事件元数据或 Flow。
+- 默认导出直接使用 Vue 与目标 UI 组件的原始工程源码；第二种导出只组合公开
+  ConfigForm adapter、Headless model 与绑定配置。两者都不生成 `src/runtime/**`，也不
+  复制 Compiler、Prototype Runtime、事件注册表或业务函数桩。
 
 复杂组件逻辑由宿主 Vue/TypeScript 代码维护，使用内存 config 的 `props.onX`。函数
 不进入 ProjectDocument、IndexedDB、Preview transport 或 Source，也不通过 iframe
@@ -51,7 +50,7 @@ const runtimeConfig = {
 Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 弹窗中的重新
 生成、复制、单文件下载、ZIP 和通知。
 
-目标边界中：
+当前边界中：
 
 - Designer 只编辑当前 `SurfaceAsset`。
 - `@moluoxixi/config-form-prototype-runtime` 统一执行页面历史、overlay instance 栈、
@@ -64,18 +63,18 @@ Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 
 - Viewer 桌面显示左文件树和右源码，窄屏切换 tree/code；Monaco 仅在 Viewer 内
   异步加载。Viewer 不拥有弹窗、复制、下载、ZIP、通知或持久化。
 
-Surface Foundation 与 Prototype Runtime 已是当前可导入 API；资产树、Dataset 编辑器、
-Interactions Inspector 和独立 Source 包仍是迁移责任，不在本 README 中伪造可导入 API。
-实现状态以 [路线图](../ROADMAP.md) 为准。
+Surface Foundation、Prototype Runtime 与 Source 已是当前可导入 API；资产树、Dataset
+编辑器和 Interactions Inspector 仍是后续迁移责任。实现状态以
+[路线图](../ROADMAP.md) 为准。
 
 ## 当前合同
 
-持久化、Registry、Canonical IR、Preview transport 和当前 Source generator 只接受
-各自精确的 JSON-safe 当前版本。旧、未来、缺失、畸形或混合版本均 fail closed；
-不提供迁移器、兼容别名、deprecated wrapper 或双读。
+持久化、Registry、Canonical IR、Preview transport 与 `SourceFileSet v1` 只接受各自
+精确的 JSON-safe 当前版本。旧、未来、缺失、畸形或混合版本均 fail closed；不提供
+迁移器、兼容别名、deprecated wrapper 或双读。
 
-目标迁移也采用同样硬切策略：不保留 Page/Surface 双模型，不保留 Workbench Source
-wrapper 或 re-export，不把 Prototype Interaction 转换成原始事件、动作链或 Flow。
+源码迁移采用同样硬切策略：旧 Workbench generator、文件树、Monaco editor、wrapper
+和 re-export 已删除；Prototype Interaction 不转换成原始事件、动作链或 Flow。
 
 ## 验证
 

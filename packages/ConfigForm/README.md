@@ -10,11 +10,11 @@ ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工
 ## 当前实现
 
 Surface Foundation 已落地。`ProjectDocument v6`、Compiler/Canonical IR、Vue backend、
-Workbench persistence/Preview 和现有生成器都以 `SurfaceAsset` 为身份；Page/Dialog/Drawer
+Workbench persistence/Preview 和 Source generator 都以 `SurfaceAsset` 为身份；Page/Dialog/Drawer
 共享 `SurfaceGraph`，每次 Experience 打开由 Prototype Runtime 创建隔离的
 `SurfaceInstance`。Designer 仍聚焦一个 Surface，默认 Inspector 只有 `properties` 与
-`validation`；完整 Studio 资产 UI、Dataset 编辑 UI、Interactions Inspector 和独立
-Source 包仍是后续任务。
+`validation`；独立 Source 包已经落地，完整 Studio 资产 UI、Dataset 编辑 UI 和
+Interactions Inspector 仍是后续任务。
 
 当前可用分层：
 
@@ -27,7 +27,8 @@ Source 包仍是后续任务。
 | Designer    | Designer 与 provider adapters          | 单 Surface 的结构、布局、静态属性、options 与基础校验    |
 | Model       | `@moluoxixi/config-form-model`         | Surface/Dataset/Resource、事务、Repository 与 transfer   |
 | Prototype   | `@moluoxixi/config-form-prototype-runtime` | DOM-free session、SurfaceInstance 与 Vue overlay host   |
-| Workbench   | `@config-form/workbench`               | Project 编辑、iframe Preview、Surface/Config 导出         |
+| Source      | `@moluoxixi/config-form-source`         | 原生 Vue/ConfigForm 绑定生成器与只读源码 Viewer          |
+| Workbench   | `@config-form/workbench`               | Project 编辑、iframe Preview 与源码导出宿主               |
 
 当前代码依赖方向是：
 
@@ -41,19 +42,19 @@ Model -> Compiler -> Vue Backend
 Designer  Prototype Runtime
   ^          ^
   |          |
-  +-- Workbench composition root
+  +-- Workbench composition root ----> Source
 ```
 
 Core、Headless 和 Runtime 不依赖 Designer 或 Workbench；Designer 不拥有业务副作用。
 Prototype Runtime 依赖 Compiler/Core 的纯合同，但生产 Runtime 不反向依赖它；Workbench
-作为私有组合根连接编译 artifact、Prototype session 与 provider adapter。
+作为私有组合根连接编译 artifact、Prototype session、provider adapter 与 Source。
 ProjectDocument、Canonical IR、Preview transport 和 Source generator 只处理 JSON-safe
 数据，不承载函数。
 
 ## 目标架构
 
-当前合同在生产链路之上增加 Surface、Dataset 基础合同和 Prototype Runtime；Studio 资产、
-Dataset 作者 UI、Interactions 作者 UI 与独立 Source 仍按后续阶段交付：
+当前合同在生产链路之上增加 Surface、Dataset 基础合同、Prototype Runtime 与 Source；
+Studio 资产、Dataset 作者 UI 和 Interactions 作者 UI 仍按后续阶段交付：
 
 ```text
 Core <- Headless <- Runtime <- UI adapters
@@ -78,8 +79,8 @@ Studio ----------------------------------+
 | Source            | 无 DOM Generator、provider component resolver、异步 Resource reader 和只读源码 Viewer |
 
 `@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和
-`/vue/style` 入口，并进入当前发布矩阵。`@moluoxixi/config-form-source` 仍是后续独立
-任务；本阶段不创建 Source 包或兼容 wrapper。
+`/vue/style` 入口。`@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer`
+和 `/viewer/style` 入口；两者都进入当前发布矩阵。
 
 目标依赖规则：
 
@@ -90,6 +91,8 @@ Studio ----------------------------------+
 - Source generator 只依赖稳定 compilation、Source 自有 component-resolver/resource-
   reader 合同和纯数据，不依赖 Designer、Workbench、具体 provider UI、Repository 或 DOM。
 - Studio 在组合根读取 adapter metadata 与 Repository，并把两个 adapter 分别注入 Source。
+- 默认 Source 工程直接依赖 Vue 与目标 UI 包；ConfigForm 绑定工程只 import 已发布公开包。
+  两者都不复制运行核心，也不生成 `src/runtime/**`。
 - Dataset 查询只在共享数据服务实现一次；Material 只拥有渲染、选择和语义激活。
 
 ## Runtime 与代码态组件事件
@@ -132,11 +135,12 @@ wrapper、双模型或联合 peer range。
 - [Headless](./headless/README.md)
 - [Core](./core/README.md)
 - [Designer](./designer/README.md)
+- [Source](./source/README.md)
 - [Workbench](./workbench/README.md)
 
-Model、Compiler、Vue backend 和 Prototype Runtime 的 README 已同步当前 Surface
-Foundation 入口；Studio 资产、Dataset/Interaction 作者 UI 和 Source Viewer 仍只在
-路线图中描述，不提前声称这些应用能力已经存在。
+Model、Compiler、Vue backend、Prototype Runtime 和 Source 的 README 已同步当前
+Surface Foundation 与源码交付入口；Studio 资产和 Dataset/Interaction 作者 UI 仍只在
+路线图中描述。
 
 ## 验证
 
@@ -146,6 +150,9 @@ pnpm test:package-architecture
 pnpm --filter @moluoxixi/config-form test
 pnpm --filter @moluoxixi/config-form typecheck
 pnpm --filter @moluoxixi/config-form-designer test
+pnpm --filter @moluoxixi/config-form-source test
+pnpm --filter @moluoxixi/config-form-source typecheck
+pnpm --filter @moluoxixi/config-form-source build
 pnpm --filter @config-form/workbench test --maxWorkers=2
 pnpm --filter @config-form/workbench typecheck
 pnpm --filter @config-form/workbench build

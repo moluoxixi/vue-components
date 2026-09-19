@@ -1,7 +1,7 @@
-import type { WorkspaceFile } from '../../types'
+import type { SourceFile } from '@moluoxixi/config-form-source/generator'
 
-export interface DownloadWorkspaceFileInput {
-  file: Readonly<WorkspaceFile>
+export interface DownloadSourceFileInput {
+  file: Readonly<SourceFile>
   filename: string
   mime?: string
 }

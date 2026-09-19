@@ -1,7 +1,8 @@
-import type { WorkspaceFile } from '../../types'
-import type { DownloadWorkspaceFileInput, WorkspaceArchiveInput } from '../types'
+import type { SourceFile } from '@moluoxixi/config-form-source/generator'
+import type { DownloadSourceFileInput, WorkspaceArchiveInput } from '../types'
 import { safeProjectSlug } from '../../utils'
 import { createWorkspaceArchive } from './archive'
+import { sourceFileBytes } from './file-content'
 
 function downloadBlob(blob: Blob, filename: string): string {
   if (typeof document === 'undefined')
@@ -21,15 +22,14 @@ function downloadBlob(blob: Blob, filename: string): string {
   return filename
 }
 
-export function workspaceFileBlob(file: Readonly<WorkspaceFile>, mime?: string): Blob {
-  if (file.kind === 'text')
-    return new Blob([file.content], { type: mime ?? 'text/plain;charset=utf-8' })
-  const bytes = Uint8Array.from(file.content)
-  return new Blob([bytes.buffer], { type: mime ?? 'application/octet-stream' })
+export function sourceFileBlob(file: Readonly<SourceFile>, mime?: string): Blob {
+  const bytes = sourceFileBytes(file)
+  const type = mime ?? (file.kind === 'text' ? 'text/plain;charset=utf-8' : file.mediaType)
+  return new Blob([Uint8Array.from(bytes).buffer], { type })
 }
 
-export function downloadWorkspaceFile(input: DownloadWorkspaceFileInput): string {
-  return downloadBlob(workspaceFileBlob(input.file, input.mime), input.filename)
+export function downloadSourceFile(input: DownloadSourceFileInput): string {
+  return downloadBlob(sourceFileBlob(input.file, input.mime), input.filename)
 }
 
 async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): Promise<string> {

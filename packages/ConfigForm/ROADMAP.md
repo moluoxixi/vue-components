@@ -17,7 +17,8 @@
   资产管理界面仍是迁移中的内部基线，动态 Runtime Data Source 不进入 Studio Demo 合同。
 - `@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和样式入口，
   共享纯 reducer、SurfaceInstance 栈、参数/结果事务与 overlay host。
-- `@moluoxixi/config-form-source` 仍是后续独立包，本阶段不提供 Source package 或兼容层。
+- `@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer` 和样式入口；Workbench
+  直接消费它的原生 Vue 与 ConfigForm 绑定文件集，不保留旧 generator/Viewer 兼容层。
 
 生产 Runtime、Headless、代码态 `props.onX`、reaction 和 Data Source 仍是当前可用
 能力。Studio 持久化产物只包含 JSON-safe 模拟 Demo；复杂业务逻辑由导出项目或宿主
@@ -43,10 +44,10 @@ envelope，而非裸 ProjectDocument。
 
 完成定义：Page/Dialog/Drawer 使用统一 `SurfaceAsset`，每次打开创建隔离
 `SurfaceInstance`；关闭、返回或导航清除浮层后不保留已关闭实例状态；旧、未来、
-缺失、混合合同 fail closed；Preview 和生成项目可共享同一会话实现而不复制 reducer。
+缺失、混合合同 fail closed；Preview 统一使用 Prototype Runtime，不在其它包复制 reducer。
 
 当前状态：已完成 Model、Repository、IndexedDB、Compiler、Vue backend、Runtime Host
-和 Prototype Runtime 的基础合同与定向测试；Workbench 全量迁移和最终质量门禁仍在本任务收口。
+和 Prototype Runtime 的基础合同与质量门禁。
 
 ### 3. Studio Assets
 
@@ -95,6 +96,11 @@ DOM；Viewer 桌面为左文件树/右源码，窄屏为 tree/code 切换，Mona
 生成项目安装、类型检查、测试和构建通过，embedded 资源以 binary/base64 文件项无损
 输出，URL 不调用 reader 或 fetch。
 
+当前状态：已完成。默认 `RawSourceFileSetV1` 直接使用 Vue、Vue Router 与目标 UI 包；
+`ConfigBindingFileSetV1` 只组合公开 ConfigForm adapter/model/config。两种文件集都不生成
+`src/runtime/**`，不复制 Compiler、Prototype Runtime、session reducer 或 overlay host。
+Workbench 只保留弹窗、刷新、复制、下载、ZIP 与通知等应用命令。
+
 ## 目标合同版本
 
 版本号由拥有相应 Reader 的阶段一次性切换：
@@ -135,8 +141,8 @@ Prototype Interaction 不是上述事件域的改名。它只处理封闭的状�
 
 - Surface 身份目前贯穿持久化、编译缓存、Preview 协议和生成器，Foundation 必须原子
   切换，不能只改 Model。
-- Preview 与生成项目必须执行同一 Prototype Runtime 和 Dataset query；字符串快照
-  不能替代真实生成项目测试。
+- Preview/Experience 必须统一执行 Prototype Runtime；Source 产物不得复制该运行核心。
+  生成工程的 SFC 编译、类型检查和真实 Vite build 不能由字符串快照替代。
 - 同一 Surface 重复打开、A -> B -> A、返回、关闭、参数和结果事务必须覆盖实例隔离。
 - Dataset raw rows ingestion 与 versioned envelope reader 必须有相反失败用例，避免无
   版本数组被 Reader 静默接受。
@@ -144,4 +150,4 @@ Prototype Interaction 不是上述事件域的改名。它只处理封闭的状�
   reader 由 Studio 组合根分别注入，不能让 Source 反向依赖 adapter metadata 或
   Repository。
 - CI 需要持续覆盖 package architecture、合同版本、生成项目、Workbench build/E2E 和
-  可访问性；规划包在真实实现前不得进入发布矩阵。
+  可访问性；尚未实现的规划包不得进入发布矩阵。

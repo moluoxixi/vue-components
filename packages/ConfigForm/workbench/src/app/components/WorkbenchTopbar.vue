@@ -156,8 +156,8 @@ function chooseExport(mode: WorkbenchExportMode): void {
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="export-menu-popover" data-export-menu>
-              <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export source') }}</span></ElDropdownItem>
-              <ElDropdownItem command="config"><Braces :size="15" aria-hidden="true" /><span>{{ locale.t('export.config', 'Export config') }}</span></ElDropdownItem>
+              <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export raw Vue source') }}</span></ElDropdownItem>
+              <ElDropdownItem command="config"><Braces :size="15" aria-hidden="true" /><span>{{ locale.t('export.config', 'Export ConfigForm bindings') }}</span></ElDropdownItem>
             </ElDropdownMenu>
           </template>
         </ElDropdown>

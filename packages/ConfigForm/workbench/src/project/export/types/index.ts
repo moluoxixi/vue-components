@@ -1,6 +1,3 @@
 export type * from './archive'
-export type * from './bindings'
-export type * from './config'
 export type * from './download'
 export type * from './snapshot'
-export type { CanonicalProjectSourceExport } from './source'
