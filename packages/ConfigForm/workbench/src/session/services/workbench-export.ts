@@ -69,7 +69,8 @@ export function createWorkbenchExportService(
     return next
       ? {
           compilation: next,
-          providerResolver: adapter.sourceProviderResolver,
+          bindingResolver: adapter.sourceBindingResolver,
+          componentResolver: adapter.sourceComponentResolver,
           resourceReader,
         }
       : undefined

@@ -2,8 +2,9 @@ import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { MaterialSemanticTrigger, ModelDiagnostic } from '@moluoxixi/config-form-model'
 import type {
   SourceComponentResolution,
+  SourceComponentResolver,
   SourceConfigFormBindingResolution,
-  SourceProviderResolver,
+  SourceConfigFormBindingResolver,
   SourceSemanticListenerMap,
   SourceSemanticListenerResolution,
 } from '../types'
@@ -252,7 +253,7 @@ function mergeDependencies(
 
 export function validateResolverIdentity(
   compilation: ProjectCompilation,
-  resolver: SourceProviderResolver,
+  resolver: SourceComponentResolver,
 ): ResolutionResult<true> {
   const expected = {
     adapter: compilation.key.registryAdapter,
@@ -279,7 +280,7 @@ export function validateResolverIdentity(
 
 export function resolveSourceComponents(
   compilation: ProjectCompilation,
-  resolver: SourceProviderResolver,
+  resolver: SourceComponentResolver,
 ): ResolutionResult<ResolvedSourceComponents> {
   const semanticTriggerUsages = collectSemanticTriggerUsages(compilation)
   if (!semanticTriggerUsages.success)
@@ -346,6 +347,36 @@ export function resolveSourceComponents(
       return failure(dependencyMessage, { componentKey })
     byKey.set(componentKey, result.value)
   }
+  const importedPackages = new Set<string>()
+  for (const resolution of byKey.values()) {
+    const specifiers = [
+      resolution.moduleSpecifier,
+      ...resolution.styleImports,
+      ...(resolution.library?.stylesheet ? [resolution.library.stylesheet] : []),
+    ]
+    for (const specifier of specifiers) {
+      const packageName = packageNameFromSpecifier(specifier)
+      if (packageName)
+        importedPackages.add(packageName)
+    }
+  }
+  const dependencyNames = [...dependencies.keys()]
+  const forbiddenDependencies = dependencyNames.filter(name => (
+    name.startsWith('@moluoxixi/')
+    || name.startsWith('@config-form/')
+    || name === 'zod'
+    || name.startsWith('zod/')
+  ))
+  if (forbiddenDependencies.length > 0) {
+    return failure(`Raw source component resolution contains forbidden dependencies: ${forbiddenDependencies.join(', ')}.`)
+  }
+  if (importedPackages.size > 1) {
+    return failure(`Raw source components resolve more than one provider UI package: ${[...importedPackages].sort().join(', ')}.`)
+  }
+  const undeclaredPurpose = dependencyNames.filter(name => !importedPackages.has(name))
+  if (undeclaredPurpose.length > 0) {
+    return failure(`Raw source component resolution declares non-provider dependencies: ${undeclaredPurpose.join(', ')}.`)
+  }
   return {
     success: true,
     data: { byKey, dependencies: Object.fromEntries(dependencies) },
@@ -353,7 +384,7 @@ export function resolveSourceComponents(
 }
 
 export function resolveConfigFormBinding(
-  resolver: SourceProviderResolver,
+  resolver: SourceConfigFormBindingResolver,
 ): ResolutionResult<SourceConfigFormBindingResolution> {
   let result
   try {

@@ -85,6 +85,42 @@ async function chooseElementOption(page: Page, container: Locator, selectName: s
   await expect(trigger).toContainText(optionName)
 }
 
+async function toggleElementSwitch(container: Locator, name: string): Promise<void> {
+  const control = container.locator(`.el-switch:has(input[aria-label="${name}"])`)
+  await expect(control).toBeVisible()
+  await control.click()
+}
+
+async function readRepositoryRevision(page: Page): Promise<number> {
+  const label = (await page.locator('.revision-state').textContent())?.trim() ?? ''
+  const match = /^v(\d+)\b/.exec(label)
+  expect(match, `Expected a repository revision in "${label}".`).not.toBeNull()
+  return Number(match![1])
+}
+
+async function installRuntimeHostErrorCapture(page: Page): Promise<void> {
+  const install = () => {
+    const target = window as typeof window & { mxConfigFormRuntimeErrors?: string[] }
+    target.mxConfigFormRuntimeErrors = []
+    window.addEventListener('message', (event) => {
+      const message: unknown = event.data
+      if (typeof message !== 'object' || message === null)
+        return
+      const record = message as Record<string, unknown>
+      if (record.channel === 'mx-config-form-runtime-host' && record.type === 'error')
+        target.mxConfigFormRuntimeErrors!.push(`${String(record.code)}: ${String(record.message)}`)
+    })
+  }
+  await page.addInitScript(install)
+  await page.evaluate(install)
+}
+
+async function readRuntimeHostErrors(page: Page): Promise<string[]> {
+  return page.evaluate(() => [...((window as typeof window & {
+    mxConfigFormRuntimeErrors?: string[]
+  }).mxConfigFormRuntimeErrors ?? [])])
+}
+
 function previewRuntime(page: Page): FrameLocator {
   return page.frameLocator('iframe[data-preview-runtime-host]')
 }
@@ -934,34 +970,151 @@ for (const adapter of ['element', 'antd'] as const) {
   })
 }
 
-test('applies Designer validation in Preview and blocks an invalid submission', async ({ page }) => {
-  await createProject(page, 'element')
-  await page.getByRole('tab', { name: 'Layers', exact: true }).click()
-  await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+for (const adapter of [
+  { id: 'element', name: 'Element' },
+  { id: 'antd', name: 'Ant' },
+] as const) {
+  test(`keeps ${adapter.name} property and validation editing stable across field kinds`, async ({ page }) => {
+    await installRuntimeHostErrorCapture(page)
+    const browserErrors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error')
+        browserErrors.push(message.text())
+    })
+    page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
 
-  const inspector = page.locator('.mx-config-form-designer__properties')
-  const defaultValue = inspector.getByRole('textbox', { name: 'Default value', exact: true })
-  await defaultValue.fill('Ada')
-  await defaultValue.press('Enter')
-  await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
-  const validation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
-  await validation.locator('.el-switch:visible').click()
-  await validation.getByRole('button', { name: 'Add rule', exact: true }).click()
-  await validation.getByRole('textbox', { name: 'Rule 1 message', exact: true }).fill('Designer requires a name')
+    await createProject(page, adapter.id)
+    const inspector = page.locator('.mx-config-form-designer__properties')
+    const designSurface = page.locator('.mx-config-form-design-surface')
+    const expectEditorAlive = async () => {
+      await expect(designSurface).toBeVisible()
+      await expect(inspector).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+      expect(browserErrors).toEqual([])
+    }
 
-  await page.getByRole('button', { name: 'Show preview' }).click()
-  const preview = page.getByRole('complementary', { name: 'Page preview' })
-  const name = previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })
-  await name.clear()
-  await preview.getByRole('button', { name: 'Submit preview form' }).click()
-  await expect(preview.locator('[data-preview-results]')).toContainText('Validation failed')
-  await expect(preview.locator('[data-preview-results]')).toContainText('Designer requires a name')
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+    await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+    const textDefault = inspector.getByRole('textbox', { name: 'Default value', exact: true })
+    await textDefault.fill('Ada')
+    await textDefault.press('Enter')
 
-  await name.fill('Ada')
-  await preview.getByRole('button', { name: 'Submit preview form' }).click()
-  await expect(preview.locator('[data-preview-results]')).toContainText('Submitted successfully')
-  await expect(preview.locator('[data-preview-submission-json]')).toContainText('Ada')
-})
+    await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+    const textValidation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+    await toggleElementSwitch(textValidation, 'Required')
+    const requiredMessage = textValidation.getByRole('textbox', { name: 'Required message', exact: true })
+    await requiredMessage.fill('Name is required')
+    await requiredMessage.press('Enter')
+    await textValidation.getByRole('checkbox', { name: 'Blur', exact: true }).check()
+    await toggleElementSwitch(textValidation, 'Enable validation')
+    await textValidation.getByRole('button', { name: 'Add rule', exact: true }).click()
+    await chooseElementOption(page, textValidation, 'Rule 1 type', 'Pattern')
+    const pattern = textValidation.getByRole('textbox', { name: 'Rule 1 pattern', exact: true })
+    await pattern.fill('[')
+    await pattern.blur()
+    await expectEditorAlive()
+    await pattern.fill('^Ada$')
+    await pattern.blur()
+
+    for (let index = 0; index < 3; index += 1) {
+      await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+      await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+      await expectEditorAlive()
+    }
+
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-active-"] .designer-layer-select').click()
+    await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+    const booleanValidation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+    await toggleElementSwitch(booleanValidation, 'Required')
+    await toggleElementSwitch(booleanValidation, 'Enable validation')
+    await expect(booleanValidation.getByRole('button', { name: 'Add rule', exact: true })).toHaveCount(0)
+    await expectEditorAlive()
+
+    await page.getByRole('tab', { name: 'Components', exact: true }).click()
+    await page.locator(`[data-material-key="${adapter.id}.input-number"]`).click()
+    await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+    const numberDefault = inspector.getByRole('spinbutton', { name: 'Default value', exact: true })
+    await numberDefault.fill('0')
+    await numberDefault.press('Enter')
+    await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+    const numberValidation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+    await toggleElementSwitch(numberValidation, 'Enable validation')
+    await numberValidation.getByRole('button', { name: 'Add rule', exact: true }).click()
+    await expect(numberValidation.getByRole('spinbutton', { name: 'Rule 1 value', exact: true })).toHaveValue('0')
+    await expectEditorAlive()
+
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-role-"] .designer-layer-select').click()
+    await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+    const options = inspector.locator('[aria-label="Options editor"]')
+    await options.getByRole('button', { name: 'Delete option 1', exact: true }).click()
+    const notice = page.locator('.workbench-toast')
+    await expect(notice).toContainText('1 invalid default value')
+    await notice.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(options.getByRole('textbox', { name: 'Option 1 value', exact: true })).toHaveValue('developer')
+    await expectEditorAlive()
+
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    const previewName = previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })
+    await previewName.fill('')
+    await previewName.blur()
+    await expect(previewRuntime(page).getByText('Name is required', { exact: true })).toBeVisible()
+    await previewName.fill('Ada')
+    await previewName.blur()
+    await expect(previewRuntime(page).getByText('Name is required', { exact: true })).toHaveCount(0)
+    await expect(previewRuntime(page).locator('.runtime-host-error')).toHaveCount(0)
+    await expect(designRuntime(page).locator('.runtime-host-error')).toHaveCount(0)
+    const liveFrameText = await Promise.all(page.frames().map(frame => frame.locator('body').textContent()))
+    expect(liveFrameText.join('\n')).not.toMatch(/RUNTIME_RENDER_FAILED|DataCloneError|Cannot set properties of null/)
+    expect(await readRuntimeHostErrors(page)).toEqual([])
+
+    await page.getByRole('button', { name: 'Close preview', exact: true }).click()
+    await expect(page.locator('iframe[data-preview-runtime-host]')).toHaveCount(0)
+    await expect(page.locator('.revision-state')).toContainText('Autosaved', { timeout: 15_000 })
+    expect(await readRuntimeHostErrors(page)).toEqual([])
+    await page.reload()
+
+    await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
+    await expect(designRuntime(page).locator('[data-config-node-id^="profile-name-"]')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+    await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+    await expect(inspector.getByRole('textbox', { name: 'Default value', exact: true })).toHaveValue('Ada')
+    await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+    const restoredValidation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+    await expect(restoredValidation.getByRole('textbox', { name: 'Required message', exact: true })).toHaveValue('Name is required')
+    await expect(restoredValidation.locator('.el-switch:has(input[aria-label="Required"]) input')).toBeChecked()
+    await expect(restoredValidation.getByRole('checkbox', { name: 'Blur', exact: true })).toBeChecked()
+    await expect(restoredValidation.locator('.el-switch:has(input[aria-label="Enable validation"]) input')).toBeChecked()
+    await expect(restoredValidation.locator('.el-select__wrapper:has(input[aria-label="Rule 1 type"])')).toContainText('Pattern')
+    await expect(restoredValidation.getByRole('textbox', { name: 'Rule 1 pattern', exact: true })).toHaveValue('^Ada$')
+
+    const restoredRevision = await readRepositoryRevision(page)
+    const restoredMessage = restoredValidation.getByRole('textbox', { name: 'Required message', exact: true })
+    await restoredMessage.fill(`${adapter.name} name is required`)
+    await restoredMessage.press('Enter')
+    await expect(restoredMessage).toHaveValue(`${adapter.name} name is required`)
+    await expect.poll(() => readRepositoryRevision(page), { timeout: 15_000 }).toBeGreaterThan(restoredRevision)
+    await expect(page.locator('.revision-state')).toContainText('Autosaved')
+    expect(await readRuntimeHostErrors(page)).toEqual([])
+    await page.reload()
+
+    await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+    await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
+    await expect(inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+      .getByRole('textbox', { name: 'Required message', exact: true }))
+      .toHaveValue(`${adapter.name} name is required`)
+    await expect(designRuntime(page).locator('.runtime-host-error')).toHaveCount(0)
+    expect(await readRuntimeHostErrors(page)).toEqual([])
+    expect(browserErrors).toEqual([])
+  })
+}
 
 test('has no Events, Flow, or Automation entry and keeps Designer JSON function-free', async ({ page }) => {
   await createProject(page, 'element')
@@ -1086,19 +1239,15 @@ for (const adapter of [
   { id: 'element', name: 'Element' },
   { id: 'antd', name: 'Ant' },
 ] as const) {
-  test(`shows the submitted runtime JSON in the ${adapter.name} Preview testbench`, async ({ page }) => {
+  test(`keeps the ${adapter.name} Preview provider control interactive`, async ({ page }) => {
     await createProject(page, adapter.id)
     await page.getByRole('button', { name: 'Show preview' }).click()
 
-    const preview = page.getByRole('complementary', { name: 'Page preview' })
     const input = previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })
     await input.fill(`${adapter.name} preview value`)
     await expect(input).toHaveValue(`${adapter.name} preview value`)
-    await preview.getByRole('button', { name: 'Submit preview form' }).click()
-
-    const result = preview.locator('[data-preview-submission-json]')
-    await expect(result).toContainText(`${adapter.name} preview value`)
-    await expect(preview.locator('[data-preview-results]')).toContainText('Submitted successfully')
+    await input.blur()
+    await expect(input).toHaveValue(`${adapter.name} preview value`)
   })
 }
 

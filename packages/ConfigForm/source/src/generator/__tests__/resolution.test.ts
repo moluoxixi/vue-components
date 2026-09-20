@@ -2,7 +2,8 @@ import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { MaterialSemanticTrigger } from '@moluoxixi/config-form-model'
 import type {
   SourceComponentResolution,
-  SourceProviderResolver,
+  SourceComponentResolver,
+  SourceConfigFormBindingResolver,
   SourceSemanticListenerMap,
 } from '../types'
 import { describe, expect, it } from 'vitest'
@@ -51,11 +52,10 @@ function componentResolution(
   }
 }
 
-function resolver(resolution: SourceComponentResolution): SourceProviderResolver {
+function resolver(resolution: SourceComponentResolution): SourceComponentResolver {
   return {
     adapter: { adapter: 'fixture', adapterVersion: '1', registryFingerprint: 'registry' },
     resolveComponent: () => ({ success: true, value: resolution }),
-    resolveConfigFormBinding: () => ({ success: false, reason: 'unused' }),
   }
 }
 
@@ -151,14 +151,10 @@ describe('source semantic listener resolution', () => {
 
 describe('config form binding resolution', () => {
   it('returns a stable diagnostic for malformed successful resolver results', () => {
-    const result = resolveConfigFormBinding({
-      adapter: { adapter: 'fixture', adapterVersion: '1', registryFingerprint: 'registry' },
-      resolveComponent: () => ({
-        success: true,
-        value: componentResolution(),
-      }),
+    const resolver: SourceConfigFormBindingResolver = {
       resolveConfigFormBinding: () => ({ success: true, value: null } as unknown as never),
-    })
+    }
+    const result = resolveConfigFormBinding(resolver)
 
     expect(result).toEqual({
       success: false,
@@ -171,8 +167,6 @@ describe('config form binding resolution', () => {
 
   it('rejects a binding style import whose package dependency is undeclared', () => {
     const result = resolveConfigFormBinding({
-      adapter: { adapter: 'fixture', adapterVersion: '1', registryFingerprint: 'registry' },
-      resolveComponent: () => ({ success: true, value: componentResolution() }),
       resolveConfigFormBinding: () => ({
         success: true,
         value: {

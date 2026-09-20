@@ -189,6 +189,8 @@ const fieldNodeSchema = z.object({
   field: identifierSchema,
   label: z.string().optional(),
   defaultValue: modelJsonValueSchema.optional(),
+  required: z.boolean().optional(),
+  requiredMessage: z.string().optional(),
   validation: ruleSetSchema.optional(),
   validateOn: z.union([
     z.enum(['submit', 'blur', 'change']),

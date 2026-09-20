@@ -199,6 +199,11 @@ const {
   lastAcceptedCommandId: () => lastAcceptedCommandId,
   mediumPanel,
   onNotice: (message, action) => emit('notice', message, action),
+  optionDefaultsClearedNotice: count => locale.t(
+    'options.defaultCleared',
+    'Options updated. {count} invalid default values were cleared. Undo to restore.',
+    { count },
+  ),
   surfaceId: () => props.surfaceId,
   readonly: () => props.readonly,
   rootRef,

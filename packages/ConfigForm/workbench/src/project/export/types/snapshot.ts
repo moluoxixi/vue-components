@@ -1,20 +1,27 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { ModelDiagnostic } from '@moluoxixi/config-form-model'
 import type {
   ConfigBindingFileSetV1,
   RawSourceFileSetV1,
-  SourceProviderResolver,
+  SourceComponentResolver,
+  SourceConfigFormBindingResolver,
   SourceResourceReader,
 } from '@moluoxixi/config-form-source/generator'
 
+export type ExportArtifact<T>
+  = | { readonly status: 'ready', readonly fileSet: T }
+    | { readonly status: 'failed', readonly diagnostics: readonly ModelDiagnostic[] }
+
 export interface ExportSnapshot {
   readonly compilation: ProjectCompilation
-  readonly configBindings: ConfigBindingFileSetV1
-  readonly rawSource: RawSourceFileSetV1
+  readonly configBindings: ExportArtifact<ConfigBindingFileSetV1>
+  readonly rawSource: ExportArtifact<RawSourceFileSetV1>
 }
 
 export interface BuildExportSnapshotInput {
   compilation: ProjectCompilation
-  providerResolver: SourceProviderResolver
+  bindingResolver: SourceConfigFormBindingResolver
+  componentResolver: SourceComponentResolver
   resourceReader: SourceResourceReader
 }
 

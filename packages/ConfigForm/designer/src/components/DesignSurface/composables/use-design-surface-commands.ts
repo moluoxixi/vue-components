@@ -7,6 +7,7 @@ import type { DesignerNodeAction, DesignSurfaceProps } from '../types'
 import { computed, nextTick } from 'vue'
 import {
   collectDesignSubtreeIds,
+  countDesignerOptionDefaultClears,
   createFormCommand,
   createMoveCommand,
   createNodePathCommand,
@@ -27,6 +28,7 @@ interface UseDesignSurfaceCommandsOptions {
   lastAcceptedCommandId: () => string | undefined
   mediumPanel: Ref<'palette' | 'properties' | undefined>
   onNotice: (message: string, action: () => boolean) => void
+  optionDefaultsClearedNotice: (count: number) => string
   surfaceId: () => string
   readonly: () => boolean
   rootRef: Ref<HTMLElement | undefined>
@@ -34,7 +36,7 @@ interface UseDesignSurfaceCommandsOptions {
   workspaceMode: ComputedRef<WorkspaceMode>
 }
 
-interface DeletionUndoTarget {
+interface MutationUndoTarget {
   entryId?: string
   position?: number
   transitionSequence: number
@@ -135,18 +137,27 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
   }
 
   function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.surfaceId(), [nodeId], path, value))
+    handleUpdatePaths([nodeId], path, value)
   }
 
   function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.surfaceId(), nodeIds, path, value))
+    const graph = options.controller.graph.value
+    const clearedDefaults = countDesignerOptionDefaultClears(graph, nodeIds, path, value)
+    const positionBefore = options.historyControl().history?.position
+    const changed = dispatch(createNodePathCommand(graph, options.surfaceId(), nodeIds, path, value))
+    if (changed && clearedDefaults > 0) {
+      announceMutationUndo(
+        options.optionDefaultsClearedNotice(clearedDefaults),
+        mutationUndoTarget(positionBefore),
+      )
+    }
   }
 
   function handleUpdateForm(changes: Record<string, unknown>): void {
     dispatch(createFormCommand(options.controller.graph.value, options.surfaceId(), changes))
   }
 
-  function deletionUndoTarget(positionBefore?: number): DeletionUndoTarget {
+  function mutationUndoTarget(positionBefore?: number): MutationUndoTarget {
     const history = options.historyControl().history
     const position = positionBefore === undefined
       ? undefined
@@ -159,7 +170,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     }
   }
 
-  function announceDeletionUndo(target: DeletionUndoTarget): void {
+  function announceMutationUndo(message: string, target: MutationUndoTarget): void {
     void nextTick(() => {
       const history = options.historyControl().history
       const acceptedEntry = history && history.position > 0
@@ -168,7 +179,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
       const acceptedTarget = acceptedEntry
         ? { ...target, entryId: acceptedEntry.id, position: history?.position }
         : target
-      options.onNotice(options.deletedNotice(), () => {
+      options.onNotice(message, () => {
         if (acceptedTarget.transitionSequence !== historyTransitionSequence)
           return false
         const currentHistory = options.historyControl().history
@@ -193,7 +204,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     const positionBefore = options.historyControl().history?.position
     const changed = options.controller.performNodeAction(action, nodeId)
     if (changed && action === 'remove')
-      announceDeletionUndo(deletionUndoTarget(positionBefore))
+      announceMutationUndo(options.deletedNotice(), mutationUndoTarget(positionBefore))
     void focusNode(options.controller.selectedId.value)
   }
 
@@ -204,7 +215,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     const positionBefore = options.historyControl().history?.position
     const changed = options.controller.performNodeAction(action, nodeId ?? '')
     if (changed && (action === 'remove' || action === 'cut'))
-      announceDeletionUndo(deletionUndoTarget(positionBefore))
+      announceMutationUndo(options.deletedNotice(), mutationUndoTarget(positionBefore))
     void focusNode(options.controller.selectedId.value)
     return changed
   }

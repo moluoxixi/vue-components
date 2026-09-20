@@ -17,26 +17,11 @@ export interface CollectedSourceResources {
   >
 }
 
-export interface SourceValidationRuntimeCompiler {
-  readonly dependencyVersion: string
-  readonly importName: 'compileRules'
-  readonly moduleSpecifier: '@moluoxixi/zod3-to-rule'
-}
-
-export interface SourceValidationFieldProjection {
-  /** The generated field must receive the schema returned by compileRules(). */
-  readonly attachSchema: true
-  /** The generated field receives compileRules().validator only when one was compiled. */
-  readonly attachValidator: boolean
-  readonly required?: true
-  readonly requiredMessage?: string
-}
-
 export interface SourceValidationFieldEmission {
   readonly nodeId: string
-  /** JSON-safe input that the generated project compiles with runtimeCompiler. */
+  /** Strictly parsed current RuleSet used by binding output and Raw code generation. */
   readonly ruleSet: RuleSet
-  readonly field: SourceValidationFieldProjection
+  readonly attachValidator: boolean
 }
 
 export interface SourceValidationSurfaceEmission {
@@ -45,6 +30,5 @@ export interface SourceValidationSurfaceEmission {
 }
 
 export interface SourceValidationEmissionPlan {
-  readonly runtimeCompiler: SourceValidationRuntimeCompiler
   readonly surfaces: readonly SourceValidationSurfaceEmission[]
 }

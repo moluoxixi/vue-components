@@ -103,6 +103,11 @@ Vue, Workbench state, or a mutable Registry.
 - State projection continuously derives `visible`, `disabled`, `readonly`,
   `required`, and Material-allowlisted display props. It runs on initialization
   and after dependency changes and never mutates values.
+- A field's persisted `required` / `requiredMessage` is its static validation
+  baseline. Dynamic `required` projection overrides that baseline only for the
+  current runtime instance. Required is not a RuleSet v2 descriptor, and
+  `validateOn` schedules Required and general rules through the same trigger
+  lifecycle without merging their stored contracts.
 - A value-change rule contains one `set`, `copy`, or `clear`. Initialization only
   establishes its dependency baseline; the action runs after declared fields
   change through user input or a named-result transaction.
@@ -128,14 +133,29 @@ Vue, Workbench state, or a mutable Registry.
 - Source defaults come only from Canonical fields. Missing defaults remain
   absent, bindings do not guess keys, form readonly dominates field state,
   hidden/disabled fields are filtered, and readonly fields skip validation.
-- Source precompiles every canonical RuleSet before assembling either file set.
-  Raw source executes local field/surface validation before a primary action;
-  ConfigForm Surface wrappers call the public form expose and do not receive a
-  host-injected validation runtime. Invalid rules, regexes, or unresolved named
-  custom validators fail generation without partial files. Nested scoped
-  defaults and field rendering are preserved, while interactions that require
-  an unavailable address-scoped settlement/projection runtime fail closed
-  rather than flattening values across rows.
+- `generateVueSource` and `generateConfigFormBindings` each run their own
+  complete preflight before assembling their own file set. Invalid rules,
+  regexes, types, or unresolved named custom validators fail that API with no
+  partial file set; they do not erase a successful result from the other API.
+- Raw source emits readable project-local validation functions for field-level
+  Required/Required message, RuleSet v2, and `validateOn`. It imports no
+  ConfigForm, Zod, RuleSet converter, Compiler, or internal Runtime; its only
+  `package.json.dependencies` and application runtime bare-package imports are
+  Vue, Vue Router, and the selected target UI package. Build-only Vite/TypeScript tooling
+  may remain in `devDependencies`.
+  Raw executes local field/Surface validation before a primary action.
+- RuleSet v2 has no `time` base. Designer, Runtime, and Source run time fields
+  with field Required and `validateOn` only; none coerces time into date
+  validation. A Select options authoring command settles any invalid default
+  and existing enum/literal base before compilation, so Runtime and Source see
+  one coherent revision and never repair that relationship locally.
+- ConfigForm binding output preserves field-level Required and RuleSet v2 as
+  public binding configuration. Its Surface wrappers call the public form
+  expose and do not receive a host-injected validation runtime or copy the
+  ConfigForm execution core. Nested scoped defaults and field rendering are
+  preserved, while interactions that require an unavailable address-scoped
+  settlement/projection runtime fail closed rather than flattening values
+  across rows.
 - Preview uses the Prototype session reducer. Raw generated projects reproduce
   the same observable local behavior in readable application code without
   importing or copying that reducer; ConfigForm bindings export configuration
@@ -149,6 +169,10 @@ Vue, Workbench state, or a mutable Registry.
 | External replacement after local writes | Observe new values; clear stale errors; refresh reactions/meta |
 | Stale async validation | Publish no stale errors or submit |
 | Form readonly | Render no editable control; skip validation; preserve eligible submission |
+| Static Required is false and dynamic projection is true | Validate as required for that instance without mutating the persisted field |
+| RuleSet contains `kind: 'required'` or a non-v2 version | Reject at the owning Reader/preflight; do not convert it to the field contract |
+| Time field carries a RuleSet/date base | Reject at the Registry-aware boundary; do not execute it as date validation |
+| Select options edit invalidates default and enum/literal base | Publish one coherent revision after authoring reconciliation; Runtime performs no follow-up repair |
 | Missing default | Do not guess empty string/zero |
 | Value/blur trigger with `props.onX` | Commit model/validation bookkeeping, then call listener once |
 | Component interaction in design mode | Do not write or call listener; do not create forwarding payload |
@@ -160,6 +184,8 @@ Vue, Workbench state, or a mutable Registry.
 | User opens the same Surface twice | Create isolated `instanceId` state for each opening |
 | Named result maps several fields | Commit all mappings atomically, then reevaluate |
 | Semantic trigger has an action array | Reject; do not execute a chain |
+| Raw generation fails while Binding succeeds, or vice versa | Keep the successful file set available and report diagnostics only for the failed mode |
+| Raw source imports ConfigForm, Zod, or an internal workspace package | Fail generated-consumer architecture before publication |
 | Old renderer, model mirror, event forwarding, or duplicate reducer import | Dependency/architecture gate fails |
 
 ## 5. Good / Base / Bad Cases
@@ -183,6 +209,9 @@ Vue, Workbench state, or a mutable Registry.
   ordering, exactly-once invocation, design-mode blocking, and Vue errors.
 - Interaction tests prove initialization projects state without value/UI
   actions; user/result changes execute `set/copy/clear`; cycles roll back.
+- Designer/Runtime/Source parity tests prove time fields execute Required and
+  `validateOn` without date rules, and Select option edits never expose an
+  intermediate revision with stale default or enum/literal validation.
 - Prototype Runtime tests cover repeated instances, A -> B -> A, navigate/back,
   closeCurrent/closeAll, parameters, named results, and missing instance no-op.
 - Preview/Source parity compiles the same Project, executes its Vue backend and
@@ -190,6 +219,11 @@ Vue, Workbench state, or a mutable Registry.
   rules, Dataset views, navigation, overlays, and readonly behavior. Behavioral
   parity does not require a shared generated runtime, and string snapshots do
   not substitute for executed tests.
+- Source tests independently fail Raw and ConfigForm binding generation, assert
+  the sibling result stays usable, and execute Required/Required message,
+  RuleSet v2, and `validateOn` in generated consumers for both providers. Raw
+  dependency scans and real installs permit only Vue, Vue Router, and the
+  selected UI package and use no internal workspace soft links.
 
 ## 7. Wrong vs Correct
 

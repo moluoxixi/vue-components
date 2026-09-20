@@ -7,7 +7,7 @@ import DesignerValidationSetter from '../src/components/DesignerPropertyPanel/co
 describe('designerValidationSetter advanced rules', () => {
   it('keeps compare and custom rules read-only and preserves them while basic rules change', async () => {
     const validation: RuleSet = {
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [
         { kind: 'compare', field: 'confirmation', operator: 'eq', message: 'Values must match' },
@@ -16,7 +16,7 @@ describe('designerValidationSetter advanced rules', () => {
       ],
     }
     const wrapper = mount(DesignerValidationSetter, {
-      props: { modelValue: validation },
+      props: { modelValue: validation, valueKind: 'text' },
     })
 
     const advanced = wrapper.findAll('[data-advanced-validation-rule]')
@@ -33,7 +33,9 @@ describe('designerValidationSetter advanced rules', () => {
     expect(creatableKinds).not.toContain('compare')
     expect(creatableKinds).not.toContain('custom')
 
-    await wrapper.get('input[aria-label="Rule 2 message"]').setValue('At least three characters')
+    const message = wrapper.get('input[aria-label="Rule 2 message"]')
+    await message.setValue('At least three characters')
+    await message.trigger('blur')
     const emitted = wrapper.emitted('update:modelValue')
     const next = emitted?.at(-1)?.[0] as RuleSet
     expect(next.rules).toEqual([

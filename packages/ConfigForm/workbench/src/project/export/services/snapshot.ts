@@ -3,15 +3,12 @@ import type {
   ProjectCompilation,
   ProjectCompilationOrigin,
 } from '@moluoxixi/config-form-compiler'
-import type {
-  ConfigBindingFileSetV1,
-  RawSourceFileSetV1,
-  SourceFile,
-  SourceFileSetV1,
-} from '@moluoxixi/config-form-source/generator'
+import type { ContractResult, ModelDiagnostic } from '@moluoxixi/config-form-model'
+import type { SourceFile, SourceFileSetV1 } from '@moluoxixi/config-form-source/generator'
 import type {
   BuildExportSnapshotInput,
   CreateExportSessionOptions,
+  ExportArtifact,
   ExportSession,
   ExportSessionRefreshResult,
   ExportSessionState,
@@ -22,53 +19,63 @@ import {
   generateVueSource,
 } from '@moluoxixi/config-form-source/generator'
 
-function failureMessage(label: string, diagnostics: readonly { code: string, message: string }[]): string {
-  const detail = diagnostics.map(item => `${item.code}: ${item.message}`).join('; ')
-  return `${label} generation failed${detail ? `: ${detail}` : '.'}`
-}
-
 function freezeFile(file: SourceFile): SourceFile {
   return Object.freeze({ ...file })
 }
 
-function freezeFileSet(fileSet: RawSourceFileSetV1): RawSourceFileSetV1
-function freezeFileSet(fileSet: ConfigBindingFileSetV1): ConfigBindingFileSetV1
-function freezeFileSet(fileSet: SourceFileSetV1): SourceFileSetV1 {
+function freezeDiagnostics(diagnostics: readonly ModelDiagnostic[]): readonly ModelDiagnostic[] {
+  return Object.freeze(diagnostics.map(diagnostic => Object.freeze({
+    ...diagnostic,
+    ...(diagnostic.path ? { path: [...diagnostic.path] } : {}),
+  })))
+}
+
+async function generateArtifact<TFileSet extends SourceFileSetV1>(
+  label: string,
+  generate: () => Promise<ContractResult<TFileSet>>,
+): Promise<ExportArtifact<TFileSet>> {
+  try {
+    const result = await generate()
+    return result.success
+      ? Object.freeze({ status: 'ready' as const, fileSet: freezeFileSet(result.data) })
+      : Object.freeze({ status: 'failed' as const, diagnostics: freezeDiagnostics(result.diagnostics) })
+  }
+  catch (cause) {
+    return Object.freeze({
+      status: 'failed' as const,
+      diagnostics: freezeDiagnostics([{
+        code: 'source_generation_failed',
+        message: `${label} generation failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      }]),
+    })
+  }
+}
+
+function freezeFileSet<TFileSet extends SourceFileSetV1>(fileSet: TFileSet): TFileSet {
   const files = Object.freeze(fileSet.files.map(freezeFile))
-  return fileSet.kind === 'raw-source'
-    ? Object.freeze({
-        version: fileSet.version,
-        kind: fileSet.kind,
-        entry: fileSet.entry,
-        files,
-      })
-    : Object.freeze({
-        version: fileSet.version,
-        kind: fileSet.kind,
-        entry: fileSet.entry,
-        files,
-      })
+  const snapshot: TFileSet = { ...fileSet, files }
+  Object.freeze(snapshot)
+  return snapshot
 }
 
 export async function buildExportSnapshot(input: BuildExportSnapshotInput): Promise<ExportSnapshot> {
-  const generatorInput = {
+  const rawInput = {
     compilation: input.compilation,
-    providerResolver: input.providerResolver,
+    componentResolver: input.componentResolver,
     resourceReader: input.resourceReader,
   }
-  const [rawResult, bindingResult] = await Promise.all([
-    generateVueSource(generatorInput),
-    generateConfigFormBindings(generatorInput),
+  const [rawSource, configBindings] = await Promise.all([
+    generateArtifact('Raw Vue source', () => generateVueSource(rawInput)),
+    generateArtifact('ConfigForm binding source', () => generateConfigFormBindings({
+      ...rawInput,
+      bindingResolver: input.bindingResolver,
+    })),
   ])
-  if (!rawResult.success)
-    throw new Error(failureMessage('Raw Vue source', rawResult.diagnostics))
-  if (!bindingResult.success)
-    throw new Error(failureMessage('ConfigForm binding source', bindingResult.diagnostics))
 
   return Object.freeze({
     compilation: input.compilation,
-    configBindings: freezeFileSet(bindingResult.data),
-    rawSource: freezeFileSet(rawResult.data),
+    configBindings,
+    rawSource,
   })
 }
 

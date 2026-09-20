@@ -33,6 +33,8 @@ const CANONICAL_FIELD_NODE_KEYS = new Set([
   'defaultValue',
   'field',
   'label',
+  'required',
+  'requiredMessage',
   'validateOn',
   'validation',
 ])

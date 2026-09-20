@@ -64,10 +64,18 @@ function commitCustom(value: unknown): void {
       :disabled="readonly"
       @update:model-value="commitCustom"
     />
-    <DesignerOptionsSetter v-else-if="setter.control === 'options'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
+    <DesignerOptionsSetter
+      v-else-if="setter.control === 'options'"
+      :model-value="value"
+      :option-value-types="setter.optionValueTypes"
+      :disabled="readonly"
+      @update:model-value="commitCustom"
+    />
     <DesignerValidationSetter
       v-else-if="setter.control === 'validation'"
       :model-value="value"
+      :value-kind="setter.valueKind"
+      :options="setter.options"
       :disabled="readonly"
       @update:model-value="commitCustom"
     />

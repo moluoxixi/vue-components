@@ -77,7 +77,6 @@ const {
   commandControl: designerCommandControl,
   getCompilation: getDesignRuntimeCompilation,
   historyControl: designerHistoryControl,
-  runtime: designRuntime,
   selectedIds: selectedDesignerIds,
 } = designSession
 const {
@@ -331,7 +330,7 @@ watch(recoveryDrafts, (drafts) => {
       >
         <div class="provider-surface">
           <DesignSurface
-            v-if="currentGraph && designRuntime"
+            v-if="currentGraph"
             ref="designer"
             :key="`${currentProject.registryLock.adapter}-${currentSurfaceId}`"
             class="embedded-designer"

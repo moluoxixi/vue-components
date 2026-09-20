@@ -72,7 +72,7 @@ function field(
 
 function graph(nodes: SurfaceNode[], spans: Record<string, number> = {}, form: SurfaceGraph['form'] = {}): SurfaceGraph {
   return {
-    version: 1,
+    version: 2,
     props: {},
     form,
     root: nodes.map(node => ({
@@ -184,6 +184,60 @@ describe('designer property panel lite Inspector', () => {
       .toBe('Default value')
   })
 
+  it('commits Required and its message as independent field settings', async () => {
+    const node = field('name', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input'),
+        componentDefinition: contract('test.input'),
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    await wrapper.get('input[aria-label="Required"]').setValue(true)
+    const message = wrapper.get('input[aria-label="Required message"]')
+    await message.setValue('Name is required')
+    await message.trigger('blur')
+
+    expect(wrapper.emitted('updatePath')).toEqual([
+      ['name', ['required'], true],
+      ['name', ['requiredMessage'], 'Name is required'],
+    ])
+  })
+
+  it('keeps Required and validate-on for time fields without exposing generic validation', async () => {
+    const node = field('startTime', 'test.time', {
+      validation: { version: 2, base: { type: 'date' }, rules: [{ kind: 'dateMin', value: '2026-01-01T00:00:00.000Z' }] },
+      validateOn: 'change',
+    })
+    const setter: DesignerPropertySetterDefinition = {
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'time',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.time', [setter]),
+        componentDefinition: contract('test.time'),
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    expect(wrapper.find('input[aria-label="Required"]').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__validate-on').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__validation-editor').exists()).toBe(false)
+  })
+
   it('renders exactly properties and validation tabs with keyboard navigation', async () => {
     const scrollIntoView = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -271,16 +325,16 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
       .toEqual(['properties', 'validation'])
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
-    expect(wrapper.get('.mx-config-form-designer__validation-editor [role="switch"]').attributes('disabled'))
+    expect(wrapper.get('input[aria-label="Required"]').attributes('disabled'))
       .toBeDefined()
   })
 
-  it('disables shared validation editing when selected fields have different rules', async () => {
+  it('edits shared Required without exposing different RuleSets as one editor', async () => {
     const first = field('first', 'test.first', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
     })
     const second = field('second', 'test.second', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
     })
     const firstMaterial = fieldMaterial('test.first')
     const secondMaterial = fieldMaterial('test.second')
@@ -301,9 +355,15 @@ describe('designer property panel lite Inspector', () => {
     })
 
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
-    expect(wrapper.get('.mx-config-form-designer__validation-editor [role="switch"]').attributes('disabled'))
-      .toBeDefined()
-    expect(wrapper.emitted('updatePaths')).toBeUndefined()
+    expect(wrapper.find('.mx-config-form-designer__validation-editor').exists()).toBe(false)
+    const required = wrapper.get('input[aria-label="Required"]')
+    expect(required.attributes('disabled')).toBeUndefined()
+    await required.setValue(true)
+    expect(wrapper.emitted('updatePaths')?.at(-1)).toEqual([
+      ['first', 'second'],
+      ['required'],
+      true,
+    ])
   })
 
   it('has no event, Flow, binding, condition, or reaction authoring surface', () => {

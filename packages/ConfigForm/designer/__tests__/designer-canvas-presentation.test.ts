@@ -22,7 +22,7 @@ const registry = createDesignerRegistry({ materials: [{
 }] })
 
 const emptyGraph: SurfaceGraph = {
-  version: 1,
+  version: 2,
   form: {},
   props: {},
   root: [],

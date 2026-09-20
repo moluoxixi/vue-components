@@ -124,6 +124,43 @@ describe('workbench service boundaries', () => {
     expect(design.runtime.value).toBeUndefined()
   })
 
+  it('retains the last successful artifact and keeps compile diagnostics when a command has no diagnostics', async () => {
+    const { adapter, snapshot } = await fixture()
+    const surfaceId = snapshot.document.homeSurfaceId
+    let adapterAvailable = true
+    let diagnostic = ''
+    const projectSession = {
+      snapshot,
+      execute: vi.fn(() => sessionResult(snapshot)),
+    } as unknown as ProjectEditorSession
+    const design = createWorkbenchDesignSession({
+      getAdapter: () => adapterAvailable ? adapter : undefined,
+      getSurfaceId: () => surfaceId,
+      getProjectSession: () => projectSession,
+      getSnapshot: () => snapshot,
+      setDiagnostic: message => diagnostic = message,
+    })
+    design.configure(adapter)
+    const accepted = design.accept(snapshot, surfaceId)
+    expect(accepted.runtime.success).toBe(true)
+    const lastCompilation = design.compilation.value
+    const lastRuntime = design.runtime.value
+
+    adapterAvailable = false
+    const failed = design.accept(snapshot, surfaceId)
+    expect(failed.runtime.success).toBe(false)
+    expect(design.compilation.value).toBe(lastCompilation)
+    expect(design.runtime.value).toBe(lastRuntime)
+    expect(diagnostic).toBe('Workbench runtime adapter is unavailable.')
+
+    design.commandControl.execute({ id: 'no-diagnostic', label: 'No diagnostic', actions: [] })
+    expect(diagnostic).toBe('Workbench runtime adapter is unavailable.')
+
+    adapterAvailable = true
+    design.accept(snapshot, surfaceId)
+    expect(diagnostic).toBe('')
+  })
+
   it('memoizes candidate projections per document revision', async () => {
     const { adapter, document, snapshot } = await fixture()
     const surfaceId = document.homeSurfaceId
@@ -251,7 +288,8 @@ describe('workbench service boundaries', () => {
     expect(service.compilation.value).toBeUndefined()
     const first = service.capture()
     expect(first?.compilation.origin).toEqual({ kind: 'committed', editVersion: 3 })
-    expect(first?.providerResolver).toBe(adapter.sourceProviderResolver)
+    expect(first?.bindingResolver).toBe(adapter.sourceBindingResolver)
+    expect(first?.componentResolver).toBe(adapter.sourceComponentResolver)
     expect(service.getCompilation()).toBe(first?.compilation)
     expect(service.capture()?.compilation).toBe(first?.compilation)
 

@@ -460,7 +460,7 @@ describe('template catalog', () => {
       },
     ]
     name.validation = {
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'compare', field: 'role', operator: 'neq' }],
     }

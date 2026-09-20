@@ -690,7 +690,7 @@ describe('config model JSON import', () => {
         mask: true,
         close: { escape: true, mask: true, button: true },
       },
-      graph: { version: 1, props: {}, form: {}, root: [], nodesById: {} },
+      graph: { version: 2, props: {}, form: {}, root: [], nodesById: {} },
     }
 
     const result = await prepareConfigImport({

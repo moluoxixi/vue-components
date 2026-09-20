@@ -19,7 +19,11 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
-      setters: [s.choiceDefaultValueSetter('multiselect'), s.optionsSetter, s.disabledSetter],
+      setters: [
+        s.choiceDefaultValueSetter('multiselect', s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        s.optionsSetter(s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        s.disabledSetter,
+      ],
       createNode: ({ id, field = 'checkbox' }) => ({
         id,
         kind: 'field',

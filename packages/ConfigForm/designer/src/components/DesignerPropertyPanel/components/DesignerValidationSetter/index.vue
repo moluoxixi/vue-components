@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { RuleBase, RuleDescriptor, RulePrimitive, RuleSet } from '@moluoxixi/zod3-to-rule'
+import type { RuleDescriptor, RuleSet } from '@moluoxixi/zod3-to-rule'
+import type { DesignerDefaultValueKind, DesignerSetterOption } from '@designer/registry'
+import type { DesignerEditableRuleKind } from '../../types'
+import { RULE_SET_VERSION } from '@moluoxixi/zod3-to-rule'
 import { Plus, Trash2 } from '@lucide/vue'
 import {
   ElCheckbox,
@@ -12,15 +15,18 @@ import {
 } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '@designer/locale'
+import {
+  resolveDesignerValidationBase,
+  resolveDesignerValidationRuleKinds,
+} from '../../services'
 
-type BaseType = RuleBase['type']
 type RuleKind = RuleDescriptor['kind']
-type BasicRuleKind = Exclude<RuleKind, 'compare' | 'custom'>
-type PrimitiveType = 'text' | 'number' | 'boolean'
 type RuleDraft = { kind: RuleKind, message?: string } & Record<string, unknown>
 
 const props = defineProps<{
   modelValue: unknown
+  valueKind?: DesignerDefaultValueKind
+  options?: DesignerSetterOption[]
   disabled?: boolean
 }>()
 
@@ -30,25 +36,13 @@ const emit = defineEmits<{
 const locale = useDesignerLocale()
 
 const enabled = ref(false)
-const baseType = ref<BaseType>('string')
 const optional = ref(false)
 const nullable = ref(false)
-const enumValues = ref<string[]>([])
-const literalType = ref<PrimitiveType>('text')
-const literalValue = ref<RulePrimitive>('')
 const rules = ref<RuleDraft[]>([])
+const base = computed(() => resolveDesignerValidationBase(props.valueKind, props.options))
+const allowedRuleKinds = computed(() => resolveDesignerValidationRuleKinds(base.value))
 
-const baseTypes = computed<{ label: string, value: BaseType }[]>(() => [
-  { label: locale.t('valueType.text', 'Text'), value: 'string' },
-  { label: locale.t('valueType.number', 'Number'), value: 'number' },
-  { label: locale.t('valueType.boolean', 'Boolean'), value: 'boolean' },
-  { label: locale.t('valueType.date', 'Date'), value: 'date' },
-  { label: locale.t('valueType.enum', 'Enum'), value: 'enum' },
-  { label: locale.t('valueType.literal', 'Literal'), value: 'literal' },
-])
-
-const ruleTypes = computed<{ label: string, value: BasicRuleKind }[]>(() => [
-  { label: locale.t('rule.required', 'Required'), value: 'required' },
+const allRuleTypes = computed<{ label: string, value: DesignerEditableRuleKind }[]>(() => [
   { label: locale.t('rule.minLength', 'Minimum length'), value: 'minLength' },
   { label: locale.t('rule.maxLength', 'Maximum length'), value: 'maxLength' },
   { label: locale.t('rule.length', 'Exact length'), value: 'length' },
@@ -64,8 +58,7 @@ const ruleTypes = computed<{ label: string, value: BasicRuleKind }[]>(() => [
   { label: locale.t('rule.dateMin', 'Earliest date'), value: 'dateMin' },
   { label: locale.t('rule.dateMax', 'Latest date'), value: 'dateMax' },
 ])
-
-const basicRuleKinds = new Set<RuleKind>(ruleTypes.value.map(rule => rule.value))
+const ruleTypes = computed(() => allRuleTypes.value.filter(rule => allowedRuleKinds.value.includes(rule.value)))
 const numberKinds: RuleKind[] = ['minLength', 'maxLength', 'length', 'min', 'max', 'multipleOf']
 const inclusiveKinds: RuleKind[] = ['min', 'max']
 const hasAdvancedRules = computed(() => rules.value.some(isAdvancedRule))
@@ -73,81 +66,54 @@ const hasAdvancedRules = computed(() => rules.value.some(isAdvancedRule))
 function isRuleSet(value: unknown): value is RuleSet {
   return typeof value === 'object' && value !== null
     && !Array.isArray(value)
-    && (value as Record<string, unknown>).version === 1
+    && (value as Record<string, unknown>).version === RULE_SET_VERSION
     && typeof (value as Record<string, unknown>).base === 'object'
     && Array.isArray((value as Record<string, unknown>).rules)
 }
 
-function primitiveType(value: RulePrimitive): PrimitiveType {
-  if (typeof value === 'number')
-    return 'number'
-  if (typeof value === 'boolean')
-    return 'boolean'
-  return 'text'
-}
-
 function syncValue(): void {
-  if (!isRuleSet(props.modelValue)) {
+  if (!isRuleSet(props.modelValue) || !base.value) {
     enabled.value = false
-    baseType.value = 'string'
     optional.value = false
     nullable.value = false
-    enumValues.value = []
     rules.value = []
     return
   }
 
   enabled.value = true
-  baseType.value = props.modelValue.base.type
   optional.value = Boolean(props.modelValue.optional)
   nullable.value = Boolean(props.modelValue.nullable)
-  enumValues.value = props.modelValue.base.type === 'enum' ? [...props.modelValue.base.values] : []
-  if (props.modelValue.base.type === 'literal') {
-    literalValue.value = props.modelValue.base.value
-    literalType.value = primitiveType(props.modelValue.base.value)
-  }
   rules.value = props.modelValue.rules.map(rule => ({ ...rule })) as RuleDraft[]
 }
 
-watch(() => props.modelValue, syncValue, { deep: true, immediate: true })
-
-function currentBase(): RuleBase {
-  if (baseType.value === 'enum') {
-    const values = enumValues.value.length ? enumValues.value : ['']
-    return { type: 'enum', values: values as [string, ...string[]] }
-  }
-  if (baseType.value === 'literal')
-    return { type: 'literal', value: literalValue.value }
-  return { type: baseType.value }
-}
+watch(
+  [() => props.modelValue, () => props.valueKind, () => props.options],
+  syncValue,
+  { deep: true, immediate: true },
+)
 
 function commit(): void {
   if (!enabled.value) {
     emit('update:modelValue', undefined)
     return
   }
+  const resolvedBase = base.value
+  const serializedRules = serializeRules()
+  if (!resolvedBase || !serializedRules)
+    return
   emit('update:modelValue', {
-    version: 1,
-    base: currentBase(),
-    rules: rules.value.map(rule => ({ ...rule })) as RuleDescriptor[],
+    version: RULE_SET_VERSION,
+    base: structuredClone(resolvedBase),
+    rules: serializedRules,
     ...(optional.value ? { optional: true } : {}),
     ...(nullable.value ? { nullable: true } : {}),
   })
 }
 
 function updateEnabled(value: string | number | boolean): void {
+  if (!base.value)
+    return
   enabled.value = value === true
-  commit()
-}
-
-function changeBase(next: BaseType): void {
-  baseType.value = next
-  if (next === 'enum' && enumValues.value.length === 0)
-    enumValues.value = ['Option A', 'Option B']
-  if (next === 'literal') {
-    literalType.value = 'text'
-    literalValue.value = ''
-  }
   commit()
 }
 
@@ -159,31 +125,19 @@ function updateFlag(flag: 'optional' | 'nullable', value: string | number | bool
   commit()
 }
 
-function addEnumValue(): void {
-  enumValues.value.push(`Option ${enumValues.value.length + 1}`)
-  commit()
-}
-
-function removeEnumValue(index: number): void {
-  if (enumValues.value.length <= 1)
-    return
-  enumValues.value.splice(index, 1)
-  commit()
-}
-
-function changeLiteralType(next: PrimitiveType): void {
-  literalType.value = next
-  literalValue.value = next === 'number' ? 0 : next === 'boolean' ? false : ''
-  commit()
-}
-
 function isAdvancedRule(rule: RuleDraft): boolean {
-  return !basicRuleKinds.has(rule.kind)
+  return rule.kind === 'compare'
+    || rule.kind === 'custom'
+    || !allowedRuleKinds.value.includes(rule.kind as DesignerEditableRuleKind)
 }
 
-function defaultRule(kind: BasicRuleKind): RuleDraft {
-  if (numberKinds.includes(kind))
-    return { kind, value: kind === 'multipleOf' ? 1 : 0 }
+function defaultRule(kind: DesignerEditableRuleKind): RuleDraft {
+  if (['minLength', 'maxLength', 'length'].includes(kind))
+    return { kind, value: kind === 'minLength' ? 1 : 0 }
+  if (kind === 'min' || kind === 'max')
+    return { kind, value: 0, inclusive: true }
+  if (kind === 'multipleOf')
+    return { kind, value: 1 }
   if (kind === 'regex')
     return { kind, source: '.*' }
   if (kind === 'dateMin' || kind === 'dateMax')
@@ -192,7 +146,10 @@ function defaultRule(kind: BasicRuleKind): RuleDraft {
 }
 
 function addRule(): void {
-  rules.value.push(defaultRule('required'))
+  const kind = ruleTypes.value[0]?.value
+  if (!kind)
+    return
+  rules.value.push(defaultRule(kind))
   commit()
 }
 
@@ -203,17 +160,21 @@ function removeRule(index: number): void {
   commit()
 }
 
-function changeRuleKind(index: number, kind: BasicRuleKind): void {
-  if (isAdvancedRule(rules.value[index]!))
+function changeRuleKind(index: number, kind: DesignerEditableRuleKind): void {
+  if (isAdvancedRule(rules.value[index]!) || !allowedRuleKinds.value.includes(kind))
     return
   rules.value[index] = defaultRule(kind)
   commit()
 }
 
-function updateRule(index: number, key: string, value: unknown): void {
+function updateRuleDraft(index: number, key: string, value: unknown): void {
   if (isAdvancedRule(rules.value[index]!))
     return
   rules.value[index]![key] = value
+}
+
+function updateRule(index: number, key: string, value: unknown): void {
+  updateRuleDraft(index, key, value)
   commit()
 }
 
@@ -235,11 +196,9 @@ function dateInputValue(value: unknown): string {
 }
 
 function updateDateRule(index: number, value: string | null): void {
-  if (!value) {
-    updateRule(index, 'value', undefined)
-    return
-  }
-  updateRule(index, 'value', `${value}T00:00:00.000Z`)
+  updateRuleDraft(index, 'value', value ? `${value}T00:00:00.000Z` : '')
+  if (value)
+    commit()
 }
 
 function updateNumberRule(index: number, value: number | undefined): void {
@@ -247,9 +206,10 @@ function updateNumberRule(index: number, value: number | undefined): void {
   const valid = value !== undefined
     && Number.isFinite(value)
     && (rule?.kind !== 'multipleOf' || value > 0)
-
-  if (!valid)
+  if (!valid) {
+    updateRuleDraft(index, 'value', undefined)
     return
+  }
 
   const next = rule && ['minLength', 'maxLength', 'length'].includes(rule.kind)
     ? Math.max(0, Math.floor(value))
@@ -257,21 +217,39 @@ function updateNumberRule(index: number, value: number | undefined): void {
   updateRule(index, 'value', next)
 }
 
-function updateLiteralText(value: string): void {
-  literalValue.value = value
+function serializeRules(): RuleDescriptor[] | undefined {
+  if (rules.value.some(rule => !isRuleDraftValid(rule)))
+    return undefined
+  return rules.value.map(rule => Object.fromEntries(
+    Object.entries(rule).filter(([, value]) => value !== undefined),
+  ) as unknown as RuleDescriptor)
 }
 
-function updateLiteralValue(value: string | number | boolean | null | undefined): void {
-  if (literalType.value === 'number') {
-    const numeric = typeof value === 'number' ? value : Number(value)
-    if (value === null || value === undefined || !Number.isFinite(numeric))
-      return
-    literalValue.value = numeric
-    commit()
-    return
+function isRuleDraftValid(rule: RuleDraft): boolean {
+  if (isAdvancedRule(rule))
+    return true
+  if (rule.message !== undefined && typeof rule.message !== 'string')
+    return false
+  if (['minLength', 'maxLength', 'length'].includes(rule.kind))
+    return typeof rule.value === 'number' && Number.isInteger(rule.value) && rule.value >= 0
+  if (rule.kind === 'min' || rule.kind === 'max')
+    return typeof rule.value === 'number' && Number.isFinite(rule.value)
+  if (rule.kind === 'multipleOf')
+    return typeof rule.value === 'number' && Number.isFinite(rule.value) && rule.value > 0
+  if (rule.kind === 'regex') {
+    if (typeof rule.source !== 'string' || (rule.flags !== undefined && typeof rule.flags !== 'string'))
+      return false
+    try {
+      new RegExp(rule.source, rule.flags as string | undefined)
+      return true
+    }
+    catch {
+      return false
+    }
   }
-  literalValue.value = typeof value === 'boolean' ? value : String(value ?? '')
-  commit()
+  if (rule.kind === 'dateMin' || rule.kind === 'dateMax')
+    return typeof rule.value === 'string' && !Number.isNaN(new Date(rule.value).getTime())
+  return true
 }
 
 function formatAdvancedRule(rule: RuleDraft): string {
@@ -286,50 +264,18 @@ function formatAdvancedRule(rule: RuleDraft): string {
       <ElSwitch
         :model-value="enabled"
         :aria-label="locale.t('validation.enable', 'Enable validation')"
-        :disabled="disabled || hasAdvancedRules"
+        :disabled="disabled || !base || hasAdvancedRules"
         @change="updateEnabled"
       />
     </div>
 
-    <template v-if="enabled">
-      <div class="mx-config-form-designer__validation-grid">
-        <label>
-          <span>{{ locale.t('validation.valueType', 'Value type') }}</span>
-          <ElSelect :model-value="baseType" :disabled="disabled" @update:model-value="changeBase">
-            <ElOption v-for="item in baseTypes" :key="item.value" :label="item.label" :value="item.value" />
-          </ElSelect>
-        </label>
-        <div class="mx-config-form-designer__flag-buttons">
-          <ElCheckbox :model-value="optional" :disabled="disabled" :label="locale.t('validation.optional', 'Optional')" @update:model-value="updateFlag('optional', $event)" />
-          <ElCheckbox :model-value="nullable" :disabled="disabled" :label="locale.t('validation.nullable', 'Nullable')" @update:model-value="updateFlag('nullable', $event)" />
-        </div>
+    <template v-if="enabled && base">
+      <div class="mx-config-form-designer__flag-buttons">
+        <ElCheckbox :model-value="optional" :disabled="disabled" :label="locale.t('validation.optional', 'Optional')" @update:model-value="updateFlag('optional', $event)" />
+        <ElCheckbox :model-value="nullable" :disabled="disabled" :label="locale.t('validation.nullable', 'Nullable')" @update:model-value="updateFlag('nullable', $event)" />
       </div>
 
-      <div v-if="baseType === 'enum'" class="mx-config-form-designer__enum-values">
-        <div v-for="(_, index) in enumValues" :key="index">
-          <ElInput v-model="enumValues[index]" :aria-label="locale.t('validation.enumValue', 'Enum value {index}', { index: index + 1 })" :disabled="disabled" @blur="commit" />
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteEnumValue', 'Delete enum value {index}', { index: index + 1 })" :disabled="disabled || enumValues.length <= 1" @click="removeEnumValue(index)">
-            <Trash2 :size="14" aria-hidden="true" />
-          </button>
-        </div>
-        <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addEnumValue"><Plus :size="15" aria-hidden="true" /> {{ locale.t('validation.addValue', 'Add value') }}</button>
-      </div>
-
-      <div v-else-if="baseType === 'literal'" class="mx-config-form-designer__typed-value">
-        <ElSelect :model-value="literalType" :aria-label="locale.t('validation.literalType', 'Literal type')" :disabled="disabled" @update:model-value="changeLiteralType">
-          <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
-          <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
-          <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
-        </ElSelect>
-        <ElSelect v-if="literalType === 'boolean'" :model-value="literalValue === true" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @update:model-value="updateLiteralValue">
-          <ElOption :value="true" :label="locale.t('value.true', 'True')" />
-          <ElOption :value="false" :label="locale.t('value.false', 'False')" />
-        </ElSelect>
-        <ElInputNumber v-else-if="literalType === 'number'" :model-value="typeof literalValue === 'number' ? literalValue : 0" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" controls-position="right" @change="updateLiteralValue" />
-        <ElInput v-else :model-value="typeof literalValue === 'string' ? literalValue : ''" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @update:model-value="updateLiteralText" @blur="updateLiteralValue(literalValue)" />
-      </div>
-
-      <div class="mx-config-form-designer__rule-list">
+      <div v-if="rules.length || ruleTypes.length" class="mx-config-form-designer__rule-list">
         <div v-for="(rule, index) in rules" :key="index" class="mx-config-form-designer__rule-row">
           <div v-if="isAdvancedRule(rule)" class="mx-config-form-designer__advanced-rule" data-advanced-validation-rule>
             <span>
@@ -348,10 +294,10 @@ function formatAdvancedRule(rule: RuleDraft): string {
               </button>
             </div>
 
-            <ElInputNumber v-if="numberKinds.includes(rule.kind)" :model-value="typeof rule.value === 'number' ? rule.value : 0" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumberRule(index, $event)" />
+            <ElInputNumber v-if="numberKinds.includes(rule.kind)" :model-value="typeof rule.value === 'number' ? rule.value : undefined" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumberRule(index, $event)" />
             <template v-else-if="rule.kind === 'regex'">
-              <ElInput :model-value="String(rule.source ?? '')" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @update:model-value="updateRule(index, 'source', $event)" />
-              <ElInput :model-value="String(rule.flags ?? '')" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @update:model-value="updateRule(index, 'flags', $event || undefined)" />
+              <ElInput :model-value="String(rule.source ?? '')" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'source', $event)" @blur="commit" />
+              <ElInput :model-value="String(rule.flags ?? '')" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'flags', $event || undefined)" @blur="commit" />
             </template>
             <ElDatePicker v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :model-value="dateInputValue(rule.value)" type="date" value-format="YYYY-MM-DD" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @update:model-value="updateDateRule(index, $event)" />
 
@@ -359,10 +305,10 @@ function formatAdvancedRule(rule: RuleDraft): string {
               <span>{{ locale.t('validation.inclusive', 'Inclusive') }}</span>
               <ElSwitch :model-value="rule.inclusive !== false" :aria-label="locale.t('validation.inclusive', 'Inclusive')" :disabled="disabled" @change="updateRule(index, 'inclusive', $event)" />
             </div>
-            <ElInput :model-value="String(rule.message ?? '')" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="disabled" @update:model-value="updateRule(index, 'message', $event || undefined)" />
+            <ElInput :model-value="String(rule.message ?? '')" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'message', $event || undefined)" @blur="commit" />
           </template>
         </div>
-        <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRule">
+        <button v-if="ruleTypes.length" type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRule">
           <Plus :size="15" aria-hidden="true" />
           {{ locale.t('validation.addRule', 'Add rule') }}
         </button>

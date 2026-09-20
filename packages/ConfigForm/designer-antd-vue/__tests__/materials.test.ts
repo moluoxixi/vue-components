@@ -46,7 +46,7 @@ const expectedKeys = [
 
 function graphForRootMaterials(): SurfaceGraph {
   const registry = createAntdVueDesignerRegistry()
-  const graph: SurfaceGraph = { version: 1, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: SurfaceGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -170,6 +170,26 @@ describe('ant design vue designer materials', () => {
       expect(firstNode.props).not.toBe(secondNode.props)
       expect(material.setters.some(setter => setter.path.join('.') === 'defaultValue')).toBe(true)
       expect(typeof material.runtime.readonlyRender).toBe('function')
+    }
+  })
+
+  it('shares one option value capability across options and default setters', () => {
+    const registry = createAntdVueDesignerRegistry()
+    const expected = {
+      'antd.select': ['string', 'number'],
+      'antd.auto-complete': ['string', 'number'],
+      'antd.radio': ['string', 'number', 'boolean'],
+      'antd.checkbox': ['string', 'number'],
+    } as const
+
+    for (const [key, optionValueTypes] of Object.entries(expected)) {
+      const material = registry.getMaterial(key)
+      expect(material?.kind).toBe('field')
+      const defaultSetter = material?.setters.find(setter => setter.path.join('.') === 'defaultValue')
+      const optionsSetter = material?.setters.find(setter => setter.path.join('.') === 'props.options')
+      expect(defaultSetter?.optionValueTypes).toEqual(optionValueTypes)
+      expect(defaultSetter?.componentProps).toMatchObject({ optionValueTypes })
+      expect(optionsSetter?.optionValueTypes).toEqual(optionValueTypes)
     }
   })
 

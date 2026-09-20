@@ -22,6 +22,7 @@ import type {
 } from '../types/internal'
 import { readSourceFileSet } from '../validation'
 import { createSourceInitialValues } from './initial-values'
+import { rawValidationModuleSource } from './raw-validation'
 import {
   escapeHtml,
   kebabCase,
@@ -33,6 +34,7 @@ import {
   sourceString,
   uniqueSlugs,
 } from './serialization'
+import { SOURCE_CONFIG_FORM_RULE_COMPILER } from './validation'
 
 interface EmitContext {
   compilation: ProjectCompilation
@@ -355,11 +357,11 @@ function nodeProperties(
   return [...values].map(([key, expression]) => ({ key, expression }))
 }
 
-function validationDependencies(context: EmitContext): Readonly<Record<string, string>> {
+function bindingValidationDependencies(context: EmitContext): Readonly<Record<string, string>> {
   const hasRules = context.validation.surfaces.some(surface => surface.fields.length > 0)
   return hasRules
     ? {
-        [context.validation.runtimeCompiler.moduleSpecifier]: context.validation.runtimeCompiler.dependencyVersion,
+        [SOURCE_CONFIG_FORM_RULE_COMPILER.moduleSpecifier]: SOURCE_CONFIG_FORM_RULE_COMPILER.dependencyVersion,
         zod: '^3.24.2',
       }
     : {}
@@ -534,13 +536,13 @@ function requiredInteractionFields(
   return Object.values(surface.nodesById)
     .filter((node): node is SourceFieldNode => node.kind === 'field')
     .filter(node => !requested || requested.has(node.id))
-    .filter(node => node.validation?.rules.some(rule => rule.kind === 'required')
+    .filter(node => node.required === true
       || stateInteractions(surface).some(rule => rule.target.kind === 'state'
         && rule.target.nodeId === node.id && rule.target.key === 'required'))
     .map(node => ({
       field: node.field,
       nodeId: node.id,
-      required: node.validation?.rules.some(rule => rule.kind === 'required') === true,
+      required: node.required === true,
     }))
     .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
 }
@@ -1100,6 +1102,10 @@ function fieldScopeChain(
 
 function rawNeedsValidation(surface: SourceSurface, context: EmitContext): boolean {
   return validationFields(surface, context).length > 0
+    || Object.values(surface.nodesById).some(node => node.kind === 'field' && node.required === true)
+    || stateInteractions(surface).some(interaction => (
+      interaction.target.kind === 'state' && interaction.target.key === 'required'
+    ))
     || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction' && interaction.validate !== undefined)
 }
 
@@ -1113,39 +1119,25 @@ function rawValidationSource(
     .sort((left, right) => left.id.localeCompare(right.id))
   const definitions = fields.map((node) => {
     const required = fieldRequired(node)
-    const compiled = validationIdentifier(surface, context, node.id)
     return `  ${sourceString(node.id)}: {
     field: ${sourceString(node.field)},
     required: ${required.required === true},
-    requiredMessage: ${sourceString(required.message ?? `${node.label ?? node.field} is required.`)},
     validateOn: ${sourceJson(node.validateOn as unknown as ModelJsonValue)},
     scopes: ${sourceJson(fieldScopeChain(surface, node.id) as unknown as ModelJsonValue)},
-    ${compiled ? `compiled: ${compiled},\n    ` : ''}label: ${sourceString(node.label ?? node.field)},
+    validator: demoFieldValidators[${sourceString(node.id)}]!,
+    label: ${sourceString(node.label ?? node.field)},
   },`
   }).join('\n')
   const projectedRequired = hasStateProjection
     ? 'reactionProjection.value.states[nodeId]?.required'
     : 'undefined'
-  return `interface DemoCompiledValidation {
-  schema: {
-    safeParse: (value: unknown) =>
-      | { success: true }
-      | { success: false, error: { issues: readonly { message: string }[] } }
-  }
-  validator?: (
-    value: unknown,
-    values: Record<string, unknown>,
-  ) => string | string[] | void | null | undefined | Promise<string | string[] | void | null | undefined>
-}
-
-interface DemoValidationField {
+  return `interface DemoValidationField {
   field: string
   label: string
   required: boolean
-  requiredMessage: string
   validateOn: readonly ('blur' | 'change' | 'submit')[]
   scopes: readonly { field: string, kind: 'array' | 'object' }[]
-  compiled?: DemoCompiledValidation
+  validator: DemoFieldValidator
 }
 
 interface DemoValidationRequest {
@@ -1175,10 +1167,6 @@ function collectDemoFieldInstances(definition: DemoValidationField): readonly {
   return containers.map(container => ({ value: container[definition.field], values: container }))
 }
 
-function isDemoEmpty(value: unknown): boolean {
-  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
-}
-
 async function validateDemoFields(nodeIds: readonly string[], requireInstance = false): Promise<boolean> {
   let valid = true
   for (const nodeId of [...new Set(nodeIds)]) {
@@ -1193,22 +1181,7 @@ async function validateDemoFields(nodeIds: readonly string[], requireInstance = 
       errors.push(\`No live field instance exists for \${definition.label}.\`)
     for (const instance of instances) {
       const required = ${projectedRequired} ?? definition.required
-      if (required && isDemoEmpty(instance.value)) {
-        errors.push(definition.requiredMessage)
-        continue
-      }
-      if (!definition.compiled)
-        continue
-      const parsed = definition.compiled.schema.safeParse(instance.value)
-      if (!parsed.success)
-        errors.push(...parsed.error.issues.map(issue => issue.message))
-      if (definition.compiled.validator) {
-        const result = await definition.compiled.validator(instance.value, instance.values)
-        if (Array.isArray(result))
-          errors.push(...result.filter(Boolean))
-        else if (result)
-          errors.push(result)
-      }
+      errors.push(...definition.validator(instance.value, instance.values, required))
     }
     validationErrors[nodeId] = errors
     if (errors.length > 0)
@@ -1247,7 +1220,6 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
   const interactions = emittedInteractions(surface, context)
   const stateRules = stateInteractions(surface)
   const valueRules = valueInteractions(surface)
-  const compiledValidations = validationFields(surface, context)
   const needsValidation = rawNeedsValidation(surface, context)
   const usesExpressions = stateRules.length > 0 || valueRules.length > 0
     || interactions.some(interaction => interactionExpressions(interaction.binding).length > 0)
@@ -1257,8 +1229,8 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
   ]
   const imports = [
     'import { computed, reactive } from \'vue\'',
-    ...(compiledValidations.length > 0
-      ? [`import { ${context.validation.runtimeCompiler.importName} } from ${sourceString(context.validation.runtimeCompiler.moduleSpecifier)}`]
+    ...(needsValidation
+      ? ['import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'']
       : []),
     ...(interactions.length > 0 ? ['import { useDemoNavigation } from \'../../demo-navigation.ts\''] : []),
     ...(usesExpressions ? [demoValueImport] : []),
@@ -1314,11 +1286,10 @@ function demoArray(value: unknown, nodeId: string): Record<string, unknown>[] {
     throw new Error(\`Value scope \${nodeId} must contain object rows.\`)
   return value as Record<string, unknown>[]
 }`
-  const validationDeclarations = compiledValidationSource(surface, context)
   const validationRuntime = needsValidation
     ? `\n\n${rawValidationSource(surface, context, stateRules.length > 0)}`
     : ''
-  const script = `${imports.join('\n')}${validationDeclarations ? `\n\n${validationDeclarations}` : ''}
+  const script = `${imports.join('\n')}
 
 const surfaceProps = defineProps<{ demoParameters?: Readonly<Record<string, unknown>> }>()
 const parameters = computed<Record<string, unknown>>(() => ({
@@ -1358,10 +1329,10 @@ ${body.join('\n')}
 }
 
 function fieldRequired(node: SourceFieldNode): { required?: boolean, message?: string } {
-  const required = node.validation?.rules.find(rule => rule.kind === 'required')
-  return required
-    ? { required: true, ...('message' in required && typeof required.message === 'string' ? { message: required.message } : {}) }
-    : {}
+  return {
+    ...(node.required === undefined ? {} : { required: node.required }),
+    ...(node.requiredMessage === undefined ? {} : { message: node.requiredMessage }),
+  }
 }
 
 function validationFields(
@@ -1385,7 +1356,7 @@ function validationIdentifier(
 
 function compiledValidationSource(surface: SourceSurface, context: EmitContext): string {
   return validationFields(surface, context).map((field, index) => (
-    `const compiledValidation${index + 1} = compileRules(${sourceJson(field.ruleSet as unknown as ModelJsonValue)})`
+    `const compiledValidation${index + 1} = ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName}(${sourceJson(field.ruleSet as unknown as ModelJsonValue)})`
   )).join('\n')
 }
 
@@ -1450,13 +1421,13 @@ function configNodeSource(
       lines.push(`${childIndent}defaultValue: ${sourceJson(node.defaultValue)},`)
     if (node.validateOn.length > 0)
       lines.push(`${childIndent}validateOn: ${sourceJson(node.validateOn as unknown as ModelJsonValue)},`)
-    if (validation?.field.required)
+    if (node.required === true)
       lines.push(`${childIndent}required: true,`)
-    if (validation?.field.requiredMessage)
-      lines.push(`${childIndent}requiredMessage: ${sourceString(validation.field.requiredMessage)},`)
+    if (node.requiredMessage !== undefined)
+      lines.push(`${childIndent}requiredMessage: ${sourceString(node.requiredMessage)},`)
     if (compiledValidation)
       lines.push(`${childIndent}schema: ${compiledValidation}.schema,`)
-    if (compiledValidation && validation?.field.attachValidator)
+    if (compiledValidation && validation?.attachValidator)
       lines.push(`${childIndent}validator: ${compiledValidation}.validator,`)
     if (resolution.valueProp)
       lines.push(`${childIndent}valueProp: ${sourceString(resolution.valueProp)},`)
@@ -1555,7 +1526,7 @@ function bindingConfigSource(surface: SourceSurface, context: BindingEmitContext
   const compiledValidations = validationFields(surface, context)
   const imports = [
     ...(compiledValidations.length > 0
-      ? [`import { ${context.validation.runtimeCompiler.importName} } from ${sourceString(context.validation.runtimeCompiler.moduleSpecifier)}`]
+      ? [`import { ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName} } from ${sourceString(SOURCE_CONFIG_FORM_RULE_COMPILER.moduleSpecifier)}`]
       : []),
     ...(interactions.length > 0
       ? ['import type { ConfigBindingActions, ConfigBindingValidation } from \'../../host.ts\'']
@@ -2356,16 +2327,21 @@ export function emitRawProject(
     const surface = compilation.ir.surfacesById[surfaceId]
     if (!surface)
       return []
-    return [textFile(`src/surfaces/${surfaceDirectories.get(surfaceId)}/Surface.vue`, 'vue', rawSurfaceSource(surface, context))]
+    const directory = surfaceDirectories.get(surfaceId)
+    return [
+      textFile(`src/surfaces/${directory}/Surface.vue`, 'vue', rawSurfaceSource(surface, context)),
+      textFile(
+        `src/surfaces/${directory}/validation.ts`,
+        'typescript',
+        rawValidationModuleSource(surface, validationFields(surface, context)),
+      ),
+    ]
   })
   return assemble('raw-source', 'src/main.ts', [
     ...rawCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,
-    textFile('package.json', 'json', packageManifest(compilation.ir.name, {
-      ...dependencies,
-      ...validationDependencies(context),
-    })),
+    textFile('package.json', 'json', packageManifest(compilation.ir.name, dependencies)),
     textFile('src/main.ts', 'typescript', rawMainSource(components)),
   ])
 }
@@ -2395,7 +2371,7 @@ export function emitBindingProject(
     ...resources.files,
     textFile('package.json', 'json', packageManifest(compilation.ir.name, {
       ...binding.dependencies,
-      ...validationDependencies(context),
+      ...bindingValidationDependencies(context),
     }, false)),
   ])
 }

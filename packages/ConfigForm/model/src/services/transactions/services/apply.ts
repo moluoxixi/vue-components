@@ -596,6 +596,8 @@ function updateNodeSettings(
         field: settings.field,
         ...(settings.label !== undefined ? { label: settings.label } : {}),
         ...(settings.defaultValue !== undefined ? { defaultValue: clone(settings.defaultValue) } : {}),
+        ...(settings.required !== undefined ? { required: settings.required } : {}),
+        ...(settings.requiredMessage !== undefined ? { requiredMessage: settings.requiredMessage } : {}),
         ...(settings.validation !== undefined ? { validation: clone(settings.validation) } : {}),
         ...(settings.validateOn !== undefined ? { validateOn: clone(settings.validateOn) } : {}),
       }
@@ -740,6 +742,8 @@ function settingsForNode(node: SurfaceNode): SurfaceNodeSettings {
     field: node.field,
     ...(node.label !== undefined ? { label: node.label } : {}),
     ...(node.defaultValue !== undefined ? { defaultValue: clone(node.defaultValue) } : {}),
+    ...(node.required !== undefined ? { required: node.required } : {}),
+    ...(node.requiredMessage !== undefined ? { requiredMessage: node.requiredMessage } : {}),
     ...(node.validation !== undefined ? { validation: clone(node.validation) } : {}),
     ...(node.validateOn !== undefined ? { validateOn: clone(node.validateOn) } : {}),
   }

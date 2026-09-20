@@ -61,6 +61,22 @@ export function createWorkbenchDesignSession(
   // skip the resolve/apply/compile pipeline entirely.
   const candidateCache = new Map<string, CandidateProjection | null>()
   let coordinator: CompileCoordinator | undefined
+  let commandDiagnostic = ''
+  let compileDiagnostic = ''
+
+  function publishDiagnostic(): void {
+    options.setDiagnostic(commandDiagnostic || compileDiagnostic)
+  }
+
+  function setCommandDiagnostic(message: string): void {
+    commandDiagnostic = message
+    publishDiagnostic()
+  }
+
+  function setCompileDiagnostic(message: string): void {
+    compileDiagnostic = message
+    publishDiagnostic()
+  }
 
   function candidateCacheKey(command: ProjectCommand): string | undefined {
     const snapshot = options.getSnapshot()
@@ -82,6 +98,9 @@ export function createWorkbenchDesignSession(
     compilation.value = undefined
     runtime.value = undefined
     selectedIds.value = []
+    commandDiagnostic = ''
+    compileDiagnostic = ''
+    publishDiagnostic()
   }
 
   function compile(
@@ -123,9 +142,11 @@ export function createWorkbenchDesignSession(
     changeSet?: ProjectChangeSet,
   ): WorkbenchDesignPublication {
     const publication = compile(projectSnapshotFromEditorSession(snapshot), surfaceId, changeSet)
-    compilation.value = publication.compilation
-    runtime.value = publication.runtime.success ? publication.runtime : undefined
-    options.setDiagnostic(publication.runtime.success
+    if (publication.compilation)
+      compilation.value = publication.compilation
+    if (publication.runtime.success)
+      runtime.value = publication.runtime
+    setCompileDiagnostic(publication.runtime.success
       ? ''
       : publication.runtime.diagnostics[0]?.message ?? 'Workbench design compilation failed.')
     return publication
@@ -201,7 +222,7 @@ export function createWorkbenchDesignSession(
     if (!session)
       return { changed: false, diagnostics: [] }
     const result = session.execute(command)
-    options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+    setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
     return { changed: result.changed, diagnostics: result.diagnostics }
   }
 
@@ -217,13 +238,13 @@ export function createWorkbenchDesignSession(
 
   function undo(): boolean {
     const result = options.getProjectSession()?.undo()
-    options.setDiagnostic(result?.diagnostics[0]?.message ?? '')
+    setCommandDiagnostic(result?.diagnostics[0]?.message ?? '')
     return result?.changed ?? false
   }
 
   function redo(): boolean {
     const result = options.getProjectSession()?.redo()
-    options.setDiagnostic(result?.diagnostics[0]?.message ?? '')
+    setCommandDiagnostic(result?.diagnostics[0]?.message ?? '')
     return result?.changed ?? false
   }
 
@@ -243,7 +264,7 @@ export function createWorkbenchDesignSession(
       while (current > position) {
         const result = session.undo()
         if (!result.changed) {
-          options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+          setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
           return changed
         }
         changed = true
@@ -252,13 +273,13 @@ export function createWorkbenchDesignSession(
       while (current < position) {
         const result = session.redo()
         if (!result.changed) {
-          options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+          setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
           return changed
         }
         changed = true
         current += 1
       }
-      options.setDiagnostic('')
+      setCommandDiagnostic('')
       return changed
     })
   }
@@ -279,6 +300,9 @@ export function createWorkbenchDesignSession(
     compilation.value = undefined
     runtime.value = undefined
     selectedIds.value = []
+    commandDiagnostic = ''
+    compileDiagnostic = ''
+    publishDiagnostic()
   }
 
   return {

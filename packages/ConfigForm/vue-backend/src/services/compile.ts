@@ -1,8 +1,8 @@
 import type {
-  ConfigFormSurfaceRuntimePlan,
   ConfigFormRendererField,
   ConfigFormRendererNode,
   ConfigFormResponsiveLayout,
+  ConfigFormSurfaceRuntimePlan,
 } from '@moluoxixi/config-form'
 import type {
   CompiledRuleSet,
@@ -13,7 +13,6 @@ import type {
 import type {
   CanonicalRuntimeElementNode,
   CanonicalRuntimeFieldNode,
-  CanonicalRuntimeLayoutNode,
   CanonicalRuntimeNode,
   CanonicalRuntimeSurface,
   CompileCanonicalSurfaceRuntimeInput,
@@ -28,7 +27,12 @@ import {
   CONFIG_FORM_COMPILER_VERSION,
   hasOnlyCurrentCanonicalSurfaceKeys,
 } from '@moluoxixi/config-form-compiler'
-import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
+import {
+  compileRules,
+  parseRuleSet,
+  RuleCompileError,
+  rulesToZod,
+} from '@moluoxixi/zod3-to-rule'
 import { getRuntimeNodeFragmentCache } from '../state'
 import { createVueRuntimeDiagnostic, hasVueRuntimeErrors } from '../utils'
 
@@ -109,20 +113,30 @@ function ruleDiagnostic(
   )
 }
 
+interface CompiledFieldValidation {
+  compiled: CompiledRuleSet
+  ruleSet: RuleSet
+}
+
 function compileValidation(
   node: CanonicalRuntimeFieldNode,
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
-): CompiledRuleSet | undefined {
+): CompiledFieldValidation | undefined {
   if (!node.validation)
     return undefined
 
-  const ruleSet = structuredClone(node.validation) as RuleSet
+  const parsed = parseRuleSet(structuredClone(node.validation))
+  if (!parsed.success) {
+    diagnostics.push(...parsed.diagnostics.map(item => ruleDiagnostic(item, path, node.id)))
+    return undefined
+  }
+  const ruleSet = parsed.data
   try {
     const compiled = compileRules(ruleSet, createRuleContext(ruleSet, resolver))
     diagnostics.push(...compiled.diagnostics.map(item => ruleDiagnostic(item, path, node.id)))
-    return compiled
+    return { compiled, ruleSet }
   }
   catch (error) {
     if (!(error instanceof RuleCompileError))
@@ -132,37 +146,23 @@ function compileValidation(
   }
 }
 
-function diagnoseDefaultRules(
+function diagnoseDefaultBase(
   node: CanonicalRuntimeFieldNode,
   path: Array<string | number>,
-  validation: CompiledRuleSet | undefined,
+  validation: CompiledFieldValidation | undefined,
   diagnostics: VueRuntimeDiagnostic[],
 ): void {
-  if (node.defaultValue === undefined)
+  if (node.defaultValue === undefined || !validation)
     return
 
-  const required = node.validation?.rules.some((rule: RuleSet['rules'][number]) => rule.kind === 'required')
-  if (node.defaultValue === null && required) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_DEFAULT_REQUIRED_NULL',
-      'A required field cannot use null as its default value.',
-      [...path, 'defaultValue'],
-      node.id,
-    ))
-    return
-  }
-
-  if (!node.validation || !validation)
-    return
-
-  const candidate = node.validation.base.type === 'date' && typeof node.defaultValue === 'string'
-    ? new Date(node.defaultValue)
-    : node.defaultValue
-  const result = validation.schema.safeParse(candidate)
+  const result = rulesToZod({
+    ...validation.ruleSet,
+    rules: [],
+  }).safeParse(node.defaultValue)
   if (!result.success) {
     diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_DEFAULT_RULE_INVALID',
-      result.error.issues[0]?.message ?? 'Default value does not satisfy the field rules.',
+      'VUE_RUNTIME_DEFAULT_BASE_INVALID',
+      result.error.issues[0]?.message ?? 'Default value does not satisfy the field base type.',
       [...path, 'defaultValue'],
       node.id,
     ))
@@ -200,8 +200,9 @@ function compileField(
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
 ): ConfigFormRendererField {
-  const validation = compileValidation(node, path, resolver, diagnostics)
-  diagnoseDefaultRules(node, path, validation, diagnostics)
+  const validationResult = compileValidation(node, path, resolver, diagnostics)
+  diagnoseDefaultBase(node, path, validationResult, diagnostics)
+  const validation = validationResult?.compiled
   return {
     ...compileNodeBase(node, binding),
     field: node.field,
@@ -210,10 +211,10 @@ function compileField(
       ? {}
       : { defaultValue: structuredClone(node.defaultValue) }),
     validateOn: [...node.validateOn],
-    ...(validation?.required === undefined ? {} : { required: validation.required }),
-    ...(validation?.requiredMessage === undefined
+    ...(node.required === undefined ? {} : { required: node.required }),
+    ...(node.requiredMessage === undefined
       ? {}
-      : { requiredMessage: validation.requiredMessage }),
+      : { requiredMessage: node.requiredMessage }),
     ...(validation ? { schema: validation.schema } : {}),
     ...(validation?.validator ? { validator: validation.validator } : {}),
     ...(binding.valueProp ? { valueProp: binding.valueProp } : {}),

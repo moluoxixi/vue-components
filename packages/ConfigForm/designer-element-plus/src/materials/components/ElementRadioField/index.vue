@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ElementRadioFieldEmits, ElementRadioFieldProps } from '../../../types'
+import { DESIGNER_OPTION_VALUE_TYPES } from '@moluoxixi/config-form-designer'
 import { ElRadio, ElRadioGroup } from 'element-plus'
 import { computed } from 'vue'
 import { elementPlusOptionKey, normalizeElementPlusOptions } from '../../../options'
@@ -8,7 +9,7 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<ElementRadioFieldProps>()
 
-const options = computed(() => normalizeElementPlusOptions(props.options))
+const options = computed(() => normalizeElementPlusOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
 
 const emit = defineEmits<ElementRadioFieldEmits>()
 

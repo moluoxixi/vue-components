@@ -1,13 +1,16 @@
 import type {
   ModelJsonObject,
   NodeSubgraph,
-  SurfaceGraph,
   ProjectCommand,
   ProjectCommandAction,
   ProjectNodePatchKey,
   ProjectOperation,
+  SurfaceGraph,
+  SurfaceNode,
+  SurfaceNodeSettings,
 } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
+import { resolveDesignerOptionValidationBase } from '../../options'
 import { assertDesignerSetterPathAllowed } from './setter-path'
 
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -104,6 +107,88 @@ function assignPath(root: ModelJsonObject, path: string[], value: unknown): Mode
   return next
 }
 
+function optionValues(value: unknown): Array<string | number | boolean> {
+  if (!Array.isArray(value))
+    return []
+  return value.flatMap((option) => {
+    if (typeof option !== 'object' || option === null || Array.isArray(option))
+      return []
+    const optionValue = (option as Record<string, unknown>).value
+    return typeof optionValue === 'string'
+      || typeof optionValue === 'boolean'
+      || (typeof optionValue === 'number' && Number.isFinite(optionValue))
+      ? [optionValue]
+      : []
+  })
+}
+
+function optionValueExists(
+  values: readonly (string | number | boolean)[],
+  value: unknown,
+): boolean {
+  return values.some(candidate => Object.is(candidate, value))
+}
+
+export function doesDesignerOptionUpdateClearDefaultValue(
+  node: SurfaceNode,
+  path: readonly string[],
+  value: unknown,
+): boolean {
+  if (node.kind !== 'field'
+    || node.defaultValue === undefined
+    || path.length !== 2
+    || path[0] !== 'props'
+    || path[1] !== 'options') {
+    return false
+  }
+  const values = optionValues(value)
+  return Array.isArray(node.defaultValue)
+    ? node.defaultValue.some(item => !optionValueExists(values, item))
+    : !optionValueExists(values, node.defaultValue)
+}
+
+export function countDesignerOptionDefaultClears(
+  graph: SurfaceGraph,
+  nodeIds: readonly string[],
+  path: readonly string[],
+  value: unknown,
+): number {
+  return nodeIds.reduce((count, nodeId) => {
+    const node = graph.nodesById[nodeId]
+    return count + (node && doesDesignerOptionUpdateClearDefaultValue(node, path, value) ? 1 : 0)
+  }, 0)
+}
+
+function fieldSettingsForOptionUpdate(
+  node: Extract<SurfaceNode, { kind: 'field' }>,
+  path: readonly string[],
+  value: unknown,
+): SurfaceNodeSettings | undefined {
+  const clearDefaultValue = doesDesignerOptionUpdateClearDefaultValue(node, path, value)
+  const updateValidation = path.length === 2
+    && path[0] === 'props'
+    && path[1] === 'options'
+    && (node.validation?.base.type === 'enum' || node.validation?.base.type === 'literal')
+  if (!clearDefaultValue && !updateValidation)
+    return undefined
+  const {
+    id: _id,
+    props: _props,
+    ...settings
+  } = node
+  const next = structuredClone(settings)
+  if (clearDefaultValue)
+    delete next.defaultValue
+  if (updateValidation) {
+    const base = resolveDesignerOptionValidationBase(value)
+    if (base)
+      next.validation = { ...structuredClone(node.validation!), base }
+    else
+      delete next.validation
+  }
+  return next
+}
+
 export function createNodePathCommand(
   graph: SurfaceGraph,
   surfaceId: string,
@@ -135,7 +220,19 @@ export function createNodePathCommand(
       const props = nestedPath.length === 0
         ? cloneRecord(value as ModelJsonObject | undefined)
         : assignPath(node.props, nestedPath, value)
-      return { type: 'operation.apply', operations: [{ type: 'node.props', surfaceId, nodeId, props }] }
+      const operations: ProjectOperation[] = [{ type: 'node.props', surfaceId, nodeId, props }]
+      const settings = node.kind === 'field'
+        ? fieldSettingsForOptionUpdate(node, path, value)
+        : undefined
+      if (settings) {
+        operations.push({
+          type: 'node.settings',
+          surfaceId,
+          nodeId,
+          settings,
+        })
+      }
+      return { type: 'operation.apply', operations }
     }
     return {
       type: 'node.patch',

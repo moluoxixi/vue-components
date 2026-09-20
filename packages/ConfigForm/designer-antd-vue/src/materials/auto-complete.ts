@@ -20,8 +20,8 @@ export default defineDesignerMaterialModule({
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
       setters: [
-        s.choiceDefaultValueSetter('select'),
-        s.optionsSetter,
+        s.choiceDefaultValueSetter('select', s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        s.optionsSetter(s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
         s.placeholderSetter,
         s.allowClearSetter,
       ],

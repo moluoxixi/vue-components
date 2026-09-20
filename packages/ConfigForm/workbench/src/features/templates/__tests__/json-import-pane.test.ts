@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { Component } from 'vue'
+import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
@@ -103,9 +104,9 @@ function prepared(name = 'Imported project') {
       name,
       nodeCount: 3,
       surfaceCount: 1,
-      surfaceGraphVersion: 1,
+      surfaceGraphVersion: SURFACE_GRAPH_VERSION,
       resourceCount: 0,
-      version: 6,
+      version: PROJECT_DOCUMENT_VERSION,
       target: 'project',
     },
     target: 'project',

@@ -65,7 +65,8 @@ if (!('kind' in snapshot)) {
 - 输入必须是当前 `ProjectSnapshot` 或 `ProjectDraftSnapshot`，以及当前 Registry snapshot。
 - committed 与 draft 使用不同 identity/cache key；draft 不能进入 committed history 或 persistence。
 - Canonical IR、Surface compilation 和诊断顺序保持确定性；浮层只通过 flat Surface table 引用，不递归内联。
-- Canonical IR 只包含结构、属性、Dataset/Resource 引用、validation、Prototype Interaction 投影和布局，不包含宿主函数、事件转发或 Flow plan。
+- Canonical 字段将 `required` / `requiredMessage` 作为字段一级基线投影，通用 `validation` 只接受 RuleSet v2；旧 `kind: 'required'` 不迁移。动态 Required 状态仍在运行时覆盖静态基线。
+- Canonical IR 只包含结构、属性、Dataset/Resource 引用、字段 Required、RuleSet v2 validation、Prototype Interaction 投影和布局，不包含宿主函数、事件转发或 Flow plan。
 - coordinator 的 LRU 命中会刷新最近使用顺序；`maxCachedSurfaces` 必须是正整数。
 - Registry lock 或组件 capability 不匹配时编译失败，不静默修复输入。
 
@@ -76,7 +77,8 @@ if (!('kind' in snapshot)) {
 Compiler 只产出 Canonical IR，不收集、打包或导出 Core、Headless、Vue Runtime 源码。
 `@moluoxixi/config-form-source` 直接消费 `ProjectCompilation`：默认生成 Vue 与目标 UI
 组件源码，另行生成只引用公开 ConfigForm 包的绑定源码；两种产物都不会写入
-`src/runtime` 或复制运行核心。
+`src/runtime` 或复制运行核心。Raw 的运行依赖只允许 Vue、Vue Router 与目标 UI 包，
+Required/RuleSet v2 生成工程内校验代码；Raw 与 Binding 各自预检、独立失败。
 
 代码态组件 listener 由宿主直接写入 Runtime config 的 `props.onX`，不进入 Canonical IR
-或 Source 序列化。当前 Canonical IR 版本为 `5`，编译器版本为 `6.0.0`。
+或 Source 序列化。当前 Canonical IR 版本为 `6`，编译器版本为 `7.0.0`。

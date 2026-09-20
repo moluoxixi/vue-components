@@ -8,8 +8,9 @@ Interaction, Experience sessions, import/export, Preview transport, generated
 Source, or the related package boundaries.
 
 This document contains both current foundation contracts and later Studio
-contracts. Surface assets, ProjectDocument v6, Registry v3, compilation,
-transfer, Runtime Host v7, and Prototype Runtime session v1 are current.
+contracts. Surface assets, ProjectDocument v7, SurfaceGraph v2, RuleSet v2,
+Registry v3, Canonical IR v6, Compiler 7.0.0, transfer, Runtime Host v7, and
+Prototype Runtime session v1 are current.
 Dataset/Resource authoring workflows and the complete Studio asset/interaction
 UI remain later stages. The Source package and its two generated file-set kinds
 are current. Each implementation task switches its owned readers and writers
@@ -107,8 +108,8 @@ interface ProjectThemeV1 {
   shadows?: Partial<Record<ProjectThemeShadowKey, ProjectThemeShadow>>
 }
 
-interface ProjectDocumentV6 {
-  version: 6
+interface ProjectDocumentV7 {
+  version: 7
   id: ProjectId
   name: string
   homeSurfaceId: SurfaceId
@@ -122,8 +123,8 @@ interface ProjectDocumentV6 {
   settings: ModelJsonObject
 }
 
-interface SurfaceGraphV1 {
-  version: 1
+interface SurfaceGraphV2 {
+  version: 2
   props: ModelJsonObject
   form: FormSettings
   root: readonly SlotItem[]
@@ -164,12 +165,17 @@ interface SurfaceNodeBase {
   resourceBindings?: Readonly<Record<string, StaticResourceReference>>
 }
 
+/** Public TypeScript name remains `RuleSet`; the current wire literal is v2. */
+type RuleSetV2 = RuleSet & { version: 2 }
+
 interface SurfaceFieldNode extends SurfaceNodeBase {
   kind: 'field'
   field: string
   label?: string
   defaultValue?: ModelJsonValue
-  validation?: RuleSet
+  required?: boolean
+  requiredMessage?: string
+  validation?: RuleSetV2
   validateOn?: ValidateTrigger | readonly ValidateTrigger[]
 }
 
@@ -191,7 +197,7 @@ type SurfaceNode =
 interface ProjectSurfaceBase {
   id: SurfaceId
   name: string
-  graph: SurfaceGraphV1
+  graph: SurfaceGraphV2
   parameters: readonly SurfaceParameterDefinition[]
   outputs: readonly SurfaceOutputDefinition[]
   interactions: readonly PrototypeInteraction[]
@@ -300,7 +306,7 @@ type ResourceTransferReadResult =
 interface ProjectTransferEnvelopeV1 {
   kind: 'config-form-project'
   version: 1
-  document: ProjectDocumentV6
+  document: ProjectDocumentV7
   embeddedContents: readonly {
     resourceId: ResourceId
     content: ResourceTransferContentV1
@@ -308,7 +314,7 @@ interface ProjectTransferEnvelopeV1 {
 }
 
 interface ProjectTransferReadResult {
-  document: ProjectDocumentV6
+  document: ProjectDocumentV7
   embeddedBytesByResourceId: Readonly<Record<ResourceId, Uint8Array>>
 }
 
@@ -319,7 +325,7 @@ interface ProjectEmbeddedResourceRead {
 }
 
 interface ProjectTransferWriteInputV1 {
-  document: Readonly<ProjectDocumentV6>
+  document: Readonly<ProjectDocumentV7>
   readEmbedded(input: ProjectEmbeddedResourceRead): Promise<Uint8Array | undefined>
 }
 
@@ -355,11 +361,35 @@ empty map is valid. Every Surface, Dataset, and Resource map key equals the
 contained asset's `id`. Duplicate, missing, or extra order/map identities fail
 the ProjectDocument Reader; only the Surface order/map pair must be non-empty.
 
-`SurfaceNode` retains the current PageGraph field/layout distinction, graph
-props, form settings, root/slot placement, field validation, extensions, and
-layout value scopes, and adds `element` for non-value UI such as Text, Heading,
+`SurfaceNode` retains the field/layout distinction, graph props, form settings,
+root/slot placement, field validation, extensions, and layout value scopes, and
+adds `element` for non-value UI such as Text, Heading,
 Icon, Image, Button, Link, Tag, Alert, Table, List, Empty, and Pagination. Such
 materials must not invent a form `field` merely to enter the graph.
+
+Required is a field-level baseline expressed only by `required` and
+`requiredMessage`; it is not a RuleSet descriptor. RuleSet v2 carries general
+base/refinement rules and rejects `kind: 'required'`. `requiredMessage` may be
+retained while Required is off so author toggles do not destroy the draft text,
+but it affects runtime validation only when the effective Required state is
+true. A dynamic `required` projection overrides the static field baseline for
+that runtime instance without rewriting the persisted node. `validateOn`
+independently schedules Required and general rule validation.
+
+RuleSet v2 has no `time` base. A Material whose declared value kind is `time`
+may use field-level `required` / `requiredMessage` and `validateOn`, but its
+`validation` must be absent; neither Designer, Compiler, Runtime, nor Source may
+reinterpret the time string as a RuleSet `date`. The `date` base is reserved for
+Materials that declare the `date` value kind.
+
+For an inline static Select, an existing RuleSet base of `enum` or `literal` is
+referentially coupled to `props.options`. Unique non-empty string values derive
+the exact ordered `enum`; one non-string primitive derives `literal`. A Designer
+options edit must re-derive that base in the same Project command, preserve the
+remaining RuleSet members, and clear the complete `validation` when the next
+options cannot be represented. The same command clears a default value that no
+longer refers to an option. Options, default, and validation therefore produce
+one revision/history item and one Undo restores the complete prior state.
 
 The hard cut removes persisted low-level `bindings`, `conditions`, `reactions`,
 page `runtime`, and dynamic `optionSource`. Component value/event binding stays
@@ -368,9 +398,8 @@ live only in `ProjectSurfaceBase.interactions`; Runtime Data Source stays
 code-authored outside Studio. There is no second persisted expression or data
 binding channel.
 
-Surface Foundation atomically upgrades Registry snapshot v3's types, version,
-Reader validation, and existing base-Material entries together with
-SurfaceGraph v1. Registry v3 records each Material's `field | layout | element`
+The current graph contract is SurfaceGraph v2. Registry v3 records each
+Material's `field | layout | element`
 kind, semantic triggers, allowlisted state-projection property paths, and named
 Dataset/Resource binding capabilities. A node's `datasetBindings` and
 `resourceBindings` keys must exist in that Material capability, and each
@@ -395,7 +424,7 @@ instance, discard any implicit result, and restore focus to that instance's
 live opener. They never identify an instance by `surfaceId`.
 
 `ProjectThemeV1` is the complete theme wire shape accepted by ProjectDocument
-v6. Theme colors use canonical `#RRGGBB` or `#RRGGBBAA`; numeric typography,
+v7. Theme colors use canonical `#RRGGBB` or `#RRGGBBAA`; numeric typography,
 spacing, border, radius, and shadow values are finite non-negative values in
 pixels except unitless `lineHeight`. Unknown categories/keys and CSS text are
 rejected. Surface Foundation owns this v1 Reader and an empty theme; Studio
@@ -445,8 +474,9 @@ write -> JSON -> read round trip is lossless without sharing mutable buffers.
 identity, Registry version/fingerprint, and component locks. The document does
 not add a parallel `adapter` field. Full provider metadata remains outside the
 document and is read by the Studio composition root only when it constructs a
-Source provider resolver. `settings` remains the project-level JSON-safe settings
-boundary. `SurfaceGraphV1` retains graph props, form settings, root slot
+Source component resolver and ConfigForm binding resolver. `settings` remains
+the project-level JSON-safe settings boundary. `SurfaceGraphV2` retains graph
+props, form settings, root slot
 placement, and the node table; the Surface migration must not reduce the graph
 to a root-ID list.
 
@@ -1109,12 +1139,14 @@ type SourceResolutionResult<T> =
   | { success: true, value: T }
   | { success: false, reason: string }
 
-interface SourceProviderResolver {
+interface SourceComponentResolver {
   readonly adapter: SourceAdapterIdentity
-
   resolveComponent(
     request: SourceComponentRequest,
   ): SourceResolutionResult<SourceComponentResolution>
+}
+
+interface SourceConfigFormBindingResolver {
   resolveConfigFormBinding(): SourceResolutionResult<SourceConfigFormBindingResolution>
 }
 
@@ -1126,10 +1158,16 @@ interface SourceResourceReader {
   }): Promise<ContractResult<Uint8Array>>
 }
 
-interface GenerateSourceInput {
+interface SourceGenerationInputBase {
   compilation: ProjectCompilation
-  providerResolver: SourceProviderResolver
+  componentResolver: SourceComponentResolver
   resourceReader: SourceResourceReader
+}
+
+interface GenerateVueSourceInput extends SourceGenerationInputBase {}
+
+interface GenerateConfigFormBindingsInput extends SourceGenerationInputBase {
+  bindingResolver: SourceConfigFormBindingResolver
 }
 
 type SourceLanguage = 'vue' | 'typescript' | 'json' | 'css' | 'scss' | 'text'
@@ -1163,32 +1201,35 @@ type SourceFileSetV1 = RawSourceFileSetV1 | ConfigBindingFileSetV1
 readSourceFileSet(input: unknown): ContractResult<SourceFileSetV1>
 
 generateVueSource(
-  input: GenerateSourceInput,
+  input: GenerateVueSourceInput,
 ): Promise<ContractResult<RawSourceFileSetV1>>
 
 generateConfigFormBindings(
-  input: GenerateSourceInput,
+  input: GenerateConfigFormBindingsInput,
 ): Promise<ContractResult<ConfigBindingFileSetV1>>
 ```
 
 Studio reads the locked project adapter metadata only at its composition root,
-constructs the provider resolver, constructs a Repository-backed resource
-reader, and injects both. Source does not import Designer, Workbench, an
-Element/Ant adapter, provider UI, or a concrete Repository. Component resolution
-is deterministic for the same compilation and adapter identity; failure aborts
-generation with a stable diagnostic instead of guessing an import.
+constructs the component resolver and the ConfigForm binding resolver,
+constructs a Repository-backed resource reader, and injects all three through
+their separate responsibilities. Source does not import Designer, Workbench, an
+Element/Ant adapter, provider UI, or a concrete Repository. Component and
+binding resolution are deterministic for the same compilation and adapter
+identity; failure returns a stable diagnostic instead of guessing an import.
 
-`SourceAdapterIdentity` is projected from `ProjectDocumentV6.registryLock` as
+`SourceAdapterIdentity` is projected from `ProjectDocumentV7.registryLock` as
 `adapter`, `adapterVersion = registryLock.version`, and
 `registryFingerprint = registryLock.fingerprint`; it is not a second adapter
 selector. Each component request also carries the matching locked contract
-version and fingerprint. `SourceProviderResolver` remains synchronous and only
-maps provider components/imports plus the public ConfigForm binding imports.
-Every bare package specifier returned for a component module, ConfigForm binding
-module, `styleImports`, or `library.stylesheet` must have an own matching key in
-that resolution's `dependencies` record with a portable version. Missing style
-dependencies fail generation with `source_resolution_failed`; they must not be
-deferred to installation of the generated project.
+version and fingerprint. `SourceComponentResolver` remains synchronous and maps
+only provider components/imports; `SourceConfigFormBindingResolver` remains
+synchronous and maps only the public ConfigForm binding imports. Raw generation
+does not accept or observe the binding resolver. Every bare package specifier
+returned for a component module, ConfigForm binding module, `styleImports`, or
+`library.stylesheet` must have an own matching key in that resolution's
+`dependencies` record with a portable version. Missing style dependencies fail
+that generation call with `source_resolution_failed`; they must not be deferred
+to installation of the generated project.
 `semanticListeners` is provider-owned code-generation metadata, not a persisted
 Studio event domain: `activate`/`submit` carry no component payload, while
 `rowActivate`/`itemActivate` select one declared argument as the immediate
@@ -1196,12 +1237,28 @@ readonly item. The generator never forwards arbitrary arguments or emits a
 handler registry.
 
 `generateVueSource` returns a runnable Vue/Vue Router project with entry
-`src/main.ts` that directly uses resolved provider components.
+`src/main.ts` that directly uses resolved provider components. Its
+`package.json.dependencies` and application runtime bare-package import
+whitelist is exactly `vue`, `vue-router`, and the selected target UI package returned by the
+component resolver. Those locations must contain no `@moluoxixi/*`,
+`@config-form/*`, ConfigForm, Zod, RuleSet converter, Compiler, or internal
+Runtime dependency. Build-only `devDependencies` such as Vite, TypeScript, and
+their plugins remain allowed. Each Surface receives
+readable project-local validation TypeScript that implements field-level
+Required/Required message, RuleSet v2 refinements, and `validateOn` without an
+interpreter or copied runtime core.
 `generateConfigFormBindings` returns configuration
 modules with entry `src/bindings.ts`; it emits no App, main, router, page-history,
-overlay host, session reducer, or generic action executor. Both outputs compile
-the complete canonical RuleSet, preserve scoped initial values, and fail before
-file assembly when a rule, regex, or named custom validator cannot be compiled.
+overlay host, session reducer, or generic action executor. It preserves
+field-level Required and serializes RuleSet v2 as public ConfigForm binding
+configuration rather than embedding ConfigForm's runtime implementation.
+
+Each generation API runs its own complete preflight and file assembly. Both
+preserve scoped initial values and fail before returning their own file set when
+a rule, regex, type, or named custom validator cannot be represented. One API's
+diagnostics do not erase a successful file set returned by the other API for the
+same `ProjectCompilation`; Workbench represents them as independent
+`ready | failed` artifacts bound to that compilation identity.
 Nested scoped defaults and field rendering are supported. A compilation that
 requires address-scoped interaction settlement, projection, or result assignment
 that cannot yet be represented by the standalone generated app fails closed with
@@ -1219,7 +1276,8 @@ resource never calls the reader and is never fetched; generated code keeps its
 validated static URL and emits no binary file. Provider failure emits
 `source_resolution_failed`; missing or corrupt bytes emit
 `source_resource_read_failed` or `resource_content_invalid`. Any failure resolves
-the generator Promise with diagnostics and no partial `SourceFileSet`.
+that generator Promise with diagnostics and no partial `SourceFileSet`; it does
+not define the result of a separate generation API invocation.
 
 Paths in a SourceFileSet are unique normalized project-relative POSIX paths and
 cannot contain `..`, absolute roots, drive prefixes, or NUL. Text is UTF-8;
@@ -1272,12 +1330,13 @@ entries, architecture routing, generated-consumer gates, and release metadata.
 
 | Contract | Pre-cut baseline | Current / reviewed identity | Owning implementation task |
 | --- | --- | --- | --- |
-| ProjectDocument | `5` | `6` | surface-foundation |
-| PageGraph / SurfaceGraph | `PageGraph 3` | `SurfaceGraph 1` | surface-foundation |
+| RuleSet | `1` | `2` | config-form-validation-source-hardening |
+| ProjectDocument | `6` | `7` | config-form-validation-source-hardening |
+| SurfaceGraph | `1` | `2` | config-form-validation-source-hardening |
 | Project theme | absent | `1` | surface-foundation; studio-materials consumes without widening |
 | Registry snapshot | `2` | `3` | surface-foundation; studio-materials only adds entries/authoring mappings |
-| Canonical Project IR | `4` | `5` | surface-foundation |
-| Compiler | `5.0.0` | `6.0.0` | surface-foundation |
+| Canonical Project IR | `5` | `6` | config-form-validation-source-hardening |
+| Compiler | `6.0.0` | `7.0.0` | config-form-validation-source-hardening |
 | IndexedDB manifest/entity codec | `3` | `4` | surface-foundation |
 | Recovery Draft | `1` | `2` | surface-foundation |
 | Page transfer / Surface transfer | `Page 2` | `Surface 1` | surface-foundation |
@@ -1347,6 +1406,12 @@ translated into these diagnostics.
 | A Page route is empty, lacks leading `/`, has query/fragment, or duplicates another route | `project_structure_invalid`; reject project |
 | `homeSurfaceId` targets Dialog/Drawer | `invalid_surface_kind`; reject project |
 | An element node contains field-only members | `surface_graph_invalid`; reject instead of inventing a form field |
+| RuleSet version is old/future/missing, or a rule uses `kind: 'required'` | Reject the field/document at its strict Reader; do not migrate Required into field settings |
+| A `time` Material contains `validation`, including a `date` base | `surface_graph_invalid`; do not reinterpret time as date; keep only field Required and `validateOn` |
+| Inline Select options change while validation uses `enum` or `literal` | Re-derive the base and clear any invalid default in the same command/revision/history item |
+| New Select options cannot represent the existing enum/literal base | Unset the complete validation in that same command; do not retain a stale base or reject the options solely for this reason |
+| A default value does not currently satisfy Required, length, range, format, or compare | Accept the editable artifact; enforce the rule only at its configured runtime trigger |
+| A default value is incompatible with the declared RuleSet base type | Emit a structural type diagnostic and reject compilation |
 | A graph contains removed `bindings`, `conditions`, `reactions`, `runtime`, or `optionSource` | `surface_graph_invalid`; reject instead of translating |
 | A node binding key is absent from its Registry v3 capability | `surface_graph_invalid`; reject save/compile |
 | A Dataset binding is dangling or uses a disallowed projection | `dataset_reference_invalid` or `dataset_projection_invalid`; reject save/compile |
@@ -1392,6 +1457,8 @@ translated into these diagnostics.
 | Resource URL uses a dangerous scheme, credentials, or traversal | Reject Resource metadata/transfer |
 | Source resolver misses a component | `source_resolution_failed`; produce no partial file set |
 | Source resolver returns a bare module or style import without its package version in `dependencies` | `source_resolution_failed`; produce no partial file set |
+| Raw `package.json.dependencies` or application runtime bare-package import references ConfigForm, Zod, `@moluoxixi/*`, `@config-form/*`, or another non-whitelisted runtime package | Reject Raw generation/consumer architecture; allowed runtime packages are Vue, Vue Router, and the selected target UI package only; build-only devDependencies remain allowed |
+| Raw generation fails while ConfigForm binding succeeds, or vice versa | Preserve the successful mode as `ready` and the failed mode's diagnostics as `failed`, both bound to the same compilation identity |
 | Source generates an embedded Resource | Await exact hashed bytes, validate, derive a safe path, and emit one binary file |
 | Source generates a URL Resource | Keep the validated URL; never call the resource reader or fetch it |
 | Source resource read is missing/stale/corrupt | Emit resource diagnostic; resolve with no partial file set |
@@ -1408,8 +1475,14 @@ translated into these diagnostics.
   different `item`-derived parameter and independent form values.
 - Good: options, Table, and List consume the same Dataset query service with
   different projections while each Material owns its selection state.
+- Good: one Select options command updates its string enum base, removes an
+  invalid default, and one Undo restores all three values.
 - Good: Studio injects an Element Plus resolver into the DOM-free Source
   generator; the generator has no import from the adapter or Workbench.
+- Good: ConfigForm binding resolution fails while Raw generation succeeds from
+  the same valid compilation; Workbench shows Binding diagnostics without
+  disabling the Raw file tree. A shared invalid rule or unresolved custom
+  validator fails each API's own preflight and yields no partial file set.
 - Base: a single Page with static fields has no Dataset or interaction and
   behaves identically in Experience and generated source.
 - Bad: store Dialog content as a nested node in every opener graph.
@@ -1420,16 +1493,20 @@ translated into these diagnostics.
   arguments through an iframe.
 - Bad: let each Table/List adapter implement its own filter/sort/page rules.
 - Bad: let the versioned Dataset Reader accept a bare row array.
+- Bad: expose date rules for a time Material, or repair Select validation from a
+  watcher after the options command has already published.
 - Bad: import Designer adapter metadata from Source to avoid resolver injection.
+- Bad: pass a merged resolver to Raw, include ConfigForm/Zod in its manifest, or
+  discard both export modes because only one mode failed.
 - Bad: keep the old Workbench export entry as a re-export after Source moves.
 
 ## 9. Tests Required
 
 ### Model and version readers
 
-- Accept complete ProjectDocument v6, Project transfer v1, SurfaceGraph v1,
-  Dataset transfer v1, Resource transfer v1, Project theme v1, Prototype session
-  v1, and SourceFileSet v1 happy paths.
+- Accept complete ProjectDocument v7, Project transfer v1, SurfaceGraph v2,
+  RuleSet v2, Dataset transfer v1, Resource transfer v1, Project theme v1,
+  Prototype session v1, and SourceFileSet v1 happy paths.
 - Reject lower, higher, missing, malformed, and mixed versions with stable code,
   expected/received context, and deterministic ordering.
 - Cover valid empty Dataset collections; reject empty/no-Page Surface
@@ -1438,9 +1515,12 @@ translated into these diagnostics.
   references, in-use deletion, duplicate parameter/output names, and in-place
   kind changes.
 - Round-trip field/layout/element nodes with graph props, form, root/slot
-  placement, validation, extensions, and value scopes. Reject element nodes
-  masquerading as fields, removed graph fields, and Registry v3 node bindings
-  that exceed declared Dataset/Resource/projection/media capabilities.
+  placement, field-level Required/Required message, RuleSet v2 validation,
+  extensions, and value scopes. Reject RuleSet v1, `kind: 'required'`, element
+  nodes masquerading as fields, removed graph fields, and Registry v3 node
+  bindings that exceed declared Dataset/Resource/projection/media capabilities.
+- Prove Registry-aware validation rejects RuleSet validation on a `time`
+  Material, while Required/Required message and `validateOn` remain valid.
 - Accept valid Dialog/Drawer title/mask/close/ResponsiveLength values and Theme
   v1 tokens; reject unreachable mask-close policy, arbitrary CSS, unknown keys,
   invalid units/ranges/colors, negative values, NaN, and Infinity.
@@ -1476,6 +1556,10 @@ translated into these diagnostics.
 - Prove options values are unique `string | number`; missing paths, duplicate
   values, and null/boolean/object/array values block Experience and Source with
   `dataset_projection_invalid`.
+- Designer command tests change inline Select options with existing enum/literal
+  validation and defaults. Assert exact base re-derivation or validation
+  removal, invalid-default removal, one revision/history item, atomic rollback,
+  and one-Undo restoration for both provider adapters.
 
 ### Interaction and session
 
@@ -1518,8 +1602,18 @@ translated into these diagnostics.
   generated strings alone is insufficient.
 - Node-import generator and Prototype root/session entries with no DOM globals;
   verify Vue/Monaco remain behind `/vue` or `/viewer` async boundaries.
-- Build and typecheck the generated project; assert byte-stable files for the
-  same compilation/provider/resource snapshot and no partial output on failure.
+- Build and typecheck real generated projects for Element Plus and Ant Design
+  Vue; assert byte-stable files for the same compilation/resolver/resource
+  snapshot and no partial file set from the failing generation API. Do not use
+  workspace/internal soft links to satisfy generated dependencies.
+- Scan every Raw `package.json.dependencies` map and application runtime
+  bare-package import for the exact Vue, Vue Router, and target-UI whitelist;
+  permit legitimate build tooling only in `devDependencies`. Execute field-level Required,
+  Required message, RuleSet v2, and `validateOn` behavior through the generated
+  local validation module, not a string-only assertion.
+- Force Raw-only and Binding-only failure paths and assert Workbench publishes
+  independent `ready | failed` artifacts for one compilation; commands are
+  disabled only for the failed mode.
 - Await a Repository-backed `SourceResourceReader`, verify it receives the exact
   project/resource/hash identity and returns a copied snapshot, and assert Source
   validates length/hash, derives safe deterministic paths, emits canonical
@@ -1580,17 +1674,19 @@ generateSource(compilation, elementPlusMetadata)
 Correct:
 
 ```ts
-const resolver = createStudioResolver(project.registryLock, adapterMetadata)
+const componentResolver = createStudioComponentResolver(project.registryLock, adapterMetadata)
+const bindingResolver = createStudioBindingResolver(adapterMetadata)
 const resourceReader = createStudioResourceReader(repository)
 await generateVueSource({
   compilation,
-  providerResolver: resolver,
+  componentResolver,
   resourceReader,
 })
 
 await generateConfigFormBindings({
   compilation,
-  providerResolver: resolver,
+  componentResolver,
+  bindingResolver,
   resourceReader,
 })
 ```

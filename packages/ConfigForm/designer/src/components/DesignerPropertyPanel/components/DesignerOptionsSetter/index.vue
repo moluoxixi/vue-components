@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@designer/graph'
+import type { DesignerOptionValueType } from '@designer/registry'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from '@lucide/vue'
 import {
   ElInput,
@@ -9,8 +10,9 @@ import {
 } from 'element-plus'
 import { ref, watch } from 'vue'
 import { useDesignerLocale } from '@designer/locale'
+import { DESIGNER_OPTION_VALUE_TYPES } from '@designer/options'
 
-type OptionValueType = 'text' | 'number' | 'boolean' | 'complex'
+type OptionValueType = DesignerOptionValueType | 'complex'
 
 interface OptionDraft {
   label: string
@@ -22,6 +24,7 @@ interface OptionDraft {
 
 const props = defineProps<{
   modelValue: unknown
+  optionValueTypes?: readonly DesignerOptionValueType[]
   disabled?: boolean
 }>()
 const locale = useDesignerLocale()
@@ -31,13 +34,22 @@ const emit = defineEmits<{
 }>()
 
 const rows = ref<OptionDraft[]>([])
+const allowedValueTypes = () => props.optionValueTypes ?? DESIGNER_OPTION_VALUE_TYPES
+
+function inputType(valueType: DesignerOptionValueType): Exclude<OptionValueType, 'complex'> {
+  return valueType
+}
+
+function defaultValue(valueType: DesignerOptionValueType): string | number | boolean {
+  return valueType === 'number' ? 0 : valueType === 'boolean' ? false : ''
+}
 
 function valueType(value: unknown): OptionValueType {
   if (typeof value === 'number')
     return 'number'
   if (typeof value === 'boolean')
     return 'boolean'
-  return typeof value === 'string' ? 'text' : 'complex'
+  return typeof value === 'string' ? 'string' : 'complex'
 }
 
 function syncRows(): void {
@@ -72,10 +84,11 @@ function commit(): void {
 }
 
 function addRow(): void {
+  const valueType = allowedValueTypes()[0] ?? 'string'
   rows.value.push({
     label: `Option ${rows.value.length + 1}`,
-    value: `option-${rows.value.length + 1}`,
-    valueType: 'text',
+    value: valueType === 'string' ? `option-${rows.value.length + 1}` : defaultValue(valueType),
+    valueType: inputType(valueType),
     extra: {},
   })
   commit()
@@ -96,8 +109,10 @@ function moveRow(index: number, offset: -1 | 1): void {
 }
 
 function changeType(row: OptionDraft, type: OptionValueType): void {
+  if (type === 'complex' || !allowedValueTypes().includes(type))
+    return
   row.valueType = type
-  row.value = type === 'number' ? 0 : type === 'boolean' ? false : ''
+  row.value = defaultValue(type)
   commit()
 }
 
@@ -140,9 +155,9 @@ function updateNumber(row: OptionDraft, value: number | undefined): void {
       <ElInput :model-value="row.label" :aria-label="locale.t('options.labelAria', 'Option {index} label', { index: index + 1 })" :placeholder="locale.t('property.label', 'Label')" :disabled="disabled" @update:model-value="updateLabel(row, $event)" @blur="commit" />
       <div class="mx-config-form-designer__typed-value">
         <ElSelect :model-value="row.valueType" :aria-label="locale.t('options.valueTypeAria', 'Option {index} value type', { index: index + 1 })" :disabled="disabled" @update:model-value="changeType(row, $event)">
-          <ElOption value="text" :label="locale.t('valueType.text', 'Text')" />
-          <ElOption value="number" :label="locale.t('valueType.number', 'Number')" />
-          <ElOption value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
+          <ElOption v-if="allowedValueTypes().includes('string')" value="string" :label="locale.t('valueType.text', 'Text')" />
+          <ElOption v-if="allowedValueTypes().includes('number')" value="number" :label="locale.t('valueType.number', 'Number')" />
+          <ElOption v-if="allowedValueTypes().includes('boolean')" value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
           <ElOption v-if="row.valueType === 'complex'" value="complex" disabled :label="locale.t('valueType.structured', 'Structured')" />
         </ElSelect>
         <output v-if="row.valueType === 'complex'">{{ locale.t('valueType.structuredValue', 'Structured value') }}</output>

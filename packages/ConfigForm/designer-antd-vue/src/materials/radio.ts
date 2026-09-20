@@ -19,7 +19,11 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
-      setters: [s.choiceDefaultValueSetter('select'), s.optionsSetter, s.disabledSetter],
+      setters: [
+        s.choiceDefaultValueSetter('select', s.DESIGNER_OPTION_VALUE_TYPES),
+        s.optionsSetter(s.DESIGNER_OPTION_VALUE_TYPES),
+        s.disabledSetter,
+      ],
       createNode: ({ id, field = 'radio' }) => ({
         id,
         kind: 'field',

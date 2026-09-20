@@ -13,7 +13,7 @@ import {
 } from '../index'
 import { createCompilerFixture } from './fixtures'
 
-describe('Surface canonical compiler', () => {
+describe('surface canonical compiler', () => {
   it('compiles a flat project with page, dialog, drawer, element nodes, and references', () => {
     const input = createCompilerFixture()
     const result = compileCanonicalProject(input)
@@ -32,6 +32,11 @@ describe('Surface canonical compiler', () => {
     expect(compilation.ir.surfacesById.details?.kind).toBe('drawer')
     expect(compilation.ir.surfacesById.home?.nodesById['open-editor']?.kind).toBe('element')
     expect(compilation.ir.surfacesById.home?.nodesById.name?.datasetBindings).toBeDefined()
+    expect(compilation.ir.surfacesById.home?.nodesById.name).toMatchObject({
+      required: true,
+      requiredMessage: 'Name is required',
+      validation: { version: 2 },
+    })
     expect(compilation.ir.surfacesById.editor?.interactions[0]).toMatchObject({
       action: { targetSurfaceId: 'details' },
     })
@@ -40,6 +45,8 @@ describe('Surface canonical compiler', () => {
     })
     expect(Object.isFrozen(compilation)).toBe(true)
     expect(Object.isFrozen(compilation.ir)).toBe(true)
+    expect(CANONICAL_PROJECT_IR_VERSION).toBe(6)
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('7.0.0')
   })
 
   it('compiles one Surface without recursively inlining cyclic open targets', () => {

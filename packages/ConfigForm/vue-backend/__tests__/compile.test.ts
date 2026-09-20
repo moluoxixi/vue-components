@@ -3,9 +3,9 @@ import type {
   SurfaceCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
+  CanonicalRuntimeSurface,
   VueRuntimeBindingResolver,
   VueRuntimeComponentBinding,
-  CanonicalRuntimeSurface,
 } from '../index'
 import { performance } from 'node:perf_hooks'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
@@ -97,19 +97,46 @@ function createSurface(id: string, kind: 'page' | 'dialog' | 'drawer' = 'page'):
       ? { kind: 'drawer' as const, title: 'Details', placement: 'right' as const, size: { desktop: { value: 40, unit: '%' as const } }, mask: true, close: { escape: true, mask: true, button: true } }
       : undefined
   const nodes = {
-    section: {
-      id: 'section', component: 'layout.section', componentVersion: '1', componentFingerprint: 'fnv1a:layout', kind: 'layout' as const,
-      subtreeHash: 'hash:section', placement: { parentId: null, slot: null, props: {} }, configuredProps: {}, props: { gap: 12 },
+    'section': {
+      id: 'section',
+      component: 'layout.section',
+      componentVersion: '1',
+      componentFingerprint: 'fnv1a:layout',
+      kind: 'layout' as const,
+      subtreeHash: 'hash:section',
+      placement: { parentId: null, slot: null, props: {} },
+      configuredProps: {},
+      props: { gap: 12 },
       slots: { default: ['name', 'open-editor'] },
     },
-    name: {
-      id: 'name', component: 'field.input', componentVersion: '1', componentFingerprint: 'fnv1a:field', kind: 'field' as const,
-      subtreeHash: 'hash:name', placement: { parentId: 'section', slot: 'default', props: { span: 12 } }, configuredProps: { placeholder: 'Configured name' }, props: { clearable: true, placeholder: 'Your name' },
-      field: 'name', label: 'Name', defaultValue: 'Ada', validateOn: ['submit' as const], validation: { version: 1, base: { type: 'string' as const }, rules: [{ kind: 'minLength' as const, value: 2 }] },
+    'name': {
+      id: 'name',
+      component: 'field.input',
+      componentVersion: '1',
+      componentFingerprint: 'fnv1a:field',
+      kind: 'field' as const,
+      subtreeHash: 'hash:name',
+      placement: { parentId: 'section', slot: 'default', props: { span: 12 } },
+      configuredProps: { placeholder: 'Configured name' },
+      props: { clearable: true, placeholder: 'Your name' },
+      field: 'name',
+      label: 'Name',
+      defaultValue: 'Ada',
+      required: true,
+      requiredMessage: 'Name is required',
+      validateOn: ['submit' as const],
+      validation: { version: 2, base: { type: 'string' as const }, rules: [{ kind: 'minLength' as const, value: 2 }] },
     },
     'open-editor': {
-      id: 'open-editor', component: 'element.action', componentVersion: '1', componentFingerprint: 'fnv1a:element', kind: 'element' as const,
-      subtreeHash: 'hash:open-editor', placement: { parentId: 'section', slot: 'default', props: { span: 12 } }, configuredProps: { label: 'Edit' }, props: { label: 'Edit' },
+      id: 'open-editor',
+      component: 'element.action',
+      componentVersion: '1',
+      componentFingerprint: 'fnv1a:element',
+      kind: 'element' as const,
+      subtreeHash: 'hash:open-editor',
+      placement: { parentId: 'section', slot: 'default', props: { span: 12 } },
+      configuredProps: { label: 'Edit' },
+      props: { label: 'Edit' },
     },
   }
   return {
@@ -158,11 +185,20 @@ function projectCompilation(): ProjectCompilation {
     details: createSurface('details', 'drawer'),
   }
   const key = {
-    projectId: 'runtime-project', contentHash: 'hash:content', registryAdapter: 'fixture', registryAdapterVersion: '1', registryFingerprint: 'hash:registry',
-    compilerVersion: CONFIG_FORM_COMPILER_VERSION, environmentHash: 'hash:environment', irHash: 'hash:ir',
+    projectId: 'runtime-project',
+    contentHash: 'hash:content',
+    registryAdapter: 'fixture',
+    registryAdapterVersion: '1',
+    registryFingerprint: 'hash:registry',
+    compilerVersion: CONFIG_FORM_COMPILER_VERSION,
+    environmentHash: 'hash:environment',
+    irHash: 'hash:ir',
   }
   return {
-    snapshot: {} as ProjectCompilation['snapshot'], registry: {} as ProjectCompilation['registry'], origin: { kind: 'committed', editVersion: 1 }, key,
+    snapshot: {} as ProjectCompilation['snapshot'],
+    registry: {} as ProjectCompilation['registry'],
+    origin: { kind: 'committed', editVersion: 1 },
+    key,
     ir: { version: CANONICAL_PROJECT_IR_VERSION, identity: key, name: 'Runtime fixture', homeSurfaceId: 'home', surfaceOrder: ['home', 'editor', 'details'], surfacesById, datasetOrder: [], datasetsById: {}, resources: {}, theme: { version: 1 }, settings: {}, environment: { version: '1', features: {} } },
   } as unknown as ProjectCompilation
 }
@@ -171,7 +207,7 @@ function mutableSurface(compilation = surfaceCompilation()): CanonicalRuntimeSur
   return structuredClone(compilation.surface) as unknown as CanonicalRuntimeSurface
 }
 
-describe('Vue Surface backend', () => {
+describe('vue Surface backend', () => {
   it('renders field, layout, and element nodes without mutating Canonical IR', () => {
     const compilation = surfaceCompilation()
     const snapshot = structuredClone(compilation.surface)
@@ -205,7 +241,13 @@ describe('Vue Surface backend', () => {
       : []
     expect(children).toHaveLength(2)
     const nested = children[0]
-    expect(nested).toMatchObject({ id: 'name', field: 'name', valueProp: 'modelValue' })
+    expect(nested).toMatchObject({
+      id: 'name',
+      field: 'name',
+      required: true,
+      requiredMessage: 'Name is required',
+      valueProp: 'modelValue',
+    })
     expect(children[1]).toMatchObject({ id: 'open-editor', component: RuntimeElement })
     expect(nested).not.toHaveProperty('bindings')
     expect(nested).not.toHaveProperty('conditions')
@@ -341,6 +383,79 @@ describe('Vue Surface backend', () => {
     expect(spy).toHaveBeenCalled()
   })
 
+  it('keeps business-invalid defaults for runtime validation and rejects base mismatches', () => {
+    const compilation = surfaceCompilation()
+    const surface = mutableSurface(compilation)
+    const field = surface.nodesById.name
+    if (!field || field.kind !== 'field')
+      throw new TypeError('Expected the name field fixture.')
+    field.defaultValue = ''
+    field.required = true
+    field.requiredMessage = 'Name is required'
+    field.validation = {
+      version: 2,
+      base: { type: 'string' },
+      rules: [{ kind: 'minLength', value: 2, message: 'Name is too short' }],
+    }
+
+    const businessInvalid = compileCanonicalSurfaceRuntime({
+      compilation: { ...compilation, surface } as unknown as SurfaceCompilation,
+    }, resolver(compilation))
+    expect(businessInvalid.success).toBe(true)
+    if (!businessInvalid.success)
+      return
+    const section = businessInvalid.artifact.renderer.fields[0]
+    const children = section && !('field' in section) && Array.isArray(section.slots?.default)
+      ? section.slots.default
+      : []
+    const runtimeField = children[0]
+    expect(runtimeField).toMatchObject({
+      defaultValue: '',
+      required: true,
+      requiredMessage: 'Name is required',
+    })
+    if (runtimeField && 'field' in runtimeField)
+      expect(runtimeField.schema?.safeParse('').success).toBe(false)
+
+    const mismatchedSurface = structuredClone(surface) as CanonicalRuntimeSurface
+    const mismatchedField = mismatchedSurface.nodesById.name
+    if (!mismatchedField || mismatchedField.kind !== 'field')
+      throw new TypeError('Expected the mismatched name field fixture.')
+    mismatchedField.defaultValue = 42
+    expect(compileCanonicalSurfaceRuntime({
+      compilation: { ...compilation, surface: mismatchedSurface } as unknown as SurfaceCompilation,
+    }, resolver(compilation))).toMatchObject({
+      success: false,
+      diagnostics: [{
+        code: 'VUE_RUNTIME_DEFAULT_BASE_INVALID',
+        nodeId: 'name',
+        path: ['nodesById', 'name', 'defaultValue'],
+      }],
+    })
+  })
+
+  it('rejects a stale nested RuleSet even when the outer Canonical identity is current', () => {
+    const compilation = surfaceCompilation()
+    const surface = mutableSurface(compilation)
+    const field = surface.nodesById.name
+    if (!field || field.kind !== 'field' || !field.validation) {
+      throw new TypeError('Expected the validated name field fixture.')
+    }
+    const validation = field.validation as unknown as { version: number }
+    validation.version = 1
+
+    expect(compileCanonicalSurfaceRuntime({
+      compilation: { ...compilation, surface } as unknown as SurfaceCompilation,
+    }, resolver(compilation))).toMatchObject({
+      success: false,
+      diagnostics: [{
+        code: 'RULE_DOCUMENT_INVALID',
+        nodeId: 'name',
+        path: ['nodesById', 'name', 'validation', 'version'],
+      }],
+    })
+  })
+
   it('rejects stale compiler identity', () => {
     const compilation = surfaceCompilation()
     const stale = structuredClone(compilation) as unknown as { key: Record<string, unknown> }
@@ -349,6 +464,6 @@ describe('Vue Surface backend', () => {
       success: false,
       diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
     })
-    expect(CONFIG_FORM_COMPILER_VERSION).toBe('6.0.0')
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('7.0.0')
   })
 })

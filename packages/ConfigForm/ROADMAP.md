@@ -7,10 +7,12 @@
 
 截至当前版本，仓库是 Runtime-first / Surface Foundation 实现：
 
-- `ProjectDocument v6` 使用 `homeSurfaceId/surfaceOrder/surfacesById`，统一承载
+- `ProjectDocument v7` 使用 `homeSurfaceId/surfaceOrder/surfacesById`，统一承载
   Page/Dialog/Drawer `SurfaceAsset`，并提供 Dataset、Resource、参数/结果和主题合同。
-- `SurfaceGraph v1`、Registry snapshot v3、Canonical IR v5、Compiler 6.0.0、IndexedDB
-  codec v4、Project/Surface transfer v1 已切换为严格 current-contract-only reader。
+- `SurfaceGraph v2`、RuleSet v2、Registry snapshot v3、Canonical IR v6、Compiler 7.0.0、
+  IndexedDB codec v4、Project/Surface transfer v1 已切换为严格 current-contract-only
+  reader。字段 Required 独立于通用 RuleSet；`time` 不映射为 `date` base，Select
+  options、已有 enum/literal base 与失效默认值由一个命令原子结算。
 - Designer 当前聚焦单个 Surface，默认 Inspector 仍只有 `properties` 与 `validation`；
   Design/Experience 切换和完整 Interactions 作者 UI 尚属后续任务。
 - Workbench persistence、Preview Runtime Host、缓存和生成器已使用 Surface 身份；项目
@@ -91,39 +93,45 @@ DOM；Viewer 桌面为左文件树/右源码，窄屏为 tree/code 切换，Mona
 异步加载。
 
 完成定义：Source 不依赖 Designer/Workbench、具体 provider UI 或 Repository；Studio
-在组合根分别注入同步 provider component resolver 与异步 Resource reader。生成器
+在组合根分别注入同步 provider component resolver、ConfigForm binding resolver 与
+异步 Resource reader。Raw 不接收 binding resolver。生成器
 返回含 entry 的稳定排序 SourceFileSet，不保留 Workbench wrapper、旧名称或 re-export；
 生成项目安装、类型检查、测试和构建通过，embedded 资源以 binary/base64 文件项无损
 输出，URL 不调用 reader 或 fetch。
 
-当前状态：已完成。默认 `RawSourceFileSetV1` 直接使用 Vue、Vue Router 与目标 UI 包；
+当前状态：已完成。默认 `RawSourceFileSetV1` 的 `package.json.dependencies` 与应用运行
+时代码中的裸包 import 严格限定为 Vue、Vue Router 与目标 UI 包，Required 与 RuleSet v2 生成为工程
+内可读校验代码；这些位置不含 ConfigForm、Zod、`@moluoxixi/*`、`@config-form/*` 或
+内部 Runtime，Vite、TypeScript 等构建工具可作为 `devDependencies`。
 `ConfigBindingFileSetV1` 只组合公开 ConfigForm adapter/model/config。两种文件集都不生成
 `src/runtime/**`，不复制 Compiler、Prototype Runtime、session reducer 或 overlay host。
 Workbench 只保留弹窗、刷新、复制、下载、ZIP 与通知等应用命令。
-其内存快照固定为 `ExportSnapshot { compilation, rawSource, configBindings }`，过期判定
-只比较完整 compilation key 与 committed/draft origin；文件集合同版本由
+其内存快照固定为 `ExportSnapshot { compilation, rawSource, configBindings }`，两个 mode
+分别是 `ready | failed`，基于同一 compilation 独立生成、独立失败。过期判定只比较
+完整 compilation key 与 committed/draft origin；文件集合同版本由
 `SourceFileSetV1.version` 持有，不再维护 Workbench generator 版本。
 
 ## 目标合同版本
 
 版本号由拥有相应 Reader 的阶段一次性切换：
 
-| 合同                             | 基线          | 当前             | 所属阶段                                                  |
-| -------------------------------- | ------------- | ---------------- | --------------------------------------------------------- |
-| ProjectDocument                  | `5`           | `6`              | Surface Foundation                                        |
-| PageGraph / SurfaceGraph         | `PageGraph 3` | `SurfaceGraph 1` | Surface Foundation                                        |
-| Project theme                    | 不存在        | `1`              | Surface Foundation；Studio Materials 只消费，不扩宽 shape |
-| Registry snapshot                | `2`           | `3`              | Surface Foundation；Studio Materials 只扩充条目和作者映射 |
-| Canonical Project IR             | `4`           | `5`              | Surface Foundation                                        |
-| Compiler                         | `5.0.0`       | `6.0.0`          | Surface Foundation                                        |
-| IndexedDB manifest/entity codec  | `3`           | `4`              | Surface Foundation                                        |
-| Page transfer / Surface transfer | `Page 2`      | `Surface 1`      | Surface Foundation                                        |
-| Runtime Host protocol            | `6`           | `7`              | Surface Foundation                                        |
-| Project transfer                 | 不存在        | `1`              | Surface Foundation；Studio Datasets 提供 embedded content |
-| Dataset transfer                 | 不存在        | `1`              | Studio Datasets                                           |
-| Resource transfer                | 不存在        | `1`              | Studio Datasets                                           |
-| Prototype session                | 不存在        | `1`              | Surface Foundation                                        |
-| SourceFileSet                    | 不存在        | `1`              | Source 包                                                 |
+| 合同                             | 基线     | 当前        | 所属阶段                                                  |
+| -------------------------------- | -------- | ----------- | --------------------------------------------------------- |
+| RuleSet                          | `1`      | `2`         | 校验与源码合同硬化                                        |
+| ProjectDocument                  | `6`      | `7`         | 校验与源码合同硬化                                        |
+| SurfaceGraph                     | `1`      | `2`         | 校验与源码合同硬化                                        |
+| Project theme                    | 不存在   | `1`         | Surface Foundation；Studio Materials 只消费，不扩宽 shape |
+| Registry snapshot                | `2`      | `3`         | Surface Foundation；Studio Materials 只扩充条目和作者映射 |
+| Canonical Project IR             | `5`      | `6`         | 校验与源码合同硬化                                        |
+| Compiler                         | `6.0.0`  | `7.0.0`     | 校验与源码合同硬化                                        |
+| IndexedDB manifest/entity codec  | `3`      | `4`         | Surface Foundation                                        |
+| Page transfer / Surface transfer | `Page 2` | `Surface 1` | Surface Foundation                                        |
+| Runtime Host protocol            | `6`      | `7`         | Surface Foundation                                        |
+| Project transfer                 | 不存在   | `1`         | Surface Foundation；Studio Datasets 提供 embedded content |
+| Dataset transfer                 | 不存在   | `1`         | Studio Datasets                                           |
+| Resource transfer                | 不存在   | `1`         | Studio Datasets                                           |
+| Prototype session                | 不存在   | `1`         | Surface Foundation                                        |
+| SourceFileSet                    | 不存在   | `1`         | Source 包                                                 |
 
 目标版本不是兼容范围。每个 Reader 只接受精确当前版本；低版本、高版本、缺失、畸形
 和混合版本均拒绝。后续阶段若需要再次改变同一 shape，必须回到合同审阅，不能私自
@@ -148,8 +156,13 @@ Prototype Interaction 不是上述事件域的改名。它只处理封闭的状�
 - 同一 Surface 重复打开、A -> B -> A、返回、关闭、参数和结果事务必须覆盖实例隔离。
 - Dataset raw rows ingestion 与 versioned envelope reader 必须有相反失败用例，避免无
   版本数组被 Reader 静默接受。
-- 两套 provider adapter 必须共享基础语义，但 Source provider resolver 与 Resource
-  reader 由 Studio 组合根分别注入，不能让 Source 反向依赖 adapter metadata 或
-  Repository。
+- 两套 provider adapter 必须共享基础语义，但 Source component resolver、ConfigForm
+  binding resolver 与 Resource reader 由 Studio 组合根分别注入，不能让 Source 反向
+  依赖 adapter metadata 或 Repository，也不能重新合并 resolver。
+- Raw/Binding 的独立失败必须覆盖两个方向；Raw 生成消费门禁必须使用真实文件、无内部
+  workspace 软链，并扫描 `package.json.dependencies` 与应用运行时代码中的裸包 import；构建期
+  `devDependencies` 单独校验，不得误按运行依赖白名单拒绝。
+- Designer 门禁必须覆盖时间物料无 RuleSet base，以及 Select options、enum/literal
+  validation、失效默认值的一次命令/一次 Undo 原子性。
 - CI 需要持续覆盖 package architecture、合同版本、生成项目、Workbench build/E2E 和
   可访问性；尚未实现的规划包不得进入发布矩阵。

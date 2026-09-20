@@ -1103,6 +1103,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:dev
         version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      ant-design-vue:
+        specifier: catalog:ui
+        version: 4.2.6(vue@3.5.33(typescript@5.9.3))
       element-plus:
         specifier: catalog:ui
         version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
@@ -1112,6 +1115,9 @@ importers:
       sass:
         specifier: catalog:dev
         version: 1.99.0
+      typescript:
+        specifier: catalog:dev
+        version: 5.9.3
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))

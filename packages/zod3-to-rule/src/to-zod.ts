@@ -54,8 +54,6 @@ function compileDate(
 
 function applyRule(schema: z.ZodTypeAny, rule: RuleDescriptor, ruleIndex: number): z.ZodTypeAny {
   switch (rule.kind) {
-    case 'required':
-      return schema
     case 'minLength':
       if (!(schema instanceof z.ZodString))
         throw new RuleCompileError([ruleDiagnostic('RULE_TYPE_MISMATCH', 'minLength requires a string base', ['rules', ruleIndex], 'error', ruleIndex)])
@@ -126,12 +124,8 @@ function applyRule(schema: z.ZodTypeAny, rule: RuleDescriptor, ruleIndex: number
 
 export function rulesToZod(ruleSet: RuleSet): z.ZodTypeAny {
   let schema = compileBase(ruleSet)
-  let requiredRule: Extract<RuleDescriptor, { kind: 'required' }> | undefined
-  for (const [ruleIndex, rule] of ruleSet.rules.entries()) {
+  for (const [ruleIndex, rule] of ruleSet.rules.entries())
     schema = applyRule(schema, rule, ruleIndex)
-    if (rule.kind === 'required')
-      requiredRule = rule
-  }
 
   if (ruleSet.base.type === 'date') {
     // Calendar controls commonly emit ISO strings. Coerce only strings here,
@@ -143,16 +137,5 @@ export function rulesToZod(ruleSet: RuleSet): z.ZodTypeAny {
     schema = schema.nullable()
   if (ruleSet.optional)
     schema = schema.optional()
-
-  // Keep the public Zod schema aligned with ConfigForm's required pre-check.
-  // The refinement must wrap optional/nullable schemas so those flags cannot
-  // silently bypass an explicit required rule.
-  if (requiredRule) {
-    schema = schema.refine((value: unknown) => (
-      value !== undefined
-      && value !== null
-      && (typeof value !== 'string' || value.trim().length > 0)
-    ), applyMessage(requiredRule))
-  }
   return schema
 }

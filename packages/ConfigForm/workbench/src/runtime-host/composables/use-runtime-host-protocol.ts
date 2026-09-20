@@ -57,7 +57,7 @@ export function useRuntimeHostProtocol() {
   const active = shallowRef<Awaited<ReturnType<typeof compileCanonicalSurfaceRuntime>> extends infer T
     ? T extends { success: true } ? T : never
     : never>()
-  const modelValue = ref<ModelJsonObject>({})
+  const modelValue = shallowRef<ModelJsonObject>({})
   const namespace = ref<string>()
   const runtimeSessionKey = ref('')
   const runtimeError = ref('')

@@ -2,10 +2,7 @@ import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import { compileRules } from '@moluoxixi/zod3-to-rule'
 import { describe, expect, it } from 'vitest'
-import {
-  compileSourceValidationPlan,
-  SOURCE_VALIDATION_RUNTIME_COMPILER,
-} from '../services/validation'
+import { compileSourceValidationPlan } from '../services/validation'
 
 function field(id: string, validation?: RuleSet): Record<string, unknown> {
   return {
@@ -31,18 +28,17 @@ function compilation(nodesById: Record<string, Record<string, unknown>>): Projec
 }
 
 describe('compileSourceValidationPlan', () => {
-  it('returns stable JSON-safe RuleSet metadata for runtime compileRules emission', async () => {
+  it('returns stable current RuleSet metadata for binding and direct Raw emission', async () => {
     const result = compileSourceValidationPlan(compilation({
       second: field('second', {
-        version: 1,
+        version: 2,
         base: { type: 'number' },
         rules: [{ kind: 'compare', field: 'first', operator: 'gte', message: 'Must follow first' }],
       }),
       first: field('first', {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [
-          { kind: 'required', message: 'Name is required' },
           { kind: 'minLength', value: 3 },
           { kind: 'regex', source: '^[a-z]+$', flags: 'i' },
         ],
@@ -53,17 +49,14 @@ describe('compileSourceValidationPlan', () => {
     expect(result.success).toBe(true)
     if (!result.success)
       return
-    expect(result.data.runtimeCompiler).toEqual(SOURCE_VALIDATION_RUNTIME_COMPILER)
     expect(result.data.surfaces).toHaveLength(1)
     expect(result.data.surfaces[0]?.fields.map(item => item.nodeId)).toEqual(['first', 'second'])
-    expect(result.data.surfaces[0]?.fields[0]?.field).toEqual({
-      attachSchema: true,
+    expect(result.data.surfaces[0]?.fields[0]).toMatchObject({
+      nodeId: 'first',
       attachValidator: false,
-      required: true,
-      requiredMessage: 'Name is required',
     })
-    expect(result.data.surfaces[0]?.fields[1]?.field).toEqual({
-      attachSchema: true,
+    expect(result.data.surfaces[0]?.fields[1]).toMatchObject({
+      nodeId: 'second',
       attachValidator: true,
     })
     expect(JSON.parse(JSON.stringify(result.data))).toEqual(result.data)
@@ -76,34 +69,35 @@ describe('compileSourceValidationPlan', () => {
     await expect(second.validator?.(4, { first: 3 })).resolves.toEqual([])
   })
 
-  it('fails closed when compileRules returns an error diagnostic', () => {
+  it('fails closed on the removed Required rule and legacy RuleSet version', () => {
     const result = compileSourceValidationPlan(compilation({
       name: field('name', {
         version: 1,
         base: { type: 'string' },
         rules: [{ kind: 'required' }],
-        optional: true,
-      }),
+      } as unknown as RuleSet),
     }))
 
-    expect(result).toMatchObject({
-      success: false,
-      diagnostics: [{
-        code: 'source_input_invalid',
-        nodeId: 'name',
-        surfaceId: 'home',
-        context: {
-          reason: 'rule_diagnostic',
-          ruleDiagnostic: { code: 'RULE_OPTIONAL_REQUIRED_CONFLICT', severity: 'error' },
-        },
-      }],
-    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.diagnostics).toHaveLength(2)
+      expect(result.diagnostics).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: expect.arrayContaining(['version']) }),
+        expect.objectContaining({ path: expect.arrayContaining(['kind']) }),
+      ]))
+      expect(result.diagnostics.every(diagnostic => (
+        diagnostic.code === 'source_input_invalid'
+        && diagnostic.nodeId === 'name'
+        && diagnostic.surfaceId === 'home'
+        && diagnostic.context?.reason === 'rule_parse_error'
+      ))).toBe(true)
+    }
   })
 
-  it('fails closed when compileRules throws RuleCompileError', () => {
+  it('fails closed when strict parsing rejects an invalid regex', () => {
     const result = compileSourceValidationPlan(compilation({
       name: field('name', {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [{ kind: 'regex', source: '[' }],
       }),
@@ -116,8 +110,82 @@ describe('compileSourceValidationPlan', () => {
         nodeId: 'name',
         surfaceId: 'home',
         context: {
-          reason: 'rule_compile_error',
+          reason: 'rule_parse_error',
           ruleDiagnostic: { severity: 'error' },
+        },
+      }],
+    })
+  })
+
+  it('fails closed without data when strict parsing rejects an unknown rule kind', () => {
+    const result = compileSourceValidationPlan(compilation({
+      name: field('name', {
+        version: 2,
+        base: { type: 'string' },
+        rules: [{ kind: 'futureRule' }],
+      } as unknown as RuleSet),
+    }))
+
+    expect(result.success).toBe(false)
+    expect('data' in result).toBe(false)
+    if (!result.success) {
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: 'source_input_invalid',
+          nodeId: 'name',
+          surfaceId: 'home',
+          path: expect.arrayContaining(['rules', 0, 'kind']),
+          context: expect.objectContaining({ reason: 'rule_parse_error' }),
+        }),
+      ])
+    }
+  })
+
+  it.each([
+    ['dateMin', 'not-a-date'],
+    ['dateMax', '2024-01-01'],
+  ])('fails closed without data when %s has an invalid date', (kind, value) => {
+    const result = compileSourceValidationPlan(compilation({
+      date: field('date', {
+        version: 2,
+        base: { type: 'date' },
+        rules: [{ kind, value }],
+      } as unknown as RuleSet),
+    }))
+
+    expect(result.success).toBe(false)
+    expect('data' in result).toBe(false)
+    if (!result.success) {
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: 'source_input_invalid',
+          nodeId: 'date',
+          surfaceId: 'home',
+          path: expect.arrayContaining(['rules', 0, 'value']),
+          context: expect.objectContaining({ reason: 'rule_parse_error' }),
+        }),
+      ])
+    }
+  })
+
+  it('fails closed when a rule is incompatible with its base type', () => {
+    const result = compileSourceValidationPlan(compilation({
+      enabled: field('enabled', {
+        version: 2,
+        base: { type: 'boolean' },
+        rules: [{ kind: 'minLength', value: 1 }],
+      }),
+    }))
+
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [{
+        code: 'source_input_invalid',
+        nodeId: 'enabled',
+        surfaceId: 'home',
+        context: {
+          reason: 'rule_compile_error',
+          ruleDiagnostic: { code: 'RULE_TYPE_MISMATCH', severity: 'error' },
         },
       }],
     })
@@ -126,7 +194,7 @@ describe('compileSourceValidationPlan', () => {
   it('fails closed when a custom validator has no source implementation', () => {
     const result = compileSourceValidationPlan(compilation({
       name: field('name', {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [{ kind: 'custom', key: 'available' }],
       }),
@@ -148,12 +216,12 @@ describe('compileSourceValidationPlan', () => {
   it('does not return a partial plan when one field fails', () => {
     const result = compileSourceValidationPlan(compilation({
       valid: field('valid', {
-        version: 1,
+        version: 2,
         base: { type: 'number' },
         rules: [{ kind: 'min', value: 1 }],
       }),
       invalid: field('invalid', {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [{ kind: 'custom', key: 'missing' }],
       }),
@@ -169,7 +237,6 @@ describe('compileSourceValidationPlan', () => {
     expect(result).toEqual({
       success: true,
       data: {
-        runtimeCompiler: SOURCE_VALIDATION_RUNTIME_COMPILER,
         surfaces: [{ surfaceId: 'home', fields: [] }],
       },
       diagnostics: [],

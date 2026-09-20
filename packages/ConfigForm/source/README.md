@@ -31,29 +31,41 @@ import { generateConfigFormBindings, generateVueSource } from '@moluoxixi/config
 
 const rawSource = await generateVueSource({
   compilation,
-  providerResolver,
+  componentResolver,
   resourceReader,
 })
 
 const configBindings = await generateConfigFormBindings({
   compilation,
-  providerResolver,
+  componentResolver,
+  bindingResolver,
   resourceReader,
 })
 ```
 
-`SourceProviderResolver` 由 Studio 组合根根据锁定的 adapter 身份同步提供组件 import、
-样式、依赖、ConfigForm 公开绑定 import，以及 Material 语义触发器到 provider 事件/
-listener prop 的固定投影。该投影只用于生成代码，不是事件编辑或事件转发：普通激活不
-携带组件参数，row/item 激活只读取 provider 明确声明的一个 item 参数。
+`SourceComponentResolver` 由 Studio 组合根根据锁定的 adapter 身份提供组件 import、
+目标 UI 包、样式，以及 Material 语义触发器到 provider 事件/listener prop 的固定投影。
+Raw 输入只接收这个 resolver，不感知 ConfigForm binding。`SourceConfigFormBindingResolver`
+独立提供公开 ConfigForm adapter 与 model import，仅在调用 `generateConfigFormBindings` 时
+传入；两者不保留合并 resolver 或兼容别名。语义投影只用于生成代码，不是事件编辑或
+事件转发：普通激活不携带组件参数，row/item 激活只读取 provider 明确声明的一个 item
+参数。
+
 resolver 返回的组件、Binding 与样式裸包导入都必须在对应 `dependencies` 中声明可发布
-版本；缺失声明会在生成阶段 fail closed，而不是把错误推迟到导出工程安装时。
+版本；缺失声明会在生成阶段 fail closed，而不是把错误推迟到导出工程安装时。Raw 项目
+的运行依赖严格限制为 `vue`、`vue-router` 和当前 resolver 的一个目标 UI 包，全部生成
+源码与清单都禁止 `@moluoxixi/*`、`@config-form/*` 和 Zod。
 `SourceResourceReader` 只读取指定 project/resource/hash 的 embedded bytes。Generator
 自己校验长度与 SHA-256，并以 canonical base64 输出 binary 文件。URL Resource 保持
 静态引用，不读取 bytes，也不发起网络请求。
 
-Generator 会在组装文件前预编译每个 Canonical `RuleSet`。非法规则、非法正则或缺少
-具名 custom validator 时，两种生成 API 都 fail closed，不返回部分文件集。初始值只从
+Generator 会在组装文件前严格解析并预编译每个 Canonical RuleSet v2。Raw 为每个
+Surface 生成一个可读的 `validation.ts`，其中是字段级直接校验函数，不包含 RuleSet
+解释器、Zod、ConfigForm Runtime 或内部包 import。Required/Required message 来自字段
+一级合同，动态 Required 在 Surface 中覆盖静态基线；`validateOn` 继续控制 change、blur
+和 submit 调度。非法规则、非法正则/日期/类型或 custom validator 会让对应 API fail
+closed，不返回部分文件集。ConfigForm binding 则保留 RuleSet v2 配置编译以及字段级
+Required，不复制运行核心。初始值只从
 Canonical scoped fields/value scopes 建立，不猜测空值或 provider 默认值。嵌套 scope 的
 初始值和字段渲染会保留；如果交互需要当前生成器尚未提供的 address-scoped 联动、投影或
 结果写回，生成同样 fail closed，避免把不同数组行错误地合并到 root values。

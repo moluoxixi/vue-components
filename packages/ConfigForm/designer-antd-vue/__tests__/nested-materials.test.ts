@@ -1,4 +1,4 @@
-import type { LayoutNode, SurfaceGraph, ProjectDocument } from '@moluoxixi/config-form-model'
+import type { LayoutNode, ProjectDocument, SurfaceGraph } from '@moluoxixi/config-form-model'
 import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, isDesignerSetterPathAllowed, useDesignerController } from '@moluoxixi/config-form-designer'
 import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ import { ANTD_VUE_DESIGNER_MATERIAL_REGISTRY, createAntdVueDesignerRegistry } fr
 function fixture() {
   const registry = createAntdVueDesignerRegistry()
   const contracts = createComponentContractRegistry(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.contracts, { adapter: 'antd', version: '1' })
-  const graph = shallowRef<SurfaceGraph>({ version: 1, props: {}, form: {}, root: [], nodesById: {} })
+  const graph = shallowRef<SurfaceGraph>({ version: 2, props: {}, form: {}, root: [], nodesById: {} })
   const document: ProjectDocument = {
     version: PROJECT_DOCUMENT_VERSION,
     id: 'nested',

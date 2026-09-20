@@ -91,7 +91,7 @@ describe('resolveInspectorCapabilities', () => {
   it('always exposes exactly properties and validation without projecting advanced runtime configuration', () => {
     const node = field('name', 'test.input', {
       datasetBindings: {},
-      validation: { version: 1, base: { type: 'string' }, rules: [] },
+      validation: { version: 2, base: { type: 'string' }, rules: [] },
       validateOn: 'blur',
     })
     const original = structuredClone(node)
@@ -143,13 +143,13 @@ describe('resolveInspectorCapabilities', () => {
     expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation'])
   })
 
-  it('makes validation read-only for a mixed multi-selection so one edit cannot erase distinct rules', () => {
+  it('keeps field-level validation editable for mixed rules without exposing a shared rule editor', () => {
     const first = field('first', 'test.first', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
       validateOn: 'blur',
     })
     const second = field('second', 'test.second', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
       validateOn: ['change', 'submit'],
     })
     const projection = resolveInspectorCapabilities([
@@ -160,7 +160,7 @@ describe('resolveInspectorCapabilities', () => {
     expect(projection.sections.find(section => section.id === 'validation')).toEqual({
       id: 'validation',
       canCreate: true,
-      editable: false,
+      editable: true,
       hasStoredContent: true,
     })
   })

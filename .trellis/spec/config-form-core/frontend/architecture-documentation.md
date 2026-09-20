@@ -146,13 +146,14 @@ field name: `version`. `revision` is reserved for content/history cursors;
 `adapterVersion` and `contractVersion` are dependency/component identities.
 
 ```ts
-PROJECT_DOCUMENT_VERSION = 6
-SURFACE_GRAPH_VERSION = 1
+RULE_SET_VERSION = 2
+PROJECT_DOCUMENT_VERSION = 7
+SURFACE_GRAPH_VERSION = 2
 REGISTRY_CONTRACT_SNAPSHOT_VERSION = 3
 PROJECT_TRANSFER_VERSION = 1
 SURFACE_TRANSFER_VERSION = 1
-CANONICAL_PROJECT_IR_VERSION = 5
-CONFIG_FORM_COMPILER_VERSION = '6.0.0'
+CANONICAL_PROJECT_IR_VERSION = 6
+CONFIG_FORM_COMPILER_VERSION = '7.0.0'
 PROJECT_ENTITY_CODEC_VERSION = 4
 RUNTIME_HOST_PROTOCOL_VERSION = 7
 PROTOTYPE_SESSION_VERSION = 1
@@ -161,6 +162,7 @@ PROTOTYPE_SESSION_VERSION = 1
 The serialized field is always `version`:
 
 ```ts
+RuleSet.version = RULE_SET_VERSION
 ProjectDocument.version = PROJECT_DOCUMENT_VERSION
 SurfaceGraph.version = SURFACE_GRAPH_VERSION
 RegistryContractSnapshot.version = REGISTRY_CONTRACT_SNAPSHOT_VERSION
@@ -194,6 +196,11 @@ type CurrentContractResult<T, D> =
   tests, fixtures, examples, generated source, documentation, and package
   exports in the same change set. Existing development data may be discarded;
   do not preserve it by adding an upgrade path.
+- RuleSet v2 contains only general base/refinement validation. Field-level
+  `required?: boolean` and `requiredMessage?: string` live on the current
+  Surface field contract and flow through Canonical IR, Runtime, Designer, and
+  Source independently. Readers reject RuleSet v1 and every
+  `{ kind: 'required' }` descriptor; no parser, migration, or alias converts it.
 - A multi-stage target does not permit an intermediate dual reader. The first
   task that owns a Reader lands the complete reviewed target shape; later tasks
   consume it or return to contract review before changing it again.
@@ -241,6 +248,7 @@ type CurrentContractResult<T, D> =
 | Version is missing or shape is ambiguous | Return unsupported-format/schema diagnostics; do not guess |
 | Registry identity differs in version, fingerprint, key set, or component contract | Reject; do not rebuild the source lock and continue |
 | Persisted development record uses an old storage contract | Reject or remove it through an explicit development reset; do not migrate |
+| RuleSet version is not `2` or contains `kind: 'required'` | Reject at the RuleSet/owning document boundary; do not lift it into field settings |
 | A deprecated alias and its replacement are both supplied | The alias must not exist in the current public type or parser |
 | A package outside `packages/ConfigForm/` exposes or wraps ConfigForm | Delete that dependency, source, export, auto-loader entry, documentation, and fixture |
 | A current protocol has version `1` and matches its literal schema | Accept; the number alone is not evidence of legacy compatibility |
@@ -257,6 +265,9 @@ type CurrentContractResult<T, D> =
 
 - Boundary tests accept the current literal and reject lower, higher, missing,
   malformed, and ambiguous versions with stable codes and precise paths.
+- RuleSet tests accept v2 without Required descriptors and reject v1,
+  missing/future versions, unknown shapes, and `kind: 'required'`; current
+  Project/IR fixtures carry Required only on the field.
 - Architecture tests scan public exports and production source for removed
   legacy/deprecated symbols, migration entry points, aliases, and fallback
   branches.

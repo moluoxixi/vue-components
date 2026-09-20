@@ -4,10 +4,12 @@ import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { compileScript, compileTemplate, parse } from '@vue/compiler-sfc'
+import ts from 'typescript'
 
 const execFileAsync = promisify(execFile)
 const packageRoot = fileURLToPath(new URL('../../../', import.meta.url))
@@ -21,12 +23,16 @@ function installedPackagePath(name: string, fallback: string): string {
   return existsSync(direct) ? direct : fallback
 }
 
-const consumerDependencies = new Map<string, string>([
+const internalConsumerDependencies = new Map<string, string>([
   ['@moluoxixi/config-form', resolve(workspaceRoot, 'packages/ConfigForm/runtime')],
   ['@moluoxixi/config-form-element', resolve(workspaceRoot, 'packages/ConfigForm/element')],
   ['@moluoxixi/config-form-headless', resolve(workspaceRoot, 'packages/ConfigForm/headless')],
   ['@moluoxixi/zod3-to-rule', resolve(workspaceRoot, 'packages/zod3-to-rule')],
+])
+
+const externalConsumerDependencies = new Map<string, string>([
   ['@vitejs/plugin-vue', join(packageRoot, 'node_modules/@vitejs/plugin-vue')],
+  ['ant-design-vue', installedPackagePath('ant-design-vue', resolve(workspaceRoot, 'packages/ConfigForm/designer-antd-vue/node_modules/ant-design-vue'))],
   ['element-plus', installedPackagePath('element-plus', resolve(workspaceRoot, 'packages/ConfigForm/element/node_modules/element-plus'))],
   ['sass', join(packageRoot, 'node_modules/sass')],
   ['vite', join(packageRoot, 'node_modules/vite')],
@@ -35,8 +41,68 @@ const consumerDependencies = new Map<string, string>([
   ['zod', installedPackagePath('zod', resolve(workspaceRoot, 'packages/ConfigForm/element/node_modules/zod'))],
 ])
 
+function packageNameFromSpecifier(specifier: string): string | undefined {
+  if (!specifier || specifier.startsWith('.') || specifier.startsWith('/'))
+    return undefined
+  const parts = specifier.split('/')
+  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]
+}
+
+function isForbiddenRawPackage(name: string): boolean {
+  return name.startsWith('@moluoxixi/')
+    || name.startsWith('@config-form/')
+    || name === 'zod'
+    || name.startsWith('zod/')
+}
+
+function moduleSpecifiers(source: string, fileName: string): string[] {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const specifiers: string[] = []
+  const visit = (node: ts.Node): void => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specifiers.push(node.moduleSpecifier.text)
+    }
+    else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword
+      && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]!)) {
+      specifiers.push(node.arguments[0].text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return specifiers
+}
+
+function generatedModuleSpecifiers(file: SourceTextFile): string[] {
+  if (file.path.endsWith('.vue')) {
+    const descriptor = parse(file.content, { filename: file.path }).descriptor
+    return [descriptor.script, descriptor.scriptSetup].flatMap(block => (
+      block ? moduleSpecifiers(block.content, file.path) : []
+    ))
+  }
+  return /\.(?:[cm]?[jt]s|tsx?)$/u.test(file.path)
+    ? moduleSpecifiers(file.content, file.path)
+    : []
+}
+
 function textFiles(fileSet: SourceFileSetV1): SourceTextFile[] {
   return fileSet.files.filter((file): file is SourceTextFile => file.kind === 'text')
+}
+
+interface GeneratedPackageManifest {
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+}
+
+function manifestDependencyNames(manifest: GeneratedPackageManifest): string[] {
+  return [...new Set([
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.devDependencies ?? {}),
+    ...Object.keys(manifest.optionalDependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ])]
 }
 
 function formatCompilerErrors(errors: readonly (string | SyntaxError)[]): string {
@@ -112,8 +178,19 @@ export function assertGeneratedRuntimeBoundary(fileSet: SourceFileSetV1): void {
   }
 
   const generatedText = textFiles(fileSet).map(file => file.content).join('\n')
-  if (fileSet.kind === 'raw-source' && /@moluoxixi\/config-form/iu.test(generatedText))
-    throw new Error('raw-source emitted a ConfigForm package reference.')
+  if (fileSet.kind === 'raw-source') {
+    const forbiddenImport = textFiles(fileSet)
+      .flatMap(file => generatedModuleSpecifiers(file).map(specifier => ({ file: file.path, specifier })))
+      .find(({ specifier }) => {
+        const packageName = packageNameFromSpecifier(specifier)
+        return packageName ? isForbiddenRawPackage(packageName) : false
+      })
+    if (forbiddenImport) {
+      throw new Error(
+        `raw-source emitted forbidden import ${forbiddenImport.specifier} in ${forbiddenImport.file}.`,
+      )
+    }
+  }
   for (const forbidden of forbiddenSymbols) {
     if (forbidden.test(generatedText))
       throw new Error(`${fileSet.kind} emitted forbidden runtime source matching ${forbidden}.`)
@@ -135,14 +212,13 @@ export function assertGeneratedRuntimeBoundary(fileSet: SourceFileSetV1): void {
   const manifestFile = textFiles(fileSet).find(file => file.path === 'package.json')
   if (!manifestFile)
     throw new Error(`${fileSet.kind} did not emit package.json.`)
-  const manifest = JSON.parse(manifestFile.content) as {
-    dependencies?: Record<string, string>
-  }
+  const manifest = JSON.parse(manifestFile.content) as GeneratedPackageManifest
   const dependencyNames = Object.keys(manifest.dependencies ?? {})
+  const manifestPackageNames = manifestDependencyNames(manifest)
   if (fileSet.kind === 'config-bindings' && dependencyNames.includes('vue-router'))
     throw new Error('config-bindings emitted a vue-router dependency.')
   const forbiddenDependencies = fileSet.kind === 'raw-source'
-    ? dependencyNames.filter(name => name.startsWith('@moluoxixi/config-form'))
+    ? manifestPackageNames.filter(isForbiddenRawPackage)
     : dependencyNames.filter(name => [
         '@moluoxixi/config-form-compiler',
         '@moluoxixi/config-form-designer',
@@ -155,6 +231,29 @@ export function assertGeneratedRuntimeBoundary(fileSet: SourceFileSetV1): void {
     throw new Error(
       `${fileSet.kind} emitted forbidden dependencies: ${forbiddenDependencies.join(', ')}.`,
     )
+  }
+  if (fileSet.kind === 'raw-source') {
+    const providerDependencies = dependencyNames.filter(name => name !== 'vue' && name !== 'vue-router')
+    if (providerDependencies.length > 1) {
+      throw new Error(
+        `raw-source emitted more than one provider dependency: ${providerDependencies.join(', ')}.`,
+      )
+    }
+    const allowed = new Set(['vue', 'vue-router', ...providerDependencies])
+    const unexpected = dependencyNames.filter(name => !allowed.has(name))
+    if (unexpected.length > 0)
+      throw new Error(`raw-source emitted unexpected runtime dependencies: ${unexpected.join(', ')}.`)
+
+    const sourceImports = textFiles(fileSet)
+      .filter(file => file.path.startsWith('src/'))
+      .flatMap(file => generatedModuleSpecifiers(file))
+      .flatMap((specifier) => {
+        const packageName = packageNameFromSpecifier(specifier)
+        return packageName ? [packageName] : []
+      })
+    const unexpectedImports = [...new Set(sourceImports.filter(name => !allowed.has(name)))]
+    if (unexpectedImports.length > 0)
+      throw new Error(`raw-source emitted unexpected application imports: ${unexpectedImports.join(', ')}.`)
   }
 }
 
@@ -169,8 +268,24 @@ async function writeGeneratedFiles(root: string, fileSet: SourceFileSetV1): Prom
   }
 }
 
-async function linkConsumerDependencies(root: string): Promise<void> {
-  for (const [name, target] of consumerDependencies) {
+function generatedDependencyNames(fileSet: SourceFileSetV1): string[] {
+  const manifestFile = textFiles(fileSet).find(file => file.path === 'package.json')
+  if (!manifestFile)
+    throw new Error(`${fileSet.kind} did not emit package.json.`)
+  const manifest = JSON.parse(manifestFile.content) as GeneratedPackageManifest
+  return [...new Set([
+    ...manifestDependencyNames(manifest),
+    'sass',
+  ])]
+}
+
+async function linkConsumerDependencies(root: string, fileSet: SourceFileSetV1): Promise<void> {
+  for (const name of generatedDependencyNames(fileSet)) {
+    if (fileSet.kind === 'raw-source' && isForbiddenRawPackage(name))
+      throw new Error(`Raw generated consumer attempted to link internal package ${name}.`)
+    const target = externalConsumerDependencies.get(name) ?? internalConsumerDependencies.get(name)
+    if (!target)
+      continue
     if (!existsSync(target))
       throw new Error(`Generated consumer dependency ${name} is not installed at ${target}.`)
     const linkPath = join(root, 'node_modules', ...name.split('/'))
@@ -584,10 +699,10 @@ async function verifyGeneratedNavigation(root: string): Promise<void> {
 }
 
 export async function verifyGeneratedConsumer(fileSet: SourceFileSetV1): Promise<void> {
-  const consumerRoot = await mkdtemp(join(packageRoot, '.generated-consumer-'))
+  const consumerRoot = await mkdtemp(join(tmpdir(), 'config-form-source-consumer-'))
   try {
     await writeGeneratedFiles(consumerRoot, fileSet)
-    await linkConsumerDependencies(consumerRoot)
+    await linkConsumerDependencies(consumerRoot, fileSet)
     await verifyGeneratedInteractions(consumerRoot, fileSet)
     if (fileSet.kind === 'raw-source')
       await verifyGeneratedNavigation(consumerRoot)

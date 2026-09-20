@@ -75,7 +75,7 @@ function commitNumber(value: number | undefined): void {
 }
 
 function commitChoice(value: unknown): void {
-  emit('update:modelValue', (value === null || value === '') ? undefined : value)
+  emit('update:modelValue', value === null || value === undefined ? undefined : value)
 }
 </script>
 

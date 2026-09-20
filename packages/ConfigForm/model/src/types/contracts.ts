@@ -196,6 +196,8 @@ export interface SurfaceFieldNode extends SurfaceNodeBase {
   field: string
   label?: string
   defaultValue?: ModelJsonValue
+  required?: boolean
+  requiredMessage?: string
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
 }
@@ -513,6 +515,8 @@ export interface FieldNodeSettings extends CommonNodeSettings {
   field: string
   label?: string
   defaultValue?: ModelJsonValue
+  required?: boolean
+  requiredMessage?: string
   validation?: RuleSet
   validateOn?: ValidateTrigger | ValidateTrigger[]
 }
@@ -566,6 +570,8 @@ export interface ProjectNodePatchValues {
   extensions: ModelJsonObject
   field: string
   label: string
+  required: boolean
+  requiredMessage: string
   resourceBindings: Record<string, StaticResourceReference>
   validateOn: ValidateTrigger | ValidateTrigger[]
   validation: RuleSet

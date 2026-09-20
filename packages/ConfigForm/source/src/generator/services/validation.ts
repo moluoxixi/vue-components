@@ -11,12 +11,12 @@ import type {
   SourceValidationEmissionPlan,
   SourceValidationFieldEmission,
 } from '../types/internal'
-import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
+import { compileRules, parseRuleSet, RuleCompileError } from '@moluoxixi/zod3-to-rule'
 
 type SourceSurface = ProjectCompilation['ir']['surfacesById'][string]
 type SourceFieldNode = Extract<SourceSurface['nodesById'][string], { kind: 'field' }>
 
-export const SOURCE_VALIDATION_RUNTIME_COMPILER = Object.freeze({
+export const SOURCE_CONFIG_FORM_RULE_COMPILER = Object.freeze({
   dependencyVersion: '^0.1.3',
   importName: 'compileRules',
   moduleSpecifier: '@moluoxixi/zod3-to-rule',
@@ -42,7 +42,7 @@ function ruleFailure(
   surfaceId: string,
   nodeId: string,
   diagnostic: RuleDiagnostic,
-  reason: 'rule_compile_error' | 'rule_diagnostic',
+  reason: 'rule_compile_error' | 'rule_diagnostic' | 'rule_parse_error',
 ): ModelDiagnostic {
   return {
     code: 'source_input_invalid',
@@ -78,10 +78,22 @@ function unexpectedFailure(
 function compileField(
   surfaceId: string,
   nodeId: string,
-  validation: RuleSet,
+  validation: unknown,
 ): ContractResult<SourceValidationFieldEmission> {
   try {
-    const ruleSet = structuredClone(validation)
+    const parsed = parseRuleSet(structuredClone(validation))
+    if (!parsed.success) {
+      return {
+        success: false,
+        diagnostics: parsed.diagnostics.map(diagnostic => ruleFailure(
+          surfaceId,
+          nodeId,
+          diagnostic,
+          'rule_parse_error',
+        )),
+      }
+    }
+    const ruleSet: RuleSet = parsed.data
     const compiled = compileRules(ruleSet)
     const errors = compiled.diagnostics.filter(diagnostic => diagnostic.severity === 'error')
     if (errors.length > 0) {
@@ -101,14 +113,7 @@ function compileField(
       data: {
         nodeId,
         ruleSet,
-        field: {
-          attachSchema: true,
-          attachValidator: compiled.validator !== undefined,
-          ...(compiled.required === true ? { required: true as const } : {}),
-          ...(compiled.requiredMessage === undefined
-            ? {}
-            : { requiredMessage: compiled.requiredMessage }),
-        },
+        attachValidator: compiled.validator !== undefined,
       },
       diagnostics: [],
     }
@@ -132,10 +137,7 @@ function compileField(
   }
 }
 
-/**
- * Preflights every canonical RuleSet without serializing Zod schemas or functions.
- * Generated projects compile each emitted ruleSet again through runtimeCompiler.
- */
+/** Strictly parses and preflights every canonical RuleSet before either output is assembled. */
 export function compileSourceValidationPlan(
   compilation: ProjectCompilation,
 ): ContractResult<SourceValidationEmissionPlan> {
@@ -177,7 +179,6 @@ export function compileSourceValidationPlan(
   return {
     success: true,
     data: {
-      runtimeCompiler: SOURCE_VALIDATION_RUNTIME_COMPILER,
       surfaces,
     },
     diagnostics: [],

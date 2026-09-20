@@ -88,6 +88,14 @@ interface ProjectNodePatch {
   unset?: ProjectNodePatchKey[]
 }
 
+createNodePathCommand(
+  graph: SurfaceGraph,
+  surfaceId: SurfaceId,
+  nodeIds: readonly NodeId[],
+  path: readonly string[],
+  value: ModelJsonValue | undefined,
+): ProjectCommand
+
 interface ProjectTransaction {
   id: string
   label: string
@@ -156,6 +164,20 @@ interface SlotItem {
 - One accepted Command produces at most one editVersion and one history
   entry. Merge keys may combine adjacent history entries without changing
   transaction atomicity.
+- A static Select options edit (`path = ['props', 'options']`) is one semantic
+  Command. For every affected field, command expansion derives the next typed
+  option values before publication, clears a default that no longer refers to
+  those values, and reconciles an existing `enum` or `literal` validation base
+  in the same Transaction. A non-empty unique all-string option list becomes
+  the exact ordered `enum`; one non-string primitive becomes `literal`. If the
+  next list cannot be represented by either base, the complete `validation`
+  value is unset. Re-derived bases preserve the existing `rules`, `optional`,
+  and `nullable` members. The options, default, and validation changes publish
+  as one editVersion/history entry, and one Undo restores all prior values.
+- `time` is a Designer value kind but is not a RuleSet base. A time Material's
+  Validation section exposes field-level `required` / `requiredMessage` and
+  `validateOn`; it does not project `time` to the `date` base or mount a general
+  `validation` editor. Date Materials alone map to the RuleSet `date` base.
 - Command IDs are idempotent inside ProjectDomainEngine. Reusing an ID with a
   different payload returns `PROJECT_COMMAND_ID_REUSED`.
 - Semantic commands are JSON-safe. Node property removal uses explicit
@@ -299,11 +321,21 @@ interface SlotItem {
   command execution, and Undo/Redo. Export owns lazy full-project compilation
   and pinned identity invalidation. The controller wires project/navigation
   publication only; the Shell consumes contexts and routes view/dialog events.
-- A committed Design publication failure clears the unusable Runtime artifact
-  and forwards its first compiler diagnostic to Workbench UI. Rendering an
-  unexplained empty `provider-surface` is forbidden. Transient invalid drag
+- A committed Design publication failure keeps the current graph and the last
+  successful `SurfaceCompilation` / Vue Runtime artifact, and publishes the
+  first compile diagnostic. It does not replace those refs with a failed
+  artifact or `undefined`. If no successful artifact exists yet, Canvas renders
+  a stable error state while the Designer shell, Layers, Inspector, Properties,
+  and Validation remain mounted so the author can repair the graph. Rendering
+  an unexplained empty `provider-surface` is forbidden. Transient invalid drag
   candidates may still remain silent because the committed Runtime stays
   visible and final command execution owns the user-facing diagnostic.
+- Workbench Design diagnostics have separate command and compile slots. Command
+  execution, Undo, Redo, and History jump may update only the command slot;
+  compilation may update only the compile slot. Display combines them with the
+  command diagnostic taking precedence. A successful command with no diagnostic
+  must not erase a compile failure emitted synchronously by the resulting
+  publication; the compile slot clears only after a successful publication.
 - Design and Preview each run in a dedicated same-origin iframe RuntimeHost.
   The parent sends only structured-cloneable `PageCompilation`, adapter
   identity, presentation, values, reaction projection, and design-session
@@ -427,6 +459,10 @@ interface SlotItem {
 | Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
 | Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
 | Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
+| Time Material opens Validation | Show Required and `validateOn`; omit the general RuleSet editor and never synthesize a `date` base |
+| Select options remove a referenced default and change an existing enum/literal base | Commit options, default removal, and the re-derived base atomically in one history entry |
+| Select options cannot form a unique string enum or one primitive literal | Commit the options and unset the complete existing enum/literal `validation` in that same history entry |
+| Any operation in the Select options reconciliation fails | Roll back options, default, and validation together; publish no revision/history entry |
 | Stored record removal omits or uses an unsafe key | `PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED` / `PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID`; atomic rollback |
 | `validation` / `validateOn` removal supplies a key or targets a layout | `PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED` / `PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID`; atomic rollback |
 | Stored configuration removal is mixed with another operation | `PROJECT_NODE_CONFIG_REMOVE_MIXED`; atomic rollback |
@@ -467,9 +503,10 @@ interface SlotItem {
 - Workbench service tests prove Design publishes one `PageCompilation`, draft
   candidates do not mutate the committed snapshot, Undo/Redo delegate to
   `ProjectEditorSession`, Export `sync()` never compiles, and only `capture()`
-  assembles a full `ProjectCompilation`. They also assert committed compile
-  failures reach the UI diagnostic boundary instead of producing a blank
-  canvas.
+  assembles a full `ProjectCompilation`. They also assert a committed compile
+  failure keeps the last successful compilation/runtime artifact, keeps the
+  author shell mounted, and reaches the UI diagnostic boundary; a later empty
+  command diagnostic cannot clear it, while a successful recompile does.
 - Browser tests prove one visual design action advances one project revision,
   Undo/Redo use ProjectDomainEngine through ProjectEditorSession, page
   switching does not create history, and
@@ -478,6 +515,13 @@ interface SlotItem {
   contract. Repeated pointer moves within the
   same normalized drop target call that projection once, while a target change
   creates a new projection.
+- Designer validation tests prove `time` resolves no RuleSet base and renders
+  only Required/Required message plus `validateOn`, while `date` retains its
+  date rules. Select command tests cover reordered/replaced/removed options,
+  unique string enum and one-value literal re-derivation, invalid defaults,
+  duplicate/empty/multi-non-string unrepresentable lists, multi-selection, and
+  command rejection. Every case asserts at most one revision/history entry and
+  that one Undo restores the exact options, default, and validation snapshot.
 - Browser tests click the geometry of real Design controls and prove that focus
   stays on the editor overlay, keyboard input cannot mutate Design values,
   nested nodes select the deepest registered Runtime rectangle, and the same
@@ -495,10 +539,17 @@ interface SlotItem {
 
 - Good: delete `bindings.legacy.remove` while `bindings.legacy.keep` and an
   unknown condition remain, then Undo restores the exact nested value.
+- Good: replace a Select's static options, derive its enum base from the new
+  string values, clear its now-invalid default, and restore all three values
+  with one Undo.
 - Base: delete an already absent supported path; publish no revision or history
   entry.
+- Base: edit only Select option labels while values stay unchanged; keep the
+  valid default and semantically equivalent enum/literal validation.
 - Bad: rewrite the full `bindings` record, mix repair with `page.rename`, attach a
   merge key, or expose Registry-validation bypass as a UI option.
+- Bad: publish new options first and repair default or validation in later
+  commands, or treat a time string as a date solely to enable date rules.
 
 ## 8. Wrong vs Correct
 
@@ -523,6 +574,12 @@ projectEditorSession.execute({
   }],
 })
 ```
+
+Wrong: dispatch an options patch, then dispatch separate default and validation
+repairs from watchers.
+
+Correct: derive the complete options/default/enum-or-literal candidate in
+`createNodePathCommand(...)` and execute its single atomic command.
 
 Wrong: watch generated Config or Source and parse it back into the project.
 
@@ -584,7 +641,7 @@ an iframe reload, adapter load, project/page switch, or Design revision.
 ```ts
 interface RuntimeHostMessageBase {
   channel: 'mx-config-form-runtime-host'
-  version: 6
+  version: 7
   hostId: string
   projectId: string
   pageId: string
@@ -666,7 +723,7 @@ interface PreviewRuntimeIdentity {
 
 ### 10.6 Tests Required
 
-- Protocol unit tests validate the complete v6 identity, runtime-state and
+- Protocol unit tests validate the complete v7 identity, runtime-state and
   submit-result payloads,
   stale revision, replay, source, and origin.
 - RuntimeHost component tests control adapter resolution and assert a state that
@@ -1026,7 +1083,7 @@ is not Repository compatibility.
 prepareConfigImport(options: {
   source: string
   target: 'surface' | 'project'
-  currentProject?: ProjectDocumentV6
+  currentProject?: ProjectDocumentV7
 }): Promise<PrepareConfigImportResult>
 
 guardConfigImportSourceBytes(bytes: number): ConfigImportDiagnostic[]

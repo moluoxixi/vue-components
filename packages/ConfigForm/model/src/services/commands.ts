@@ -35,6 +35,8 @@ const PATCH_KEYS = new Set<ProjectNodePatchKey>([
   'extensions',
   'field',
   'label',
+  'required',
+  'requiredMessage',
   'resourceBindings',
   'validateOn',
   'validation',
@@ -44,6 +46,8 @@ const FIELD_KEYS = new Set<ProjectNodePatchKey>([
   'defaultValue',
   'field',
   'label',
+  'required',
+  'requiredMessage',
   'validateOn',
   'validation',
 ])
@@ -241,6 +245,8 @@ function settingsForNode(node: SurfaceNode): SurfaceNodeSettings {
     field: node.field,
     ...(node.label !== undefined ? { label: node.label } : {}),
     ...(node.defaultValue !== undefined ? { defaultValue: clone(node.defaultValue) } : {}),
+    ...(node.required !== undefined ? { required: node.required } : {}),
+    ...(node.requiredMessage !== undefined ? { requiredMessage: node.requiredMessage } : {}),
     ...(node.validation !== undefined ? { validation: clone(node.validation) } : {}),
     ...(node.validateOn !== undefined ? { validateOn: clone(node.validateOn) } : {}),
   }

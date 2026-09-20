@@ -73,7 +73,7 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
     kind: 'config-form-project',
     version: 1,
     document: {
-      version: 6,
+      version: 7,
       registryLock: { adapter: 'element-plus' },
     },
   })
@@ -86,7 +86,7 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
 
   await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
   await expect(workspace.getByText('Project version', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('v6', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('v7', { exact: true })).toBeVisible()
   await expect(workspace.locator('iframe[data-design-runtime-host]')).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const axe = await new AxeBuilder({ page })
@@ -114,7 +114,7 @@ test('imports an Ant Design Vue Surface JSON file as one undoable command', asyn
     surfaceOrder: [expect.any(String)],
   })
   expect(exportedSurface.surfacesById[exportedSurface.rootSurfaceId]).toMatchObject({
-    graph: { version: 1 },
+    graph: { version: 2 },
   })
   exportedSurface.surfacesById[exportedSurface.rootSurfaceId].route = '/imported-profile'
   const importSource = JSON.stringify(exportedSurface)

@@ -1,5 +1,5 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { LayoutNode, SurfaceGraph, SurfaceNode, ProjectDocument } from '@moluoxixi/config-form-model'
+import type { LayoutNode, ProjectDocument, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { NestedMaterialProvider } from './types'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import {
@@ -39,11 +39,7 @@ export function createNestedMaterialFixture(provider: NestedMaterialProvider, po
     if (sku.kind === 'field') {
       sku.label = 'SKU'
       sku.defaultValue = 'New SKU'
-      sku.validation = {
-        version: 1,
-        base: { type: 'string' },
-        rules: [{ kind: 'required' }],
-      }
+      sku.required = true
     }
     const delivery = add('object-group', 'delivery', 'delivery', 'orders')
     delivery.props.title = 'Delivery'

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import type { SurfaceGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
@@ -36,7 +36,7 @@ const componentRegistry = createComponentContractRegistry([{
   defaults: {},
 }], { adapter: 'test', version: '1' })
 const graph: SurfaceGraph = {
-  version: 1,
+  version: 2,
   props: {},
   form: {},
   root: [

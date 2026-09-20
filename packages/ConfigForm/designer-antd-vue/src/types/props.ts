@@ -1,4 +1,4 @@
-import type { DesignerDefaultValueKind } from '@moluoxixi/config-form-designer'
+import type { DesignerDefaultValueKind, DesignerOptionValueType } from '@moluoxixi/config-form-designer'
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import type {
   AntdVueDesignerOption,
@@ -22,6 +22,7 @@ export interface AntdChoiceDefaultSetterProps {
   disabled?: boolean
   node?: FieldNode
   kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
+  optionValueTypes: readonly DesignerOptionValueType[]
 }
 
 export interface AntdRadioFieldProps {

@@ -85,6 +85,23 @@
   font-size: 12px;
 }
 
+.export-diagnostic .el-alert__content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.export-diagnostic .el-alert__title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.export-diagnostic-refresh {
+  flex: 0 0 auto;
+}
+
 .export-stale {
   flex: 0 0 auto;
   min-height: 38px;

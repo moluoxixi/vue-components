@@ -7,7 +7,8 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type {
   SourceComponentResolution,
-  SourceProviderResolver,
+  SourceComponentResolver,
+  SourceConfigFormBindingResolver,
   SourceSemanticListenerMap,
 } from '@moluoxixi/config-form-source/generator'
 import type {
@@ -62,11 +63,11 @@ function createWorkbenchComponentRegistry(
   )
 }
 
-function createWorkbenchSourceResolver(
+function createWorkbenchSourceResolvers(
   id: WorkbenchAdapterId,
   capabilities: DesignerMaterialCapabilityRegistry,
   registrySnapshot: RegistryContractSnapshot,
-): SourceProviderResolver {
+): Pick<WorkbenchAdapter, 'sourceBindingResolver' | 'sourceComponentResolver'> {
   const contracts = new Map(registrySnapshot.components.map(component => [component.key, component]))
   const bindings = new Map<string, {
     contractFingerprint: string
@@ -114,7 +115,7 @@ function createWorkbenchSourceResolver(
   const adapterVersion = WORKBENCH_CONFIG_FORM_BINDING_VERSIONS.adapter[id]
   const uiVersion = WORKBENCH_SOURCE_LIBRARY_VERSIONS[id === 'element-plus' ? 'element-plus' : 'ant-design-vue']!
   const uiPackage = id === 'element-plus' ? 'element-plus' : 'ant-design-vue'
-  const resolver: SourceProviderResolver = {
+  const sourceComponentResolver: SourceComponentResolver = {
     adapter: {
       adapter: registrySnapshot.adapter,
       adapterVersion: registrySnapshot.adapterVersion,
@@ -132,6 +133,8 @@ function createWorkbenchSourceResolver(
       }
       return { success: true, value: binding.resolution }
     },
+  }
+  const sourceBindingResolver: SourceConfigFormBindingResolver = {
     resolveConfigFormBinding() {
       return {
         success: true,
@@ -153,7 +156,10 @@ function createWorkbenchSourceResolver(
       }
     },
   }
-  return Object.freeze(resolver)
+  return {
+    sourceBindingResolver: Object.freeze(sourceBindingResolver),
+    sourceComponentResolver: Object.freeze(sourceComponentResolver),
+  }
 }
 
 function createWorkbenchRuntimeBindings(
@@ -193,9 +199,9 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
     const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
     return {
       ...runtime,
+      ...createWorkbenchSourceResolvers(id, capabilities, runtime.registrySnapshot),
       designerRegistry,
       locale: adapter.ANTD_VUE_DESIGNER_ZH_CN,
-      sourceProviderResolver: createWorkbenchSourceResolver(id, capabilities, runtime.registrySnapshot),
     }
   }
 
@@ -210,9 +216,9 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
   const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
   return {
     ...runtime,
+    ...createWorkbenchSourceResolvers(id, capabilities, runtime.registrySnapshot),
     designerRegistry,
     locale: adapter.ELEMENT_PLUS_DESIGNER_ZH_CN,
-    sourceProviderResolver: createWorkbenchSourceResolver(id, capabilities, runtime.registrySnapshot),
   }
 }
 

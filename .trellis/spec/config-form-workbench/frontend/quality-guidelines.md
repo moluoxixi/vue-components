@@ -71,13 +71,25 @@ Workbench is the authoritative owner of the in-memory export session:
 ```ts
 interface ExportSnapshot {
   readonly compilation: ProjectCompilation
-  readonly rawSource: RawSourceFileSetV1
-  readonly configBindings: ConfigBindingFileSetV1
+  readonly rawSource: ExportArtifact<RawSourceFileSetV1>
+  readonly configBindings: ExportArtifact<ConfigBindingFileSetV1>
+}
+
+type ExportArtifact<T> =
+  | { readonly status: 'ready', readonly fileSet: T }
+  | { readonly status: 'failed', readonly diagnostics: readonly ModelDiagnostic[] }
 }
 
 interface SourceArchiveInput {
   readonly files: readonly SourceFile[]
   readonly name: string
+}
+
+interface BuildExportSnapshotInput {
+  readonly compilation: ProjectCompilation
+  readonly componentResolver: SourceComponentResolver
+  readonly bindingResolver: SourceConfigFormBindingResolver
+  readonly resourceReader: SourceResourceReader
 }
 ```
 
@@ -88,8 +100,12 @@ committed `editVersion` or draft `baseEditVersion + draftId` origin. There is no
 generator-version identity: `SourceFileSetV1.version` owns the serialized file
 set contract, while an application-code update recreates the memory-only
 session. `sync()` may compare identities but must not compile; opening or
-explicitly refreshing Export builds both file sets before publishing either.
-Failure retains the previous complete snapshot and reports it as stale.
+explicitly refreshing Export captures one compilation and invokes both
+generators independently. The published snapshot always contains one
+`ExportArtifact` for each mode, so a mode-specific failure keeps its own
+diagnostics without suppressing a successful sibling mode. A session-level
+failure before that envelope can be built retains the previous snapshot and
+reports it as stale.
 
 Preview, copy, single-file download, and `createSourceArchive` /
 `downloadSourceArchive` read the same pinned file-set bytes. Text remains UTF-8;
@@ -101,14 +117,22 @@ Workspace archive names are not aliases and must not be exported.
 The generator, `SourceFileSetV1`, file-tree model, and readonly
 `ConfigFormSourceViewer` belong to `@moluoxixi/config-form-source`.
 
-- Generator owns deterministic generation plus separate provider-neutral
-  component-resolver and async embedded-resource-reader input contracts. It
-  imports no Designer, Workbench, concrete provider UI, Repository, Monaco, Vue
-  DOM, or browser global.
+- Generator owns deterministic generation plus three distinct input
+  responsibilities: provider-neutral `SourceComponentResolver`, ConfigForm-only
+  `SourceConfigFormBindingResolver`, and asynchronous
+  `SourceResourceReader`. It imports no Designer, Workbench, concrete provider
+  UI, Repository, Monaco, Vue DOM, or browser global.
 - Studio reads locked adapter metadata and Repository content at its application
-  composition root, creates both adapters, and injects them into Source. Source
-  validates bytes and derives output paths; adapter/storage implementations do
-  not become Source dependencies.
+  composition root, creates those three implementations, and injects them into
+  Source. Raw Vue receives only the component resolver and resource reader;
+  ConfigForm binding generation additionally receives the binding resolver.
+  Source validates bytes and derives output paths; adapter/storage
+  implementations do not become Source dependencies.
+- Raw Vue runtime dependencies are limited to `vue`, `vue-router`, and the
+  selected target UI package returned by the component resolver. Its manifest
+  and generated files contain no `@moluoxixi/*`, `@config-form/*`, Zod,
+  ConfigForm, RuleSet converter, Compiler, or internal Runtime import. Field
+  validation is emitted as readable project-local TypeScript.
 - Studio owns the Source dialog, regeneration, clipboard, single-file download,
   ZIP, notifications, and persistence. Viewer owns none of those commands.
 - Viewer renders a file tree and readonly code, with a desktop split and narrow
@@ -128,8 +152,12 @@ The generator, `SourceFileSetV1`, file-tree model, and readonly
 | --- | --- |
 | Current compilation is missing | Mark an existing snapshot stale and retain its files |
 | Compilation key, committed edit version, draft base version, or draft ID changes | Mark the snapshot stale without regenerating during `sync()` |
-| Either file-set generation fails | Publish neither result; retain the previous complete snapshot and expose the error |
-| File-set version/path/entry/content is invalid | Source returns diagnostics and Workbench publishes no partial snapshot |
+| Raw Vue generation fails and ConfigForm binding succeeds | Publish Raw as `failed` and Binding as `ready`; keep Binding selectable, copyable, and downloadable |
+| ConfigForm binding generation fails and Raw Vue succeeds | Publish Binding as `failed` and Raw as `ready`; keep Raw selectable, copyable, and downloadable |
+| One mode's file-set version/path/entry/content is invalid | Source returns diagnostics for that mode; publish its artifact as `failed` without erasing the sibling result |
+| Selected mode is `failed` | Show its diagnostics and disable file selection, copy, single-file download, and ZIP for that mode only |
+| Export capture/build fails before per-mode results exist | Retain the previous snapshot and expose the session error as stale |
+| Raw manifest or source imports a package outside the dependency whitelist | Fail Raw generation/consumer architecture gates; never add an internal package or soft link |
 | A binary file is selected | Disable text copy and download the exact decoded bytes |
 | Archive name contains unsafe path characters | Use the safe project slug as the single archive root |
 | A removed generator-version or Workspace archive symbol appears | Fail the architecture gate; do not add an alias |
@@ -137,39 +165,61 @@ The generator, `SourceFileSetV1`, file-tree model, and readonly
 ### 5. Good / Base / Bad Cases
 
 - Good: one refresh builds `rawSource` and `configBindings` from the same
-  compilation, validates both, freezes them, and publishes them atomically.
+  compilation, freezes each independent artifact, and publishes a single
+  snapshot where one may be `ready` while the other is `failed`.
 - Base: switching the selected file or output mode reads the pinned snapshot
   without recompilation.
 - Bad: versioning an in-memory generator implementation, refreshing one output
-  independently, copying binary through a text getter, or restoring an old
-  Workspace wrapper.
+  against a different compilation, treating one mode's failure as atomic failure
+  of both, passing the binding resolver to Raw, copying binary through a text
+  getter, or restoring an old Workspace wrapper.
 
 ### 6. Tests Required
 
-Regression coverage includes Node import without DOM, deterministic
-generation for the same compilation/resolver, resolution failure with no
-partial files, installed generated-project typecheck/test/build, controlled
+Regression coverage includes Node import without DOM, deterministic generation
+for the same compilation/resolvers, per-generator resolution failure with no
+partial file set, installed generated-project typecheck/test/build, controlled
 Viewer selection, responsive layout, lazy Monaco, accessibility, and executed
-Experience/generated-project parity. It also independently covers committed
-and draft stale identity, atomic refresh failure, exact text/binary archive
-bytes, safe archive roots, deferred URL revocation, and the absence of old
-generator-version and Workspace archive symbols. String containment is not
-parity evidence.
+Experience/generated-project parity. It proves Raw succeeds when only binding
+resolution fails, Binding succeeds when only Raw generation fails, and each
+failed-mode dialog disables its commands without disabling the ready mode. Raw
+consumer tests cover both providers from real generated files, install no
+workspace/internal soft links, and scan every manifest/import for the exact
+Vue/Vue Router/target-UI whitelist. Coverage also independently includes
+committed and draft stale identity, session-level refresh failure retention,
+exact text/binary archive bytes, safe archive roots, deferred URL revocation,
+and the absence of old generator-version and Workspace archive symbols. String
+containment is not parity evidence.
 
 ### 7. Wrong vs Correct
 
 Wrong:
 
 ```ts
-const rawSource = await generateVueSource(input)
-publish({ rawSource }) // ConfigForm bindings are still from an older compilation.
+const rawSource = await generateVueSource({
+  compilation,
+  componentResolver,
+  resourceReader,
+  bindingResolver, // Raw must not know this contract.
+})
+if (!rawSource.success)
+  throw rawSource.diagnostics // Incorrectly suppresses the binding result.
 ```
 
 Correct:
 
 ```ts
-const { rawSource, configBindings } = snapshot
-await downloadSourceArchive({ files: rawSource.files, name })
+const snapshot = await buildExportSnapshot({
+  compilation,
+  componentResolver,
+  bindingResolver,
+  resourceReader,
+})
+
+if (snapshot.rawSource.status === 'ready')
+  await downloadSourceArchive({ files: snapshot.rawSource.fileSet.files, name })
+
+// snapshot.configBindings remains independently ready or failed for this same compilation.
 ```
 
 ---

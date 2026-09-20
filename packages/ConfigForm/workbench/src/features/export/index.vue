@@ -27,11 +27,21 @@ const exportSession = createExportSession({
 const sessionState = shallowRef<ExportSessionState>(exportSession.state)
 const unsubscribeSession = exportSession.subscribe(state => sessionState.value = state)
 const snapshot = computed(() => sessionState.value.snapshot)
-const snapshotError = computed(() => sessionState.value.error ?? '')
 const snapshotStale = computed(() => sessionState.value.stale)
-const activeFileSet = computed<SourceFileSetV1 | undefined>(() => props.mode === 'config'
+const activeArtifact = computed(() => props.mode === 'config'
   ? snapshot.value?.configBindings
   : snapshot.value?.rawSource)
+const snapshotError = computed(() => {
+  if (sessionState.value.error)
+    return sessionState.value.error
+  const artifact = activeArtifact.value
+  return artifact?.status === 'failed'
+    ? artifact.diagnostics.map(item => `${item.code}: ${item.message}`).join('; ')
+    : ''
+})
+const activeFileSet = computed<SourceFileSetV1 | undefined>(() => activeArtifact.value?.status === 'ready'
+  ? activeArtifact.value.fileSet
+  : undefined)
 const selectedPath = computed({
   get: () => props.mode === 'config' ? bindingSelectedPath.value : rawSelectedPath.value,
   set: (path: string) => {
@@ -72,12 +82,16 @@ async function refreshSnapshot(): Promise<void> {
   const result = await exportSession.refresh()
   if (!result.success)
     return
-  rawSelectedPath.value = resolveExportSnapshotPath(result.snapshot.rawSource, rawSelectedPath.value)
-    ?? result.snapshot.rawSource.entry
-  bindingSelectedPath.value = resolveExportSnapshotPath(
-    result.snapshot.configBindings,
-    bindingSelectedPath.value,
-  ) ?? result.snapshot.configBindings.entry
+  if (result.snapshot.rawSource.status === 'ready') {
+    const rawSource = result.snapshot.rawSource.fileSet
+    rawSelectedPath.value = resolveExportSnapshotPath(rawSource, rawSelectedPath.value)
+      ?? rawSource.entry
+  }
+  if (result.snapshot.configBindings.status === 'ready') {
+    const configBindings = result.snapshot.configBindings.fileSet
+    bindingSelectedPath.value = resolveExportSnapshotPath(configBindings, bindingSelectedPath.value)
+      ?? configBindings.entry
+  }
 }
 
 async function copyExport(): Promise<void> {
@@ -160,11 +174,23 @@ async function downloadBundle(): Promise<void> {
         v-if="snapshotError"
         class="export-diagnostic"
         type="error"
-        :title="locale.t('export.sourceUnavailable', 'Source export unavailable')"
         :description="snapshotError"
         :closable="false"
         show-icon
-      />
+      >
+        <template #title>
+          <span>{{ locale.t('export.sourceUnavailable', 'Source export unavailable') }}</span>
+          <ElButton
+            native-type="button"
+            text
+            class="export-diagnostic-refresh"
+            @click="refreshSnapshot"
+          >
+            <RefreshCw :size="14" aria-hidden="true" />
+            {{ locale.t('export.refresh', 'Refresh snapshot') }}
+          </ElButton>
+        </template>
+      </ElAlert>
       <ElAlert v-if="snapshotStale" class="export-stale" type="warning" :closable="false" show-icon>
         <template #title>
           <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>

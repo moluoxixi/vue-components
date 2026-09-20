@@ -122,11 +122,14 @@ export type SourceResolutionResult<T>
   = | { success: true, value: T }
     | { success: false, reason: string }
 
-export interface SourceProviderResolver {
+export interface SourceComponentResolver {
   readonly adapter: SourceAdapterIdentity
   resolveComponent: (
     request: SourceComponentRequest,
   ) => SourceResolutionResult<SourceComponentResolution>
+}
+
+export interface SourceConfigFormBindingResolver {
   resolveConfigFormBinding: () => SourceResolutionResult<SourceConfigFormBindingResolution>
 }
 
@@ -138,10 +141,16 @@ export interface SourceResourceReader {
   }) => Promise<ContractResult<Uint8Array>>
 }
 
-export interface GenerateSourceInput {
+interface SourceGenerationInputBase {
   compilation: ProjectCompilation
-  providerResolver: SourceProviderResolver
+  componentResolver: SourceComponentResolver
   resourceReader: SourceResourceReader
+}
+
+export interface GenerateVueSourceInput extends SourceGenerationInputBase {}
+
+export interface GenerateConfigFormBindingsInput extends SourceGenerationInputBase {
+  bindingResolver: SourceConfigFormBindingResolver
 }
 
 export type GenerateVueSourceResult = Promise<ContractResult<RawSourceFileSetV1>>

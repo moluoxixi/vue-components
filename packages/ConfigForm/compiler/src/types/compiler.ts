@@ -100,6 +100,8 @@ export interface CanonicalFieldDescriptor {
   field: string
   label?: string
   defaultValue?: ModelJsonValue
+  required?: boolean
+  requiredMessage?: string
   validation?: FieldNode['validation']
   validateOn: ValidateTrigger[]
 }

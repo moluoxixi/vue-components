@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ElementCheckboxFieldEmits, ElementCheckboxFieldProps, ElementPlusDesignerOption } from '../../../types'
+import { DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES } from '@moluoxixi/config-form-designer'
 import { ElCheckbox, ElCheckboxGroup } from 'element-plus'
 import { computed } from 'vue'
 import { elementPlusOptionKey, normalizeElementPlusOptions } from '../../../options'
@@ -8,7 +9,10 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<ElementCheckboxFieldProps>()
 
-const checkboxOptions = computed(() => normalizeElementPlusOptions(props.options).filter(
+const checkboxOptions = computed(() => normalizeElementPlusOptions(
+  props.options,
+  DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
+).filter(
   (option): option is ElementPlusDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
 

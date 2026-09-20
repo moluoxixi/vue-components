@@ -16,7 +16,11 @@ export default defineDesignerMaterialModule({
       category: 'Choices',
       icon: shared.CheckSquare,
       runtime: { component: shared.ElementCheckboxField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
-      setters: [shared.choiceDefaultValueSetter('multiselect'), shared.optionsSetter, shared.disabledSetter],
+      setters: [
+        shared.choiceDefaultValueSetter('multiselect', shared.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        shared.optionsSetter(shared.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        shared.disabledSetter,
+      ],
       createNode: ({ id, field = 'checkbox' }) => ({
         id,
         kind: 'field',

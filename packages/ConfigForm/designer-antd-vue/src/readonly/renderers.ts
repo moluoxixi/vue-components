@@ -1,4 +1,5 @@
 import type { DesignerReadonlyRenderContext } from '@moluoxixi/config-form-designer'
+import { DESIGNER_OPTION_VALUE_TYPES } from '@moluoxixi/config-form-designer'
 import { normalizeAntdVueOptions } from '../options'
 
 export function renderAntdVueRawReadonly({ value }: DesignerReadonlyRenderContext): string {
@@ -10,7 +11,10 @@ export function renderAntdVuePasswordReadonly({ value }: DesignerReadonlyRenderC
 }
 
 export function renderAntdVueChoiceReadonly({ componentProps, value }: DesignerReadonlyRenderContext): string {
-  const options = normalizeAntdVueOptions(Array.isArray(componentProps.options) ? componentProps.options : undefined)
+  const options = normalizeAntdVueOptions(
+    Array.isArray(componentProps.options) ? componentProps.options : undefined,
+    DESIGNER_OPTION_VALUE_TYPES,
+  )
   if (Array.isArray(value))
     return value.map(item => resolveOptionLabel(options, item)).join('、')
   return resolveOptionLabel(options, value)

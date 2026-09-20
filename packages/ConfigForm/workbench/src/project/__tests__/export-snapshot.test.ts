@@ -1,6 +1,6 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { SourceBinaryFile } from '@moluoxixi/config-form-source/generator'
-import type { BuildExportSnapshotInput } from '../index'
+import type { BuildExportSnapshotInput, ExportArtifact } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
@@ -29,8 +29,9 @@ async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput>
   if (!result.success)
     throw new Error(result.diagnostics[0]?.message ?? 'Compilation failed.')
   return {
+    bindingResolver: adapter.sourceBindingResolver,
     compilation: result.compilation,
-    providerResolver: adapter.sourceProviderResolver,
+    componentResolver: adapter.sourceComponentResolver,
     resourceReader: {
       async readEmbedded() {
         return { success: true, data: new Uint8Array(), diagnostics: [] }
@@ -39,19 +40,73 @@ async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput>
   }
 }
 
+function expectReady<T>(artifact: ExportArtifact<T>): T {
+  expect(artifact.status).toBe('ready')
+  if (artifact.status !== 'ready')
+    throw new Error(artifact.diagnostics.map(item => item.message).join('; '))
+  return artifact.fileSet
+}
+
 describe('export snapshot', () => {
   it('builds frozen raw Vue and ConfigForm binding file sets from one compilation', async () => {
     const input = await fixture()
     const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
-    expect(snapshot.rawSource).toMatchObject({ version: 1, kind: 'raw-source', entry: 'src/main.ts' })
-    expect(snapshot.configBindings).toMatchObject({ version: 1, kind: 'config-bindings', entry: 'src/bindings.ts' })
+    expect(input.componentResolver).not.toHaveProperty('resolveConfigFormBinding')
+    expect(input.bindingResolver).not.toHaveProperty('resolveComponent')
+    const rawSource = expectReady(snapshot.rawSource)
+    const configBindings = expectReady(snapshot.configBindings)
+    expect(rawSource).toMatchObject({ version: 1, kind: 'raw-source', entry: 'src/main.ts' })
+    expect(configBindings).toMatchObject({ version: 1, kind: 'config-bindings', entry: 'src/bindings.ts' })
     expect(Object.isFrozen(snapshot)).toBe(true)
-    expect(Object.isFrozen(snapshot.rawSource.files)).toBe(true)
-    expect(Object.isFrozen(snapshot.configBindings.files)).toBe(true)
-    expect(snapshot.rawSource.files.every(Object.isFrozen)).toBe(true)
-    expect(snapshot.configBindings.files.every(Object.isFrozen)).toBe(true)
+    expect(Object.isFrozen(snapshot.rawSource)).toBe(true)
+    expect(Object.isFrozen(snapshot.configBindings)).toBe(true)
+    expect(Object.isFrozen(rawSource.files)).toBe(true)
+    expect(Object.isFrozen(configBindings.files)).toBe(true)
+    expect(rawSource.files.every(Object.isFrozen)).toBe(true)
+    expect(configBindings.files.every(Object.isFrozen)).toBe(true)
+  })
+
+  it('keeps raw Vue ready when ConfigForm binding generation fails', async () => {
+    const input = await fixture()
+    const snapshot = await buildExportSnapshot({
+      ...input,
+      bindingResolver: {
+        resolveConfigFormBinding: () => ({ success: false, reason: 'binding unavailable' }),
+      },
+    })
+
+    expect(snapshot.rawSource.status).toBe('ready')
+    expect(snapshot.configBindings).toMatchObject({ status: 'failed' })
+    if (snapshot.configBindings.status === 'failed') {
+      expect(snapshot.configBindings.diagnostics[0]?.message).toContain('binding unavailable')
+      expect(Object.isFrozen(snapshot.configBindings.diagnostics)).toBe(true)
+    }
+  })
+
+  it('keeps ConfigForm bindings ready when Raw Vue generation fails', async () => {
+    const input = await fixture()
+    const resolveComponent = input.componentResolver.resolveComponent
+    let rejectNextResolution = true
+    const snapshot = await buildExportSnapshot({
+      ...input,
+      componentResolver: {
+        ...input.componentResolver,
+        resolveComponent(request) {
+          if (rejectNextResolution) {
+            rejectNextResolution = false
+            return { success: false, reason: 'raw component unavailable' }
+          }
+          return resolveComponent(request)
+        },
+      },
+    })
+
+    expect(snapshot.rawSource).toMatchObject({ status: 'failed' })
+    if (snapshot.rawSource.status === 'failed')
+      expect(snapshot.rawSource.diagnostics[0]?.message).toContain('raw component unavailable')
+    expect(snapshot.configBindings.status).toBe('ready')
   })
 
   it('detects compilation drift without replacing pinned content', async () => {
@@ -107,13 +162,14 @@ describe('export snapshot', () => {
 
   it('feeds frozen raw-source bytes to the archive', async () => {
     const snapshot = await buildExportSnapshot(await fixture())
-    const page = snapshot.rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')
+    const rawSource = expectReady(snapshot.rawSource)
+    const page = rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')
     expect(page?.kind).toBe('text')
     if (page?.kind !== 'text')
       return
 
     const archive = unzipSync(await createSourceArchive({
-      files: snapshot.rawSource.files,
+      files: rawSource.files,
       name: snapshot.compilation.ir.name,
     }))
     expect(strFromU8(archive['customer-app/src/surfaces/home/Surface.vue']!)).toBe(page.content)
@@ -121,8 +177,9 @@ describe('export snapshot', () => {
 
   it('uses preferred, entry, first text, then first file fallback order', async () => {
     const snapshot = await buildExportSnapshot(await fixture())
-    expect(resolveExportSnapshotPath(snapshot.rawSource, 'package.json')).toBe('package.json')
-    expect(resolveExportSnapshotPath(snapshot.rawSource, 'missing.txt')).toBe(snapshot.rawSource.entry)
+    const rawSource = expectReady(snapshot.rawSource)
+    expect(resolveExportSnapshotPath(rawSource, 'package.json')).toBe('package.json')
+    expect(resolveExportSnapshotPath(rawSource, 'missing.txt')).toBe(rawSource.entry)
   })
 
   it('keeps the last complete snapshot when refresh fails', async () => {

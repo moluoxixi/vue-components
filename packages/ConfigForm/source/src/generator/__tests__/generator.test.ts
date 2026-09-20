@@ -1,12 +1,26 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
-import type { ContractResult, ModelJsonObject } from '@moluoxixi/config-form-model'
 import type {
-  GenerateSourceInput,
+  ContractResult,
+  ModelJsonObject,
+  ProjectDocument,
+} from '@moluoxixi/config-form-model'
+import type {
+  GenerateConfigFormBindingsInput,
+  GenerateVueSourceInput,
+  RawSourceFileSetV1,
   SourceComponentRequest,
-  SourceProviderResolver,
+  SourceComponentResolver,
+  SourceConfigFormBindingResolver,
   SourceResourceReader,
 } from '../types'
 import { createHash } from 'node:crypto'
+import {
+  getProjectDocumentContentHash,
+  PROJECT_DOCUMENT_VERSION,
+  PROJECT_THEME_VERSION,
+  registryLockFingerprint,
+  SURFACE_GRAPH_VERSION,
+} from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { generateConfigFormBindings, generateVueSource } from '..'
 import {
@@ -42,7 +56,54 @@ function scopedFields(nodesById: Record<string, Record<string, unknown>>) {
     : [])
 }
 
-function compilation(): ProjectCompilation {
+type TestProviderId = 'antd-vue' | 'element-plus'
+
+function projectSnapshot(providerId: TestProviderId): ProjectCompilation['snapshot'] {
+  const components = {}
+  const document: ProjectDocument = {
+    version: PROJECT_DOCUMENT_VERSION,
+    id: 'demo-project',
+    name: 'Source Demo',
+    homeSurfaceId: 'home',
+    surfaceOrder: ['home'],
+    surfacesById: {
+      home: {
+        id: 'home',
+        kind: 'page',
+        name: 'Home',
+        route: '/',
+        parameters: [],
+        outputs: [],
+        interactions: [],
+        graph: {
+          version: SURFACE_GRAPH_VERSION,
+          props: {},
+          form: {},
+          root: [],
+          nodesById: {},
+        },
+      },
+    },
+    datasetOrder: [],
+    datasetsById: {},
+    resources: {},
+    theme: { version: PROJECT_THEME_VERSION },
+    registryLock: {
+      adapter: providerId,
+      version: '3',
+      fingerprint: registryLockFingerprint(components),
+      components,
+    },
+    settings: {},
+  }
+  return {
+    document,
+    editVersion: 1,
+    contentHash: getProjectDocumentContentHash(document),
+  }
+}
+
+function compilation(providerId: TestProviderId = 'element-plus'): ProjectCompilation {
   const homeNodes = {
     layout: node({
       id: 'layout',
@@ -59,12 +120,13 @@ function compilation(): ProjectCompilation {
       field: 'name',
       label: 'Name',
       defaultValue: 'Ada',
-      validateOn: ['submit'],
+      required: true,
+      requiredMessage: 'Name is required',
+      validateOn: ['blur', 'submit'],
       validation: {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [
-          { kind: 'required', message: 'Name is required' },
           { kind: 'minLength', value: 3, message: 'Name is too short' },
           { kind: 'regex', source: '^[A-Za-z]+$', message: 'Name must contain letters only' },
         ],
@@ -478,20 +540,20 @@ function compilation(): ProjectCompilation {
   const key = {
     projectId: 'demo-project',
     contentHash: 'sha256:project',
-    registryAdapter: 'element-plus',
+    registryAdapter: providerId,
     registryAdapterVersion: '3',
     registryFingerprint: 'sha256:registry',
-    compilerVersion: '6.0.0',
+    compilerVersion: '7.0.0',
     environmentHash: 'sha256:environment',
     irHash: 'sha256:ir',
   }
   return {
-    snapshot: {},
+    snapshot: projectSnapshot(providerId),
     registry: {},
     origin: { kind: 'committed', editVersion: 1 },
     key,
     ir: {
-      version: 5,
+      version: 6,
       identity: key,
       name: 'Source Demo',
       homeSurfaceId: 'home',
@@ -512,24 +574,66 @@ function compilation(): ProjectCompilation {
   } as unknown as ProjectCompilation
 }
 
-function provider(requests: SourceComponentRequest[] = []): SourceProviderResolver {
+const DELETE_COMPILATION_VALUE = Symbol('delete-compilation-value')
+
+function compilationWithValue(
+  path: readonly string[],
+  value: unknown | typeof DELETE_COMPILATION_VALUE,
+): ProjectCompilation {
+  const candidate = structuredClone(compilation()) as unknown as Record<string, unknown>
+  let parent = candidate
+  for (const segment of path.slice(0, -1)) {
+    const child = parent[segment]
+    if (!child || typeof child !== 'object' || Array.isArray(child))
+      throw new TypeError(`Cannot mutate compilation path: ${path.join('.')}`)
+    parent = child as Record<string, unknown>
+  }
+  const key = path.at(-1)
+  if (!key)
+    throw new TypeError('Compilation mutation path cannot be empty.')
+  if (value === DELETE_COMPILATION_VALUE)
+    delete parent[key]
+  else
+    parent[key] = value
+  return candidate as unknown as ProjectCompilation
+}
+
+function componentResolver(
+  requests: SourceComponentRequest[] = [],
+  providerId: TestProviderId = 'element-plus',
+): SourceComponentResolver {
+  const isAntd = providerId === 'antd-vue'
+  const uiPackage = isAntd ? 'ant-design-vue' : 'element-plus'
+  const plugin = isAntd ? 'Antd' : 'ElementPlus'
+  const stylesheet = isAntd ? 'ant-design-vue/dist/reset.css' : 'element-plus/dist/index.css'
+  const version = isAntd ? '^4.2.6' : '^2.9.0'
   return {
-    adapter: { adapter: 'element-plus', adapterVersion: '3', registryFingerprint: 'sha256:registry' },
+    adapter: { adapter: providerId, adapterVersion: '3', registryFingerprint: 'sha256:registry' },
     resolveComponent(request) {
       requests.push(request)
       const isNative = request.componentKey === 'layout.flex'
       const dependencies: Readonly<Record<string, string>> = isNative
         ? {}
-        : { 'element-plus': '^2.9.0' }
+        : { [uiPackage]: version }
       return {
         success: true,
         value: {
-          moduleSpecifier: isNative ? '' : 'element-plus',
-          importName: isNative ? '' : 'ElementPlus',
-          tag: isNative ? 'div' : request.componentKey === 'field.input' ? 'el-input' : request.componentKey === 'field.select' ? 'el-select' : request.componentKey === 'element.image' ? 'el-image' : 'el-button',
+          moduleSpecifier: isNative ? '' : uiPackage,
+          importName: isNative ? '' : plugin,
+          tag: isNative
+            ? 'div'
+            : request.componentKey === 'field.input'
+              ? (isAntd ? 'a-input' : 'el-input')
+              : request.componentKey === 'field.select'
+                ? (isAntd ? 'a-select' : 'el-select')
+                : request.componentKey === 'element.image'
+                  ? (isAntd ? 'a-image' : 'el-image')
+                  : request.componentKey === 'element.table'
+                    ? (isAntd ? 'a-table' : 'el-table')
+                    : (isAntd ? 'a-button' : 'el-button'),
           configComponent: request.componentKey,
           render: request.componentKey === 'layout.flex' ? 'layout-flex' : 'component',
-          styleImports: isNative ? [] : ['element-plus/dist/index.css'],
+          styleImports: isNative ? [] : [stylesheet],
           dependencies,
           semanticListeners: {
             activate: { event: 'click', listenerProp: 'onClick', item: { kind: 'none' } },
@@ -537,12 +641,23 @@ function provider(requests: SourceComponentRequest[] = []): SourceProviderResolv
               ? { rowActivate: { event: 'row-click', listenerProp: 'onRowClick', item: { kind: 'argument' as const, index: 1 } } }
               : {}),
           },
-          ...(isNative ? {} : { library: { packageName: 'element-plus', plugin: 'ElementPlus', version: '^2.9.0', stylesheet: 'element-plus/dist/index.css' } }),
+          ...(isNative ? {} : { library: { packageName: uiPackage, plugin, version, stylesheet } }),
           ...(request.componentKey === 'field.select' ? { options: { mode: 'prop' as const } } : {}),
-          ...(request.componentKey.startsWith('field.') ? { valueProp: 'modelValue', trigger: 'update:modelValue' } : {}),
+          ...(request.componentKey.startsWith('field.')
+            ? {
+                valueProp: isAntd ? 'value' : 'modelValue',
+                trigger: isAntd ? 'update:value' : 'update:modelValue',
+                blurTrigger: 'blur',
+              }
+            : {}),
         },
       }
     },
+  }
+}
+
+function bindingResolver(): SourceConfigFormBindingResolver {
+  return {
     resolveConfigFormBinding() {
       return {
         success: true,
@@ -573,11 +688,21 @@ function resourceReader(bytes = embeddedBytes): SourceResourceReader & { readEmb
   }
 }
 
-function input(overrides: Partial<GenerateSourceInput> = {}): GenerateSourceInput {
+function rawInput(overrides: Partial<GenerateVueSourceInput> = {}): GenerateVueSourceInput {
   return {
     compilation: compilation(),
-    providerResolver: provider(),
+    componentResolver: componentResolver(),
     resourceReader: resourceReader(),
+    ...overrides,
+  }
+}
+
+function bindingInput(
+  overrides: Partial<GenerateConfigFormBindingsInput> = {},
+): GenerateConfigFormBindingsInput {
+  return {
+    ...rawInput(),
+    bindingResolver: bindingResolver(),
     ...overrides,
   }
 }
@@ -597,7 +722,7 @@ describe('source generators', () => {
   it('generates deterministic raw Vue source that directly uses provider UI', async () => {
     const requests: SourceComponentRequest[] = []
     const reader = resourceReader()
-    const sourceInput = input({ providerResolver: provider(requests), resourceReader: reader })
+    const sourceInput = rawInput({ componentResolver: componentResolver(requests), resourceReader: reader })
     const first = await generateVueSource(sourceInput)
     const second = await generateVueSource(sourceInput)
     expect(first).toEqual(second)
@@ -618,13 +743,15 @@ describe('source generators', () => {
       'src/demo-navigation.ts',
       'src/demo-values.ts',
       'src/surfaces/home/Surface.vue',
+      'src/surfaces/home/validation.ts',
       'src/surfaces/details/Surface.vue',
+      'src/surfaces/details/validation.ts',
       'src/surfaces/drawer/Surface.vue',
       'src/surfaces/summary/Surface.vue',
       'src/assets/brand-logo.png',
     ]))
     expect(first.data.files.some(file => file.path.startsWith('src/runtime/'))).toBe(false)
-    expect(text(first.data)).not.toMatch(/@moluoxixi\/config-form|prototype-runtime|handlerRegistry|handler registry/)
+    expect(text(first.data)).not.toMatch(/@moluoxixi\/|@config-form\/|(?:^|[/'"])zod(?:[/'"]|$)|prototype-runtime|handlerRegistry|handler registry/m)
     expect(text(first.data)).toMatch(/import ElementPlus from ['"]element-plus['"]/)
     expect(text(first.data)).toContain('.use(ElementPlus)')
     expect(text(first.data)).toContain('<el-input')
@@ -642,6 +769,9 @@ describe('source generators', () => {
     expect(homeSource).toContain('\'aria-required\': \'true\'')
     expect(homeSource).toContain('demo-field__required')
     expect(homeSource).toContain('reactionProjection.states')
+    expect(homeSource).toContain('import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'')
+    expect(homeSource).toContain('@blur="void validateDemoFields([\'name\'])"')
+    expect(homeSource).toMatch(/validateOn: \[\s*"blur",\s*"submit"\s*\]/u)
     expect(homeSource).toContain('v-for="(scopeRowOrdersScope, scopeIndexOrdersScope) in demoArray(')
     expect(homeSource).toContain('demoObject(scopeRowOrdersScope[\'details\'], \'detailsScope\')[\'name\']')
     expect(textAt(first.data, 'src/surfaces/details/Surface.vue')).toContain('navigation.closeCurrent({ name: "saved"')
@@ -669,14 +799,15 @@ describe('source generators', () => {
 
     const manifestFile = first.data.files.find(file => file.path === 'package.json')
     const manifest = JSON.parse(manifestFile?.kind === 'text' ? manifestFile.content : '{}')
-    expect(manifest.dependencies).toMatchObject({
+    expect(manifest.dependencies).toEqual({
       'vue': '3.5.33',
       'vue-router': '^4.6.4',
       'element-plus': '^2.9.0',
-      '@moluoxixi/zod3-to-rule': '^0.1.3',
-      'zod': '^3.24.2',
     })
-    expect(Object.keys(manifest.dependencies)).not.toContain('@moluoxixi/config-form')
+    const validationSource = textAt(first.data, 'src/surfaces/home/validation.ts')
+    expect(validationSource).toContain('export function validateName(')
+    expect(validationSource).toContain('new RegExp("^[A-Za-z]+$", "")')
+    expect(validationSource).not.toMatch(/compileRules|RuleSet|@moluoxixi|\bzod\b/)
     assertGeneratedVueFilesCompile(first.data)
     assertGeneratedRuntimeBoundary(first.data)
     await verifyGeneratedConsumer(first.data)
@@ -687,7 +818,7 @@ describe('source generators', () => {
     const home = rootCompilation.ir.surfacesById.home as unknown as { route: string }
     home.route = '/'
 
-    const result = await generateVueSource(input({ compilation: rootCompilation }))
+    const result = await generateVueSource(rawInput({ compilation: rootCompilation }))
     expect(result.success).toBe(true)
     if (!result.success)
       return
@@ -697,8 +828,32 @@ describe('source generators', () => {
     expect(router).not.toContain('{ path: "/", redirect:')
   })
 
+  it('builds standalone Ant Design Vue source with the same dependency boundary', async () => {
+    const result = await generateVueSource(rawInput({
+      compilation: compilation('antd-vue'),
+      componentResolver: componentResolver([], 'antd-vue'),
+    }))
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+
+    const manifest = JSON.parse(textAt(result.data, 'package.json')) as {
+      dependencies: Record<string, string>
+    }
+    expect(manifest.dependencies).toEqual({
+      'ant-design-vue': '^4.2.6',
+      'vue': '3.5.33',
+      'vue-router': '^4.6.4',
+    })
+    expect(textAt(result.data, 'src/main.ts')).toContain('.use(Antd)')
+    expect(textAt(result.data, 'src/surfaces/home/Surface.vue')).toContain('<a-input')
+    assertGeneratedVueFilesCompile(result.data)
+    assertGeneratedRuntimeBoundary(result.data)
+    await verifyGeneratedConsumer(result.data)
+  }, 30_000)
+
   it('generates a separate public ConfigForm binding project', async () => {
-    const result = await generateConfigFormBindings(input())
+    const result = await generateConfigFormBindings(bindingInput())
     expect(result.success).toBe(true)
     if (!result.success)
       return
@@ -733,6 +888,8 @@ describe('source generators', () => {
     expect(homeConfig).toContain('"onClick": handleOpenDetails')
     expect(homeConfig).toContain('await validation.validate({"fieldIds":["name"],"scope":"fields","surfaceId":"home"})')
     expect(homeConfig).toMatch(/import \{ compileRules \} from ['"]@moluoxixi\/zod3-to-rule['"]/)
+    expect(homeConfig).toContain('required: true')
+    expect(homeConfig).toContain('requiredMessage: "Name is required"')
     expect(homeConfig).toContain('schema: compiledValidation1.schema')
     expect(homeConfig).toContain('valueScope: {')
     expect(homeConfig).toContain('"minItems": 2')
@@ -766,17 +923,47 @@ describe('source generators', () => {
     await verifyGeneratedConsumer(result.data)
   }, 30_000)
 
+  it.each([
+    { label: 'an old ProjectDocument version', path: ['snapshot', 'document', 'version'], value: PROJECT_DOCUMENT_VERSION - 1 },
+    { label: 'a future ProjectDocument version', path: ['snapshot', 'document', 'version'], value: PROJECT_DOCUMENT_VERSION + 1 },
+    { label: 'a missing ProjectDocument version', path: ['snapshot', 'document', 'version'], value: DELETE_COMPILATION_VALUE },
+    { label: 'an old SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: SURFACE_GRAPH_VERSION - 1 },
+    { label: 'a future SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: SURFACE_GRAPH_VERSION + 1 },
+    { label: 'a missing SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: DELETE_COMPILATION_VALUE },
+    { label: 'an old Canonical Project IR version', path: ['ir', 'version'], value: 5 },
+    { label: 'a future Canonical Project IR version', path: ['ir', 'version'], value: 7 },
+    { label: 'a missing Canonical Project IR version', path: ['ir', 'version'], value: DELETE_COMPILATION_VALUE },
+    { label: 'an old compiler key version', path: ['key', 'compilerVersion'], value: '6.0.0' },
+    { label: 'mixed compiler versions', path: ['ir', 'identity', 'compilerVersion'], value: '6.0.0' },
+    { label: 'a missing compiler identity version', path: ['ir', 'identity', 'compilerVersion'], value: DELETE_COMPILATION_VALUE },
+    { label: 'a future Canonical Surface field', path: ['ir', 'surfacesById', 'home', 'futureContractField'], value: true },
+  ])('rejects $label in both source modes without partial files', async ({ path, value }) => {
+    const invalidCompilation = compilationWithValue(path, value)
+    const [raw, bindings] = await Promise.all([
+      generateVueSource(rawInput({ compilation: invalidCompilation })),
+      generateConfigFormBindings(bindingInput({ compilation: invalidCompilation })),
+    ])
+
+    for (const result of [raw, bindings]) {
+      expect(result).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'source_input_invalid' }],
+      })
+      expect('data' in result).toBe(false)
+    }
+  })
+
   it('fails closed on adapter identity or component resolution failures', async () => {
-    const mismatched = provider()
+    const mismatched = componentResolver()
     Object.assign(mismatched.adapter, { registryFingerprint: 'sha256:other' })
-    const adapterResult = await generateVueSource(input({ providerResolver: mismatched }))
+    const adapterResult = await generateVueSource(rawInput({ componentResolver: mismatched }))
     expect(adapterResult.success).toBe(false)
     if (!adapterResult.success)
       expect(adapterResult.diagnostics[0]?.code).toBe('source_resolution_failed')
 
-    const unresolved = provider()
+    const unresolved = componentResolver()
     unresolved.resolveComponent = () => ({ success: false, reason: 'not published' })
-    const componentResult = await generateVueSource(input({ providerResolver: unresolved }))
+    const componentResult = await generateVueSource(rawInput({ componentResolver: unresolved }))
     expect(componentResult.success).toBe(false)
     if (!componentResult.success)
       expect(componentResult.diagnostics[0]?.code).toBe('source_resolution_failed')
@@ -788,12 +975,12 @@ describe('source generators', () => {
         return { success: false, diagnostics: [{ code: 'resource_missing', message: 'missing' }] }
       },
     }
-    const missing = await generateVueSource(input({ resourceReader: missingReader }))
+    const missing = await generateVueSource(rawInput({ resourceReader: missingReader }))
     expect(missing.success).toBe(false)
     if (!missing.success)
       expect(missing.diagnostics[0]?.code).toBe('source_resource_read_failed')
 
-    const corrupt = await generateVueSource(input({ resourceReader: resourceReader(new TextEncoder().encode('wrong')) }))
+    const corrupt = await generateVueSource(rawInput({ resourceReader: resourceReader(new TextEncoder().encode('wrong')) }))
     expect(corrupt.success).toBe(false)
     if (!corrupt.success)
       expect(corrupt.diagnostics[0]?.code).toBe('resource_content_invalid')
@@ -805,12 +992,12 @@ describe('source generators', () => {
         throw new Error('storage offline')
       },
     }
-    const readResult = await generateVueSource(input({ resourceReader: throwing }))
+    const readResult = await generateVueSource(rawInput({ resourceReader: throwing }))
     expect(readResult.success).toBe(false)
     if (!readResult.success)
       expect(readResult.diagnostics[0]?.code).toBe('source_resource_read_failed')
 
-    const nonPortable = provider()
+    const nonPortable = componentResolver()
     const resolve = nonPortable.resolveComponent
     nonPortable.resolveComponent = (request) => {
       const result = resolve(request)
@@ -818,24 +1005,82 @@ describe('source generators', () => {
         ? { ...result, value: { ...result.value, dependencies: { 'element-plus': 'workspace:*' } } }
         : result
     }
-    const dependencyResult = await generateVueSource(input({ providerResolver: nonPortable }))
+    const dependencyResult = await generateVueSource(rawInput({ componentResolver: nonPortable }))
     expect(dependencyResult.success).toBe(false)
     if (!dependencyResult.success)
       expect(dependencyResult.diagnostics[0]?.code).toBe('source_resolution_failed')
+  })
+
+  it('keeps Raw generation independent from the optional binding resolver', async () => {
+    const raw = await generateVueSource(rawInput())
+    const bindings = await generateConfigFormBindings(bindingInput({
+      bindingResolver: {
+        resolveConfigFormBinding: () => ({ success: false, reason: 'binding package unavailable' }),
+      },
+    }))
+
+    expect(raw.success).toBe(true)
+    expect(bindings).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'source_resolution_failed' }],
+    })
+  })
+
+  it.each(['@moluoxixi/hidden-runtime', '@config-form/private-runtime', 'zod']) (
+    'rejects forbidden Raw dependency %s before emitting files',
+    async (dependency) => {
+      const resolver = componentResolver()
+      const resolve = resolver.resolveComponent
+      resolver.resolveComponent = (request) => {
+        const result = resolve(request)
+        return result.success
+          ? { ...result, value: { ...result.value, dependencies: { ...result.value.dependencies, [dependency]: '1.0.0' } } }
+          : result
+      }
+      const generated = await generateVueSource(rawInput({ componentResolver: resolver }))
+      expect(generated).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'source_resolution_failed' }],
+      })
+      expect('data' in generated).toBe(false)
+    },
+  )
+
+  it.each([
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ] as const)('rejects forbidden Raw packages from manifest %s', (section) => {
+    const fileSet: RawSourceFileSetV1 = {
+      version: 1,
+      kind: 'raw-source',
+      entry: 'src/main.ts',
+      files: [{
+        kind: 'text',
+        path: 'package.json',
+        language: 'json',
+        content: JSON.stringify({ [section]: { '@moluoxixi/hidden-runtime': '1.0.0' } }),
+      }],
+    }
+
+    expect(() => assertGeneratedRuntimeBoundary(fileSet)).toThrow(
+      'raw-source emitted forbidden dependencies: @moluoxixi/hidden-runtime.',
+    )
   })
 
   it('fails both source modes without partial files when a custom validator implementation is missing', async () => {
     const invalidCompilation = compilation()
     const name = invalidCompilation.ir.surfacesById.home?.nodesById.name as unknown as { validation: unknown }
     name.validation = {
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'custom', key: 'missing-source-validator' }],
     }
 
     const [raw, bindings] = await Promise.all([
-      generateVueSource(input({ compilation: invalidCompilation })),
-      generateConfigFormBindings(input({ compilation: invalidCompilation })),
+      generateVueSource(rawInput({ compilation: invalidCompilation })),
+      generateConfigFormBindings(bindingInput({ compilation: invalidCompilation })),
     ])
     for (const result of [raw, bindings]) {
       expect(result).toMatchObject({
@@ -862,8 +1107,8 @@ describe('source generators', () => {
       action: { kind: 'copy', sourceFieldId: 'mirror', targetFieldId: 'name' },
     })
 
-    const raw = await generateVueSource(input({ compilation: cyclicCompilation }))
-    const bindings = await generateConfigFormBindings(input({ compilation: cyclicCompilation }))
+    const raw = await generateVueSource(rawInput({ compilation: cyclicCompilation }))
+    const bindings = await generateConfigFormBindings(bindingInput({ compilation: cyclicCompilation }))
     expect(raw).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
     expect(bindings).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
     if (!raw.success)
@@ -886,14 +1131,14 @@ describe('source generators', () => {
       },
     }]
 
-    const raw = await generateVueSource(input({ compilation: invalidCompilation }))
+    const raw = await generateVueSource(rawInput({ compilation: invalidCompilation }))
     expect(raw.success).toBe(false)
     if (!raw.success) {
       expect(raw.diagnostics[0]).toMatchObject({ code: 'source_input_invalid' })
       expect(raw.diagnostics[0]?.context?.reason).toContain('scoped values')
     }
 
-    const bindings = await generateConfigFormBindings(input({ compilation: invalidCompilation }))
+    const bindings = await generateConfigFormBindings(bindingInput({ compilation: invalidCompilation }))
     expect(bindings.success).toBe(false)
     if (!bindings.success)
       expect(bindings.diagnostics[0]).toMatchObject({ code: 'source_input_invalid' })

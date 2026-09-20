@@ -9,12 +9,14 @@ const props = defineProps<AntdChoiceDefaultSetterProps>()
 
 const emit = defineEmits<AntdChoiceDefaultSetterEmits>()
 
-const staticOptions = computed(() => normalizeAntdVueOptions(props.node?.props?.options as unknown[] | undefined))
-const setterOptions = computed(() => staticOptions.value.flatMap((option) => {
-  if (typeof option.value === 'boolean')
-    return []
-  return [{ label: option.label, value: option.value }]
-}))
+const staticOptions = computed(() => normalizeAntdVueOptions(
+  props.node?.props?.options as unknown[] | undefined,
+  props.optionValueTypes,
+))
+const setterOptions = computed(() => staticOptions.value.map(option => ({
+  label: option.label,
+  value: option.value,
+})))
 
 function updateValue(value: unknown): void {
   emit('update:modelValue', value as DesignerJsonValue | undefined)

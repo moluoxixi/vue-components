@@ -151,7 +151,7 @@ async function resourceDocument(bytes = new Uint8Array([1, 2, 3])): Promise<{
   return { document, write: { resourceId: 'logo', contentHash, bytes: new Uint8Array(bytes) } }
 }
 
-describe('projectDocument v6 and SurfaceGraph v1', () => {
+describe('projectDocument v7 and SurfaceGraph v2', () => {
   it('accepts the strict Surface shape and rejects Page-only/removed fields', () => {
     const parsed = parseProjectDocument(documentFixture())
     expect(parsed.success).toBe(true)
@@ -170,6 +170,77 @@ describe('projectDocument v6 and SurfaceGraph v1', () => {
     const graph = surface.graph as Record<string, unknown>
     graph.bindings = {}
     expect(parseProjectDocument(removed)).toMatchObject({ success: false })
+  })
+
+  it('round-trips field-level required and rejects stale or mixed validation contracts', () => {
+    const current = documentFixture({
+      surfacesById: {
+        home: pageSurface('home', '/', fieldNode('name', 'name', {
+          defaultValue: '',
+          required: true,
+          requiredMessage: '请输入姓名',
+          validation: {
+            version: 2,
+            base: { type: 'string' },
+            rules: [{ kind: 'minLength', value: 2 }],
+          },
+        })),
+      },
+    })
+    const parsed = parseProjectDocument(JSON.parse(JSON.stringify(current)))
+    expect(parsed).toMatchObject({
+      success: true,
+      data: {
+        surfacesById: {
+          home: {
+            graph: {
+              nodesById: {
+                name: {
+                  required: true,
+                  requiredMessage: '请输入姓名',
+                  validation: { version: 2 },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    for (const version of [PROJECT_DOCUMENT_VERSION - 1, PROJECT_DOCUMENT_VERSION + 1, undefined]) {
+      const candidate = structuredClone(current) as unknown as Record<string, unknown>
+      if (version === undefined)
+        delete candidate.version
+      else
+        candidate.version = version
+      expect(parseProjectDocument(candidate)).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'unsupported_contract_version' }],
+      })
+    }
+
+    for (const version of [SURFACE_GRAPH_VERSION - 1, SURFACE_GRAPH_VERSION + 1, undefined]) {
+      const candidate = structuredClone(current) as unknown as {
+        surfacesById: Record<string, { graph: Record<string, unknown> }>
+      }
+      if (version === undefined)
+        delete candidate.surfacesById.home!.graph.version
+      else
+        candidate.surfacesById.home!.graph.version = version
+      expect(parseProjectDocument(candidate).success).toBe(false)
+    }
+
+    for (const validation of [
+      { version: 1, base: { type: 'string' }, rules: [] },
+      { version: 3, base: { type: 'string' }, rules: [] },
+      { version: 2, base: { type: 'string' }, rules: [{ kind: 'required' }] },
+    ]) {
+      const candidate = structuredClone(current) as unknown as {
+        surfacesById: Record<string, { graph: { nodesById: Record<string, Record<string, unknown>> } }>
+      }
+      candidate.surfacesById.home!.graph.nodesById.name!.validation = validation
+      expect(parseProjectDocument(candidate).success).toBe(false)
+    }
   })
 
   it('enforces home kind, route uniqueness, and order/map bijection', () => {
@@ -563,6 +634,29 @@ describe('surface transactions and history', () => {
     expect(engine.snapshot.document.surfacesById.home!.name).toBe('Landing')
     expect(engine.undo().changed).toBe(true)
     expect(engine.snapshot.document.surfacesById.home!.name).toBe('Home')
+  })
+
+  it('patches field-level required settings atomically and restores them on undo', () => {
+    const engine = createProjectDomainEngine({ document: createProjectSnapshot(documentFixture()) })
+    const result = engine.execute({
+      id: 'set-name-required',
+      label: 'Set name required',
+      actions: [{
+        type: 'node.patch',
+        surfaceId: 'home',
+        nodeId: 'name',
+        patch: { set: { required: true, requiredMessage: '请输入姓名' } },
+      }],
+    })
+
+    expect(result.changed).toBe(true)
+    expect(engine.snapshot.document.surfacesById.home!.graph.nodesById.name).toMatchObject({
+      required: true,
+      requiredMessage: '请输入姓名',
+    })
+    expect(engine.undo().changed).toBe(true)
+    expect(engine.snapshot.document.surfacesById.home!.graph.nodesById.name).not.toHaveProperty('required')
+    expect(engine.snapshot.document.surfacesById.home!.graph.nodesById.name).not.toHaveProperty('requiredMessage')
   })
 
   it('blocks removal of referenced Dataset and Resource assets', () => {

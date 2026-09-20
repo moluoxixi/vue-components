@@ -49,7 +49,12 @@ Dialog/Drawer 不嵌进调用方的图中。设计模式始终聚焦一个 Surfa
 
 - 使用响应式 Grid/Flex 和受控布局属性，不提供绝对定位自由画布。
 - 提供项目 Design Token、组件白名单视觉属性和业务展示、操作、数据物料。
-- 支持基础校验以及表达式驱动的动态 `required`；Demo 中的校验必须可确定执行。
+- 字段 Required 使用独立的 `required` / `requiredMessage` 配置；通用校验使用
+  RuleSet v2，二者共享 `validateOn` 调度但不混成一种规则。表达式驱动的动态
+  `required` 在运行态覆盖静态基线；Demo 中的校验必须可确定执行。
+- RuleSet 不提供 `time` base，时间物料只提供 Required 和 `validateOn`，不得借用日期
+  规则。Select 静态选项变化时，已有 enum/literal 校验与失效默认值在同一命令中同步
+  更新或清除，并由一次 Undo 整体恢复。
 - 首版不提供任意 CSS、任意脚本或项目内自定义组件编译。
 
 ### 模拟数据
@@ -122,8 +127,9 @@ Runtime 会先完成自身的值绑定和校验记账，再调用同一触发上
 
 源码包 `@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer` 和
 `/viewer/style` 入口。Generator 接受稳定编译结果、
-Source 自己拥有的同步 provider component resolver，以及异步 embedded Resource
-reader；Studio 只在应用组合根读取 adapter metadata 与 Repository 并分别注入。
+Source 自己拥有的同步 provider component resolver、独立的 ConfigForm binding
+resolver，以及异步 embedded Resource reader；Studio 只在应用组合根读取 adapter
+metadata 与 Repository 并分别注入。Raw 不接收 binding resolver。
 Source 自己校验 bytes、决定输出路径，URL 不由 generator 发起 fetch。Viewer 只显示
 文件树和只读源码，不拥有弹窗、刷新、复制、下载、ZIP、通知或持久化。
 
@@ -138,6 +144,13 @@ Source 自己校验 bytes、决定输出路径，URL 不由 generator 发起 fet
   其中原生 Vue 产物是可直接安装运行的应用；ConfigForm 产物是以 `src/bindings.ts`
   为入口的配置模块和薄 Surface wrapper，不包含 App、router、页面历史、overlay 或
   session，应用编排由程序员提供。
+- 原生 Vue 产物的 `package.json.dependencies` 与应用运行时代码中的裸包 import 只包含 Vue、Vue
+  Router 和目标 UI 包；不得依赖 ConfigForm、Zod、
+  `@moluoxixi/*`、`@config-form/*` 或内部 Runtime。Required 与 RuleSet v2 生成工程内
+  可读校验代码，不复制解释器或运行核心。Vite、TypeScript 等构建工具可保留为
+  `devDependencies`。
+- Raw 与 ConfigForm binding 独立生成、独立失败。Studio 在同一 compilation 快照中
+  分别保留 `ready | failed` 状态；一个 mode 失败不阻断另一个 mode 的查看和交付。
 - Source 不生成 HTTP 占位、handler stub、字符串 action ref 或待绑定事件元数据。
 - 源码是单向交接结果。修改后的源码不支持回导 Designer。
 

@@ -100,7 +100,7 @@ describe('designer field material', () => {
     const registry = createDesignerRegistry({ materials: [material] })
     const subgraph = registry.createSubgraph(material.key, { id: 'registered', field: 'profile' })
     expect(() => surfaceGraphSchema.parse({
-      version: 1,
+      version: 2,
       props: {},
       form: {},
       root: subgraph.root,

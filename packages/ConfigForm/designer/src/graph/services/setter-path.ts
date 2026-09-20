@@ -3,6 +3,8 @@ const SETTABLE_ROOTS = new Set([
   'field',
   'label',
   'defaultValue',
+  'required',
+  'requiredMessage',
   'validation',
   'validateOn',
   'span',

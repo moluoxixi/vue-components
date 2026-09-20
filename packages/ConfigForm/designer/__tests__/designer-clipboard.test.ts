@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import type { SurfaceGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { clearDesignerClipboard, useDesignerController } from '../src/composables/use-designer-controller'
 import { extractDesignSubgraph, remapDesignSubgraph } from '../src/graph'
@@ -42,7 +42,7 @@ function field(id: string) {
 }
 
 const graph: SurfaceGraph = {
-  version: 1,
+  version: 2,
   props: {},
   form: {},
   root: [

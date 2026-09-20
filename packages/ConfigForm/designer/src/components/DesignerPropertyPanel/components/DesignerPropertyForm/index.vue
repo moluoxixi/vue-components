@@ -11,7 +11,7 @@ import type {
 import type { DesignerPropertyFormEntry } from '../../types'
 import type { Component } from 'vue'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
-import { computed, markRaw, shallowRef, toRaw, watch } from 'vue'
+import { computed, markRaw, nextTick, shallowRef, toRaw, watch } from 'vue'
 import { useDesignerLocale } from '@designer/locale'
 import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
 import DesignerSetter from '../DesignerSetter/index.vue'
@@ -78,9 +78,19 @@ const projectedModel = computed<Record<string, unknown>>(() => Object.fromEntrie
   props.entries.map((entry, index) => [fieldKey(entry, index), fieldValue(entry)]),
 ))
 
-watch(projectedModel, value => {
-  model.value = value
-}, { deep: true, immediate: true })
+function syncProjectedModel(): void {
+  model.value = { ...projectedModel.value }
+}
+
+watch(projectedModel, syncProjectedModel, { deep: true, immediate: true })
+
+function commit(value: unknown, setter: DesignerPropertySetterDefinition): void {
+  emit('commit', value, setter)
+  // A rejected command does not change the projected props, so the normal
+  // watcher cannot fire. Reassign the authoritative projection after the
+  // parent command has settled to keep local controls honest.
+  void nextTick(syncProjectedModel)
+}
 
 function handleTextKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Enter')
@@ -93,7 +103,7 @@ function commitTextDraft(entry: DesignerPropertyFormEntry, index: number): void 
   const value = normalizeValue(entry.setter, model.value[fieldKey(entry, index)])
   const current = normalizeValue(entry.setter, entry.value)
   if (value !== invalidNumber && !Object.is(value, current))
-    emit('commit', value, entry.setter)
+    commit(value, entry.setter)
 }
 
 function simpleField(
@@ -232,7 +242,7 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
     return
   const value = normalizeValue(entry.setter, payload.value)
   if (value !== invalidNumber)
-    emit('commit', entry.setter.unit === 'px' && typeof value === 'number' ? `${value}px` : value, entry.setter)
+    commit(entry.setter.unit === 'px' && typeof value === 'number' ? `${value}px` : value, entry.setter)
 }
 </script>
 

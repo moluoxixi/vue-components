@@ -130,8 +130,16 @@ Studio ----------------------------------+
 - Project assets are Page, Dialog, Drawer, Dataset, and static Resource.
   Page/Dialog/Drawer are `SurfaceAsset`; each Experience opening creates an
   isolated `SurfaceInstance`. Material and Surface identities never overlap.
-- Studio supports responsive Grid/Flex, controlled visual properties, base and
-  dynamic-required validation, static Dataset views, and safe expressions.
+- Studio supports responsive Grid/Flex, controlled visual properties,
+  field-level `required` / `requiredMessage`, RuleSet v2 general validation,
+  static Dataset views, and safe expressions. Dynamic `required` projection
+  overrides the static field baseline for the current instance; Required is not
+  a general RuleSet kind.
+- RuleSet v2 has no time base. Time Materials expose field Required and
+  `validateOn` but no general RuleSet editor; they are never treated as dates.
+  When inline Select options change, an existing enum/literal base and any
+  invalid default are reconciled in the same command and Undo step; an
+  unrepresentable base clears the complete validation.
 - Studio does not support arbitrary CSS, arbitrary JavaScript, absolute-position
   free canvas, HTTP, authentication, delays, retries, parallel actions, or
   business-function authoring.
@@ -157,12 +165,25 @@ Studio ----------------------------------+
 - Source does not emit HTTP placeholders, handler stubs, string action refs,
   event metadata, or Flow plans. It preserves complete local demo behavior for
   accepted Source inputs.
-- Neither file-set kind contains an App/Router/session/reducer/overlay runtime
-  copy. ConfigForm bindings do not embed a second executable demo core.
-- The Source package owns separate provider-neutral component-resolver and async
-  embedded-resource-reader inputs. Studio reads adapter metadata and Repository
-  content and injects both implementations at its composition root. URL
-  Resources do not invoke the reader or a network fetch.
+- Neither file-set kind contains a copied session/reducer/overlay execution
+  core. ConfigForm bindings contain public configuration and thin Surface
+  wrappers, not an embedded ConfigForm implementation.
+- Raw Vue `package.json.dependencies` and application runtime bare-package
+  imports are limited to Vue, Vue Router, and the selected target UI package. They contain
+  no ConfigForm, Zod,
+  `@moluoxixi/*`, `@config-form/*`, Compiler, RuleSet converter, or internal
+  Runtime; build-only Vite/TypeScript tooling may remain in `devDependencies`.
+  Required and RuleSet v2 compile to readable project-local validation.
+- The Source package owns three separate input responsibilities: the
+  provider-neutral component resolver, the ConfigForm-only binding resolver,
+  and the async embedded-resource reader. Studio reads adapter metadata and
+  Repository content and injects all three implementations at its composition
+  root. Raw receives no binding resolver. URL Resources do not invoke the
+  reader or a network fetch.
+- Raw Vue and ConfigForm binding generation run and fail independently against
+  one pinned compilation. Workbench represents each mode as `ready | failed`;
+  one mode's diagnostics disable only that mode's file/copy/download commands
+  and never discard the sibling mode's successful file set.
 - The Source Viewer owns file-tree/code presentation only. Studio owns dialogs,
   regeneration, clipboard, downloads, ZIP, notifications, and persistence.
 
@@ -209,6 +230,11 @@ Studio ----------------------------------+
 | Material declares an arbitrary DOM event trigger | Reject registration; semantic triggers are allowlisted capabilities |
 | A semantic trigger has two primary UI actions | Reject the binding; do not execute a chain |
 | Preview lacks a host-only listener | Run the JSON-safe demo without inventing iframe forwarding |
+| RuleSet v1 or `kind: 'required'` reaches a current Reader | Reject it; do not migrate Required into the field contract |
+| Time Material requests a RuleSet/date base | Reject or omit the general validation capability; preserve Required and `validateOn` |
+| Select options invalidate a default and enum/literal base | Reconcile options, default, and validation in one command/history item; one Undo restores all |
+| Raw generation fails while ConfigForm binding succeeds, or vice versa | Preserve the successful mode and report failure only for the affected mode |
+| Raw runtime dependency/import exceeds the Vue/Vue Router/target-UI whitelist | Fail generation or generated-consumer architecture; do not install an internal package; allow build-only devDependencies |
 | Dataset envelope reader receives raw rows | Reject as missing version; raw ingestion must be called explicitly |
 | Runtime/Core/Headless imports an outward package | Fail the architecture gate |
 | Planned package has no implementation | Document it as target only; do not create a manifest or import example |
@@ -220,14 +246,23 @@ Studio ----------------------------------+
   state rules.
 - Good: generated static config is augmented by typed `props.onX` functions in
   host code and passed to production Runtime.
+- Good: a field stores static Required separately from RuleSet v2, Raw emits a
+  local validator, and a dynamic Required projection overrides the baseline in
+  Experience without rewriting the field.
 - Good: an options component reads a shared Dataset projection while its
   selection remains component/form state.
+- Good: a Select options edit updates its enum/literal base and invalid default
+  atomically; a time field offers Required without pretending to be a date.
 - Base: a JSON-safe Page demo has no overlays or host listeners and behaves the
   same in Experience and generated source.
 - Bad: serialize listener names and forward component arguments to an action
   registry in Preview.
 - Bad: rename Flow to “interaction pipeline” while retaining an action array.
 - Bad: accept `DatasetRow[]` in the versioned envelope Reader for convenience.
+- Bad: publish options and repair validation/default in later watcher commands,
+  or map time to the date base to reuse its rules.
+- Bad: merge component and ConfigForm binding resolution again, import Zod into
+  Raw, or make one export mode's failure suppress both modes.
 - Bad: document any unimplemented package or public entry as currently
   installable.
 
@@ -236,14 +271,22 @@ Studio ----------------------------------+
 - Runtime tests retain binding/validation-before-listener ordering,
   exactly-once invocation, design-mode blocking, and Vue error behavior.
 - Model/Compiler/transport tests accept only current JSON-safe contracts and
-  reject old, future, missing, malformed, and mixed versions.
+  reject old, future, missing, malformed, and mixed versions, including RuleSet
+  v1 and `kind: 'required'`.
 - Studio contract tests reject arbitrary event metadata, functions, action
   arrays, Flow shapes, HTTP actions, and automatic initialization opens.
 - Preview/generated-project parity tests execute the same Surface navigation,
   overlay, Dataset, validation, and interaction scenarios and compare observable
   behavior. String snapshots are not behavioral evidence.
 - Architecture tests enforce inward dependencies, DOM-free generator/session
-  imports, Viewer-only Monaco, and absence of wrappers or compatibility paths.
+  imports, Viewer-only Monaco, split component/binding/resource responsibilities,
+  the Raw dependency whitelist, and absence of wrappers or compatibility paths.
+- Generated-consumer tests execute field Required/Required message, RuleSet v2,
+  and `validateOn` for both providers from real generated files with no internal
+  workspace soft links; Workbench tests cover both one-mode-failed directions.
+- Designer/Model tests prove time has no RuleSet base and Select options,
+  enum/literal validation, and invalid defaults share one atomic history item
+  with exact one-Undo restoration.
 - Package tests, typechecks, builds, generated-consumer tests, release checks,
   and handwritten Changeset gates run for the complete affected package family.
 

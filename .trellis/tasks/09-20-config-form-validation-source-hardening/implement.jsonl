@@ -1,0 +1,12 @@
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"约束 Studio/Runtime/Source 产品边界、禁止事件域与 current-contract-only 硬切。"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"提供 Project/Surface/Canonical IR、Source 与 Preview 的跨包合同和版本规则。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"约束字段校验、动态 Required、Runtime 状态与宿主边界。"}
+{"file":".trellis/spec/zod3-to-rule/frontend/index.md","reason":"约束 RuleSet v2 所属包的目录与验证入口。"}
+{"file":".trellis/spec/config-form-model/frontend/index.md","reason":"约束持久化字段合同、Reader 与 current-contract-only 版本切换。"}
+{"file":".trellis/spec/config-form-compiler/frontend/index.md","reason":"约束 Canonical IR、编译身份和下游版本投影。"}
+{"file":".trellis/spec/config-form-vue-backend/frontend/index.md","reason":"约束 Canonical 到 Runtime 的校验和字段状态投影。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"约束 Project-first 命令流、Design compilation 与作者界面状态所有权。"}
+{"file":".trellis/spec/config-form-workbench/frontend/index.md","reason":"约束 Workbench 组合根、Runtime Host 与导出集成。"}
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"约束 Raw 与 binding 产物、生成器依赖方向和消费测试。"}
+{"file":".trellis/tasks/09-20-config-form-validation-source-hardening/research/property-panel-browser-diagnosis.md","reason":"实现属性崩溃与 DataCloneError 的已复现根因修复。"}
+{"file":".trellis/tasks/09-20-config-form-validation-source-hardening/research/raw-source-boundary-audit.md","reason":"实现 Raw 零内部依赖及双导出独立失败边界。"}

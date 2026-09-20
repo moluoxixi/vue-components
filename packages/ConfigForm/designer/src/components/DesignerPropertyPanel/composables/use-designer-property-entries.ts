@@ -1,6 +1,12 @@
 import type { FormSettings, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { InspectorSectionId, InspectorSectionProjection } from '../../../inspector'
-import type { DesignerPropertySetterDefinition, DesignerSetterOption } from '../../../registry'
+import type {
+  DesignerDefaultValueKind,
+  DesignerMaterialDefinition,
+  DesignerOptionValueType,
+  DesignerPropertySetterDefinition,
+  DesignerSetterOption,
+} from '../../../registry'
 import type { DesignerPropertyFormEntry, DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from '../types'
 import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from '@moluoxixi/config-form-core'
 import { FORM_GAP_MAX_PX } from '@moluoxixi/config-form-model'
@@ -8,6 +14,8 @@ import { computed } from 'vue'
 import { areDesignerJsonValuesEqual, findDesignNode } from '../../../graph'
 import { resolveInspectorCapabilities, resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
+import { DESIGNER_OPTION_VALUE_TYPES } from '../../../options'
+import { resolveDesignerValidationBase } from '../services'
 
 type PropertyTab = InspectorSectionId
 
@@ -15,6 +23,12 @@ interface UseDesignerPropertyEntriesCallbacks {
   onUpdateForm: (...args: DesignerPropertyPanelEmits['updateForm']) => void
   onUpdatePath: (...args: DesignerPropertyPanelEmits['updatePath']) => void
   onUpdatePaths: (...args: DesignerPropertyPanelEmits['updatePaths']) => void
+}
+
+interface ValidationSetterContext {
+  valueKind: DesignerDefaultValueKind
+  options?: DesignerSetterOption[]
+  optionValueTypes?: readonly DesignerOptionValueType[]
 }
 
 export function useDesignerPropertyEntries(
@@ -85,19 +99,10 @@ export function useDesignerPropertyEntries(
   const propertySetters = computed(() => [
     ...basePropertySetters.value,
     ...projection.value.commonSetters
-      .filter(setter => !['validation', 'validateOn'].includes(setter.path[0] ?? ''))
+      .filter(setter => !['required', 'requiredMessage', 'validation', 'validateOn'].includes(setter.path[0] ?? ''))
       .map(setter => localizeSetter(setter)),
   ].filter((setter, index, entries) => entries
     .findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
-
-  const validationSetters = computed<DesignerPropertySetterDefinition[]>(() => (
-    selectedNodes.value.length > 0 && selectedNodes.value.every(node => node.kind === 'field')
-      ? [
-          { key: 'validation', label: locale.t('property.rules', 'Rules'), path: ['validation'], control: 'validation' },
-          { key: 'validateOn', label: locale.t('validation.triggers', 'Validate on'), path: ['validateOn'], control: 'validateOn' },
-        ]
-      : []
-  ))
 
   const selectedDiagnostics = computed(() => {
     if (selectedNodes.value.length === 0)
@@ -149,10 +154,13 @@ export function useDesignerPropertyEntries(
       : undefined
   }
 
-  function resolveSetterOptions(setter: DesignerPropertySetterDefinition): DesignerSetterOption[] | undefined {
+  function resolveNodeSetterOptions(
+    node: SurfaceNode,
+    setter: DesignerPropertySetterDefinition,
+  ): DesignerSetterOption[] | undefined {
     if (!setter.optionsPath)
-      return setter.options
-    const value = readPath(setter.optionsPath)
+      return setter.options?.filter(option => isAllowedOptionValue(setter, option.value))
+    const value = readNodePath(node, setter.optionsPath)
     if (!Array.isArray(value))
       return []
     return value.flatMap((option) => {
@@ -164,12 +172,82 @@ export function useDesignerPropertyEntries(
         || !Object.hasOwn(record, 'value')
         || !['string', 'number', 'boolean'].includes(typeof optionValue)
         || (typeof optionValue === 'number' && !Number.isFinite(optionValue))
-        || (setter.valueKind === 'multiselect' && typeof optionValue === 'boolean')) {
+        || !isAllowedOptionValue(setter, optionValue)) {
         return []
       }
       return [{ label: record.label, value: optionValue as string | number | boolean }]
     })
   }
+
+  function isAllowedOptionValue(setter: DesignerPropertySetterDefinition, value: unknown): boolean {
+    const allowedTypes = setter.optionValueTypes ?? DESIGNER_OPTION_VALUE_TYPES
+    return allowedTypes.includes(typeof value as DesignerOptionValueType)
+  }
+
+  function resolveSetterOptions(setter: DesignerPropertySetterDefinition): DesignerSetterOption[] | undefined {
+    if (!setter.optionsPath)
+      return resolveNodeSetterOptions(selectedNodes.value[0]!, setter)
+    const optionSets = selectedNodes.value.map(node => resolveNodeSetterOptions(node, setter) ?? [])
+    const first = optionSets[0]
+    return first && optionSets.every(options => areDesignerJsonValuesEqual(first, options)) ? first : []
+  }
+
+  function validationContext(
+    node: SurfaceNode,
+    material: DesignerMaterialDefinition | undefined,
+  ): ValidationSetterContext | undefined {
+    if (node.kind !== 'field' || material?.kind !== 'field')
+      return undefined
+    const valueSetter = material.setters.find(setter => setter.valueKind
+      && setter.path.length === 1
+      && setter.path[0] === 'defaultValue')
+    if (!valueSetter?.valueKind)
+      return undefined
+    return {
+      valueKind: valueSetter.valueKind,
+      ...(valueSetter.optionValueTypes ? { optionValueTypes: valueSetter.optionValueTypes } : {}),
+      ...(valueSetter.options || valueSetter.optionsPath
+        ? { options: resolveNodeSetterOptions(node, valueSetter) ?? [] }
+        : {}),
+    }
+  }
+
+  const commonValidationContext = computed<ValidationSetterContext | undefined>(() => {
+    const contexts = capabilityInputs.value.map(input => validationContext(input.node, input.material))
+    const first = contexts[0]
+    if (!first || contexts.some(context => !context || !areDesignerJsonValuesEqual(first, context)))
+      return undefined
+    const firstValidation = selectedNodes.value[0]?.kind === 'field'
+      ? selectedNodes.value[0].validation
+      : undefined
+    if (selectedNodes.value.slice(1).some(node => node.kind !== 'field'
+      || !areDesignerJsonValuesEqual(firstValidation, node.validation))) {
+      return undefined
+    }
+    return resolveDesignerValidationBase(first.valueKind, first.options) ? first : undefined
+  })
+
+  const validationSetters = computed<DesignerPropertySetterDefinition[]>(() => {
+    if (selectedNodes.value.length === 0 || selectedNodes.value.some(node => node.kind !== 'field'))
+      return []
+    const context = commonValidationContext.value
+    return [
+      { key: 'required', label: locale.t('property.required', 'Required'), path: ['required'], control: 'boolean' },
+      { key: 'requiredMessage', label: locale.t('property.requiredMessage', 'Required message'), path: ['requiredMessage'], control: 'text' },
+      ...(context
+        ? [{
+            key: 'validation',
+            label: locale.t('property.rules', 'Rules'),
+            path: ['validation'],
+            control: 'validation' as const,
+            valueKind: context.valueKind,
+            options: context.options,
+            optionValueTypes: context.optionValueTypes,
+          }]
+        : []),
+      { key: 'validateOn', label: locale.t('validation.triggers', 'Validate on'), path: ['validateOn'], control: 'validateOn' },
+    ]
+  })
 
   function localizeSetter(setter: DesignerPropertySetterDefinition): DesignerPropertySetterDefinition {
     const material = primaryMaterial.value

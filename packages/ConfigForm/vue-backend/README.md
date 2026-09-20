@@ -28,6 +28,8 @@ export function compileVueRuntime(input: CompileCanonicalSurfaceRuntimeInput, re
 
 `resolver.resolveBinding(component)` 必须返回与 Canonical IR 中组件版本和 fingerprint 一致的 Vue binding。Surface 节点、placement、循环、组件类型或 identity 不一致时，结果为 `{ success: false, diagnostics }`，不会生成部分可用的 artifact。
 
+字段级 `required` / `requiredMessage` 会直接投影为 Runtime 字段基线，运行时动态 Required 状态仍可覆盖它。RuleSet 只承载通用校验；默认值编译期只检查 RuleSet base 类型，不用 Required、长度或范围等业务规则否决可编辑的 Demo。
+
 ## 公开入口
 
 - `compileCanonicalSurfaceRuntime`：把单 Surface 或项目级 compilation 转为 Vue runtime artifact。

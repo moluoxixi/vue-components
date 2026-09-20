@@ -212,6 +212,8 @@ function compileFieldSemanticNode(
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
+    ...(node.required === undefined ? {} : { required: node.required }),
+    ...(node.requiredMessage === undefined ? {} : { requiredMessage: node.requiredMessage }),
     ...(node.validation === undefined
       ? {}
       : { validation: clone(node.validation) as unknown as CanonicalFieldNodeIR['validation'] }),

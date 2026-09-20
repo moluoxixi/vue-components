@@ -15,7 +15,7 @@ import { createDesignerDragController } from '../src/components/DesignerCanvas/s
 import { createDesignerCanvasSelection } from '../src/components/DesignerCanvas/services/canvas-selection'
 
 const graph: SurfaceGraph = {
-  version: 1,
+  version: 2,
   form: { columns: 24, fieldSpan: 24 },
   props: {},
   root: [{ nodeId: 'field', placement: { span: 12 } }],

@@ -20,6 +20,8 @@ function surfaceFixture(): Record<string, unknown> {
         kind: 'field',
         placement: { parentId: null, props: {}, slot: null },
         props: {},
+        required: true,
+        requiredMessage: 'Name is required',
         subtreeHash: 'fnv1a:name',
         validateOn: ['submit'],
       },
@@ -45,6 +47,8 @@ describe('current Canonical Surface keys', () => {
     const element = fieldNode(surface)
     element.kind = 'element'
     delete element.field
+    delete element.required
+    delete element.requiredMessage
     delete element.validateOn
     delete element.defaultValue
     expect(hasOnlyCurrentCanonicalSurfaceKeys(surface)).toBe(true)

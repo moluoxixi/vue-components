@@ -16,6 +16,7 @@ import {
   readProjectTransfer,
   readSurfaceTransfer,
   registryLockFingerprint,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { loadWorkbenchAdapter } from '../../../adapters'
 import { DEFAULT_PROJECT_IDENTITY_FACTORY } from '../../defaults'
@@ -53,7 +54,7 @@ function summary(document: ProjectDocument, target: 'project' | 'surface', surfa
     name: target === 'surface' && surface ? surface.name : document.name,
     nodeCount: surfaces.reduce((count, item) => count + Object.keys(item.graph.nodesById).length, 0),
     surfaceCount: surfaces.length,
-    surfaceGraphVersion: surfaces[0]?.graph.version ?? 1,
+    surfaceGraphVersion: surfaces[0]?.graph.version ?? SURFACE_GRAPH_VERSION,
     resourceCount: Object.keys(document.resources).length,
     version: document.version,
     target,

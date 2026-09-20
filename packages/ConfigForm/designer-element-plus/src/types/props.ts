@@ -1,4 +1,9 @@
-import type { DesignerDefaultValueKind, DesignerJsonValue, DesignerSetterOption } from '@moluoxixi/config-form-designer'
+import type {
+  DesignerDefaultValueKind,
+  DesignerJsonValue,
+  DesignerOptionValueType,
+  DesignerSetterOption,
+} from '@moluoxixi/config-form-designer'
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import type {
   ElementPlusDesignerOption,
@@ -19,6 +24,7 @@ export interface ElementChoiceDefaultSetterProps {
   disabled?: boolean
   node?: FieldNode
   kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
+  optionValueTypes: readonly DesignerOptionValueType[]
 }
 
 export interface ElementDefaultValueSetterProps {

@@ -16,7 +16,6 @@ export function resolveInspectorCapabilities(
   const hasWritableEvidence = inputs.length > 0 && inputs.every(input => (
     validMaterial(input) !== undefined && validContract(input) !== undefined
   ))
-  const validationCompatible = compatibleValidationSelection(inputs)
 
   return {
     sections: INSPECTOR_SECTION_IDS.map(id => ({
@@ -25,11 +24,14 @@ export function resolveInspectorCapabilities(
         ? inputs.length > 0
         : inputs.length > 0 && inputs.every(input => input.node.kind === 'field'),
       editable: hasWritableEvidence && (id === 'properties'
-        || (inputs.every(input => input.node.kind === 'field') && validationCompatible)),
+        || inputs.every(input => input.node.kind === 'field')),
       hasStoredContent: id === 'properties'
         ? inputs.length > 0
         : inputs.some(({ node }) => node.kind === 'field'
-          && (node.validation !== undefined || node.validateOn !== undefined)),
+          && (node.required !== undefined
+            || node.requiredMessage !== undefined
+            || node.validation !== undefined
+            || node.validateOn !== undefined)),
     })),
     commonSetters: hasWritableEvidence ? intersectSetters(inputs) : [],
   }
@@ -68,17 +70,6 @@ function validMaterial(input: InspectorNodeCapabilityInput): DesignerMaterialDef
   return input.material?.kind === input.node.kind && input.material.key === input.node.component
     ? input.material
     : undefined
-}
-
-function compatibleValidationSelection(inputs: readonly InspectorNodeCapabilityInput[]): boolean {
-  if (inputs.length <= 1)
-    return true
-  const first = inputs[0]?.node
-  if (first?.kind !== 'field')
-    return false
-  return inputs.slice(1).every(({ node }) => node.kind === 'field'
-    && contractValueEqual(first.validation, node.validation)
-    && contractValueEqual(first.validateOn, node.validateOn))
 }
 
 function compatibleSetter(

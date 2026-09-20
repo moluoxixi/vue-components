@@ -1,12 +1,12 @@
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type {
   ComponentContract,
+  ElementNode,
+  FieldNode,
+  LayoutNode,
   MaterialDatasetBindingCapability,
   MaterialResourceBindingCapability,
   MaterialSemanticTrigger,
-  FieldNode,
-  ElementNode,
-  LayoutNode,
   ModelJsonObject,
   ModelJsonValue,
   NodeSubgraph,
@@ -46,6 +46,8 @@ export type DesignerDefaultValueKind
     | 'date'
     | 'time'
 
+export type DesignerOptionValueType = 'string' | 'number' | 'boolean'
+
 export interface DesignerSetterOption {
   label: string
   value: ModelJsonValue
@@ -58,6 +60,7 @@ export interface DesignerPropertySetterDefinition {
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
   optionsPath?: string[]
+  optionValueTypes?: readonly DesignerOptionValueType[]
   valueKind?: DesignerDefaultValueKind
   integer?: boolean
   min?: number

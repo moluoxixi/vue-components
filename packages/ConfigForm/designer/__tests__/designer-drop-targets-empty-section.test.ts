@@ -9,7 +9,7 @@ const sectionNode: SurfaceNode = { id: 'sec-1', kind: 'layout', component: 'elem
 const candidate: SurfaceNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {} }
 
 const graph: SurfaceGraph = {
-  version: 1,
+  version: 2,
   props: {},
   form: {} as never,
   root: [{ nodeId: 'input-1', placement: {} }, { nodeId: 'sec-1', placement: {} }],

@@ -8,14 +8,19 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
 ## 当前实现
 
 - 组合公开的 Model、Compiler、Vue backend、Runtime、Designer 与 provider adapter。
-- `ProjectDocument v6`、持久化、Preview Runtime Host、缓存和 Source generator 都以
-  Surface 为身份；默认 Designer Inspector 只有 `properties` 与 `validation`。
+- `ProjectDocument v7`、`SurfaceGraph v2`、RuleSet v2、Canonical IR v6、Compiler
+  7.0.0、持久化、Preview Runtime Host、缓存和 Source generator 都以 Surface 为
+  身份；默认 Designer Inspector 只有 `properties` 与 `validation`。
 - Preview 验证结构、布局、绑定、校验、同步 reaction、Runtime Data Source 和
   readonly 行为，不复现未注入的宿主函数。
 - 动态 Runtime Data Source 仍属于生产 Runtime 的代码态能力，不进入 Studio Demo 合同。
-- 默认导出直接使用 Vue 与目标 UI 组件的原始工程源码；第二种导出只组合公开
-  ConfigForm adapter、Headless model 与绑定配置。两者都不生成 `src/runtime/**`，也不
-  复制 Compiler、Prototype Runtime、事件注册表或业务函数桩。
+- 默认导出直接使用 Vue、Vue Router 与目标 UI 组件的原始工程源码，Required 与
+  RuleSet v2 是工程内可读校验代码；它不依赖 ConfigForm、Zod、`@moluoxixi/*`、
+  `@config-form/*` 或内部 Runtime。第二种导出只组合公开 ConfigForm adapter、
+  Headless model 与绑定配置。两者都不生成 `src/runtime/**`，也不复制 Compiler、
+  Prototype Runtime、事件注册表或业务函数桩。
+- Raw 与 ConfigForm binding 使用同一 pinned compilation 独立生成、独立失败；弹窗按
+  mode 展示文件或 diagnostics，仅禁用失败 mode 的复制和下载，另一个 mode 仍可用。
 
 复杂组件逻辑由宿主 Vue/TypeScript 代码维护，使用内存 config 的 `props.onX`。函数
 不进入 ProjectDocument、IndexedDB、Preview transport 或 Source，也不通过 iframe
@@ -58,8 +63,9 @@ Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 
 - Studio 作者体验只使用静态 Dataset；现有动态 Runtime Data Source 作者 UI 将从
   Studio 移除，但生产 Runtime 的代码态 Data Source 能力保留。
 - `@moluoxixi/config-form-source` 拥有无 DOM Generator、SourceFileSet、文件树模型和
-  只读 Viewer；Studio 在组合根分别注入同步 provider component resolver 与异步
-  Resource reader，并保留所有宿主命令。
+  只读 Viewer；Studio 在组合根分别注入同步 provider component resolver、独立的
+  ConfigForm binding resolver 与异步 Resource reader。Raw 不接收 binding resolver；
+  Studio 保留所有宿主命令。
 - Viewer 桌面显示左文件树和右源码，窄屏切换 tree/code；Monaco 仅在 Viewer 内
   异步加载。Viewer 不拥有弹窗、复制、下载、ZIP、通知或持久化。
 
@@ -70,8 +76,10 @@ Surface Foundation、Prototype Runtime 与 Source 已是当前可导入 API；�
 ## 当前合同
 
 持久化、Registry、Canonical IR、Preview transport 与 `SourceFileSet v1` 只接受各自
-精确的 JSON-safe 当前版本。旧、未来、缺失、畸形或混合版本均 fail closed；不提供
-迁移器、兼容别名、deprecated wrapper 或双读。
+精确的 JSON-safe 当前版本。当前校验链路是 RuleSet v2、ProjectDocument v7、
+SurfaceGraph v2、Canonical IR v6 和 Compiler 7.0.0；字段 Required 独立于 RuleSet。
+旧、未来、缺失、畸形或混合版本均 fail closed；不提供迁移器、兼容别名、deprecated
+wrapper 或双读。
 
 源码迁移采用同样硬切策略：旧 Workbench generator、文件树、Monaco editor、wrapper
 和 re-export 已删除；Prototype Interaction 不转换成原始事件、动作链或 Flow。

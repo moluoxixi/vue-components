@@ -1,4 +1,8 @@
 import type { FieldNode } from '@moluoxixi/config-form-model'
+import {
+  DESIGNER_OPTION_VALUE_TYPES,
+  DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
+} from '@moluoxixi/config-form-designer'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ElCheckbox, ElDatePicker, ElInput, ElInputNumber, ElOption, ElRadio, ElSelect, ElSwitch, ElTimePicker } from 'element-plus'
 import { describe, expect, it } from 'vitest'
@@ -44,7 +48,7 @@ describe('element plus designer fields', () => {
       },
     }
     const wrapper = mount(ElementChoiceDefaultSetter, {
-      props: { kind: 'select', node },
+      props: { kind: 'select', node, optionValueTypes: DESIGNER_OPTION_VALUE_TYPES },
     })
     await flushPromises()
 
@@ -77,6 +81,10 @@ describe('element plus designer fields', () => {
     await text.vm.$nextTick()
     await text.get('.el-input__inner').trigger('blur')
     expect(text.emitted('update:modelValue')).toEqual([['after']])
+    text.getComponent(ElInput).vm.$emit('update:modelValue', '')
+    await text.vm.$nextTick()
+    await text.get('.el-input__inner').trigger('blur')
+    expect(text.emitted('update:modelValue')?.at(-1)).toEqual([''])
 
     const number = mount(ElementDefaultValueSetter, { props: { kind: 'number', modelValue: 1 } })
     expect(number.getComponent(ElInputNumber).classes()).toEqual(expect.arrayContaining([
@@ -157,12 +165,17 @@ describe('element plus designer fields', () => {
         ],
       },
     }
-    const wrapper = mount(ElementChoiceDefaultSetter, { props: { kind: 'select', node } })
+    const wrapper = mount(ElementChoiceDefaultSetter, {
+      props: { kind: 'select', node, optionValueTypes: DESIGNER_OPTION_VALUE_TYPES },
+    })
     await flushPromises()
 
     expect(wrapper.findAllComponents(ElOption).map(option => option.props('value'))).toEqual([1, true, '1'])
 
-    await wrapper.setProps({ kind: 'multiselect' })
+    await wrapper.setProps({
+      kind: 'multiselect',
+      optionValueTypes: DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
+    })
     expect(wrapper.findAllComponents(ElOption).map(option => option.props('value'))).toEqual([1, '1'])
   })
 

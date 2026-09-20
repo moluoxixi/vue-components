@@ -123,7 +123,7 @@ export function createProjectDocument(): ProjectDocument {
           form: { columns: 24 },
           root: [{ nodeId: 'section', placement: {} }],
           nodesById: {
-            section: {
+            'section': {
               id: 'section',
               component: 'layout.section',
               kind: 'layout',
@@ -135,13 +135,20 @@ export function createProjectDocument(): ProjectDocument {
                 ],
               },
             },
-            name: {
+            'name': {
               id: 'name',
               component: 'field.input',
               kind: 'field',
               field: 'name',
               label: 'Name',
               defaultValue: 'Ada',
+              required: true,
+              requiredMessage: 'Name is required',
+              validation: {
+                version: 2,
+                base: { type: 'string' },
+                rules: [{ kind: 'minLength', value: 2 }],
+              },
               props: { placeholder: 'Your name' },
               datasetBindings: {
                 options: {
