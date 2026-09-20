@@ -1,5 +1,18 @@
+import type {
+  ProjectTransferEnvelopeV1,
+  SurfaceTransferEnvelopeV1,
+} from '@moluoxixi/config-form-model'
 import type { SourceFile } from '@moluoxixi/config-form-source/generator'
-import type { DownloadSourceFileInput, SourceArchiveInput } from '../types'
+import type {
+  DownloadProjectTransferInput,
+  DownloadSourceFileInput,
+  DownloadSurfaceTransferInput,
+  SourceArchiveInput,
+} from '../types'
+import {
+  createProjectTransferDocument,
+  createSurfaceTransferDocument,
+} from '../../import'
 import { safeProjectSlug } from '../../utils'
 import { createSourceArchive } from './archive'
 import { sourceFileBytes } from './file-content'
@@ -30,6 +43,35 @@ export function sourceFileBlob(file: Readonly<SourceFile>, mime?: string): Blob 
 
 export function downloadSourceFile(input: DownloadSourceFileInput): string {
   return downloadBlob(sourceFileBlob(input.file, input.mime), input.filename)
+}
+
+export function transferDocumentBlob(
+  value: Readonly<ProjectTransferEnvelopeV1 | SurfaceTransferEnvelopeV1>,
+): Blob {
+  return new Blob([`${JSON.stringify(value, null, 2)}\n`], {
+    type: 'application/json;charset=utf-8',
+  })
+}
+
+export async function downloadProjectTransfer(
+  input: Readonly<DownloadProjectTransferInput>,
+): Promise<string> {
+  const transfer = await createProjectTransferDocument(input.document, input.readEmbedded)
+  const filename = `${safeProjectSlug(input.document.name)}.project.json`
+  return downloadBlob(transferDocumentBlob(transfer), filename)
+}
+
+export async function downloadSurfaceTransfer(
+  input: Readonly<DownloadSurfaceTransferInput>,
+): Promise<string> {
+  const transfer = await createSurfaceTransferDocument(
+    input.document,
+    input.surfaceId,
+    input.readEmbedded,
+  )
+  const surfaceName = input.document.surfacesById[input.surfaceId]?.name ?? input.surfaceId
+  const filename = `${safeProjectSlug(input.document.name)}-${safeProjectSlug(surfaceName)}.surface.json`
+  return downloadBlob(transferDocumentBlob(transfer), filename)
 }
 
 async function downloadArchive(input: SourceArchiveInput, data: Uint8Array): Promise<string> {

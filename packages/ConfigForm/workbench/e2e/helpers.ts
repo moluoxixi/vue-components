@@ -1,9 +1,17 @@
-import type { Page } from '@playwright/test'
+import type { Download, Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { expect } from '@playwright/test'
 
 export type WorkbenchAdapter = 'antd' | 'element'
 export type WorkbenchPalette = 'cyber' | 'glass' | 'ink' | 'morandi'
 export type WorkbenchThemeMode = 'dark' | 'light' | 'system'
+
+export async function readDownloadText(download: Download): Promise<string> {
+  const path = await download.path()
+  if (!path)
+    throw new Error('The browser download did not produce a local file.')
+  return readFile(path, 'utf8')
+}
 
 const templateNames: Record<WorkbenchAdapter, RegExp> = {
   antd: /Ant Design Vue profile/,

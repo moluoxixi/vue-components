@@ -38,14 +38,29 @@ describe('workbench topbar', () => {
     await trigger.trigger('click')
     const overlays = overlayRoot()
     const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
-    expect(items).toHaveLength(2)
+    expect(items).toHaveLength(4)
     expect(overlays.find('[data-export-menu]').exists()).toBe(true)
-    expect(items.map(item => item.text())).toEqual(['Export source', 'Export config'])
+    expect(items.map(item => item.text())).toEqual([
+      'Export raw Vue source',
+      'Export ConfigForm bindings',
+      'Export project JSON',
+      'Export current Surface JSON',
+    ])
     expect(trigger.attributes('aria-haspopup')).toBe('menu')
     expect(items.every(item => item.attributes('role') === 'menuitem')).toBe(true)
     await items[1]!.trigger('click')
     expect(wrapper.emitted('export')).toEqual([['config']])
     expect(overlays.get('[data-export-menu]').isVisible()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+
+    await trigger.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[2]!.trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json']])
+    expect(document.activeElement).toBe(trigger.element)
+
+    await trigger.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[3]!.trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json'], ['surface-json']])
     expect(document.activeElement).toBe(trigger.element)
 
     await trigger.trigger('click')

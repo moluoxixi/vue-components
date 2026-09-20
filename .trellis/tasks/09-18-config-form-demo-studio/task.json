@@ -25,7 +25,8 @@
     "09-18-config-form-studio-datasets",
     "09-18-config-form-studio-materials",
     "09-18-config-form-studio-interactions",
-    "09-18-config-form-source-package"
+    "09-18-config-form-source-package",
+    "09-20-config-form-source-cleanup"
   ],
   "parent": null,
   "relatedFiles": [],

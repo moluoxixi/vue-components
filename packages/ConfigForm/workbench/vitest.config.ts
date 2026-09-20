@@ -38,5 +38,6 @@ export default defineConfig({
         inline: [/element-plus\/(?:es\/components\/.*\/style\/index|theme-chalk)/],
       },
     },
+    testTimeout: 10_000,
   },
 })

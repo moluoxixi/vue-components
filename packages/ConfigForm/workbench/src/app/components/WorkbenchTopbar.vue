@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { WorkbenchExportMode, WorkbenchTopbarEmits, WorkbenchTopbarProps } from '../types'
+import type { WorkbenchExportCommand, WorkbenchTopbarEmits, WorkbenchTopbarProps } from '../types'
 import {
   Braces,
   ChevronDown,
   Code2,
   Download,
+  FileJson2,
   Files,
   Languages,
   MoreHorizontal,
@@ -77,10 +78,10 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
   })
 }
 
-function chooseExport(mode: WorkbenchExportMode): void {
+function chooseExport(command: WorkbenchExportCommand): void {
   void nextTick(() => {
     exportTrigger.value?.$el?.focus()
-    emit('export', mode)
+    emit('export', command)
   })
 }
 </script>
@@ -158,6 +159,8 @@ function chooseExport(mode: WorkbenchExportMode): void {
             <ElDropdownMenu class="export-menu-popover" data-export-menu>
               <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export raw Vue source') }}</span></ElDropdownItem>
               <ElDropdownItem command="config"><Braces :size="15" aria-hidden="true" /><span>{{ locale.t('export.config', 'Export ConfigForm bindings') }}</span></ElDropdownItem>
+              <ElDropdownItem command="project-json" divided><FileJson2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.projectJson', 'Export project JSON') }}</span></ElDropdownItem>
+              <ElDropdownItem command="surface-json"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('export.surfaceJson', 'Export current Surface JSON') }}</span></ElDropdownItem>
             </ElDropdownMenu>
           </template>
         </ElDropdown>

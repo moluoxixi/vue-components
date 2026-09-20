@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject, setAppearance } from './helpers'
+import { createProject, readDownloadText, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -16,14 +16,17 @@ async function exportJson(
   scope: 'project' | 'surface',
 ): Promise<string> {
   await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export config' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Config model' })
-  await dialog.getByRole('tab', { name: 'JSON' }).click()
-  if (scope === 'surface')
-    await dialog.locator('.config-json-scope .el-segmented__item').filter({ hasText: 'Current page' }).click()
-  const source = await dialog.locator('.config-json-view').textContent()
-  await dialog.getByRole('button', { name: 'Close export' }).click()
-  return source ?? ''
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', {
+      name: scope === 'project' ? 'Export project JSON' : 'Export current Surface JSON',
+      exact: true,
+    }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(
+    scope === 'project' ? /\.project\.json$/ : /\.surface\.json$/,
+  )
+  return readDownloadText(download)
 }
 
 async function openProjectCreation(page: import('@playwright/test').Page): Promise<void> {

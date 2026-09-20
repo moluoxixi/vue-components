@@ -2,7 +2,7 @@
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { TemplateCreationTarget } from '../project'
-import type { WorkbenchShellEmits, WorkbenchShellProps } from './types'
+import type { WorkbenchExportCommand, WorkbenchShellEmits, WorkbenchShellProps } from './types'
 import type { MobileStudioView } from './types'
 import {
   Blocks,
@@ -21,6 +21,7 @@ import {
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
 import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
@@ -58,6 +59,7 @@ const {
   handleSurfaceAction,
   localeOptions,
   previewState,
+  readEmbeddedResource,
   registry,
   repositoryRevision,
   recoveryDrafts,
@@ -200,8 +202,49 @@ function moveDesignerLayer(
   designer.value?.performNodeAction(action, nodeId)
 }
 
-function showExportDialog(mode: 'source' | 'config'): void {
-  openExportPreview(mode)
+async function handleExportCommand(command: WorkbenchExportCommand): Promise<void> {
+  if (command === 'source' || command === 'config') {
+    openExportPreview(command)
+    return
+  }
+
+  const project = currentProject.value
+  const surface = currentSurface.value
+  if (!project || (command === 'surface-json' && !surface)) {
+    showNotice({
+      message: workbenchLocale.value.t(
+        'export.transferUnavailable',
+        'The current project or Surface is unavailable for JSON export.',
+      ),
+      tone: 'error',
+    })
+    return
+  }
+
+  try {
+    const filename = command === 'project-json'
+      ? await downloadProjectTransfer({ document: project, readEmbedded: readEmbeddedResource })
+      : await downloadSurfaceTransfer({
+          document: project,
+          readEmbedded: readEmbeddedResource,
+          surfaceId: surface!.id,
+        })
+    showNotice({
+      message: workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
+      tone: 'success',
+    })
+  }
+  catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    showNotice({
+      message: workbenchLocale.value.t(
+        'export.transferFailed',
+        'Unable to export JSON: {reason}',
+        { reason },
+      ),
+      tone: 'error',
+    })
+  }
 }
 
 function showSurfaceManager(): void {
@@ -256,7 +299,7 @@ watch(recoveryDrafts, (drafts) => {
       :repository-revision="repositoryRevision"
       :status-label="statusLabel"
       :theme-preference="themePreference"
-      @export="showExportDialog"
+      @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
       @new-surface="requestCreation('surface', $event)"
       @open-appearance="openAppearanceDrawer"

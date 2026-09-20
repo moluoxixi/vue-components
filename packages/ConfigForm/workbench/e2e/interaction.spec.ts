@@ -1,6 +1,6 @@
 import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { createProject, restoreAppearance, setAppearance } from './helpers'
+import { createProject, readDownloadText, restoreAppearance, setAppearance } from './helpers'
 
 interface DragGeometry {
   height: number
@@ -974,13 +974,13 @@ test('has no Events, Flow, or Automation entry and keeps Designer JSON function-
 
   await page.getByRole('button', { name: 'Export', exact: true }).click()
   await expect(page.getByRole('menuitem', { name: forbidden })).toHaveCount(0)
-  await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Config model' })
-  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
-  const source = await dialog.locator('.config-json-view').textContent()
-  expect(() => JSON.parse(source ?? '')).not.toThrow()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: 'Export project JSON', exact: true }).click(),
+  ])
+  const source = await readDownloadText(download)
+  expect(JSON.parse(source)).toMatchObject({ kind: 'config-form-project', version: 1 })
   expect(source).not.toMatch(/"(?:events|flows|onClick|onChange|runtimeEvent|flowEvents)"\s*:/)
-  await dialog.getByRole('button', { name: 'Close export' }).click()
 
   const forbiddenRoutes = await page.locator('[href]').evaluateAll(elements => elements
     .map(element => element.getAttribute('href') ?? '')
