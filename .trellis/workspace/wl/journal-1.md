@@ -1211,3 +1211,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 49: 完成 ConfigForm 校验与原生源码导出加固
+
+**Date**: 2026-09-20
+**Task**: 完成 ConfigForm 校验与原生源码导出加固
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成字段级 Required 与 RuleSet v2 硬切，修复属性编辑和 Runtime plain-data 边界，拆分 Raw Vue 与 ConfigForm binding 导出，并通过受影响包测试、双 Provider 浏览器回归、类型检查和生产构建。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea79574a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
