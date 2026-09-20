@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/config-form-workbench/frontend/index.md", "reason": "定位 Workbench 前端规范与开发清单"}
+{"file": ".trellis/spec/config-form-workbench/frontend/quality-guidelines.md", "reason": "遵守同步样式清单、导出弹窗、Runtime Host 与无障碍合同"}
+{"file": ".trellis/spec/config-form/frontend/product-boundaries.md", "reason": "确保样式迁移不改变 Studio、Source、Runtime 与联动边界"}
+{"file": ".trellis/spec/directory-structure.md", "reason": "保持样式入口与 feature owner 目录职责"}
+{"file": ".trellis/spec/frontend/component-library-selection.md", "reason": "保留 Element Plus Dialog 状态机与公开样式扩展边界"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用现有 --wb-* 主题 token，避免第二套主题真值"}

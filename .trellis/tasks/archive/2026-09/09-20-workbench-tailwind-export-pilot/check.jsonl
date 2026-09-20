@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/config-form-workbench/frontend/quality-guidelines.md", "reason": "复核样式所有权、双入口构建、无障碍与真实浏览器门禁"}
+{"file": ".trellis/spec/config-form/frontend/product-boundaries.md", "reason": "复核未触及持久化、运行时、Source 与联动协议"}
+{"file": ".trellis/spec/directory-structure.md", "reason": "复核新增文件与样式职责边界"}
+{"file": ".trellis/spec/frontend/component-library-selection.md", "reason": "复核 Element Plus 集成与浮层行为未退化"}
