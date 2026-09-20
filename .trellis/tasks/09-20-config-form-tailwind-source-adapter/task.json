@@ -3,9 +3,9 @@
   "name": "config-form-tailwind-source-adapter",
   "title": "为 ConfigForm Source 增加可选 Tailwind v4 输出后端",
   "description": "在不改变 ProjectDocument、Canonical IR、Runtime 与 Provider 边界的前提下，为 Raw Vue 和 ConfigForm binding 增加 Source 层可选 Tailwind v4 样式输出后端。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
-  "scope": null,
+  "scope": "packages/ConfigForm/source, packages/ConfigForm/workbench",
   "package": "config-form-source",
   "priority": "P2",
   "creator": "wl",
@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": "实现与最终验证已完成；待随本批次统一提交并归档。全仓 package architecture 仅受两个范围外包的 27 条既有诊断阻断。",
   "meta": {}
 }

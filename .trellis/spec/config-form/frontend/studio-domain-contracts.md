@@ -2,19 +2,17 @@
 
 ## 1. Scope / Status / Trigger
 
-This document is the target cross-package contract for ConfigForm Studio. Read
+This document is the current cross-package contract for ConfigForm Studio. Read
 it before implementing or changing Surface assets, Dataset services, Prototype
 Interaction, Experience sessions, import/export, Preview transport, generated
 Source, or the related package boundaries.
 
-This document contains both current foundation contracts and later Studio
-contracts. Surface assets, ProjectDocument v7, SurfaceGraph v2, RuleSet v2,
-Registry v3, Canonical IR v6, Compiler 7.0.0, transfer, Runtime Host v7, and
-Prototype Runtime session v1 are current.
-Dataset/Resource authoring workflows and the complete Studio asset/interaction
-UI remain later stages. The Source package and its two generated file-set kinds
-are current. Each implementation task switches its owned readers and writers
-atomically and must not expose a compatibility union.
+Surface assets, ProjectDocument v8, SurfaceGraph v3, RuleSet v2,
+Registry v3, Canonical IR v7, Compiler 8.0.0, transfer, Runtime Host v7, and
+Prototype Runtime session v1 are current. Dataset/Resource authoring, business
+materials, theme, the complete Studio asset/interaction UI, and both Source
+file-set kinds are current. Each implementation task switches its owned readers
+and writers atomically and must not expose a compatibility union.
 
 The target product creates JSON-safe demos. Production HTTP, authentication,
 asynchronous side effects, and business functions remain in exported/host
@@ -108,8 +106,8 @@ interface ProjectThemeV1 {
   shadows?: Partial<Record<ProjectThemeShadowKey, ProjectThemeShadow>>
 }
 
-interface ProjectDocumentV7 {
-  version: 7
+interface ProjectDocumentV8 {
+  version: 8
   id: ProjectId
   name: string
   homeSurfaceId: SurfaceId
@@ -123,8 +121,8 @@ interface ProjectDocumentV7 {
   settings: ModelJsonObject
 }
 
-interface SurfaceGraphV2 {
-  version: 2
+interface SurfaceGraphV3 {
+  version: 3
   props: ModelJsonObject
   form: FormSettings
   root: readonly SlotItem[]
@@ -197,7 +195,7 @@ type SurfaceNode =
 interface ProjectSurfaceBase {
   id: SurfaceId
   name: string
-  graph: SurfaceGraphV2
+  graph: SurfaceGraphV3
   parameters: readonly SurfaceParameterDefinition[]
   outputs: readonly SurfaceOutputDefinition[]
   interactions: readonly PrototypeInteraction[]
@@ -306,7 +304,7 @@ type ResourceTransferReadResult =
 interface ProjectTransferEnvelopeV1 {
   kind: 'config-form-project'
   version: 1
-  document: ProjectDocumentV7
+  document: ProjectDocumentV8
   embeddedContents: readonly {
     resourceId: ResourceId
     content: ResourceTransferContentV1
@@ -314,7 +312,7 @@ interface ProjectTransferEnvelopeV1 {
 }
 
 interface ProjectTransferReadResult {
-  document: ProjectDocumentV7
+  document: ProjectDocumentV8
   embeddedBytesByResourceId: Readonly<Record<ResourceId, Uint8Array>>
 }
 
@@ -325,7 +323,7 @@ interface ProjectEmbeddedResourceRead {
 }
 
 interface ProjectTransferWriteInputV1 {
-  document: Readonly<ProjectDocumentV7>
+  document: Readonly<ProjectDocumentV8>
   readEmbedded(input: ProjectEmbeddedResourceRead): Promise<Uint8Array | undefined>
 }
 
@@ -393,12 +391,12 @@ one revision/history item and one Undo restores the complete prior state.
 
 The hard cut removes persisted low-level `bindings`, `conditions`, `reactions`,
 page `runtime`, and dynamic `optionSource`. Component value/event binding stays
-in code-authored Runtime/adapter Registry contracts; target state/value rules
+in code-authored Runtime/adapter Registry contracts; Studio state/value rules
 live only in `ProjectSurfaceBase.interactions`; Runtime Data Source stays
 code-authored outside Studio. There is no second persisted expression or data
 binding channel.
 
-The current graph contract is SurfaceGraph v2. Registry v3 records each
+The current graph contract is SurfaceGraph v3. Registry v3 records each
 Material's `field | layout | element`
 kind, semantic triggers, allowlisted state-projection property paths, and named
 Dataset/Resource binding capabilities. A node's `datasetBindings` and
@@ -408,9 +406,9 @@ Dataset as a field; Table/List may bind one as elements. Inline static options
 remain ordinary validated props until the author invokes the explicit “save as
 Dataset” command. A resource ID is never hidden inside props or a provider
 import string. Readers reject removed fields rather than translating them.
-Studio Materials later adds Material entries, authoring UI, and adapter
-projections against this fixed v3 shape; it does not increment the version or
-define a second capability contract.
+Studio Materials provides Material entries, authoring UI, and adapter
+projections against this fixed v3 shape without defining a second capability
+contract.
 
 `ResponsiveLength` uses desktop/tablet/mobile inheritance consistent with form
 layout: tablet inherits desktop and mobile inherits tablet. Values are finite
@@ -424,7 +422,7 @@ instance, discard any implicit result, and restore focus to that instance's
 live opener. They never identify an instance by `surfaceId`.
 
 `ProjectThemeV1` is the complete theme wire shape accepted by ProjectDocument
-v7. Theme colors use canonical `#RRGGBB` or `#RRGGBBAA`; numeric typography,
+v8. Theme colors use canonical `#RRGGBB` or `#RRGGBBAA`; numeric typography,
 spacing, border, radius, and shadow values are finite non-negative values in
 pixels except unitless `lineHeight`. Unknown categories/keys and CSS text are
 rejected. Surface Foundation owns this v1 Reader and an empty theme; Studio
@@ -475,7 +473,7 @@ identity, Registry version/fingerprint, and component locks. The document does
 not add a parallel `adapter` field. Full provider metadata remains outside the
 document and is read by the Studio composition root only when it constructs a
 Source component resolver and ConfigForm binding resolver. `settings` remains
-the project-level JSON-safe settings boundary. `SurfaceGraphV2` retains graph
+the project-level JSON-safe settings boundary. `SurfaceGraphV3` retains graph
 props, form settings, root slot
 placement, and the node table; the Surface migration must not reduce the graph
 to a root-ID list.
@@ -756,6 +754,7 @@ type DatasetProjection =
 interface DatasetReference<T extends DatasetProjection = DatasetProjection> {
   datasetId: DatasetId
   projection: T
+  query?: DatasetViewQuery
 }
 
 interface DatasetViewQuery {
@@ -1217,7 +1216,7 @@ Element/Ant adapter, provider UI, or a concrete Repository. Component and
 binding resolution are deterministic for the same compilation and adapter
 identity; failure returns a stable diagnostic instead of guessing an import.
 
-`SourceAdapterIdentity` is projected from `ProjectDocumentV7.registryLock` as
+`SourceAdapterIdentity` is projected from `ProjectDocumentV8.registryLock` as
 `adapter`, `adapterVersion = registryLock.version`, and
 `registryFingerprint = registryLock.fingerprint`; it is not a second adapter
 selector. Each component request also carries the matching locked contract
@@ -1331,12 +1330,12 @@ entries, architecture routing, generated-consumer gates, and release metadata.
 | Contract | Pre-cut baseline | Current / reviewed identity | Owning implementation task |
 | --- | --- | --- | --- |
 | RuleSet | `1` | `2` | config-form-validation-source-hardening |
-| ProjectDocument | `6` | `7` | config-form-validation-source-hardening |
-| SurfaceGraph | `1` | `2` | config-form-validation-source-hardening |
+| ProjectDocument | `7` | `8` | studio-datasets |
+| SurfaceGraph | `2` | `3` | studio-datasets |
 | Project theme | absent | `1` | surface-foundation; studio-materials consumes without widening |
 | Registry snapshot | `2` | `3` | surface-foundation; studio-materials only adds entries/authoring mappings |
-| Canonical Project IR | `5` | `6` | config-form-validation-source-hardening |
-| Compiler | `6.0.0` | `7.0.0` | config-form-validation-source-hardening |
+| Canonical Project IR | `6` | `7` | studio-datasets |
+| Compiler | `7.0.0` | `8.0.0` | studio-datasets |
 | IndexedDB manifest/entity codec | `3` | `4` | surface-foundation |
 | Recovery Draft | `1` | `2` | surface-foundation |
 | Page transfer / Surface transfer | `Page 2` | `Surface 1` | surface-foundation |
@@ -1504,7 +1503,7 @@ translated into these diagnostics.
 
 ### Model and version readers
 
-- Accept complete ProjectDocument v7, Project transfer v1, SurfaceGraph v2,
+- Accept complete ProjectDocument v8, Project transfer v1, SurfaceGraph v3,
   RuleSet v2, Dataset transfer v1, Resource transfer v1, Project theme v1,
   Prototype session v1, and SourceFileSet v1 happy paths.
 - Reject lower, higher, missing, malformed, and mixed versions with stable code,

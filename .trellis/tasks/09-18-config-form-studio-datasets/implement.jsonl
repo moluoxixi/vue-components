@@ -5,3 +5,5 @@
 {"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"Studio 数据编辑、JSON 边界、持久化和可访问性门禁"}
 {"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"确保 Dataset query 只有一个共享实现且消费者不重复解析"}
 {"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查导入、存储、编译、Experience 和 Source 数据流"}
+{"file": ".trellis/spec/config-form-model/frontend/index.md", "reason": "Model 数据集/资源合同与版本化传输规范"}
+{"file": ".trellis/spec/config-form-workbench/frontend/index.md", "reason": "Workbench 资产编辑、持久化与导入导出规范"}

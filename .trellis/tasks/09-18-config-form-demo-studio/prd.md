@@ -48,18 +48,18 @@
 
 ## 跨任务验收标准
 
-- [ ] AC1：长期产品文档、任务合同和实际 UI 一致表达 Studio/Designer/Runtime/Source 的责任。
-- [ ] AC2：项目可以创建和管理 Page、Dialog、Drawer、Dataset 与 Resource，并以稳定 ID 建立引用。
-- [ ] AC3：任意有限深度的用户触发浮层嵌套可运行；重复打开同一资产时实例状态隔离。
-- [ ] AC4：UI 设计师能完成必填、校验、状态联动、值联动、页面跳转、浮层参数与结果映射。
-- [ ] AC5：Dataset 可供 options、Table 和 List 等物料消费，预览与导出行为一致。
-- [ ] AC6：设计模式适合编辑，体验模式能完整运行页面历史、浮层栈和本地数据行为。
-- [ ] AC7：导出源码可安装、类型检查和构建，不包含接口占位、事件函数桩或通用事件总线。
-- [ ] AC8：Core、Headless、Runtime 不依赖 Studio/Designer/Source；Studio 只在应用组合根连接公开包。
-- [ ] AC9：所有受影响合同原子升版，旧、未来、缺失和混合版本 fail closed，不保留兼容层。
-- [ ] AC10：Element Plus 与 Ant Design Vue 覆盖共同基础物料和交互合同，项目创建后锁定适配器。
-- [ ] AC11：目标合同与当前实现状态在 PRODUCT、ROADMAP、架构 README 和包 README 中明确分层，不把规划中的包或 API 描述成已存在。
-- [ ] AC12：完整项目 JSON 的 embedded bytes 无损往返；Source 对 URL 不读 storage、
+- [x] AC1：长期产品文档、任务合同和实际 UI 一致表达 Studio/Designer/Runtime/Source 的责任。
+- [x] AC2：项目可以创建和管理 Page、Dialog、Drawer、Dataset 与 Resource，并以稳定 ID 建立引用。
+- [x] AC3：任意有限深度的用户触发浮层嵌套可运行；重复打开同一资产时实例状态隔离。
+- [x] AC4：UI 设计师能完成必填、校验、状态联动、值联动、页面跳转、浮层参数与结果映射。
+- [x] AC5：Dataset 可供 options、Table 和 List 等物料消费，预览与导出行为一致。
+- [x] AC6：设计模式适合编辑，体验模式能完整运行页面历史、浮层栈和本地数据行为。
+- [x] AC7：导出源码可安装、类型检查和构建，不包含接口占位、事件函数桩或通用事件总线。
+- [x] AC8：Core、Headless、Runtime 不依赖 Studio/Designer/Source；Studio 只在应用组合根连接公开包。
+- [x] AC9：所有受影响合同原子升版，旧、未来、缺失和混合版本 fail closed，不保留兼容层。
+- [x] AC10：Element Plus 与 Ant Design Vue 覆盖共同基础物料和交互合同，项目创建后锁定适配器。
+- [x] AC11：目标合同与当前实现状态在 PRODUCT、ROADMAP、架构 README 和包 README 中明确分层，不把规划中的包或 API 描述成已存在。
+- [x] AC12：完整项目 JSON 的 embedded bytes 无损往返；Source 对 URL 不读 storage、
   不 fetch，对 embedded bytes 读取 exact content version 并在任何错误时不返回部分文件。
 
 ## 已确认决策

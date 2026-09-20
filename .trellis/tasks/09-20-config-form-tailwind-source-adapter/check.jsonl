@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"复核 Source 公共 API、Node import、生成工程和依赖边界"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"复核 Tailwind、交互和 Runtime 非目标边界"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"复核主题、响应式布局和 Source 语义等价"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"复核导出 UI、主题和可访问性"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"复核生成输入、会话状态、产物与诊断所有权"}

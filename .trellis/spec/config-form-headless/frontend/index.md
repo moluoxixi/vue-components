@@ -11,7 +11,7 @@ contract and the package-specific contracts that contain real project rules.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Production Runtime role, Studio separation, and host listener boundaries | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target interaction channels and the boundary between Headless and Prototype Runtime | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Interaction channels and the boundary between Headless and Prototype Runtime | Current contract |
 | [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md) | Package-specific contract | Ready |
 | [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md) | Package-specific contract | Ready |
 

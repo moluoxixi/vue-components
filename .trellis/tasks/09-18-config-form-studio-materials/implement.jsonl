@@ -5,3 +5,5 @@
 {"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"共同 Material Registry 身份、能力和 adapter 注册合同"}
 {"file":".trellis/spec/config-form-core/frontend/form-layout-settings.md","reason":"Grid/Flex、表单设置和响应式布局现有规范"}
 {"file":".trellis/spec/directory-structure.md","reason":"两套 adapter 新物料、样式和组件所有权规则"}
+{"file": ".trellis/spec/config-form-designer/frontend/index.md", "reason": "Designer Inspector/Registry 物料能力规范"}
+{"file": ".trellis/spec/config-form-designer-element-plus/frontend/index.md", "reason": "Element Plus 物料与 capability 对称规范"}

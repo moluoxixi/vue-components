@@ -26,15 +26,15 @@
 
 ## 验收标准
 
-- [ ] AC1：嵌套对象数据可导入、编辑、保存、重开并导出，无静默字段丢失。
-- [ ] AC2：options 的 value 只能投影为唯一的 `string | number`；缺失路径、重复值和非法类型阻止体验与导出。
-- [ ] AC3：同一 Dataset 可用不同映射服务 Select、Table 和 List；字段值不保存整行对象。
-- [ ] AC4：覆盖、作为副本、跳过三种导入冲突策略行为稳定，默认作为副本。
-- [ ] AC5：引用/解除引用、删除保护和 undo/redo 通过测试。
-- [ ] AC6：数据集和资源在完整 Project transfer v1 JSON 与持久化实体中无损往返；
+- [x] AC1：嵌套对象数据可导入、编辑、保存、重开并导出，无静默字段丢失。
+- [x] AC2：options 的 value 只能投影为唯一的 `string | number`；缺失路径、重复值和非法类型阻止体验与导出。
+- [x] AC3：同一 Dataset 可用不同映射服务 Select、Table 和 List；字段值不保存整行对象。
+- [x] AC4：覆盖、作为副本、跳过三种导入冲突策略行为稳定，默认作为副本。
+- [x] AC5：引用/解除引用、删除保护和 undo/redo 通过测试。
+- [x] AC6：数据集和资源在完整 Project transfer v1 JSON 与持久化实体中无损往返；
   embedded bytes 逐字节相同，URL 只保留已校验 metadata。
-- [ ] AC7：原始对象数组只能经 raw ingestion 创建当前 Dataset；把同一数组交给 envelope reader 会因缺失版本被拒绝，二者不共享宽松解析分支。
-- [ ] AC8：Resource/Project transfer Reader 只接受精确 v1；非 canonical base64、
+- [x] AC7：原始对象数组只能经 raw ingestion 创建当前 Dataset；把同一数组交给 envelope reader 会因缺失版本被拒绝，二者不共享宽松解析分支。
+- [x] AC8：Resource/Project transfer Reader 只接受精确 v1；非 canonical base64、
   embedded 内容缺失/重复/额外、长度/hash 不匹配、单文件 10 MiB 或项目 256 项/50 MiB
   预算溢出、危险 URL/filename 和悬空 resourceId 均稳定拒绝。
 

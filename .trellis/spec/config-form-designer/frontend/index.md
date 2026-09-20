@@ -11,7 +11,7 @@ contract and the package-specific contracts that contain real project rules.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Current Designer status, target Studio responsibility, setter, serialization, and event exclusions | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target single-Surface authoring, semantic triggers, Dataset references, interactions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Single-Surface authoring, semantic triggers, Dataset references, interactions, and diagnostics | Current contract |
 | [State Management](./state-management.md) | Package-specific contract | Ready |
 | [Quality Guidelines](./quality-guidelines.md) | Package-specific contract | Ready |
 | [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md) | Package-specific contract | Ready |

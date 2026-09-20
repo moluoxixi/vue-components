@@ -11,7 +11,7 @@ ConfigForm contracts that own Canonical-to-Runtime projection.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Runtime/Studio projection, listener, serialization, and event exclusions | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target Surface artifacts, Prototype Runtime boundary, versions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Surface artifacts, Prototype Runtime boundary, versions, and diagnostics | Current contract |
 | [Runtime State Boundaries](../../config-form/frontend/runtime-state-boundaries.md) | Renderer state, validation, Data, and host listener behavior | Ready |
 
 ## Pre-Development Checklist

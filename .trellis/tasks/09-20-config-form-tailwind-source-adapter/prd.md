@@ -27,15 +27,15 @@
 
 ## 验收标准
 
-- [ ] 未传样式目标与显式 `css` 的产物完全一致，既有消费者无需安装 Tailwind。
-- [ ] 非法样式目标返回稳定的输入诊断，且不产生部分文件。
-- [ ] Raw Tailwind 产物包含官方 v4 Vite 插件、完整字面量 utilities 和确定性主题映射，且运行时依赖白名单不变。
-- [ ] ConfigForm binding Tailwind 产物只使用公开 attrs 和生成器自有壳层，不让 Runtime 或 Provider adapter 增加 Tailwind 依赖。
-- [ ] CSS 与 Tailwind binding 均正确导入本地样式入口，并在真实 library build 中产出可消费的 CSS asset。
-- [ ] Element Plus 与 Ant Design Vue 的 Raw Tailwind 临时工程均通过安装、类型检查与生产构建。
-- [ ] 至少一套 ConfigForm binding Tailwind 临时工程通过类型检查与真实 library build。
-- [ ] 样式后端切换不改变校验、联动、模拟数据与原型交互的生成语义。
-- [ ] Source 单测、类型检查、构建、架构门禁和 frozen lockfile 校验通过。
+- [x] 未传样式目标与显式 `css` 的产物完全一致，既有消费者无需安装 Tailwind。
+- [x] 非法样式目标返回稳定的输入诊断，且不产生部分文件。
+- [x] Raw Tailwind 产物包含官方 v4 Vite 插件、完整字面量 utilities 和确定性主题映射，且运行时依赖白名单不变。
+- [x] ConfigForm binding Tailwind 产物只使用公开 attrs 和生成器自有壳层，不让 Runtime 或 Provider adapter 增加 Tailwind 依赖。
+- [x] CSS 与 Tailwind binding 均正确导入本地样式入口，并在真实 library build 中产出可消费的 CSS asset。
+- [x] Element Plus 与 Ant Design Vue 的 Raw Tailwind 临时工程均通过安装、类型检查与生产构建。
+- [x] 至少一套 ConfigForm binding Tailwind 临时工程通过类型检查与真实 library build。
+- [x] 样式后端切换不改变校验、联动、模拟数据与原型交互的生成语义。
+- [x] Source 单测、类型检查、构建、架构门禁和 frozen lockfile 校验通过。
 
 ## 非目标
 

@@ -11,7 +11,7 @@ contracts that own persisted shapes, Registry snapshots, and hard-cut versioning
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Studio target, serialization, current status, and removed event-domain contracts | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target Surface/Dataset assets, references, readers, versions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Surface/Dataset assets, references, readers, versions, and diagnostics | Current contract |
 | [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md) | Architecture facts and current-contract-only policy | Ready |
 
 ## Pre-Development Checklist

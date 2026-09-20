@@ -11,7 +11,7 @@ contract and the package-specific contracts that contain real project rules.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](./product-boundaries.md) | Studio target, current Page-only status, host listeners, serialization, and forbidden event domain | Ready |
-| [Studio Domain Contracts](./studio-domain-contracts.md) | Surface, Dataset, Prototype Interaction, Source resolver, versions, diagnostics, and tests | Target contract |
+| [Studio Domain Contracts](./studio-domain-contracts.md) | Surface, Dataset, Prototype Interaction, Source resolver, versions, diagnostics, and tests | Current contract |
 | [Runtime State Boundaries](./runtime-state-boundaries.md) | Renderer, Headless controller, validation queue, stale result, and disposal contracts | Ready |
 
 ## Pre-Development Checklist

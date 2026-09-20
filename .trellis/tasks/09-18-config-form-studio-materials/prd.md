@@ -23,13 +23,13 @@
 
 ## 验收标准
 
-- [ ] AC1：两套 adapter 的共同物料清单、能力标识和基础交互通过对称测试。
-- [ ] AC2：设计、体验、Runtime 与生成源码对相同物料使用同一属性和 Dataset 投影语义。
-- [ ] AC3：Table/List 的本地筛选、排序、分页、选择和 item 激活可由静态数据驱动。
-- [ ] AC4：桌面、平板、手机 viewport 中布局稳定，无文本溢出或控件重叠。
-- [ ] AC5：主题 Token 与局部视觉覆盖可序列化、可预览、可导出，不允许任意 CSS 文本。
-- [ ] AC6：适配包单测、类型检查、构建和生成模板验证通过。
-- [ ] AC7：共同物料的 field/layout/element kind 与 Dataset/Resource/trigger capability 在两套 adapter 中对称；未知 binding key、错误 projection kind 和把 element 当 field 均被拒绝。
+- [x] AC1：两套 adapter 的共同物料清单、能力标识和基础交互通过对称测试。
+- [x] AC2：设计、体验、Runtime 与生成源码对相同物料使用同一属性和 Dataset 投影语义。
+- [x] AC3：Table/List 的本地筛选、排序、分页、选择和 item 激活可由静态数据驱动。
+- [x] AC4：桌面、平板、手机 viewport 中布局稳定，无文本溢出或控件重叠。
+- [x] AC5：主题 Token 与局部视觉覆盖可序列化、可预览、可导出，不允许任意 CSS 文本。
+- [x] AC6：适配包单测、类型检查、构建和生成模板验证通过。
+- [x] AC7：共同物料的 field/layout/element kind 与 Dataset/Resource/trigger capability 在两套 adapter 中对称；未知 binding key、错误 projection kind 和把 element 当 field 均被拒绝。
 
 ## 范围外
 

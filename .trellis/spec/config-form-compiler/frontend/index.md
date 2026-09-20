@@ -11,7 +11,7 @@ contracts that own Canonical IR, compilation, and versioned output.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Studio/Runtime compilation, serialization, and forbidden event boundary | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target Surface compilation, Dataset/interaction projection, versions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Surface compilation, Dataset/interaction projection, versions, and diagnostics | Current contract |
 | [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md) | Architecture facts and current-contract-only policy | Ready |
 
 ## Pre-Development Checklist

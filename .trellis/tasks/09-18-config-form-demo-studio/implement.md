@@ -75,10 +75,30 @@ Dataset 先完成领域、编辑器与纯查询/投影引擎，再由业务物�
 
 ### 7. 父任务集成检查
 
-- 对照父 PRD 的 AC1-AC12 做全量审计。
-- 跑所有 ConfigForm package tests、typechecks、build、architecture、release、frozen lockfile 和关键 Playwright。
-- 检查产品文档、README、Changeset、peer range 和 package exports。
-- 只在全部子任务归档后归档父任务。
+- [x] 对照父 PRD 的 AC1-AC12 建立全量代码、单测和浏览器证据矩阵。
+- [x] 完成关键 Playwright：交互矩阵 `53/53`、JSON 导入 `4/4`、axe `8/8`、模板管理 `14/14`、Workbench 全量 `81/81`。
+- [x] 检查产品文档、README、Changeset、peer range 和 package exports。
+- [x] 跑完最终 ConfigForm packages、typecheck、build、任务范围 architecture、release 和 frozen lockfile 门禁并记录结果。
+- [ ] 依次归档剩余子任务和 Tailwind Source 任务，再归档父任务。
+
+## 集成验收证据
+
+- 产品边界：Studio 只持久化结构化 UI、校验、模拟 Dataset/Resource 和本地 Prototype Interaction；代码搜索与架构测试确认没有恢复事件编辑器、事件转发、任意函数、HTTP、动作链或任意 CSS。
+- 资产与数据：项目首屏、Page/Dialog/Drawer、Dataset、Resource、Project transfer v1、引用保护和 IndexedDB 自动保存均已接通；JSON 导入 E2E `4/4`。
+- 物料与视觉：双 Provider 共享 Registry v3 capability，业务物料、Grid/Flex、ProjectTheme、独立 Required 和受控视觉属性已贯通 Design、Experience、Runtime 与 Source。
+- 联动与体验：Inspector 提供 Properties/Validation/Interactions；显隐、禁用、只读、动态必填、set/copy/clear、navigate/open/close、参数和结果回写均可创作、保存、重开和执行。`interaction.spec.ts` `53/53`。
+- 源码交付：Raw Vue 不依赖 ConfigForm；ConfigForm binding 只使用公开配置和薄绑定；CSS/Tailwind v4 均由 Source 后端生成且 style target 不进入 ProjectDocument。
+- 浏览器总门禁：Workbench 全量 E2E `81/81`，12 张现行 Win32 视觉基线齐全，覆盖 `390/900/1440`、双 Provider、主题/调色板、焦点恢复、无横向溢出和零 page error。
+- 架构范围说明：ConfigForm 专项架构边界 `7/7` 通过；全仓 `pnpm test:package-architecture` 仍仅因未修改的 `packages/qiankun-router-kit` 与 `packages/vite-plugin-style-scope` 共 27 条既有诊断退出非零，不登记虚假豁免。
+
+## 最终验证记录（2026-09-21）
+
+- 受影响包测试全部通过：Model `69/69`、Compiler `20/20`、Runtime `137/137`、Prototype Runtime `34/34`、Vue backend `11/11`、Designer `127/127`、Element Runtime `13/13`、Ant Design Vue Runtime `13/13`、Source `91/91`、Designer Element Plus `28/28`、Designer Ant Design Vue `17/17`。
+- Workbench 单测 `50 files / 564 tests`；11 个受影响 ConfigForm 包的 typecheck/build 共 `27/27` tasks 通过。
+- `pnpm test:config-form-packages` 的 `16/16` build tasks 与 public package boundaries 通过。
+- `pnpm test:release` 的 38 项、path contracts `8/8`、components playground typecheck 通过；frozen lockfile 校验通过。
+- 浏览器门禁全部通过：interaction `53/53`、JSON import `4/4`、axe `8/8`、template management `14/14`、Workbench 全量 `81/81`；12 张现行 Win32 视觉基线齐全。
+- ConfigForm architecture boundaries `7/7` 通过。全仓 `pnpm test:package-architecture` 仍只因两个未修改包的 27 条既有诊断退出 1；该结果是明确记录的范围外基线，不是本批次回归，也未通过虚假豁免隐藏。
 
 ## 关键验证命令
 

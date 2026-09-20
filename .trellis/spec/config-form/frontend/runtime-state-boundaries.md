@@ -95,7 +95,7 @@ Vue, Workbench state, or a mutable Registry.
   contract fails closed; normal Vue listener `$event` remains unrelated.
 - Unmount stops owned work, disposes the controller, and suppresses late
   publication.
-- Target Studio Dataset is static, project-level, and runtime-readonly. It does
+- Studio Dataset is static, project-level, and runtime-readonly. It does
   not reuse Data Source requests, cache, cancellation, lifecycle, or references.
 
 ### 3.4 Prototype Interaction

@@ -4,3 +4,5 @@
 {"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"检查三类执行通道、事务原子性和生产 Runtime 隔离"}
 {"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查没有恢复事件转发、动作链、Flow 或兼容层"}
 {"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Model、Designer、Experience、Runtime Host 和 Source parity"}
+{"file": ".trellis/spec/config-form-designer/frontend/index.md", "reason": "Designer 交互作者区域质量门禁"}
+{"file": ".trellis/spec/config-form-source/frontend/index.md", "reason": "Preview/Source 交互 parity 与函数排除门禁"}

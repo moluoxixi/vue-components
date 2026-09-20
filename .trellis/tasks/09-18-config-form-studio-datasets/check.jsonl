@@ -4,3 +4,5 @@
 {"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查无 HTTP、无运行期写入且不复用 Data Source 合同"}
 {"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 Select/Table/List、Preview 和 Source 不复制查询逻辑"}
 {"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 raw/envelope 相反失败用例与无损往返"}
+{"file": ".trellis/spec/config-form-source/frontend/index.md", "reason": "Source 共享 Dataset projection 与资源读取质量门禁"}
+{"file": ".trellis/spec/config-form-workbench/frontend/quality-guidelines.md", "reason": "Workbench JSON/editor/accessibility 质量合同"}

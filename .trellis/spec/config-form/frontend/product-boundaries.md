@@ -14,12 +14,13 @@ and deterministic local interaction; engineers own HTTP, authentication,
 asynchronous side effects, and business functions in exported or host
 Vue/TypeScript code.
 
-Status must always be explicit. Surface Foundation is current: ProjectDocument,
-Compiler, persistence, Runtime Host, and Source use Page/Dialog/Drawer Surface
-assets. `@moluoxixi/config-form-prototype-runtime` and
-`@moluoxixi/config-form-source` are importable. The Designer still has two
-Inspector sections; full Studio asset/Dataset/Interaction authoring remains a
-later delivery stage.
+Status must always be explicit. The Studio authoring chain is current:
+ProjectDocument, Compiler, persistence, Runtime Host, and Source use
+Page/Dialog/Drawer Surface assets; `@moluoxixi/config-form-prototype-runtime`
+and `@moluoxixi/config-form-source` are importable; Studio manages projects,
+Datasets, Resources, theme, Design/Experience, and export. Designer exposes
+Properties, Validation, and Interactions sections, including current
+Dataset/Resource bindings and closed Prototype Interaction authoring.
 
 The exact target domain shapes, versions, diagnostics, and tests are owned by
 [Studio Domain Contracts](./studio-domain-contracts.md).

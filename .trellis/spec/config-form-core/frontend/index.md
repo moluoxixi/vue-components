@@ -11,7 +11,7 @@ contract and the package-specific contracts that contain real project rules.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Studio target, current implementation status, serialization, and removed event-domain contracts | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target safe expressions, interaction channels, Dataset ownership, versions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Safe expressions, interaction channels, Dataset ownership, versions, and diagnostics | Current contract |
 | [Material Registry](./material-registry.md) | Package-specific contract | Ready |
 | [Architecture Documentation](./architecture-documentation.md) | Package-specific contract | Ready |
 | [Form Layout Settings](./form-layout-settings.md) | Canonical gap, label width, and responsive span contract | Ready |

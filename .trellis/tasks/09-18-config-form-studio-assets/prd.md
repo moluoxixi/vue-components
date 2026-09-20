@@ -22,13 +22,13 @@
 
 ## 验收标准
 
-- [ ] AC1：用户可以从项目列表进入项目，再从资产树进入任意 Page/Dialog/Drawer 设计面。
-- [ ] AC2：Dialog/Drawer 的标题、尺寸、方向、遮罩和关闭设置在 Surface 属性中编辑，而非伪装成内容节点。
-- [ ] AC3：直接从资产树打开会重置上下文路径；从交互入口打开会显示来源面包屑和可选只读背景。
-- [ ] AC4：资产操作全部经过 Model command/history，刷新或重开项目后结果一致。
-- [ ] AC5：窄屏下资产导航、画布和属性面板仍可到达，文本和控件不重叠。
-- [ ] AC6：Studio 应用测试、类型检查、构建和关键 Playwright 工作流通过。
-- [ ] AC7：项目导入先完整读取并校验 document/embedded contents，再原子写入
+- [x] AC1：用户可以从项目列表进入项目，再从资产树进入任意 Page/Dialog/Drawer 设计面。
+- [x] AC2：Dialog/Drawer 的标题、尺寸、方向、遮罩和关闭设置在 Surface 属性中编辑，而非伪装成内容节点。
+- [x] AC3：直接从资产树打开会重置上下文路径；从交互入口打开会显示来源面包屑和可选只读背景。
+- [x] AC4：资产操作全部经过 Model command/history，刷新或重开项目后结果一致。
+- [x] AC5：窄屏下资产导航、画布和属性面板仍可到达，文本和控件不重叠。
+- [x] AC6：Studio 应用测试、类型检查、构建和关键 Playwright 工作流通过。
+- [x] AC7：项目导入先完整读取并校验 document/embedded contents，再原子写入
   Repository；任何 content 失败均不留下部分项目或孤儿 bytes。
 
 ## 范围外

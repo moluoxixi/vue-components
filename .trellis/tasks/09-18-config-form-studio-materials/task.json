@@ -3,9 +3,9 @@
   "name": "config-form-studio-materials",
   "title": "扩充 Studio 业务物料与视觉系统",
   "description": "补齐高保真业务 Demo 所需物料、响应式布局、主题 Token 与受控视觉属性。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
-  "scope": null,
+  "scope": "packages/ConfigForm/designer, packages/ConfigForm/designer-element-plus, packages/ConfigForm/designer-antd-vue, packages/ConfigForm/workbench, packages/ConfigForm/source",
   "package": "config-form-designer",
   "priority": "P1",
   "creator": "wl",
@@ -21,6 +21,6 @@
   "children": [],
   "parent": "09-18-config-form-demo-studio",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "实现与最终验证已完成；待随 Demo Studio 收尾批次统一提交并归档。全仓 package architecture 仅受两个范围外包的 27 条既有诊断阻断。",
   "meta": {}
 }

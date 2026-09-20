@@ -326,7 +326,7 @@ interface SlotItem {
   first compile diagnostic. It does not replace those refs with a failed
   artifact or `undefined`. If no successful artifact exists yet, Canvas renders
   a stable error state while the Designer shell, Layers, Inspector, Properties,
-  and Validation remain mounted so the author can repair the graph. Rendering
+  Validation, and Interactions remain mounted so the author can repair the graph. Rendering
   an unexplained empty `provider-surface` is forbidden. Transient invalid drag
   candidates may still remain silent because the committed Runtime stays
   visible and final command execution owns the user-facing diagnostic.
@@ -1083,7 +1083,7 @@ is not Repository compatibility.
 prepareConfigImport(options: {
   source: string
   target: 'surface' | 'project'
-  currentProject?: ProjectDocumentV7
+  currentProject?: ProjectDocumentV8
 }): Promise<PrepareConfigImportResult>
 
 guardConfigImportSourceBytes(bytes: number): ConfigImportDiagnostic[]

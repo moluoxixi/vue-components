@@ -4,3 +4,5 @@
 {"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"检查 Registry、共同能力、序列化和稳定排序合同"}
 {"file":".trellis/spec/config-form-core/frontend/form-layout-settings.md","reason":"检查响应式布局与现有 Runtime 投影一致"}
 {"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查双 adapter 和数据物料没有复制稳定语义"}
+{"file": ".trellis/spec/config-form-designer-antd-vue/frontend/index.md", "reason": "Ant Design Vue 物料与 capability 对称规范"}
+{"file": ".trellis/spec/config-form-workbench/frontend/quality-guidelines.md", "reason": "主题、预览隔离与响应式质量合同"}

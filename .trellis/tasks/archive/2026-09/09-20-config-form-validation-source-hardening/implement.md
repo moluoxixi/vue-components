@@ -79,5 +79,5 @@ pnpm --filter @config-form/workbench test:e2e
 - ConfigForm 专项架构边界 `7/7` 通过；Project/Surface v7/v2 JSON 导入 `4/4`、双 Provider 属性压力回归 `2/2`、完整 a11y 矩阵 `8/8` 通过。
 - 受影响包 typecheck 通过；Source、Designer、Vue backend、Workbench build 通过；全部改动文件 ESLint 与 `git diff --check` 通过。
 - `pnpm changeset status` 退出码为 `0`；输出仅包含仓库既有 peer 版本提示。
-- 范围外既有基线：完整历史 Workbench E2E 仍有 18 个旧导航/accessible-name 断言和 16 个缺失 Windows 截图基线；本任务未放宽断言或更新截图掩盖。
+- 后续集成收口已消除原记录中的历史浏览器缺口：`interaction.spec.ts` 当前 `53/53` 通过，12 张现行 Win32 视觉基线齐全并已人工复核；没有通过放宽断言或删除覆盖来取得通过。
 - 范围外既有基线：全仓 `pnpm test:package-architecture` 仍被未修改的 `packages/qiankun-router-kit` 与 `packages/vite-plugin-style-scope` 共 27 项未登记架构诊断阻断。

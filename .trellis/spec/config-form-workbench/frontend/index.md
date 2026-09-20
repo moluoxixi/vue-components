@@ -11,7 +11,7 @@ repository-wide directory contract.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Current Workbench status, target Studio ownership, Preview/Source, and removed event domain | Ready |
-| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Target assets, Experience session, Dataset, Source resolver, versions, and diagnostics | Target contract |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Assets, Experience session, Dataset, Source resolver, versions, and diagnostics | Current contract |
 | [Quality Contracts](./quality-guidelines.md) | Monaco Vue SFC services, JSON value boundaries, dialog focus restoration, and accessibility gates | Ready |
 
 ## Pre-Development Checklist

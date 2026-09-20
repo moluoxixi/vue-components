@@ -5,7 +5,7 @@
   "description": "将 ConfigForm 重塑为本地优先的高保真业务界面 Demo 创作应用，并保持 Runtime 作为生产级运行底座。",
   "status": "planning",
   "dev_type": null,
-  "scope": null,
+  "scope": "packages/ConfigForm",
   "package": "config-form-workbench",
   "priority": "P1",
   "creator": "wl",
@@ -31,6 +31,6 @@
   ],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": "产品实现与最终集成验证已完成；待剩余子任务统一提交、归档后归档父任务。全仓 package architecture 仅受两个范围外包的 27 条既有诊断阻断。",
   "meta": {}
 }
