@@ -26,7 +26,7 @@
 - [x] 运行资产专项 Playwright（双 Provider、390/900/1440、axe）。
 - [x] 运行 `git diff --check`；包架构与 frozen lockfile 纳入父任务统一门禁。
 - [x] 更新任务实施记录、必要规范与 README。
-- [ ] 随 Demo Studio 收尾批次提交并归档本子任务。
+- [x] 随 Demo Studio 收尾批次提交并归档本子任务。
 
 ## 验收证据
 

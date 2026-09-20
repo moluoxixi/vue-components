@@ -10,7 +10,7 @@
 - [x] 在 Workbench 导出会话增加 CSS/Tailwind v4 分段选择并透传 `styleTarget`；ProjectDocument 保持不变，Raw/Binding 继续独立失败。
 - [x] 浏览器验证 CSS/Tailwind 切换、Raw/Binding 文件树与源码内容，并同步 Source/Workbench spec 与 README。
 - [x] 完成 Source/Workbench test、typecheck、build、发布、frozen lockfile 和任务范围架构门禁。
-- [ ] 随本批变更提交并归档任务。
+- [x] 随本批变更提交并归档任务。
 
 ## 验收证据
 

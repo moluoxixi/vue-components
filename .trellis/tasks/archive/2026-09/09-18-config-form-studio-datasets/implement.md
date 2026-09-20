@@ -9,7 +9,7 @@
 - [x] 接入覆盖/副本/跳过冲突策略、Repository 原子 bytes、重命名和删除引用诊断。
 - [x] 双 Provider Select/Table/List 按 capability 消费 Dataset projection；“内联 options 保存为 Dataset/解除引用快照”均为单事务命令。
 - [x] 完成双 Provider、刷新恢复、`390/900/1440` 视口和 JSON 导入浏览器验证，并同步 README/spec。
-- [ ] 随 Demo Studio 收尾批次提交并归档本子任务。
+- [x] 随 Demo Studio 收尾批次提交并归档本子任务。
 
 ## 验收证据
 

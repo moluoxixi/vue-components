@@ -8,7 +8,7 @@
 - [x] 增加 ProjectTheme 编辑器、`project.theme` controller command、Design/Preview CSS variables 与 Source 完整主题输出。
 - [x] 补齐 Grid/Flex 响应式配置、受控视觉属性、独立 Required 入口与窄屏可达性。
 - [x] 完成双 Provider 对称测试、浏览器矩阵和 README/spec 同步。
-- [ ] 随 Demo Studio 收尾批次提交并归档本子任务。
+- [x] 随 Demo Studio 收尾批次提交并归档本子任务。
 
 ## 验收证据
 

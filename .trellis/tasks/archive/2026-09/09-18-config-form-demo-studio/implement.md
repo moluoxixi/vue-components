@@ -79,7 +79,7 @@ Dataset 先完成领域、编辑器与纯查询/投影引擎，再由业务物�
 - [x] 完成关键 Playwright：交互矩阵 `53/53`、JSON 导入 `4/4`、axe `8/8`、模板管理 `14/14`、Workbench 全量 `81/81`。
 - [x] 检查产品文档、README、Changeset、peer range 和 package exports。
 - [x] 跑完最终 ConfigForm packages、typecheck、build、任务范围 architecture、release 和 frozen lockfile 门禁并记录结果。
-- [ ] 依次归档剩余子任务和 Tailwind Source 任务，再归档父任务。
+- [x] 依次归档剩余子任务和 Tailwind Source 任务，再归档父任务。
 
 ## 集成验收证据
 

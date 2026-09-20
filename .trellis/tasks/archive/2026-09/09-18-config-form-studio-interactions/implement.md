@@ -8,7 +8,7 @@
 - [x] 扩展 Runtime Host 与 Source resolver 的 row/item semantic trigger，保持单一主要动作且不暴露原始事件。
 - [x] 补齐 nested overlay、参数/结果 assignment、validation gate、焦点恢复和 reset/history E2E。
 - [x] 完成 Model/Compiler/Runtime/Designer/Source/Workbench 浏览器矩阵和 README/spec 同步。
-- [ ] 随 Demo Studio 收尾批次提交并归档本子任务。
+- [x] 随 Demo Studio 收尾批次提交并归档本子任务。
 
 ## 验收证据
 
