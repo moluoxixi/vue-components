@@ -152,10 +152,10 @@ async function downloadBundle(): Promise<void> {
     @close="emit('close')"
   >
     <template #header>
-      <div class="export-dialog-heading">
+      <div class="export-dialog-heading flex min-w-0 items-center justify-between gap-4">
         <div>
-          <span class="dialog-eyebrow">{{ locale.t('export.readOnly', 'Read only export') }}</span>
-          <h2>{{ dialogTitle }}</h2>
+          <span class="dialog-eyebrow text-[11px] font-bold tracking-[0.04em] text-wb-accent-text uppercase">{{ locale.t('export.readOnly', 'Read only export') }}</span>
+          <h2 class="mt-0.5 mb-0 text-[15px] text-wb-text-strong">{{ dialogTitle }}</h2>
         </div>
         <ElButton
           native-type="button"
@@ -169,7 +169,7 @@ async function downloadBundle(): Promise<void> {
       </div>
     </template>
 
-    <div class="export-preview-body">
+    <div class="export-preview-body flex min-h-0 min-w-0 w-full flex-auto flex-col overflow-hidden bg-wb-editor-surface">
       <ElAlert
         v-if="snapshotError"
         class="export-diagnostic"
@@ -209,11 +209,11 @@ async function downloadBundle(): Promise<void> {
     </div>
 
     <template #footer>
-      <div class="export-dialog-footer">
+      <div class="export-dialog-footer flex min-w-0 items-center justify-between gap-4 text-[11px] text-wb-muted">
         <span>
           {{ locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', { revision: snapshotEditVersion }) }}{{ snapshotStale ? ` · ${locale.t('export.stale', 'Stale')}` : '' }}
         </span>
-        <div>
+        <div class="export-dialog-actions flex gap-1.5">
           <ElButton native-type="button" class="dialog-action secondary" :disabled="!activeFileSet" @click="downloadBundle">
             <Download :size="15" aria-hidden="true" />
             {{ locale.t('export.projectZip', 'Project ZIP') }}

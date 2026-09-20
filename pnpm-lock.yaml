@@ -1258,6 +1258,9 @@ importers:
       '@moluoxixi/zod3-to-rule':
         specifier: workspace:*
         version: link:../../zod3-to-rule
+      '@tailwindcss/vite':
+        specifier: catalog:build
+        version: 4.3.3(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
       '@types/node':
         specifier: catalog:type
         version: 25.6.0
@@ -1279,6 +1282,9 @@ importers:
       sass:
         specifier: catalog:dev
         version: 1.99.0
+      tailwindcss:
+        specifier: catalog:build
+        version: 4.3.3
       unplugin-vue-components:
         specifier: catalog:conflicts_dev_h31_0_0
         version: 31.1.0(vue@3.5.33(typescript@5.9.3))
@@ -13379,6 +13385,13 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       postcss: 8.5.28
       tailwindcss: 4.3.3
+
+  '@tailwindcss/vite@4.3.3(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))':
+    dependencies:
+      '@tailwindcss/node': 4.3.3
+      '@tailwindcss/oxide': 4.3.3
+      tailwindcss: 4.3.3
+      vite: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
 
   '@tailwindcss/vite@4.3.3(vite@7.3.6(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))':
     dependencies:

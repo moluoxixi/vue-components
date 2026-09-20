@@ -1687,6 +1687,35 @@ test('exports pinned source and config files through the readonly workspace', as
   const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
   await expect(sourceDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
   await expect(sourceDialog.getByRole('region', { name: 'Read-only source: src/main.ts' })).toBeVisible()
+  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('display', 'flex')
+  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('flex-direction', 'column')
+  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('min-height', '0px')
+  await expect(sourceDialog.locator('.export-dialog-footer')).toHaveCSS('justify-content', 'space-between')
+  await page.setViewportSize({ width: 390, height: 844 })
+  const mobileLayout = await sourceDialog.evaluate((dialog) => {
+    const footer = dialog.querySelector('.export-dialog-footer')
+    const actions = dialog.querySelector('.export-dialog-actions')
+    if (!(footer instanceof HTMLElement) || !(actions instanceof HTMLElement))
+      throw new TypeError('Export footer and actions are required')
+    const dialogRect = dialog.getBoundingClientRect()
+    const footerRect = footer.getBoundingClientRect()
+    const actionsRect = actions.getBoundingClientRect()
+    return {
+      actionsWidth: actionsRect.width,
+      clientWidth: dialog.clientWidth,
+      dialogHeight: dialogRect.height,
+      dialogWidth: dialogRect.width,
+      footerDirection: getComputedStyle(footer).flexDirection,
+      footerWidth: footerRect.width,
+      scrollWidth: dialog.scrollWidth,
+    }
+  })
+  expect(mobileLayout.dialogWidth).toBe(390)
+  expect(mobileLayout.dialogHeight).toBe(844)
+  expect(mobileLayout.footerDirection).toBe('column')
+  expect(Math.abs(mobileLayout.actionsWidth - mobileLayout.footerWidth)).toBeLessThanOrEqual(1)
+  expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.clientWidth)
+  await page.setViewportSize({ width: 1440, height: 1000 })
   const [sourceDownload] = await Promise.all([
     page.waitForEvent('download'),
     sourceDialog.getByRole('button', { name: 'Download', exact: true }).click(),
@@ -1705,6 +1734,69 @@ test('exports pinned source and config files through the readonly workspace', as
   ])
   expect(configDownload.suggestedFilename()).toBe('bindings.ts')
   expect(browserErrors).toEqual([])
+})
+
+test('resolves export utility colors from every Workbench palette and theme', async ({ page }) => {
+  test.slow()
+  await createProject(page, 'element')
+  const signatures = new Set<string>()
+
+  for (const palette of ['ink', 'morandi', 'cyber', 'glass'] as const) {
+    for (const theme of ['light', 'dark'] as const) {
+      await setAppearance(page, theme, palette)
+      await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-palette', palette)
+      await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-theme', theme)
+      await page.getByRole('button', { name: 'Export', exact: true }).click()
+      await page.getByRole('menuitem', { name: 'Export raw Vue source', exact: true }).click()
+      const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
+      await expect(sourceDialog).toBeVisible()
+
+      const colors = await sourceDialog.evaluate((dialog) => {
+        const body = dialog.querySelector('.export-preview-body')
+        const eyebrow = dialog.querySelector('.dialog-eyebrow')
+        const heading = dialog.querySelector('h2')
+        const footer = dialog.querySelector('.export-dialog-footer')
+        if (
+          !(body instanceof HTMLElement)
+          || !(eyebrow instanceof HTMLElement)
+          || !(heading instanceof HTMLElement)
+          || !(footer instanceof HTMLElement)
+        ) {
+          throw new TypeError('Export utility color targets are required')
+        }
+
+        const resolveColor = (token: string): string => {
+          const probe = document.createElement('span')
+          probe.style.color = `var(${token})`
+          dialog.append(probe)
+          const color = getComputedStyle(probe).color
+          probe.remove()
+          return color
+        }
+
+        const actual = {
+          accent: getComputedStyle(eyebrow).color,
+          editorSurface: getComputedStyle(body).backgroundColor,
+          muted: getComputedStyle(footer).color,
+          strong: getComputedStyle(heading).color,
+        }
+        const expected = {
+          accent: resolveColor('--wb-accent-text'),
+          editorSurface: resolveColor('--wb-editor-surface'),
+          muted: resolveColor('--wb-muted'),
+          strong: resolveColor('--wb-text-strong'),
+        }
+        return { actual, expected }
+      })
+
+      expect(colors.actual).toEqual(colors.expected)
+      signatures.add(JSON.stringify(colors.actual))
+      await sourceDialog.getByRole('button', { name: 'Close export' }).click()
+      await expect(sourceDialog).toHaveCount(0)
+    }
+  }
+
+  expect(signatures.size).toBe(8)
 })
 
 test('keeps raw and ConfigForm exports read-only and dependency-distinct', async ({ page }) => {

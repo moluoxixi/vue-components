@@ -22,11 +22,16 @@ const stylesheetLayers = [
   { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
+  { importPath: './tailwind.css', source: new URL('../tailwind.css', import.meta.url) },
 ] as const
 const stylesheet = stylesheetLayers
   .map(layer => readFileSync(layer.source, 'utf8'))
   .join('\n')
 const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/index.css', import.meta.url), 'utf8')
+const runtimeHostBootstrap = readFileSync(new URL('../../runtime-host/services/bootstrap.ts', import.meta.url), 'utf8')
+const tailwindStylesheet = readFileSync(new URL('../tailwind.css', import.meta.url), 'utf8')
+const exportDialogComponent = readFileSync(new URL('../../features/export/index.vue', import.meta.url), 'utf8')
+const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
 const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
@@ -85,7 +90,9 @@ function contrast(foreground: string, background: string): number {
 describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
     expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(`${stylesheetLayers
-      .map(layer => `@import url(${layer.importPath});`)
+      .map(layer => layer.importPath === './tailwind.css'
+        ? '@import "./tailwind.css";'
+        : `@import url(${layer.importPath});`)
       .join('\n')}\n`)
   })
 
@@ -98,6 +105,7 @@ describe('workbench theme contract', () => {
     const ownerContracts = [
       ['../../styles/foundation.css', ':root', '--wb-bg:'],
       ['../../styles/theme.css', '--wb-bg', '.workbench-topbar {'],
+      ['../../styles/tailwind.css', '@theme inline', 'preflight.css'],
       ['../../styles/shell.css', '.workbench-app', '.workbench-topbar'],
       ['../../app/components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
       ['../../app/components/WorkbenchAppearancePopover/style/index.css', '.workbench-appearance-popover', '.appearance-panel'],
@@ -168,6 +176,51 @@ describe('workbench theme contract', () => {
       expect(source).not.toContain('/style/css')
     }
     expect(stylesheet).not.toContain('--el-input-focus-border-color:')
+  })
+
+  it('configures Tailwind v4 as an export-only Workbench utility layer', async () => {
+    const viteConfig = await import('../../../vite.config.ts?raw').then(module => module.default)
+
+    expect(viteConfig).toMatch(/import tailwindcss from '@tailwindcss\/vite'/)
+    expect(viteConfig).toMatch(/plugins:\s*\[\s*tailwindcss\(\),\s*Vue\(\)/)
+    expect(tailwindStylesheet).toContain('@import "tailwindcss/theme.css" layer(theme);')
+    expect(tailwindStylesheet).toContain('@import "tailwindcss/utilities.css" layer(utilities) source(none);')
+    expect(tailwindStylesheet).not.toMatch(/@import\s+["']tailwindcss["']/)
+    expect(tailwindStylesheet).not.toContain('preflight.css')
+    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(1)
+    expect(tailwindStylesheet).toContain('@source "../features/export/index.vue";')
+    expect(tailwindStylesheet).toContain('--color-wb-editor-surface: var(--wb-editor-surface);')
+    expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
+    expect(exportDialogComponent).toContain('bg-wb-editor-surface')
+    expect(exportDialogComponent).toContain('text-wb-accent-text')
+    expect(runtimeHostBootstrap).toContain('import \'../styles/index.css\'')
+    expect(runtimeHostBootstrap).not.toContain('import \'../../styles/index.css\'')
+    expect(runtimeHostBootstrap).not.toContain('tailwind.css')
+    expect(runtimeHostStylesheet).not.toContain('tailwindcss')
+    expect(runtimeHostStylesheet).not.toContain('--color-wb-')
+  })
+
+  it('keeps third-party export surfaces in bridge CSS and plain layout in utilities', () => {
+    for (const selector of [
+      '.export-preview-dialog',
+      '.export-preview-dialog .el-dialog__body',
+      '.export-dialog-heading > .el-button',
+      '.export-source-viewer',
+      '.export-diagnostic .el-alert__content',
+      '.dialog-action',
+    ])
+      expect(selectorBlock(selector, exportDialogStylesheet)).not.toBe('')
+
+    const responsiveStart = exportDialogStylesheet.indexOf('@media (max-width: 700px)')
+    const baseStyles = exportDialogStylesheet.slice(0, responsiveStart)
+    for (const selector of ['.export-preview-body', '.dialog-eyebrow', '.export-dialog-footer'])
+      expect(cssRules(baseStyles).some(rule => rule.selector.split(',').some(item => item.trim() === selector))).toBe(false)
+
+    expect(exportDialogComponent).toContain('export-dialog-heading flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain('export-dialog-footer flex min-w-0 items-center justify-between gap-4')
+    expect(responsiveStart).toBeGreaterThan(0)
+    expect(exportDialogStylesheet.slice(responsiveStart)).toContain('.export-dialog-footer {')
+    expect(selectorBlock('.export-preview-dialog', exportDialogStylesheet)).toContain('height: min(800px, calc(100vh - 40px));')
   })
   const paletteSelectors = ['ink', 'morandi', 'cyber', 'glass'].flatMap(palette =>
     ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
@@ -386,7 +439,7 @@ describe('workbench theme contract', () => {
   })
 
   it('keeps export and Preview responsive without mutating intrinsic Canvas runtime styles', () => {
-    expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
+    expect(exportDialogComponent).toContain('bg-wb-editor-surface')
     expect(selectorBlock('.export-menu-popover .el-dropdown-menu__item')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
     for (const selector of [

@@ -9,7 +9,9 @@ facts and target Studio responsibilities must be labeled separately.
 ## Workbench Stylesheet Ownership
 
 - `src/styles/index.css` is the synchronous cascade manifest used by the main
-  Workbench entry. It imports styles only and keeps `responsive.css` last.
+  Workbench entry. It imports owner styles first and keeps `tailwind.css` as the
+  final manifest import so Vite does not expand Tailwind before a later CSS
+  `@import`.
 - A feature or component selector family lives beside its owner under
   `style/index.css`. `src/styles/` keeps only shell/studio/responsive and truly
   cross-feature surface rules; it must not become a second home for dialogs,
@@ -24,6 +26,105 @@ Required regression coverage composes every owner stylesheet in exact cascade
 order, rejects removed aggregate/orphan selectors, checks representative
 include/exclude families, builds both Workbench entries, and runs desktop,
 tablet, and mobile visual baselines.
+
+## Scenario: Workbench Tailwind Utility Layer
+
+### 1. Scope / Trigger
+
+Apply this contract when adding Tailwind to the Workbench, moving another
+Workbench-owned view to utilities, or changing the main stylesheet manifest.
+Tailwind is a main-document presentation tool; it is not a persisted visual
+contract and does not cross into Runtime Host or Provider packages.
+
+### 2. Signatures
+
+The Workbench Tailwind entry uses the split v4 imports and an explicit source
+allowlist:
+
+```css
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../features/export/index.vue";
+
+@theme inline {
+  --color-wb-text: var(--wb-text);
+}
+```
+
+The Vite application registers `@tailwindcss/vite`. The main
+`src/styles/index.css` imports `tailwind.css` synchronously as its final import.
+
+### 3. Contracts
+
+- Do not import `tailwindcss` as one aggregate entry and do not import
+  `preflight.css`; `foundation.css` remains the only global reset owner.
+- Start scanning from `source(none)` and add one exact `@source` for each
+  migrated Workbench owner. Never scan Runtime Host, Provider packages, or the
+  complete repository.
+- Map utility tokens through `@theme inline` to the existing `--wb-*` theme
+  variables. Do not copy palette values or introduce a parallel token source.
+- Keep `tailwind.css` last in the current CSS import manifest. Vite expands its
+  Tailwind layers and `@property` rules in place; putting any owner `@import`
+  after that expansion can violate CSS import ordering and drop the later
+  stylesheet in development.
+- Tailwind utilities own plain Workbench DOM composition. Unlayered feature CSS
+  continues to own Element Plus internals, Source Viewer integration, complex
+  states, and required media-query overrides; do not compensate with important
+  utilities.
+- `runtime-host/services/bootstrap.ts` imports only Runtime Host styles. It must
+  not import the Workbench stylesheet manifest or `tailwind.css`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Aggregate Tailwind or Preflight is imported | Reject the change; retain the Workbench reset and component-library defaults |
+| Automatic or repository-wide source detection is enabled | Reject it; restore `source(none)` and exact owner sources |
+| A utility needs a product color or shadow | Map it to the matching `--wb-*` token through `@theme inline` |
+| An owner import appears after `tailwind.css` | Move `tailwind.css` back to the final manifest position |
+| A third-party internal rule conflicts with a layered utility | Keep the integration rule in owner CSS instead of adding important utilities |
+| Runtime Host output contains a Workbench semantic utility | Fail the build isolation gate |
+
+### 5. Good / Base / Bad Cases
+
+- Good: an Export Dialog wrapper uses semantic utilities while its
+  `.el-dialog__body` bridge remains beside the feature.
+- Base: an unmigrated feature remains entirely in its owner stylesheet and is
+  absent from the Tailwind source allowlist.
+- Bad: import full Tailwind, scan all Vue files, hard-code palette colors in
+  classes, move third-party internals into utilities, or load Workbench CSS in
+  `runtime-host.html`.
+
+### 6. Tests Required
+
+- Contract tests assert split imports, no Preflight, one exact source per
+  migrated owner, inline `--wb-*` token aliases, final manifest position, and
+  Runtime Host bootstrap isolation.
+- The production build must inspect emitted CSS and prove required semantic
+  utilities exist, Tailwind directives/Preflight markers are absent, and
+  Runtime Host CSS contains no Workbench semantic utility.
+- Browser coverage verifies computed desktop/mobile layout, all supported
+  palette/theme token resolutions, horizontal overflow, and accessibility.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```css
+@import "tailwindcss";
+@source "../../**/*.vue";
+@import url(../features/export/style/index.css);
+```
+
+Correct:
+
+```css
+@import url(../features/export/style/index.css);
+@import "./tailwind.css";
+```
 
 ---
 

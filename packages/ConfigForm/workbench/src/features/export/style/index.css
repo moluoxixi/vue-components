@@ -15,15 +15,6 @@
   border-bottom: 1px solid var(--wb-separator);
 }
 
-.export-dialog-heading,
-.export-dialog-footer {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .export-dialog-heading > .el-button {
   flex: 0 0 auto;
   width: 30px;
@@ -37,22 +28,7 @@
   background: var(--wb-hover);
 }
 
-.export-preview-dialog h2 {
-  margin: 2px 0 0;
-  color: var(--wb-text-strong);
-  font-size: 15px;
-}
-
-.dialog-eyebrow {
-  color: var(--wb-accent-text);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.export-preview-dialog .el-dialog__body,
-.export-preview-body {
+.export-preview-dialog .el-dialog__body {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
@@ -63,12 +39,6 @@
 .export-preview-dialog .el-dialog__body {
   display: flex;
   padding: 0;
-}
-
-.export-preview-body {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
 }
 
 .export-source-viewer {
@@ -128,16 +98,6 @@
   border-top: 1px solid var(--wb-separator);
 }
 
-.export-dialog-footer {
-  color: var(--wb-muted);
-  font-size: 11px;
-}
-
-.export-dialog-footer > div {
-  display: flex;
-  gap: 6px;
-}
-
 .dialog-action {
   display: inline-flex;
   min-height: 30px;
@@ -172,7 +132,7 @@
     flex-direction: column;
   }
 
-  .export-dialog-footer > div {
+  .export-dialog-actions {
     width: 100%;
   }
 
