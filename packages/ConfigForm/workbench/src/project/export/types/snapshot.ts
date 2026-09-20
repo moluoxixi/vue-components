@@ -6,6 +6,7 @@ import type {
   SourceComponentResolver,
   SourceConfigFormBindingResolver,
   SourceResourceReader,
+  SourceStyleTarget,
 } from '@moluoxixi/config-form-source/generator'
 
 export type ExportArtifact<T>
@@ -16,6 +17,7 @@ export interface ExportSnapshot {
   readonly compilation: ProjectCompilation
   readonly configBindings: ExportArtifact<ConfigBindingFileSetV1>
   readonly rawSource: ExportArtifact<RawSourceFileSetV1>
+  readonly styleTarget: SourceStyleTarget
 }
 
 export interface BuildExportSnapshotInput {
@@ -23,6 +25,7 @@ export interface BuildExportSnapshotInput {
   bindingResolver: SourceConfigFormBindingResolver
   componentResolver: SourceComponentResolver
   resourceReader: SourceResourceReader
+  styleTarget?: SourceStyleTarget
 }
 
 export interface ExportSessionState {

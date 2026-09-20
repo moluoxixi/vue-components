@@ -8,9 +8,12 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
 ## 当前实现
 
 - 组合公开的 Model、Compiler、Vue backend、Runtime、Designer 与 provider adapter。
-- `ProjectDocument v7`、`SurfaceGraph v2`、RuleSet v2、Canonical IR v6、Compiler
-  7.0.0、持久化、Preview Runtime Host、缓存和 Source generator 都以 Surface 为
-  身份；默认 Designer Inspector 只有 `properties` 与 `validation`。
+- `ProjectDocument v8`、`SurfaceGraph v3`、RuleSet v2、Canonical IR v7、Compiler
+  8.0.0、持久化、Experience Runtime Host、缓存和 Source generator 都以 Surface 为
+  身份；Designer Inspector 提供 `properties`、`validation` 与 `interactions`。
+- Studio 首屏管理本地项目，项目内资产树管理 Page/Dialog/Drawer/Dataset/Resource；
+  Dataset 支持 JSON/表格编辑和导入导出，Resource 支持 URL/embedded 内容，主题与所有
+  作者变更进入同一历史、自动保存和刷新恢复链。
 - Preview 验证结构、布局、绑定、校验、同步 reaction、Runtime Data Source 和
   readonly 行为，不复现未注入的宿主函数。
 - 动态 Runtime Data Source 仍属于生产 Runtime 的代码态能力，不进入 Studio Demo 合同。
@@ -21,6 +24,9 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
   Prototype Runtime、事件注册表或业务函数桩。
 - Raw 与 ConfigForm binding 使用同一 pinned compilation 独立生成、独立失败；弹窗按
   mode 展示文件或 diagnostics，仅禁用失败 mode 的复制和下载，另一个 mode 仍可用。
+- 源码弹窗可在 CSS 与 Tailwind v4 之间切换；该选择只属于当前导出会话，不写入
+  ProjectDocument。两种样式后端都同时适用于 Raw 与 ConfigForm binding，并保持两种
+  源码模式各自独立失败。
 
 复杂组件逻辑由宿主 Vue/TypeScript 代码维护，使用内存 config 的 `props.onX`。函数
 不进入 ProjectDocument、IndexedDB、Preview transport 或 Source，也不通过 iframe
@@ -49,9 +55,9 @@ const runtimeConfig = {
 }
 ```
 
-## 目标 Studio 责任
+## Studio 责任
 
-演进完成后，Studio 应用壳拥有项目管理、Page/Dialog/Drawer/Dataset/Resource 资产树、
+Studio 应用壳拥有项目管理、Page/Dialog/Drawer/Dataset/Resource 资产树、
 Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 弹窗中的重新
 生成、复制、单文件下载、ZIP 和通知。
 
@@ -69,15 +75,15 @@ Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 
 - Viewer 桌面显示左文件树和右源码，窄屏切换 tree/code；Monaco 仅在 Viewer 内
   异步加载。Viewer 不拥有弹窗、复制、下载、ZIP、通知或持久化。
 
-Surface Foundation、Prototype Runtime 与 Source 已是当前可导入 API；资产树、Dataset
-编辑器和 Interactions Inspector 仍是后续迁移责任。实现状态以
+Surface Foundation、Prototype Runtime、Source、资产树、Dataset/Resource 编辑器、
+主题和 Interactions Inspector 均已接入当前 Studio。实现状态以
 [路线图](../ROADMAP.md) 为准。
 
 ## 当前合同
 
 持久化、Registry、Canonical IR、Preview transport 与 `SourceFileSet v1` 只接受各自
-精确的 JSON-safe 当前版本。当前校验链路是 RuleSet v2、ProjectDocument v7、
-SurfaceGraph v2、Canonical IR v6 和 Compiler 7.0.0；字段 Required 独立于 RuleSet。
+精确的 JSON-safe 当前版本。当前校验链路是 RuleSet v2、ProjectDocument v8、
+SurfaceGraph v3、Canonical IR v7 和 Compiler 8.0.0；字段 Required 独立于 RuleSet。
 旧、未来、缺失、畸形或混合版本均 fail closed；不提供迁移器、兼容别名、deprecated
 wrapper 或双读。
 

@@ -9,13 +9,13 @@ ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工
 
 ## 当前实现
 
-Surface Foundation 已落地，校验与源码合同也已完成硬切。`ProjectDocument v7`、
-`SurfaceGraph v2`、RuleSet v2、Canonical IR v6、Compiler 7.0.0、Vue backend、
-Workbench persistence/Preview 和 Source generator 都以 `SurfaceAsset` 为身份；Page/Dialog/Drawer
-共享 `SurfaceGraph`，每次 Experience 打开由 Prototype Runtime 创建隔离的
-`SurfaceInstance`。Designer 仍聚焦一个 Surface，默认 Inspector 只有 `properties` 与
-`validation`；独立 Source 包已经落地，完整 Studio 资产 UI、Dataset 编辑 UI 和
-Interactions Inspector 仍是后续任务。
+ConfigForm Studio 的本地 Demo 创作主链已经落地。`ProjectDocument v8`、
+`SurfaceGraph v3`、RuleSet v2、Canonical IR v7、Compiler 8.0.0、Vue backend、
+Workbench persistence/Experience 和 Source generator 都以 `SurfaceAsset` 为身份；
+Page/Dialog/Drawer 共享 `SurfaceGraph`，每次 Experience 打开由 Prototype Runtime 创建
+隔离的 `SurfaceInstance`。Designer 仍聚焦一个 Surface，Inspector 提供
+`properties`、`validation` 与 `interactions`；Studio 应用壳负责项目、Surface、Dataset、
+Resource、主题、Design/Experience 和源码导出。
 
 当前可用分层：
 
@@ -54,8 +54,8 @@ ProjectDocument、Canonical IR、Preview transport 和 Source generator 只处�
 
 ## 目标架构
 
-当前合同在生产链路之上增加 Surface、Dataset 基础合同、Prototype Runtime 与 Source；
-Studio 资产、Dataset 作者 UI 和 Interactions 作者 UI 仍按后续阶段交付：
+当前合同在生产链路之上增加完整的 Surface、Dataset、Resource、Prototype Runtime、
+Designer 作者入口与 Source 交付链：
 
 ```text
 Core <- Headless <- Runtime <- UI adapters
@@ -133,8 +133,8 @@ Dataset/Prototype session 都遵循 current-contract-only：writer 和 reader �
 旧、未来、缺失、畸形或混合版本 fail closed。不提供迁移器、兼容别名、deprecated
 wrapper、双模型或联合 peer range。
 
-当前校验链路使用 RuleSet v2、ProjectDocument v7、SurfaceGraph v2、Canonical IR v6
-与 Compiler 7.0.0。字段 Required 由 `required` / `requiredMessage` 独立表达，RuleSet
+当前校验链路使用 RuleSet v2、ProjectDocument v8、SurfaceGraph v3、Canonical IR v7
+与 Compiler 8.0.0。字段 Required 由 `required` / `requiredMessage` 独立表达，RuleSet
 不再接受 `kind: 'required'`，也没有 `time` base；时间物料只提供 Required 与
 `validateOn`。Select options 变化会在同一命令中同步已有 enum/literal base、清除失效
 默认值，无法表达时清除 validation；一次 Undo 整体恢复。动态 Required 只在运行态
@@ -152,9 +152,8 @@ wrapper、双模型或联合 peer range。
 - [Source](./source/README.md)
 - [Workbench](./workbench/README.md)
 
-Model、Compiler、Vue backend、Prototype Runtime 和 Source 的 README 已同步当前
-Surface Foundation 与源码交付入口；Studio 资产和 Dataset/Interaction 作者 UI 仍只在
-路线图中描述。
+Model、Compiler、Vue backend、Prototype Runtime、Designer、Source 与 Workbench 的
+README 均描述当前 Studio 主链；规划能力仍只在路线图中明确标记，不进入当前 API 示例。
 
 ## 验证
 

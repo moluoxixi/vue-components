@@ -10,7 +10,7 @@ import {
 } from '../index'
 import { createCompilerFixture } from './fixtures'
 
-describe('Surface Dataset and interaction projection', () => {
+describe('surface Dataset and interaction projection', () => {
   it('keeps Dataset, Resource, and interaction references in the flat Surface IR', () => {
     const input = createCompilerFixture()
     const result = compileCanonicalSurface({ ...input, surfaceId: 'home' })
@@ -25,9 +25,42 @@ describe('Surface Dataset and interaction projection', () => {
         projection: { kind: 'options', labelPath: ['label'], valuePath: ['id'] },
       },
     })
+    expect(result.compilation.datasetsById).toEqual({
+      people: input.snapshot.document.datasetsById.people,
+    })
+    expect(result.compilation.theme).toEqual(input.snapshot.document.theme)
+    expect(Object.isFrozen(result.compilation.theme)).toBe(true)
+    expect(Object.isFrozen(result.compilation.datasetsById)).toBe(true)
     expect(surface.interactions).toEqual(input.snapshot.document.surfacesById.home!.interactions)
     expect(JSON.stringify(surface)).not.toContain('optionSource')
     expect(JSON.stringify(surface)).not.toContain('runtime')
+  })
+
+  it('rebinds a cached Surface compilation to the latest project theme', () => {
+    const input = createCompilerFixture()
+    const coordinator = createCompileCoordinator({ registry: input.registry })
+    coordinator.acceptSnapshot(input.snapshot)
+    const before = coordinator.compileSurface('home')
+    expect(before.success).toBe(true)
+    if (!before.success)
+      return
+
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    document.theme = { version: 1, colors: { primary: '#336699' }, spacing: { md: 18 } }
+    coordinator.acceptSnapshot(createProjectSnapshot(document, 2), {
+      project: true,
+      surfaceIds: [],
+      datasetIds: [],
+      resourceIds: [],
+      nodeChanges: [],
+    })
+    const after = coordinator.compileSurface('home')
+    expect(after.success).toBe(true)
+    if (!after.success)
+      return
+    expect(after.compilation.surface).toBe(before.compilation.surface)
+    expect(after.compilation.theme).toEqual(document.theme)
+    expect(after.compilation.theme).not.toBe(before.compilation.theme)
   })
 
   it('changes Surface semantic identity when a referenced Dataset or Resource changes', () => {

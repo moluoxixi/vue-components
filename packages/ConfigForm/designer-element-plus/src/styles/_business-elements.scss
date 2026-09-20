@@ -1,0 +1,39 @@
+.el-business-table,
+.el-business-list {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.el-business-table .el-table__body tr.is-selected > td.el-table__cell {
+  background: var(--el-color-primary-light-9, #ecf5ff);
+}
+
+.el-business-list__items {
+  display: grid;
+  gap: 8px;
+}
+
+.el-business-list__item {
+  display: grid;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: 4px;
+  background: var(--el-bg-color, #fff);
+  color: inherit;
+  cursor: pointer;
+  gap: 2px;
+  text-align: left;
+}
+
+.el-business-list__item.is-selected {
+  border-color: var(--el-color-primary, #409eff);
+  background: var(--el-color-primary-light-9, #ecf5ff);
+}
+
+.el-business-table__summary,
+.el-business-list__summary {
+  justify-self: end;
+  color: var(--el-text-color-secondary, #909399);
+}

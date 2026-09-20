@@ -1,8 +1,8 @@
 import type { createDesignerLocale, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type {
   ProjectEmbeddedResourceRead,
-  ProjectSurface,
   ProjectSummary,
+  ProjectSurface,
   SurfaceGraph,
 } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
@@ -10,15 +10,21 @@ import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
 import type { ProjectEditorSessionSnapshot, ProjectRecoveryDraftSummary } from '../../project'
 import type { createWorkbenchDesignSession, createWorkbenchExportService, PreviewSession } from '../../session'
 import type { StudioLayerEntry } from '../../studio'
+import type { createWorkbenchAssetCommands } from '../services/controller-assets'
 import type { createWorkbenchCreationCommands } from '../services/controller-creation'
 import type { createWorkbenchSurfaceCommands } from '../services/controller-page-commands'
 import type { createWorkbenchPersistenceCommands } from '../services/controller-persistence'
 import type { createWorkbenchProjectBinding } from '../services/controller-project-binding'
+import type { createWorkbenchProjectCommands } from '../services/controller-project-commands'
+import type { createWorkbenchThemeCommands } from '../services/controller-theme-commands'
 
 type CreationCommands = ReturnType<typeof createWorkbenchCreationCommands>
 type SurfaceCommands = ReturnType<typeof createWorkbenchSurfaceCommands>
 type PersistenceCommands = ReturnType<typeof createWorkbenchPersistenceCommands>
 type ProjectBinding = ReturnType<typeof createWorkbenchProjectBinding>
+type ProjectCommands = ReturnType<typeof createWorkbenchProjectCommands>
+type AssetCommands = ReturnType<typeof createWorkbenchAssetCommands>
+type ThemeCommands = ReturnType<typeof createWorkbenchThemeCommands>
 
 export interface WorkbenchControllerProps {
   locale?: DesignerLocaleOptions
@@ -40,7 +46,10 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
 }
 
 export interface WorkbenchController extends
-  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProjectFromTemplate' | 'prepareJsonImport'>,
+  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
+  Pick<ProjectCommands, 'deleteProject' | 'renameProject'>,
+  AssetCommands,
+  ThemeCommands,
   Pick<SurfaceCommands, 'handleSurfaceAction' | 'selectSurfaceFromDesigner'>,
   Pick<PersistenceCommands, | 'createNamedCheckpoint'
   | 'discardRecoveryDraft'
@@ -73,6 +82,7 @@ export interface WorkbenchController extends
   registry: ComputedRef<WorkbenchAdapter['designerRegistry']>
   repositoryRevision: ComputedRef<number>
   recoveryDrafts: ShallowRef<WorkbenchRecoveryDraftSummary[]>
+  closeProject: ProjectBinding['closeProject']
   requestOpenProject: ProjectBinding['requestOpenProject']
   statusLabel: ComputedRef<string>
   workbenchLocale: ComputedRef<ReturnType<typeof createDesignerLocale>>

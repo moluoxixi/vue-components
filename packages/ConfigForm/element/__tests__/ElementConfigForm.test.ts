@@ -2,9 +2,9 @@ import type { Component } from 'vue'
 import type { ElementConfigFormExpose } from '../src/types'
 import { createConfigFormModel, defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
-import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch } from 'element-plus'
+import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch, ElTable } from 'element-plus'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h, ref, shallowRef } from 'vue'
+import { defineComponent, h, reactive, ref, shallowRef, toRaw } from 'vue'
 import { z } from 'zod'
 import {
   ELEMENT_CONFIG_FORM_COMPONENTS,
@@ -26,6 +26,12 @@ interface CheckboxForm {
 interface SemanticForm {
   enabled: boolean
   name: string
+}
+
+function registeredComponent(input: unknown): Component {
+  if (typeof input === 'object' && input !== null && 'component' in input)
+    return (input as { component: Component }).component
+  return input as Component
 }
 
 const InputStub = defineComponent({
@@ -67,7 +73,61 @@ describe('element config form', () => {
       { name: 'number', source: '../materials/number.ts' },
       { name: 'boolean', source: '../materials/boolean.ts' },
       { name: 'select', source: '../materials/select.ts' },
+      { name: 'title', source: '../materials/title.ts' },
+      { name: 'icon', source: '../materials/icon.ts' },
+      { name: 'image', source: '../materials/image.ts' },
+      { name: 'divider', source: '../materials/divider.ts' },
+      { name: 'button', source: '../materials/button.ts' },
+      { name: 'link', source: '../materials/link.ts' },
+      { name: 'tag', source: '../materials/tag.ts' },
+      { name: 'alert', source: '../materials/alert.ts' },
+      { name: 'table', source: '../materials/table.ts' },
+      { name: 'list', source: '../materials/list.ts' },
+      { name: 'empty', source: '../materials/empty.ts' },
+      { name: 'pagination', source: '../materials/pagination.ts' },
     ])
+  })
+
+  it('renders Dataset Table/List totals, owns selection, and emits detached items', async () => {
+    const rows = reactive([
+      { rowKey: 'ada', name: 'Ada', meta: { rank: 2 } },
+      { rowKey: 'grace', name: 'Grace', meta: { rank: 1 } },
+    ])
+    const table = mount(registeredComponent(ELEMENT_CONFIG_FORM_COMPONENTS.table), {
+      props: { rows, rowsTotal: 7 },
+    })
+    const elTable = table.getComponent(ElTable)
+    const rowClassName = elTable.props('rowClassName') as (input: {
+      row: Record<string, unknown>
+      rowIndex: number
+    }) => string
+
+    expect(table.get('.mx-element-dataset-table__summary').text()).toBe('2 / 7')
+    expect(rowClassName({ row: rows[1]!, rowIndex: 1 })).toBe('')
+    elTable.vm.$emit('row-click', rows[1])
+    await flushPromises()
+    expect(rowClassName({ row: rows[1]!, rowIndex: 1 })).toBe('is-selected')
+
+    const activatedRow = table.emitted('row-click')?.[0]?.[0] as typeof rows[number]
+    expect(activatedRow).toEqual(toRaw(rows[1]))
+    expect(activatedRow).not.toBe(toRaw(rows[1]))
+    expect(activatedRow.meta).not.toBe(toRaw(rows[1]!).meta)
+
+    const items = reactive([
+      { itemKey: 'one', title: 'One', description: 'First' },
+      { itemKey: 'two', title: 'Two', description: 'Second' },
+    ])
+    const list = mount(registeredComponent(ELEMENT_CONFIG_FORM_COMPONENTS.list), { props: { items } })
+    const buttons = list.findAll('.mx-element-dataset-list__item')
+    expect(list.get('.mx-element-dataset-list__summary').text()).toBe('2 / 2')
+    expect(buttons[1]!.attributes('aria-pressed')).toBe('false')
+    await buttons[1]!.trigger('click')
+    expect(buttons[1]!.attributes('aria-pressed')).toBe('true')
+    expect(buttons[1]!.classes()).toContain('is-selected')
+
+    const activatedItem = list.emitted('item-click')?.[0]?.[0] as typeof items[number]
+    expect(activatedItem).toEqual(toRaw(items[1]))
+    expect(activatedItem).not.toBe(toRaw(items[1]))
   })
 
   it('透传原生 attrs，并保持 formAttrs 与 adapter namespace 优先级', () => {

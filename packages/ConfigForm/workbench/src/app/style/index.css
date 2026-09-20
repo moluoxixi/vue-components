@@ -37,6 +37,102 @@
   background: var(--wb-editor-surface);
 }
 
+.surface-presentation-shell:not(.is-page) {
+  position: relative;
+  display: flex;
+  min-width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  background: var(--wb-bg);
+}
+
+.surface-presentation-mask { position: absolute; inset: 0; background: rgb(10 14 22 / 42%); }
+
+.surface-presentation-panel {
+  position: relative;
+  z-index: 1;
+  width: min(var(--surface-presentation-size), 100%);
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--wb-control-border);
+  border-radius: 6px;
+  background: var(--wb-elevated);
+  box-shadow: var(--wb-shadow-sheet);
+}
+
+.surface-presentation-header {
+  display: flex;
+  min-height: 44px;
+  padding: 0 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.surface-presentation-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.surface-presentation-header button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; place-items: center; color: var(--wb-muted); border: 0; background: transparent; }
+.surface-presentation-shell.is-drawer { padding: 0; }
+.surface-presentation-shell.is-drawer.is-right { justify-content: flex-end; }
+.surface-presentation-shell.is-drawer.is-left { justify-content: flex-start; }
+.surface-presentation-shell.is-drawer.is-top { align-items: flex-start; }
+.surface-presentation-shell.is-drawer.is-bottom { align-items: flex-end; }
+.surface-presentation-shell.is-drawer.is-top .surface-presentation-panel,
+.surface-presentation-shell.is-drawer.is-bottom .surface-presentation-panel { width: 100%; min-height: min(var(--surface-presentation-size), 100%); }
+.surface-presentation-shell.is-drawer.is-left .surface-presentation-panel,
+.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel { min-height: 100%; }
+
+.surface-presentation-shell:not(.is-page) {
+  position: relative;
+  display: flex;
+  min-width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  background: var(--wb-bg);
+}
+
+.surface-presentation-mask { position: absolute; inset: 0; background: rgb(10 14 22 / 42%); }
+
+.surface-presentation-panel {
+  position: relative;
+  z-index: 1;
+  width: min(var(--surface-presentation-size), 100%);
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--wb-control-border);
+  border-radius: 6px;
+  background: var(--wb-elevated);
+  box-shadow: var(--wb-shadow-sheet);
+}
+
+.surface-presentation-header {
+  display: flex;
+  min-height: 44px;
+  padding: 0 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.surface-presentation-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.surface-presentation-header button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; place-items: center; color: var(--wb-muted); border: 0; background: transparent; }
+.surface-presentation-shell.is-drawer { padding: 0; }
+.surface-presentation-shell.is-drawer.is-right { justify-content: flex-end; }
+.surface-presentation-shell.is-drawer.is-left { justify-content: flex-start; }
+.surface-presentation-shell.is-drawer.is-top { align-items: flex-start; }
+.surface-presentation-shell.is-drawer.is-bottom { align-items: flex-end; }
+.surface-presentation-shell.is-drawer.is-top .surface-presentation-panel,
+.surface-presentation-shell.is-drawer.is-bottom .surface-presentation-panel { width: 100%; min-height: min(var(--surface-presentation-size), 100%); }
+.surface-presentation-shell.is-drawer.is-left .surface-presentation-panel,
+.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel { min-height: 100%; }
+
 .workbench-message {
   position: fixed;
   z-index: 3100;
@@ -174,7 +270,7 @@
     display: grid;
     min-width: 0;
     grid-row: 3;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     border-top: 1px solid var(--wb-separator);
     background: var(--wb-elevated);
     box-shadow: var(--wb-shadow-sheet);

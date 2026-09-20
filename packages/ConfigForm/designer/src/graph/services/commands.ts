@@ -5,6 +5,7 @@ import type {
   ProjectCommandAction,
   ProjectNodePatchKey,
   ProjectOperation,
+  PrototypeInteraction,
   SurfaceGraph,
   SurfaceNode,
   SurfaceNodeSettings,
@@ -269,4 +270,15 @@ export function createFormCommand(
     surfaceId,
     form,
   }], { mergeKey: `form:${surfaceId}:${Object.keys(changes).sort().join(',')}` })
+}
+
+export function createSurfaceInteractionsCommand(
+  surfaceId: string,
+  interactions: readonly PrototypeInteraction[],
+): ProjectCommand {
+  return createOperationCommand('Update interactions', [{
+    type: 'surface.interactions',
+    surfaceId,
+    interactions: structuredClone(interactions) as PrototypeInteraction[],
+  }])
 }

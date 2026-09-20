@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SourceFile, SourceFileSetV1 } from '@moluoxixi/config-form-source/generator'
-import type { ExportSessionState } from '../../project'
+import type { SourceFile, SourceFileSetV1, SourceStyleTarget } from '@moluoxixi/config-form-source/generator'
+import type { BuildExportSnapshotInput, ExportSessionState } from '../../project'
 import type { ExportDialogEmits, ExportDialogProps } from './types'
 import { Clipboard, Download, RefreshCw, X } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
@@ -20,17 +20,33 @@ const emit = defineEmits<ExportDialogEmits>()
 const locale = computed(() => createDesignerLocale(props.locale))
 const rawSelectedPath = ref('src/main.ts')
 const bindingSelectedPath = ref('src/bindings.ts')
+const styleTarget = ref<SourceStyleTarget>('css')
+const refreshing = ref(false)
+const styleTargetOptions = computed(() => [
+  { label: locale.value.t('export.style.css', 'CSS'), value: 'css' },
+  { label: locale.value.t('export.style.tailwind', 'Tailwind v4'), value: 'tailwind-v4' },
+] satisfies { label: string, value: SourceStyleTarget }[])
+let pinnedInput: BuildExportSnapshotInput | undefined
+let captureOverride: BuildExportSnapshotInput | undefined
+let lastCapturedInput: BuildExportSnapshotInput | undefined
 const exportSession = createExportSession({
-  capture: () => props.capture(),
+  capture: () => {
+    const input = captureOverride ?? props.capture()
+    lastCapturedInput = input
+    return input ? { ...input, styleTarget: styleTarget.value } : undefined
+  },
   currentCompilation: () => props.currentCompilation,
 })
 const sessionState = shallowRef<ExportSessionState>(exportSession.state)
 const unsubscribeSession = exportSession.subscribe(state => sessionState.value = state)
 const snapshot = computed(() => sessionState.value.snapshot)
+const activeSnapshot = computed(() => snapshot.value?.styleTarget === styleTarget.value
+  ? snapshot.value
+  : undefined)
 const snapshotStale = computed(() => sessionState.value.stale)
 const activeArtifact = computed(() => props.mode === 'config'
-  ? snapshot.value?.configBindings
-  : snapshot.value?.rawSource)
+  ? activeSnapshot.value?.configBindings
+  : activeSnapshot.value?.rawSource)
 const snapshotError = computed(() => {
   if (sessionState.value.error)
     return sessionState.value.error
@@ -78,20 +94,40 @@ watch(() => props.mode, (mode) => {
 
 onBeforeUnmount(unsubscribeSession)
 
-async function refreshSnapshot(): Promise<void> {
-  const result = await exportSession.refresh()
-  if (!result.success)
+async function refreshSnapshot(preservePinnedInput = false): Promise<void> {
+  if (refreshing.value)
     return
-  if (result.snapshot.rawSource.status === 'ready') {
-    const rawSource = result.snapshot.rawSource.fileSet
-    rawSelectedPath.value = resolveExportSnapshotPath(rawSource, rawSelectedPath.value)
-      ?? rawSource.entry
+  refreshing.value = true
+  captureOverride = preservePinnedInput ? pinnedInput : undefined
+  lastCapturedInput = undefined
+  try {
+    const result = await exportSession.refresh()
+    if (!result.success)
+      return
+    if (lastCapturedInput)
+      pinnedInput = lastCapturedInput
+    if (result.snapshot.rawSource.status === 'ready') {
+      const rawSource = result.snapshot.rawSource.fileSet
+      rawSelectedPath.value = resolveExportSnapshotPath(rawSource, rawSelectedPath.value)
+        ?? rawSource.entry
+    }
+    if (result.snapshot.configBindings.status === 'ready') {
+      const configBindings = result.snapshot.configBindings.fileSet
+      bindingSelectedPath.value = resolveExportSnapshotPath(configBindings, bindingSelectedPath.value)
+        ?? configBindings.entry
+    }
   }
-  if (result.snapshot.configBindings.status === 'ready') {
-    const configBindings = result.snapshot.configBindings.fileSet
-    bindingSelectedPath.value = resolveExportSnapshotPath(configBindings, bindingSelectedPath.value)
-      ?? configBindings.entry
+  finally {
+    captureOverride = undefined
+    refreshing.value = false
   }
+}
+
+function setStyleTarget(value: unknown): void {
+  if ((value !== 'css' && value !== 'tailwind-v4') || value === styleTarget.value)
+    return
+  styleTarget.value = value
+  void refreshSnapshot(true)
 }
 
 async function copyExport(): Promise<void> {
@@ -169,7 +205,21 @@ async function downloadBundle(): Promise<void> {
       </div>
     </template>
 
-    <div class="export-preview-body flex min-h-0 min-w-0 w-full flex-auto flex-col overflow-hidden bg-wb-editor-surface">
+    <div
+      class="export-preview-body flex min-h-0 min-w-0 w-full flex-auto flex-col overflow-hidden bg-wb-editor-surface"
+      :aria-busy="refreshing"
+    >
+      <div class="export-style-toolbar">
+        <span>{{ locale.t('export.style.label', 'Project styling') }}</span>
+        <ElSegmented
+          class="export-style-target"
+          :model-value="styleTarget"
+          :options="styleTargetOptions"
+          :disabled="refreshing"
+          :aria-label="locale.t('export.style.label', 'Project styling')"
+          @update:model-value="setStyleTarget"
+        />
+      </div>
       <ElAlert
         v-if="snapshotError"
         class="export-diagnostic"
@@ -184,7 +234,7 @@ async function downloadBundle(): Promise<void> {
             native-type="button"
             text
             class="export-diagnostic-refresh"
-            @click="refreshSnapshot"
+            @click="refreshSnapshot()"
           >
             <RefreshCw :size="14" aria-hidden="true" />
             {{ locale.t('export.refresh', 'Refresh snapshot') }}
@@ -194,7 +244,7 @@ async function downloadBundle(): Promise<void> {
       <ElAlert v-if="snapshotStale" class="export-stale" type="warning" :closable="false" show-icon>
         <template #title>
           <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>
-          <ElButton native-type="button" text @click="refreshSnapshot">
+          <ElButton native-type="button" text @click="refreshSnapshot()">
             <RefreshCw :size="14" aria-hidden="true" />
             {{ locale.t('export.refresh', 'Refresh snapshot') }}
           </ElButton>

@@ -22,7 +22,7 @@ export default defineDesignerMaterialModule({
         shared.propSetter('gap', 'Gap', 'number', undefined, { min: 0, max: 64, step: 4 }),
         shared.propSetter('itemWidth', 'Item width', 'number', undefined, { min: 80, max: 600, step: 20 }),
       ],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.flex', props: { direction: 'row', wrap: true, gap: 12, justify: 'flex-start', align: 'stretch', itemWidth: 220 }, slots: { default: [] } }),
     },
     locale: {

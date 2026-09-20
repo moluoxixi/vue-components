@@ -22,16 +22,22 @@ export function resolveInspectorCapabilities(
       id,
       canCreate: id === 'properties'
         ? inputs.length > 0
-        : inputs.length > 0 && inputs.every(input => input.node.kind === 'field'),
+        : id === 'interactions'
+          ? inputs.length === 1
+          : inputs.length > 0 && inputs.every(input => input.node.kind === 'field'),
       editable: hasWritableEvidence && (id === 'properties'
-        || inputs.every(input => input.node.kind === 'field')),
+        || (id === 'interactions'
+          ? inputs.length === 1
+          : inputs.every(input => input.node.kind === 'field'))),
       hasStoredContent: id === 'properties'
         ? inputs.length > 0
-        : inputs.some(({ node }) => node.kind === 'field'
-          && (node.required !== undefined
-            || node.requiredMessage !== undefined
-            || node.validation !== undefined
-            || node.validateOn !== undefined)),
+        : id === 'interactions'
+          ? false
+          : inputs.some(({ node }) => node.kind === 'field'
+            && (node.required !== undefined
+              || node.requiredMessage !== undefined
+              || node.validation !== undefined
+              || node.validateOn !== undefined)),
     })),
     commonSetters: hasWritableEvidence ? intersectSetters(inputs) : [],
   }

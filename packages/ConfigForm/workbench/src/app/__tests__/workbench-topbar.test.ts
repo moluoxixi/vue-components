@@ -128,7 +128,7 @@ describe('workbench topbar', () => {
     })
 
     const commandHints = wrapper.findAllComponents(WorkbenchCommandHint)
-    expect(commandHints).toHaveLength(4)
+    expect(commandHints).toHaveLength(5)
     expect(commandHints.every(hint => Boolean(hint.props('label')))).toBe(true)
     const save = wrapper.get('button[aria-label^="Save options"]')
     expect(save.attributes('aria-disabled')).toBe('true')

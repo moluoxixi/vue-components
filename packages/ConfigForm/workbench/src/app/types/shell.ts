@@ -7,4 +7,5 @@ export interface WorkbenchShellProps {
 export interface WorkbenchShellEmits {
   create: [request: { focusKey: string, target: TemplateCreationTarget }]
   creationFocusRestored: []
+  exit: []
 }

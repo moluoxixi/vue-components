@@ -169,6 +169,31 @@ async function activateSemantic(trigger: MaterialSemanticTrigger, event: Event):
   }
 }
 
+interface SemanticActivation {
+  nodeId: string
+  trigger: MaterialSemanticTrigger
+  args: readonly unknown[]
+}
+
+function handleSemanticActivation(activation: SemanticActivation): void {
+  const binding = primaryBindings(activation.trigger).find(candidate => candidate.nodeId === activation.nodeId)
+  const address = binding ? addressFor(binding.nodeId) : undefined
+  if (!binding || !address)
+    return
+  const item = activation.trigger === 'rowActivate' || activation.trigger === 'itemActivate'
+    ? activation.args[0]
+    : undefined
+  if (item !== undefined && (typeof item !== 'object' || item === null || Array.isArray(item))) {
+    emit('error', new Error(`Semantic ${activation.trigger} activation requires an object item.`))
+    return
+  }
+  void props.bindings.activate({
+    sourceAddress: address,
+    interactionId: binding.id,
+    ...(item === undefined ? {} : { item: item as ModelJsonObject }),
+  }).catch(error => emit('error', error instanceof Error ? error : new Error(String(error))))
+}
+
 function handleActivate(event: MouseEvent): void {
   const origin = eventOrigin(event)
   if (
@@ -378,6 +403,7 @@ onBeforeUnmount(() => {
       class="surface-experience-form"
       mode="preview"
       v-bind="artifact.renderer"
+      :on-semantic-activate="handleSemanticActivation"
       @field-change="handleFieldChange"
       @errors-change="emitState"
       @meta-change="emitState"

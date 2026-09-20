@@ -20,6 +20,7 @@
   --mx-designer-canvas-sheet: #fff;
   --mx-designer-text: var(--wb-text);
   --mx-designer-accent: var(--wb-accent);
+  --mx-designer-accent-text: var(--wb-accent-text);
   --mx-designer-selection-bg: var(--wb-action-bg);
   --mx-designer-accent-soft: var(--wb-accent-soft);
   --mx-designer-accent-line: var(--wb-accent-line);

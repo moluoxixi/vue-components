@@ -16,6 +16,7 @@ import type {
   ConfigFormRendererFormAttrs,
   ConfigFormRendererLayoutAttrs,
   ConfigFormRendererNode,
+  ConfigFormRendererSemanticActivation,
   ConfigFormRenderMode,
   ConfigFormRuntimeEditorBridge,
 } from './contracts'
@@ -55,4 +56,6 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   breakpoint?: ConfigFormBreakpoint
   editor?: ConfigFormRuntimeEditorBridge<TValues>
   reactionProjection?: ConfigFormReactionProjection<TValues>
+  /** Receives only declared semantic activations from compiled provider nodes. */
+  onSemanticActivate?: (activation: ConfigFormRendererSemanticActivation) => unknown
 }

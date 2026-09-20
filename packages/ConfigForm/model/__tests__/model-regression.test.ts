@@ -17,6 +17,7 @@ import {
   createProjectHistory,
   createProjectSnapshot,
   createRegistryContractSnapshot,
+  matchesResourceMediaType,
   parseProjectDocument,
   parseProjectDraftSnapshot,
   parseProjectSnapshot,
@@ -51,6 +52,14 @@ function expectInverseRoundTrip(document: ProjectDocument, operations: ProjectOp
 }
 
 describe('surface graph and snapshot regression coverage', () => {
+  it('matches exact and wildcard Resource media capabilities', () => {
+    expect(matchesResourceMediaType('image/png', ['image/*'])).toBe(true)
+    expect(matchesResourceMediaType('IMAGE/SVG+XML; charset=utf-8', ['image/*'])).toBe(true)
+    expect(matchesResourceMediaType('application/pdf', ['image/*'])).toBe(false)
+    expect(matchesResourceMediaType(undefined, ['image/*'])).toBe(false)
+    expect(matchesResourceMediaType(undefined, undefined)).toBe(true)
+  })
+
   it('rejects duplicate placement and cyclic Surface graphs without throwing', () => {
     const duplicate = documentFixture({
       surfacesById: {
@@ -524,6 +533,17 @@ describe('transaction and history regression coverage', () => {
       },
       { type: 'resource.add', resource: { id: 'third', kind: 'url', name: 'Third', url: '/third.png' } },
     ])
+    expectInverseRoundTrip(source, [{
+      type: 'dataset.replace',
+      datasetId: 'first',
+      dataset: {
+        id: 'first',
+        name: 'Imported people',
+        description: 'Complete replacement without breaking references',
+        rows: [{ id: 9, label: 'Nine' }],
+        defaultProjection: { kind: 'options', labelPath: ['label'], valuePath: ['id'] },
+      },
+    }])
     expectInverseRoundTrip(source, [
       { type: 'dataset.remove', datasetId: 'second' },
       { type: 'resource.remove', resourceId: 'second' },
@@ -577,6 +597,24 @@ describe('transaction and history regression coverage', () => {
       expect(result.diagnostics.map(diagnostic => diagnostic.code)).toContain(code)
       expect(result.document).toBe(source)
     })
+  })
+
+  it('replaces a Dataset atomically without allowing its stable id to change', () => {
+    const source = documentFixture({
+      datasetOrder: ['people'],
+      datasetsById: { people: { id: 'people', name: 'People', rows: [{ id: 1 }] } },
+    })
+    const result = applyProjectTransaction(source, transaction('replace-dataset', [{
+      type: 'dataset.replace',
+      datasetId: 'people',
+      dataset: { id: 'contacts', name: 'Contacts', rows: [] },
+    }]))
+
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'PROJECT_DATASET_ID_CHANGE_INVALID' }],
+    })
+    expect(result.document).toBe(source)
   })
 
   it('merges, undoes, redoes, and branches history deterministically', () => {

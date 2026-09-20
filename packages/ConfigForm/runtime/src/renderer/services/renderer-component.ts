@@ -4,6 +4,7 @@ import type { Component, VNodeChild } from 'vue'
 import type {
   ConfigFormRendererCellAttrs,
   ConfigFormRendererFieldAttrs,
+  ConfigFormRendererSemanticEvents,
   ConfigFormRuntimeNodeMetadata,
 } from '../types'
 import type { RendererPipelineContext, RendererSlots } from '../types/internal'
@@ -16,7 +17,10 @@ type RuntimeComponentNode<TValues extends ConfigFormValues> = ConfigFormComponen
   Component | string,
   ConfigFormRendererFieldAttrs,
   ConfigFormRendererCellAttrs
-> & { id: string }
+> & {
+  id: string
+  semanticEvents?: ConfigFormRendererSemanticEvents
+}
 
 export function createComponentRenderer<TValues extends ConfigFormValues>(
   context: RendererPipelineContext<TValues>,
@@ -36,7 +40,7 @@ export function createComponentRenderer<TValues extends ConfigFormValues>(
     scope: ConfigFormScopePath,
     slotOverride?: RendererSlots,
   ): VNodeChild {
-    const { binding, componentListeners, designGuard, editorBridge } = context
+    const { binding, componentListeners, designGuard, editorBridge, props } = context
     const slots = slotOverride ?? createNodeSlots(node, path, ancestors, scope)
     const registration = binding.resolveRegistration(node.component)
     const component = registration?.component ?? node.component
@@ -49,6 +53,17 @@ export function createComponentRenderer<TValues extends ConfigFormValues>(
       'data-config-form-value-scope': node.valueScope?.kind,
     }
     designGuard.applyDesignInteractionGuard(componentProps)
+    for (const [trigger, event] of Object.entries(node.semanticEvents ?? {}) as Array<[string, string]>) {
+      if (event.length === 0)
+        continue
+      componentListeners.addListener(componentProps, event, (...args: unknown[]) => {
+        props.onSemanticActivate?.({
+          nodeId: node.id,
+          trigger: trigger as Parameters<NonNullable<typeof props.onSemanticActivate>>[0]['trigger'],
+          args,
+        })
+      })
+    }
     if (registerElement)
       Object.assign(componentProps, { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) })
     componentListeners.wrapComponentListeners(componentProps)

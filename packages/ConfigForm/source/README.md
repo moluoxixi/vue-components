@@ -33,6 +33,7 @@ const rawSource = await generateVueSource({
   compilation,
   componentResolver,
   resourceReader,
+  styleTarget: 'tailwind-v4',
 })
 
 const configBindings = await generateConfigFormBindings({
@@ -40,8 +41,15 @@ const configBindings = await generateConfigFormBindings({
   componentResolver,
   bindingResolver,
   resourceReader,
+  styleTarget: 'tailwind-v4',
 })
 ```
+
+`styleTarget` 是 Source 调用级选项，只接受 `css | tailwind-v4`，省略时保持现有 CSS
+输出。它不写入 ProjectDocument、Canonical IR 或 Registry fingerprint。Tailwind v4
+Raw 工程使用官方 Vite 插件和可静态扫描的完整 utility；ConfigForm binding 只通过
+公开 attrs 与生成器拥有的外围结构输出 class，不要求 Runtime 或 Provider adapter
+依赖 Tailwind。连续数值和精确响应式值仍使用受控 CSS 变量或 inline style。
 
 `SourceComponentResolver` 由 Studio 组合根根据锁定的 adapter 身份提供组件 import、
 目标 UI 包、样式，以及 Material 语义触发器到 provider 事件/listener prop 的固定投影。

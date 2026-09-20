@@ -4,6 +4,7 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 @source "../features/export/index.vue";
+@source "../app/components/ProjectThemeEditor/index.vue";
 
 @theme inline {
   --color-wb-bg: var(--wb-bg);

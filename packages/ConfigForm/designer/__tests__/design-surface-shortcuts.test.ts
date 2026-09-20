@@ -3,7 +3,7 @@
 import type { ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
-import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
+import { createComponentContractRegistry, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
@@ -36,7 +36,7 @@ const componentRegistry = createComponentContractRegistry([{
   defaults: {},
 }], { adapter: 'test', version: '1' })
 const graph: SurfaceGraph = {
-  version: 2,
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {},
   root: [

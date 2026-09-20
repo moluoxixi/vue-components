@@ -1,14 +1,17 @@
-import type { FieldNode, SurfaceGraph } from '@moluoxixi/config-form-model'
+import type { DatasetViewQuery, FieldNode, ProjectDataset, SurfaceGraph } from '@moluoxixi/config-form-model'
 import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
-import { surfaceGraphSchema } from '@moluoxixi/config-form-model'
+import { queryDatasetView, SURFACE_GRAPH_VERSION, surfaceGraphSchema } from '@moluoxixi/config-form-model'
+import { flushPromises, mount } from '@vue/test-utils'
+import { Table } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
-import { defineComponent } from 'vue'
+import { defineComponent, reactive, toRaw } from 'vue'
 import {
   ANTD_VUE_DESIGNER_MATERIAL_REGISTRY,
   ANTD_VUE_DESIGNER_MATERIALS,
   ANTD_VUE_DESIGNER_ZH_CN,
   createAntdVueDesignerRegistry,
 } from '../index'
+import { AntdDatasetList, AntdDatasetTable } from '../src/materials/runtime'
 import {
   renderAntdVueChoiceReadonly,
   renderAntdVuePasswordReadonly,
@@ -42,11 +45,24 @@ const expectedKeys = [
   'antd.object-group',
   'antd.array-subform',
   'antd.detail-table',
+  'antd.text',
+  'antd.title',
+  'antd.icon',
+  'antd.image',
+  'antd.divider',
+  'antd.button',
+  'antd.link',
+  'antd.tag',
+  'antd.alert',
+  'antd.table',
+  'antd.list',
+  'antd.empty',
+  'antd.pagination',
 ]
 
 function graphForRootMaterials(): SurfaceGraph {
   const registry = createAntdVueDesignerRegistry()
-  const graph: SurfaceGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: SurfaceGraph = { version: SURFACE_GRAPH_VERSION, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -64,6 +80,41 @@ function graphForRootMaterials(): SurfaceGraph {
     Object.assign(graph.nodesById, subgraph.nodesById)
   })
   return graph
+}
+
+function projectedDatasetViews() {
+  const dataset: ProjectDataset = {
+    id: 'people',
+    name: 'People',
+    rows: [
+      { id: 'ada', name: 'Ada', active: true, rank: 2, detail: 'Second', meta: { team: 'Core' } },
+      { id: 'grace', name: 'Grace', active: false, rank: 4, detail: 'Hidden', meta: { team: 'Compiler' } },
+      { id: 'linus', name: 'Linus', active: true, rank: 1, detail: 'Third', meta: { team: 'Runtime' } },
+      { id: 'alan', name: 'Alan', active: true, rank: 3, detail: 'First', meta: { team: 'Studio' } },
+    ],
+  }
+  const query: DatasetViewQuery = {
+    filter: { version: 1, ast: { kind: 'reference', scope: 'item', path: ['active'] } },
+    sort: [{ path: ['rank'], direction: 'desc' }],
+    page: { index: 0, size: 2 },
+  }
+  const table = queryDatasetView(dataset, {
+    kind: 'table',
+    rowKeyPath: ['id'],
+    columns: [
+      { key: 'name', valuePath: ['name'] },
+      { key: 'meta', valuePath: ['meta'] },
+    ],
+  }, query)
+  const list = queryDatasetView(dataset, {
+    kind: 'list',
+    itemKeyPath: ['id'],
+    titlePath: ['name'],
+    descriptionPath: ['detail'],
+  }, query)
+  if (!table.success || !list.success)
+    throw new TypeError('Expected shared Dataset queries to succeed.')
+  return { table: table.data, list: list.data }
 }
 
 function fieldNode(component: string, field: string): FieldNode {
@@ -171,6 +222,81 @@ describe('ant design vue designer materials', () => {
       expect(material.setters.some(setter => setter.path.join('.') === 'defaultValue')).toBe(true)
       expect(typeof material.runtime.readonlyRender).toBe('function')
     }
+  })
+
+  it('keeps Dataset and semantic capabilities on their exact element materials', () => {
+    const registry = createAntdVueDesignerRegistry()
+    for (const name of ['text', 'title', 'icon', 'image', 'divider', 'button', 'link', 'tag', 'alert', 'table', 'list', 'empty', 'pagination'])
+      expect(registry.getMaterial(`antd.${name}`)?.kind).toBe('element')
+    expect(registry.getMaterial('antd.select')?.datasetBindings).toEqual([
+      { key: 'options', projectionKinds: ['options'] },
+    ])
+    expect(registry.getMaterial('antd.table')).toMatchObject({
+      kind: 'element',
+      semanticTriggers: ['rowActivate'],
+      datasetBindings: [{ key: 'rows', projectionKinds: ['table'] }],
+    })
+    expect(registry.getMaterial('antd.list')).toMatchObject({
+      kind: 'element',
+      semanticTriggers: ['itemActivate'],
+      datasetBindings: [{ key: 'items', projectionKinds: ['list'] }],
+    })
+    expect(registry.getMaterial('antd.button')?.semanticTriggers).toEqual(['activate'])
+    expect(registry.getMaterial('antd.link')?.semanticTriggers).toEqual(['activate'])
+    expect(registry.getMaterial('antd.image')?.resourceBindings).toEqual([{ key: 'src', mediaTypes: ['image/*'] }])
+    const grid = registry.getMaterial('antd.grid')
+    const flex = registry.getMaterial('antd.flex')
+    expect(grid?.kind).toBe('layout')
+    expect(flex?.kind).toBe('layout')
+    if (grid?.kind === 'layout')
+      expect(grid.slots[0]?.accepts).toContain('element')
+    if (flex?.kind === 'layout')
+      expect(flex.slots[0]?.accepts).toContain('element')
+  })
+
+  it('renders the shared queried Dataset page with local Table/List activation state', async () => {
+    const views = projectedDatasetViews()
+    expect(views.table).toMatchObject({
+      total: 3,
+      items: [
+        { rowKey: 'alan', name: 'Alan' },
+        { rowKey: 'ada', name: 'Ada' },
+      ],
+    })
+    expect(views.list).toMatchObject({
+      total: 3,
+      items: [
+        { itemKey: 'alan', title: 'Alan', description: 'First' },
+        { itemKey: 'ada', title: 'Ada', description: 'Second' },
+      ],
+    })
+
+    const rows = reactive([...views.table.items])
+    const table = mount(AntdDatasetTable, { props: { rows, rowsTotal: views.table.total } })
+    const antTable = table.getComponent(Table)
+    const customRow = antTable.props('customRow') as (
+      row: Record<string, unknown>,
+      index: number,
+    ) => { 'aria-selected': boolean, 'class': string, 'onClick': () => void }
+    expect(table.get('.antd-business-table__summary').text()).toBe('2 / 3')
+    customRow(rows[0]!, 0).onClick()
+    await flushPromises()
+    expect(customRow(rows[0]!, 0)).toMatchObject({ 'aria-selected': true, 'class': 'is-selected' })
+    const activatedRow = table.emitted('row-click')?.[0]?.[0] as typeof rows[number]
+    expect(activatedRow).toEqual(toRaw(rows[0]))
+    expect(activatedRow).not.toBe(toRaw(rows[0]))
+    expect(activatedRow.meta).not.toBe(toRaw(rows[0]!).meta)
+
+    const items = reactive([...views.list.items])
+    const list = mount(AntdDatasetList, { props: { items, itemsTotal: views.list.total } })
+    const first = list.get('.antd-business-list__item')
+    expect(list.get('.antd-business-list__summary').text()).toBe('2 / 3')
+    await first.trigger('click')
+    expect(first.attributes('aria-pressed')).toBe('true')
+    expect(first.classes()).toContain('is-selected')
+    const activatedItem = list.emitted('item-click')?.[0]?.[0] as typeof items[number]
+    expect(activatedItem).toEqual(toRaw(items[0]))
+    expect(activatedItem).not.toBe(toRaw(items[0]))
   })
 
   it('shares one option value capability across options and default setters', () => {

@@ -48,10 +48,12 @@ export function useDesignerPropertyEntries(
   })))
   const projection = computed(() => resolveInspectorCapabilities(capabilityInputs.value))
   const primaryMaterial = computed(() => capabilityInputs.value[0]?.material)
-  const propertyTabs = computed(() => projection.value.sections.map(section => ({
-    ...section,
-    label: sectionLabel(section.id),
-  })))
+  const propertyTabs = computed(() => projection.value.sections
+    .filter(section => selectedNodes.value.length > 0 || section.id !== 'validation')
+    .map(section => ({
+      ...section,
+      label: sectionLabel(section.id),
+    })))
   const resolvedLayout = computed(() => resolveConfigFormLayout(
     props.graph.form.columns,
     props.graph.form.fieldSpan,
@@ -114,7 +116,9 @@ export function useDesignerPropertyEntries(
   function sectionLabel(section: PropertyTab): string {
     return section === 'properties'
       ? locale.t('property.properties', 'Properties')
-      : locale.t('property.validation', 'Validation')
+      : section === 'validation'
+        ? locale.t('property.validation', 'Validation')
+        : locale.t('property.interactions', 'Interactions')
   }
 
   function sectionProjection(section: PropertyTab): InspectorSectionProjection | undefined {
@@ -318,6 +322,7 @@ export function useDesignerPropertyEntries(
   const propertyEntries = computed<Record<PropertyTab, DesignerPropertyFormEntry[]>>(() => ({
     properties: propertySetters.value.map(toPropertyEntry),
     validation: validationSetters.value.map(toPropertyEntry),
+    interactions: [],
   }))
 
   const formEntries = computed(() => formSetters.value.map(setter => ({

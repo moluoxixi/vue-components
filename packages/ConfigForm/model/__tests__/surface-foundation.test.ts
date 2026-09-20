@@ -151,7 +151,7 @@ async function resourceDocument(bytes = new Uint8Array([1, 2, 3])): Promise<{
   return { document, write: { resourceId: 'logo', contentHash, bytes: new Uint8Array(bytes) } }
 }
 
-describe('projectDocument v7 and SurfaceGraph v2', () => {
+describe('projectDocument v8 and SurfaceGraph v3', () => {
   it('accepts the strict Surface shape and rejects Page-only/removed fields', () => {
     const parsed = parseProjectDocument(documentFixture())
     expect(parsed.success).toBe(true)
@@ -596,6 +596,24 @@ describe('registry snapshot v3', () => {
 })
 
 describe('surface transactions and history', () => {
+  it('renames the project through history without changing its stable identity', () => {
+    const document = documentFixture()
+    const engine = createProjectDomainEngine({ document: createProjectSnapshot(document) })
+    const result = engine.execute({
+      id: 'rename-project',
+      label: 'Rename project',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{ type: 'project.rename', name: 'Prototype workspace' }],
+      }],
+    })
+
+    expect(result.changed).toBe(true)
+    expect(engine.snapshot.document).toMatchObject({ id: document.id, name: 'Prototype workspace' })
+    expect(engine.undo().snapshot.document).toMatchObject({ id: document.id, name: document.name })
+    expect(engine.redo().snapshot.document.name).toBe('Prototype workspace')
+  })
+
   it('applies Surface/node changes atomically and reports the new change set', () => {
     const document = documentFixture()
     const result = applyProjectTransaction(document, {

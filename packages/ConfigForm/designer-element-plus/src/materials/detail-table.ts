@@ -20,7 +20,7 @@ export default defineDesignerMaterialModule({
         shared.propSetter('readonly', 'Read only', 'boolean'),
         shared.disabledSetter,
       ],
-      slots: [{ name: 'default', title: 'Columns', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Columns', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id, field }) => ({
         id,
         kind: 'layout',

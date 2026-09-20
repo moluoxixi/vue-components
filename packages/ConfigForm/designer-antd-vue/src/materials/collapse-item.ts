@@ -16,7 +16,7 @@ export default defineDesignerMaterialModule({
       runtime: { component: s.CollapsePanel },
       allowedParents: [{ material: 'antd.collapse', slot: 'default' }],
       setters: [s.propSetter('header', 'Title', 'text'), s.propSetter('disabled', 'Disabled', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({
         id,
         kind: 'layout',

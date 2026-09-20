@@ -1,6 +1,16 @@
 import type { DesignerMaterialCapabilityRegistry, DesignerRegistry } from '@moluoxixi/config-form-designer'
-import type { FieldNode, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
-import type { CanonicalRuntimeFieldNode, VueRuntimeBindingResolver } from '@moluoxixi/config-form-vue-backend'
+import type { FieldNode, MaterialSemanticTrigger, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
+import type {
+  CanonicalRuntimeFieldNode,
+  VueRuntimeBindingResolver,
+} from '@moluoxixi/config-form-vue-backend'
+
+const providerSemanticEvents: Readonly<Record<MaterialSemanticTrigger, string>> = Object.freeze({
+  activate: 'click',
+  submit: 'submit',
+  rowActivate: 'row-click',
+  itemActivate: 'item-click',
+})
 
 function toFieldNode(node: CanonicalRuntimeFieldNode): FieldNode {
   return {
@@ -46,6 +56,14 @@ export function createWorkbenchVueRuntimeResolver(
         ...(runtime.trigger ? { trigger: runtime.trigger } : {}),
         ...(runtime.blurTrigger ? { blurTrigger: runtime.blurTrigger } : {}),
         ...(runtime.getValueFromEvent ? { getValueFromEvent: runtime.getValueFromEvent } : {}),
+        ...(capability.contract.semanticTriggers.length > 0
+          ? {
+              semanticEvents: Object.fromEntries(capability.contract.semanticTriggers.map(trigger => [
+                trigger,
+                providerSemanticEvents[trigger],
+              ])),
+            }
+          : {}),
         ...(capability.runtime.kind === 'field' && runtime.readonlyRender
           ? {
               readonlyRender: ({ componentProps, model, node, value }) => runtime.readonlyRender!({

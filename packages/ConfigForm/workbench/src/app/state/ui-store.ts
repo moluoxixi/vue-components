@@ -122,7 +122,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     previewOpen.value = false
     previewExpanded.value = false
     mobileStudioView.value = view
-    if (view === 'components' || view === 'layers' || view === 'pages')
+    if (view === 'components' || view === 'layers' || view === 'pages' || view === 'theme')
       studioLeftView.value = view
   }
 

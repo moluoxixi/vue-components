@@ -1,6 +1,7 @@
 import type {
   DeepReadonly,
   NodeId,
+  ProjectDataset,
   ProjectDraftSnapshot,
   ProjectNodeChange,
   ProjectNodeRelation,
@@ -87,7 +88,25 @@ function createSurfaceCompilation(
     registryUsage,
     key,
     surface: compiledSurface,
+    theme: clone(project.theme),
+    datasetsById: collectSurfaceDatasets(compiledSurface, project),
   }) as SurfaceCompilation
+}
+
+function collectSurfaceDatasets(
+  surface: CanonicalSurfaceIR,
+  project: ReadonlyProjectDocument,
+): Record<string, DeepReadonly<ProjectDataset>> {
+  const datasetIds = new Set<string>()
+  Object.values(surface.nodesById).forEach((node) => {
+    Object.values(node.datasetBindings ?? {}).forEach(binding => datasetIds.add(binding.datasetId))
+  })
+  return Object.fromEntries([...datasetIds]
+    .sort((left, right) => left.localeCompare(right, 'en'))
+    .flatMap((id) => {
+      const dataset = project.datasetsById[id]
+      return dataset ? [[id, clone(dataset)] as const] : []
+    }))
 }
 
 function surfaceSemanticHash(surface: CanonicalSurfaceIR, project: ReadonlyProjectDocument): string {

@@ -1,9 +1,7 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  DatasetProjection,
   ModelJsonObject,
   ModelJsonValue,
-  ProjectDataset,
   ProjectTheme,
 } from '@moluoxixi/config-form-model'
 import type {
@@ -16,11 +14,14 @@ import type {
   SourceTextFile,
 } from '../types'
 import type {
+  CollectedSourceDatasets,
   CollectedSourceResources,
+  SourceStyleBackend,
   SourceValidationEmissionPlan,
   SourceValidationFieldEmission,
 } from '../types/internal'
 import { readSourceFileSet } from '../validation'
+import { sourceDatasetViewKey as datasetViewKey } from './datasets'
 import { createSourceInitialValues } from './initial-values'
 import { rawValidationModuleSource } from './raw-validation'
 import {
@@ -34,14 +35,17 @@ import {
   sourceString,
   uniqueSlugs,
 } from './serialization'
+import { createSourceStyleBackend } from './style-backend'
 import { SOURCE_CONFIG_FORM_RULE_COMPILER } from './validation'
 
 interface EmitContext {
   compilation: ProjectCompilation
   components: ReadonlyMap<string, SourceComponentResolution>
+  datasets: CollectedSourceDatasets
   resources: CollectedSourceResources
   surfaceDirectories: ReadonlyMap<string, string>
   validation: SourceValidationEmissionPlan
+  style: SourceStyleBackend
 }
 
 interface BindingEmitContext extends EmitContext {
@@ -78,6 +82,10 @@ function textFile(path: string, language: SourceLanguage, content: string): Sour
   return { kind: 'text', path, language, content: content.endsWith('\n') ? content : `${content}\n` }
 }
 
+function classAttribute(className: string): string {
+  return className ? ` class="${className}"` : ''
+}
+
 function projectSlug(name: string): string {
   return safeSlug(name, 'config-form-demo')
 }
@@ -86,6 +94,7 @@ function packageManifest(
   name: string,
   dependencies: Readonly<Record<string, string>>,
   includeRouter = true,
+  style: SourceStyleBackend = createSourceStyleBackend(),
 ): string {
   const runtimeDependencies: Record<string, string> = { vue: '3.5.33', ...dependencies }
   if (includeRouter)
@@ -108,17 +117,10 @@ function packageManifest(
       'typescript': '5.8.2',
       'vite': '7.3.1',
       'vue-tsc': '2.2.8',
+      ...style.packageDevDependencies,
     },
   })}\n`
 }
-
-const viteConfig = `import Vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vite'
-
-export default defineConfig({
-  plugins: [Vue()],
-})
-`
 
 const tsconfig = `${sourceJson({
   compilerOptions: {
@@ -155,68 +157,197 @@ function htmlSource(title: string): string {
 `
 }
 
-function getPath(row: ModelJsonObject, path: readonly string[]): ModelJsonValue | undefined {
-  let current: ModelJsonValue | undefined = row
-  for (const segment of path) {
-    if (current === null || typeof current !== 'object' || Array.isArray(current))
-      return undefined
-    current = current[segment]
-  }
-  return current
+function datasetsSource(collected: CollectedSourceDatasets): string {
+  return `export const datasets = ${sourceJson(collected.datasets as ModelJsonValue)} as const
+
+export const datasetViews = ${sourceJson(collected.views as unknown as ModelJsonValue)} as const
+`
 }
 
-function projectDataset(dataset: ProjectDataset, projection: DatasetProjection): ModelJsonValue[] {
-  if (projection.kind === 'options') {
-    return dataset.rows.map((row) => {
-      const disabled = projection.disabledPath ? getPath(row, projection.disabledPath) : undefined
-      return {
-        label: String(getPath(row, projection.labelPath) ?? ''),
-        value: getPath(row, projection.valuePath) ?? null,
-        ...(typeof disabled === 'boolean' ? { disabled } : {}),
+function datasetTableComponentSource(style: SourceStyleBackend): string {
+  const tailwind = style.target === 'tailwind-v4'
+  const classes = tailwind
+    ? {
+        root: 'grid min-w-0 gap-2',
+        scroll: 'max-w-full overflow-x-auto',
+        table: 'w-full border-collapse text-left text-sm',
+        cell: 'border-b border-[var(--demo-color-border,#dfe3e8)] px-3 py-2 align-top',
+        row: 'cursor-pointer outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--demo-color-primary,#2563eb)]',
+        selected: 'bg-blue-50',
+        summary: 'justify-self-end text-xs text-[var(--demo-color-text-muted,#64748b)]',
       }
-    })
-  }
-  if (projection.kind === 'table') {
-    return dataset.rows.map(row => ({
-      rowKey: getPath(row, projection.rowKeyPath) ?? null,
-      ...Object.fromEntries(projection.columns.map(column => [column.key, getPath(row, column.valuePath) ?? null])),
-    }))
-  }
-  return dataset.rows.map(row => ({
-    itemKey: getPath(row, projection.itemKeyPath) ?? null,
-    ...(projection.titlePath ? { title: getPath(row, projection.titlePath) ?? null } : {}),
-    ...(projection.descriptionPath ? { description: getPath(row, projection.descriptionPath) ?? null } : {}),
-  }))
-}
-
-function datasetViewKey(surfaceId: string, nodeId: string, bindingKey: string): string {
-  return `${surfaceId}/${nodeId}/${bindingKey}`
-}
-
-function datasetsSource(compilation: ProjectCompilation): string {
-  const datasets = Object.fromEntries(compilation.ir.datasetOrder.map((datasetId) => {
-    const dataset = compilation.ir.datasetsById[datasetId]
-    return [datasetId, dataset?.rows ?? []]
-  }))
-  const views: Record<string, ModelJsonValue[]> = {}
-  for (const surfaceId of compilation.ir.surfaceOrder) {
-    const surface = compilation.ir.surfacesById[surfaceId]
-    if (!surface)
-      continue
-    for (const nodeId of Object.keys(surface.nodesById).sort()) {
-      const node = surface.nodesById[nodeId]
-      if (!node?.datasetBindings)
-        continue
-      for (const [bindingKey, reference] of Object.entries(node.datasetBindings).sort(([left], [right]) => left.localeCompare(right))) {
-        const dataset = compilation.ir.datasetsById[reference.datasetId]
-        if (dataset)
-          views[datasetViewKey(surfaceId, nodeId, bindingKey)] = projectDataset(dataset as ProjectDataset, reference.projection as DatasetProjection)
+    : {
+        root: 'demo-dataset-table',
+        scroll: 'demo-dataset-table__scroll',
+        table: 'demo-dataset-table__table',
+        cell: 'demo-dataset-table__cell',
+        row: 'demo-dataset-table__row',
+        selected: 'is-selected',
+        summary: 'demo-dataset-table__summary',
       }
-    }
-  }
-  return `export const datasets = ${sourceJson(datasets as ModelJsonValue)} as const
+  const scopedStyle = tailwind
+    ? ''
+    : `
+<style scoped>
+.demo-dataset-table { display: grid; min-width: 0; gap: 8px; }
+.demo-dataset-table__scroll { max-width: 100%; overflow-x: auto; }
+.demo-dataset-table__table { width: 100%; border-collapse: collapse; text-align: left; }
+.demo-dataset-table__cell { padding: 8px 12px; border-bottom: 1px solid var(--demo-color-border, #dfe3e8); vertical-align: top; }
+.demo-dataset-table__row { cursor: pointer; outline: none; }
+.demo-dataset-table__row:hover, .demo-dataset-table__row:focus-visible { background: rgb(148 163 184 / 10%); }
+.demo-dataset-table__row:focus-visible { box-shadow: inset 0 0 0 2px var(--demo-color-primary, #2563eb); }
+.demo-dataset-table__row.is-selected { background: rgb(37 99 235 / 10%); }
+.demo-dataset-table__summary { justify-self: end; color: var(--demo-color-text-muted, #64748b); font-size: 12px; }
+</style>`
+  return `<script setup lang="ts">
+import { computed, ref, toRaw } from 'vue'
 
-export const datasetViews = ${sourceJson(views as ModelJsonValue)} as const
+type DatasetItem = Readonly<Record<string, unknown>>
+
+const props = withDefaults(defineProps<{
+  rows?: readonly DatasetItem[]
+  rowsTotal?: number
+}>(), { rows: () => [] })
+const emit = defineEmits<{ 'row-click': [row: DatasetItem] }>()
+const selectedKey = ref<string>()
+const columns = computed(() => Object.keys(props.rows[0] ?? {}).filter(key => key !== 'rowKey'))
+const total = computed(() => Number.isInteger(props.rowsTotal) && (props.rowsTotal ?? -1) >= 0
+  ? props.rowsTotal!
+  : props.rows.length)
+
+function rowKey(row: DatasetItem, index: number): string {
+  const value = row.rowKey ?? index
+  return \`\${typeof value}:\${JSON.stringify(toRaw(value))}\`
+}
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined)
+    return ''
+  return typeof value === 'object' ? JSON.stringify(toRaw(value)) : String(value)
+}
+
+function activate(row: DatasetItem, index: number): void {
+  selectedKey.value = rowKey(row, index)
+  emit('row-click', structuredClone(toRaw(row)) as DatasetItem)
+}
+</script>
+
+<template>
+  <section class="${classes.root}">
+    <div class="${classes.scroll}">
+      <table class="${classes.table}">
+        <thead>
+          <tr>
+            <th v-for="column in columns" :key="column" scope="col" class="${classes.cell}">
+              {{ column }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(row, rowIndex) in rows"
+            :key="rowKey(row, rowIndex)"
+            class="${classes.row}"
+            :class="selectedKey === rowKey(row, rowIndex) ? '${classes.selected}' : ''"
+            :aria-selected="selectedKey === rowKey(row, rowIndex)"
+            tabindex="0"
+            @click="activate(row, rowIndex)"
+            @keydown.enter.prevent="activate(row, rowIndex)"
+            @keydown.space.prevent="activate(row, rowIndex)"
+          >
+            <td v-for="column in columns" :key="column" class="${classes.cell}">
+              {{ displayValue(row[column]) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <small class="${classes.summary}" role="status">{{ rows.length }} / {{ total }}</small>
+  </section>
+</template>${scopedStyle}
+`
+}
+
+function datasetListComponentSource(style: SourceStyleBackend): string {
+  const tailwind = style.target === 'tailwind-v4'
+  const classes = tailwind
+    ? {
+        root: 'grid min-w-0 gap-2',
+        items: 'grid gap-2',
+        item: 'grid w-full cursor-pointer gap-0.5 rounded-[var(--demo-radius-sm,4px)] border border-[var(--demo-color-border,#dfe3e8)] bg-[var(--demo-color-surface,#fff)] px-3 py-2 text-left text-inherit',
+        selected: 'border-[var(--demo-color-primary,#2563eb)] bg-blue-50',
+        summary: 'justify-self-end text-xs text-[var(--demo-color-text-muted,#64748b)]',
+      }
+    : {
+        root: 'demo-dataset-list',
+        items: 'demo-dataset-list__items',
+        item: 'demo-dataset-list__item',
+        selected: 'is-selected',
+        summary: 'demo-dataset-list__summary',
+      }
+  const scopedStyle = tailwind
+    ? ''
+    : `
+<style scoped>
+.demo-dataset-list { display: grid; min-width: 0; gap: 8px; }
+.demo-dataset-list__items { display: grid; gap: 8px; }
+.demo-dataset-list__item { display: grid; width: 100%; padding: 8px 12px; border: 1px solid var(--demo-color-border, #dfe3e8); border-radius: var(--demo-radius-sm, 4px); background: var(--demo-color-surface, #fff); color: inherit; cursor: pointer; gap: 2px; text-align: left; }
+.demo-dataset-list__item.is-selected { border-color: var(--demo-color-primary, #2563eb); background: rgb(37 99 235 / 10%); }
+.demo-dataset-list__summary { justify-self: end; color: var(--demo-color-text-muted, #64748b); font-size: 12px; }
+</style>`
+  return `<script setup lang="ts">
+import { computed, ref, toRaw } from 'vue'
+
+type DatasetItem = Readonly<Record<string, unknown>>
+
+const props = withDefaults(defineProps<{
+  items?: readonly DatasetItem[]
+  itemsTotal?: number
+}>(), { items: () => [] })
+const emit = defineEmits<{ 'item-click': [item: DatasetItem] }>()
+const selectedKey = ref<string>()
+const total = computed(() => Number.isInteger(props.itemsTotal) && (props.itemsTotal ?? -1) >= 0
+  ? props.itemsTotal!
+  : props.items.length)
+
+function itemKey(item: DatasetItem, index: number): string {
+  const value = item.itemKey ?? index
+  return \`\${typeof value}:\${JSON.stringify(toRaw(value))}\`
+}
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined)
+    return ''
+  return typeof value === 'object' ? JSON.stringify(toRaw(value)) : String(value)
+}
+
+function activate(item: DatasetItem, index: number): void {
+  selectedKey.value = itemKey(item, index)
+  emit('item-click', structuredClone(toRaw(item)) as DatasetItem)
+}
+</script>
+
+<template>
+  <section class="${classes.root}">
+    <div class="${classes.items}" role="list">
+      <button
+        v-for="(item, itemIndex) in items"
+        :key="itemKey(item, itemIndex)"
+        type="button"
+        class="${classes.item}"
+        :class="selectedKey === itemKey(item, itemIndex) ? '${classes.selected}' : ''"
+        :aria-pressed="selectedKey === itemKey(item, itemIndex)"
+        @click="activate(item, itemIndex)"
+      >
+        <strong>{{ displayValue(item.title ?? item.itemKey) }}</strong>
+        <span v-if="item.description !== null && item.description !== undefined">
+          {{ displayValue(item.description) }}
+        </span>
+      </button>
+    </div>
+    <small class="${classes.summary}" role="status">{{ items.length }} / {{ total }}</small>
+  </section>
+</template>${scopedStyle}
 `
 }
 
@@ -232,71 +363,6 @@ ${lines.join('\n')}
 `
 }
 
-function themeSource(theme: ProjectTheme): string {
-  const lines = [':root {']
-  for (const [key, value] of Object.entries(theme.colors ?? {}).sort(([left], [right]) => left.localeCompare(right)))
-    lines.push(`  --demo-color-${kebabCase(key)}: ${value};`)
-  for (const [key, value] of Object.entries(theme.spacing ?? {}).sort(([left], [right]) => left.localeCompare(right)))
-    lines.push(`  --demo-spacing-${key}: ${value}px;`)
-  for (const [key, value] of Object.entries(theme.radius ?? {}).sort(([left], [right]) => left.localeCompare(right)))
-    lines.push(`  --demo-radius-${key}: ${value}px;`)
-  if (theme.typography?.baseSize !== undefined)
-    lines.push(`  --demo-font-size: ${theme.typography.baseSize}px;`)
-  if (theme.typography?.lineHeight !== undefined)
-    lines.push(`  --demo-line-height: ${theme.typography.lineHeight};`)
-  lines.push('}')
-  return `${lines.join('\n')}\n`
-}
-
-const projectStyles = `@import './theme.css';
-
-* { box-sizing: border-box; }
-html { color: var(--demo-color-text, #1f2937); background: var(--demo-color-canvas, #f4f6f8); font-family: system-ui, sans-serif; }
-body { min-width: 320px; margin: 0; }
-button, input, select, textarea { font: inherit; }
-.demo-surface { width: min(960px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
-.demo-surface__header { margin-bottom: 24px; }
-.demo-surface__header h1 { margin: 0; font-size: 28px; }
-.demo-surface__content { display: grid; gap: var(--demo-spacing-md, 16px); }
-.demo-field { display: grid; gap: 6px; }
-.demo-field__label { font-size: 13px; font-weight: 600; }
-.demo-field__required { margin-left: 4px; color: var(--demo-color-danger, #dc2626); }
-.demo-field__error { color: var(--demo-color-danger, #dc2626); font-size: 12px; }
-.demo-overlay { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 0; color: inherit; background: rgb(15 23 42 / 48%); }
-.demo-overlay[open] { display: grid; }
-.demo-overlay::backdrop { background: transparent; }
-.demo-overlay--unmasked { pointer-events: none; background: transparent; }
-.demo-overlay__panel { pointer-events: auto; min-width: 0; max-width: 100%; max-height: 100%; overflow: auto; background: var(--demo-color-surface-raised, #fff); box-shadow: 0 18px 48px rgb(15 23 42 / 22%); }
-.demo-overlay__panel--dialog { place-self: center; width: min(var(--demo-overlay-size), calc(100% - 32px)); border-radius: var(--demo-radius-md, 8px); }
-.demo-overlay__panel--drawer { position: absolute; }
-.demo-overlay__panel--drawer-left, .demo-overlay__panel--drawer-right { top: 0; bottom: 0; width: min(var(--demo-overlay-size), calc(100% - 24px)); }
-.demo-overlay__panel--drawer-left { left: 0; }
-.demo-overlay__panel--drawer-right { right: 0; }
-.demo-overlay__panel--drawer-top, .demo-overlay__panel--drawer-bottom { right: 0; left: 0; height: min(var(--demo-overlay-size), calc(100% - 24px)); }
-.demo-overlay__panel--drawer-top { top: 0; }
-.demo-overlay__panel--drawer-bottom { bottom: 0; }
-.demo-overlay__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--demo-color-border, #dfe3e8); }
-.demo-overlay__heading h2 { margin: 0; font-size: 18px; }
-.demo-overlay__close { width: 32px; height: 32px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 24px; line-height: 1; }
-.demo-overlay__panel .demo-surface { width: 100%; padding: 20px; }
-@media (max-width: 640px) { .demo-surface { width: min(100% - 20px, 960px); padding-top: 20px; } }
-`
-
-const bindingViteConfig = `import Vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vite'
-
-export default defineConfig({
-  plugins: [Vue()],
-  build: {
-    lib: {
-      entry: 'src/bindings.ts',
-      formats: ['es'],
-      fileName: 'bindings',
-    },
-  },
-})
-`
-
 function componentForNode(
   node: SourceNode,
   components: ReadonlyMap<string, SourceComponentResolution>,
@@ -307,33 +373,11 @@ function componentForNode(
   return component
 }
 
-function layoutStyle(node: SourceNode, resolution: SourceComponentResolution): ModelJsonObject | undefined {
-  if (node.kind !== 'layout')
-    return undefined
-  const gap = typeof node.props.gap === 'number' && Number.isFinite(node.props.gap) ? Math.max(0, node.props.gap) : 0
-  if (resolution.render === 'layout-flex') {
-    return {
-      display: 'flex',
-      flexDirection: node.props.direction === 'column' ? 'column' : 'row',
-      flexWrap: node.props.wrap === false ? 'nowrap' : 'wrap',
-      gap: `${gap}px`,
-      alignItems: typeof node.props.align === 'string' ? node.props.align : 'stretch',
-      justifyContent: typeof node.props.justify === 'string' ? node.props.justify : 'flex-start',
-    }
-  }
-  if (resolution.render === 'layout-grid') {
-    const columns = typeof node.props.columns === 'number' && Number.isInteger(node.props.columns)
-      ? Math.min(12, Math.max(1, node.props.columns))
-      : 1
-    return { display: 'grid', gap: `${gap}px`, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
-  }
-  return undefined
-}
-
 function nodeProperties(
   surface: SourceSurface,
   node: SourceNode,
   resolution: SourceComponentResolution,
+  style: SourceStyleBackend,
   valueSource = 'values',
 ): ExpressionProperty[] {
   const values = new Map<string, string>()
@@ -341,11 +385,16 @@ function nodeProperties(
     values.set(key, sourceAttributeJson(value))
   for (const [key, value] of Object.entries(node.props).sort(([left], [right]) => left.localeCompare(right)))
     values.set(key, sourceAttributeJson(value))
-  const style = layoutStyle(node, resolution)
-  if (style)
-    values.set('style', sourceAttributeJson(style))
-  for (const [key] of Object.entries(node.datasetBindings ?? {}).sort(([left], [right]) => left.localeCompare(right)))
-    values.set(key, `datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, key))}]`)
+  const layout = style.layoutAttributes(node, resolution)
+  if (layout.className)
+    values.set('class', sourceAttributeString(layout.className))
+  if (layout.style)
+    values.set('style', sourceAttributeJson(layout.style as ModelJsonObject))
+  for (const [key] of Object.entries(node.datasetBindings ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
+    const view = `datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, key))}]`
+    values.set(key, `${view}.items`)
+    values.set(`${key}Total`, `${view}.total`)
+  }
   for (const [key, reference] of Object.entries(node.resourceBindings ?? {}).sort(([left], [right]) => left.localeCompare(right)))
     values.set(key, `resources[${sourceAttributeString(reference.resourceId)}]`)
   if (node.kind === 'field' && resolution.valueProp)
@@ -378,6 +427,10 @@ function bindExpression(properties: readonly ExpressionProperty[], projectedNode
 }
 
 function renderTag(resolution: SourceComponentResolution): string {
+  if (resolution.render === 'dataset-table')
+    return 'DemoDatasetTable'
+  if (resolution.render === 'dataset-list')
+    return 'DemoDatasetList'
   return !resolution.library && resolution.moduleSpecifier ? resolution.importName : resolution.tag
 }
 
@@ -939,7 +992,7 @@ function optionChildren(
   const valueProp = resolution.options.valueProp ?? 'value'
   return [
     `${indent}<${resolution.options.optionTag}`,
-    `${indent}  v-for="(option, optionIndex) in datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, bindingKey))}]"`,
+    `${indent}  v-for="(option, optionIndex) in datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, bindingKey))}].items"`,
     `${indent}  :key="String(option.value) + '-' + optionIndex"`,
     `${indent}  :${kebabCase(labelProp)}="option.label"`,
     `${indent}  :${kebabCase(valueProp)}="option.value"`,
@@ -965,7 +1018,7 @@ function renderRawNode(
     && interaction.target.kind === 'state' && interaction.target.key === 'visible')
   const attributes = [
     ` data-node-id="${escapeHtml(node.id)}"`,
-    bindExpression(nodeProperties(surface, node, resolution, valueSource), projected ? node.id : undefined),
+    bindExpression(nodeProperties(surface, node, resolution, context.style, valueSource), projected ? node.id : undefined),
   ]
   if (visible && node.kind !== 'field')
     attributes.push(` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`)
@@ -1029,17 +1082,18 @@ function renderRawNode(
   const requiredBaseline = fieldRequired(node).required === true
   const projectedRequired = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
     && interaction.target.kind === 'state' && interaction.target.key === 'required')
+  const classes = context.style.classes
   const requiredMarker = node.label && (requiredBaseline || projectedRequired)
     ? projectedRequired
-      ? `<span v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}" class="demo-field__required" aria-hidden="true">*</span>`
-      : '<span class="demo-field__required" aria-hidden="true">*</span>'
+      ? `<span v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}" class="${classes.fieldRequired}" aria-hidden="true">*</span>`
+      : `<span class="${classes.fieldRequired}" aria-hidden="true">*</span>`
     : ''
   return [
-    `${indent}<div class="demo-field"${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
-    ...(node.label ? [`${indent}  <span class="demo-field__label">${escapeHtml(node.label)}${requiredMarker}</span>`] : []),
+    `${indent}<div class="${classes.field}"${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
+    ...(node.label ? [`${indent}  <span class="${classes.fieldLabel}">${escapeHtml(node.label)}${requiredMarker}</span>`] : []),
     ...componentLines.map(line => `  ${line}`),
     ...(rawNeedsValidation(surface, context)
-      ? [`${indent}  <span v-if="validationErrors[${sourceAttributeString(node.id)}]?.length" class="demo-field__error" role="alert">{{ validationErrors[${sourceAttributeString(node.id)}]?.[0] }}</span>`]
+      ? [`${indent}  <span v-if="validationErrors[${sourceAttributeString(node.id)}]?.length" class="${classes.fieldError}" role="alert">{{ validationErrors[${sourceAttributeString(node.id)}]?.[0] }}</span>`]
       : []),
     `${indent}</div>`,
   ]
@@ -1047,6 +1101,14 @@ function renderRawNode(
 
 function surfaceUses(surface: SourceSurface, key: 'datasetBindings' | 'resourceBindings'): boolean {
   return Object.values(surface.nodesById).some(node => Object.keys(node[key] ?? {}).length > 0)
+}
+
+function surfaceUsesRender(
+  surface: SourceSurface,
+  context: EmitContext,
+  render: SourceComponentResolution['render'],
+): boolean {
+  return Object.values(surface.nodesById).some(node => componentForNode(node, context.components).render === render)
 }
 
 function surfaceParameterDefaults(surface: SourceSurface): Record<string, unknown> {
@@ -1229,6 +1291,12 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
   ]
   const imports = [
     'import { computed, reactive } from \'vue\'',
+    ...(surfaceUsesRender(surface, context, 'dataset-table')
+      ? ['import DemoDatasetTable from \'../../components/DemoDatasetTable.vue\'']
+      : []),
+    ...(surfaceUsesRender(surface, context, 'dataset-list')
+      ? ['import DemoDatasetList from \'../../components/DemoDatasetList.vue\'']
+      : []),
     ...(needsValidation
       ? ['import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'']
       : []),
@@ -1316,11 +1384,11 @@ ${script}
 </script>
 
 <template>
-  <section class="demo-surface" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
-    <header class="demo-surface__header">
-      <h1>${escapeHtml(surface.name)}</h1>
+  <section class="${context.style.classes.surface}" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
+    <header class="${context.style.classes.surfaceHeader}">
+      <h1${classAttribute(context.style.classes.surfaceTitle)}>${escapeHtml(surface.name)}</h1>
     </header>
-    <div class="demo-surface__content">
+    <div class="${context.style.classes.surfaceContent}">
 ${body.join('\n')}
     </div>
   </section>
@@ -1378,7 +1446,7 @@ function configNodeSource(
     `${childIndent}id: ${sourceString(node.id)},`,
     `${childIndent}component: ${sourceString(resolution.configComponent)},`,
   ]
-  const properties = nodeProperties(surface, node, resolution)
+  const properties = nodeProperties(surface, node, resolution, context.style)
     .filter(property => !(node.kind === 'field' && property.key === resolution.valueProp))
   const listeners = new Map<string, string[]>()
   for (const interaction of interactions.filter(item => item.binding.nodeId === node.id)) {
@@ -1408,6 +1476,9 @@ function configNodeSource(
       lines.push(`${childIndent}  ${sourceString(property.key)}: ${property.expression},`)
     lines.push(`${childIndent}},`)
   }
+  const bindingAttrs = context.style.bindingAttributes()
+  if (Object.keys(bindingAttrs.cellAttrs).length > 0)
+    lines.push(`${childIndent}cellAttrs: ${sourceJson(bindingAttrs.cellAttrs)},`)
   const span = node.placement.props.span
   if (typeof span === 'number')
     lines.push(`${childIndent}span: ${span},`)
@@ -1425,6 +1496,8 @@ function configNodeSource(
       lines.push(`${childIndent}required: true,`)
     if (node.requiredMessage !== undefined)
       lines.push(`${childIndent}requiredMessage: ${sourceString(node.requiredMessage)},`)
+    if (Object.keys(bindingAttrs.fieldAttrs).length > 0)
+      lines.push(`${childIndent}fieldAttrs: ${sourceJson(bindingAttrs.fieldAttrs)},`)
     if (compiledValidation)
       lines.push(`${childIndent}schema: ${compiledValidation}.schema,`)
     if (compiledValidation && validation?.attachValidator)
@@ -1486,8 +1559,7 @@ export interface ConfigBindingValidation {
 
 function bindingEntrySource(context: BindingEmitContext): string {
   const styleImports = [...new Set(context.binding.styleImports)].sort()
-  const lines = styleImports.map(style => `import ${sourceString(style)}`)
-  lines.push('export type * from \'./host.ts\'')
+  const lines = [context.style.bindingEntrySource(styleImports.map(style => `import ${sourceString(style)}`)).trimEnd()]
   for (const surfaceId of context.compilation.ir.surfaceOrder) {
     const surface = context.compilation.ir.surfacesById[surfaceId]
     if (!surface)
@@ -1594,6 +1666,13 @@ ${valueHandlerSource}
 `
     : ''
   const validationDeclarations = compiledValidationSource(surface, context)
+  const bindingAttrs = context.style.bindingAttributes()
+  const formConfig = {
+    ...surface.form,
+    ...(Object.keys(bindingAttrs.formAttrs).length > 0 ? { formAttrs: bindingAttrs.formAttrs } : {}),
+    ...(Object.keys(bindingAttrs.layoutAttrs).length > 0 ? { layoutAttrs: bindingAttrs.layoutAttrs } : {}),
+    ...(Object.keys(bindingAttrs.cellAttrs).length > 0 ? { cellAttrs: bindingAttrs.cellAttrs } : {}),
+  }
   return `${imports.join('\n')}${imports.length ? '\n\n' : ''}${validationDeclarations}${validationDeclarations ? '\n\n' : ''}export const initialModel = ${sourceJson(surfaceInitialModel(surface))}
 
 ${projectionExport}${configContext}export function createFields(${hasContext ? 'context: SurfaceConfigContext' : ''}) {
@@ -1602,7 +1681,7 @@ ${surface.rootIds.map(nodeId => configNodeSource(surface, nodeId, context, inter
   ]
 }
 
-export const formConfig = ${sourceJson(surface.form)}
+export const formConfig = ${sourceJson(formConfig)}
 `
 }
 
@@ -1669,9 +1748,9 @@ ${stateRules.length > 0 ? 'const reactionProjection = computed(() => createReact
 </script>
 
 <template>
-  <section class="demo-surface" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
-    <header class="demo-surface__header">
-      <h1>${escapeHtml(surface.name)}</h1>
+  <section class="${context.style.classes.surface}" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
+    <header class="${context.style.classes.surfaceHeader}">
+      <h1${classAttribute(context.style.classes.surfaceTitle)}>${escapeHtml(surface.name)}</h1>
     </header>
     <${context.binding.component.importName}
       ${interactions.length > 0 ? 'ref="formRef"' : ''}
@@ -2114,16 +2193,29 @@ function controlledLengthSource(length: { value: number, unit: string }): string
   return `${length.value}${length.unit}`
 }
 
-function overlaySource(surface: Exclude<SourceSurface, { kind: 'page' }>, componentName: string): string {
+function overlaySource(
+  surface: Exclude<SourceSurface, { kind: 'page' }>,
+  componentName: string,
+  style: SourceStyleBackend,
+): string {
   const presentation = surface.presentation
   const size = presentation.kind === 'dialog' ? presentation.width.desktop : presentation.size.desktop
-  const maskClass = presentation.mask ? '' : ' demo-overlay--unmasked'
+  const classes = style.classes
+  const maskClass = presentation.mask ? '' : ` ${classes.overlayUnmasked}`
+  const drawerPlacementClass = presentation.kind === 'drawer'
+    ? {
+        left: classes.overlayPanelDrawerLeft,
+        right: classes.overlayPanelDrawerRight,
+        top: classes.overlayPanelDrawerTop,
+        bottom: classes.overlayPanelDrawerBottom,
+      }[presentation.placement]
+    : ''
   const panelClass = presentation.kind === 'dialog'
-    ? 'demo-overlay__panel demo-overlay__panel--dialog'
-    : `demo-overlay__panel demo-overlay__panel--drawer demo-overlay__panel--drawer-${presentation.placement}`
+    ? `${classes.overlayPanel} ${classes.overlayPanelDialog}`
+    : `${classes.overlayPanel} ${classes.overlayPanelDrawer} ${drawerPlacementClass}`
   return `    <dialog
       v-if="overlay.surfaceId === ${sourceAttributeString(surface.id)}"
-      class="demo-overlay${maskClass}"
+      class="${classes.overlay}${maskClass}"
       :ref="element => registerOverlayDialog(overlay.instanceId, element)"
       :data-overlay-instance="overlay.instanceId"
       :aria-labelledby="${sourceAttributeString(`demo-overlay-title-${surface.id}-`)} + overlay.instanceId"
@@ -2135,9 +2227,9 @@ function overlaySource(surface: Exclude<SourceSurface, { kind: 'page' }>, compon
         class="${panelClass}"
         :style="{ '--demo-overlay-size': ${sourceAttributeString(controlledLengthSource(size))} }"
       >
-        <header class="demo-overlay__heading">
-          <h2 :id="${sourceAttributeString(`demo-overlay-title-${surface.id}-`)} + overlay.instanceId">${escapeHtml(presentation.title)}</h2>
-          ${presentation.close.button ? `<button type="button" class="demo-overlay__close" aria-label="Close ${escapeHtml(presentation.title)}" @click="dismissOverlay(overlay.instanceId, true)">&times;</button>` : ''}
+        <header class="${classes.overlayHeading}">
+          <h2${classAttribute(classes.overlayTitle)} :id="${sourceAttributeString(`demo-overlay-title-${surface.id}-`)} + overlay.instanceId">${escapeHtml(presentation.title)}</h2>
+          ${presentation.close.button ? `<button type="button" class="${classes.overlayClose}" aria-label="Close ${escapeHtml(presentation.title)}" @click="dismissOverlay(overlay.instanceId, true)">&times;</button>` : ''}
         </header>
         <${componentName} :demo-parameters="overlay.parameters" />
       </section>
@@ -2168,7 +2260,7 @@ import { RouterView } from 'vue-router'
   const overlayImports = overlays.map(surface => (
     `import ${componentNames.get(surface.id)} from './surfaces/${directories.get(surface.id)}/Surface.vue'`
   ))
-  const renderedOverlays = overlays.map(surface => overlaySource(surface, componentNames.get(surface.id)!)).join('\n')
+  const renderedOverlays = overlays.map(surface => overlaySource(surface, componentNames.get(surface.id)!, context.style)).join('\n')
   return `<script setup lang="ts">
 import { nextTick } from 'vue'
 import { RouterView } from 'vue-router'
@@ -2222,7 +2314,10 @@ ${renderedOverlays}
 `
 }
 
-function rawMainSource(components: ReadonlyMap<string, SourceComponentResolution>): string {
+function rawMainSource(
+  components: ReadonlyMap<string, SourceComponentResolution>,
+  style: SourceStyleBackend,
+): string {
   const libraries = new Map<string, NonNullable<SourceComponentResolution['library']>>()
   const styles = new Set<string>()
   for (const resolution of components.values()) {
@@ -2236,14 +2331,11 @@ function rawMainSource(components: ReadonlyMap<string, SourceComponentResolution
   const orderedLibraries = [...libraries.values()].sort((left, right) => left.packageName.localeCompare(right.packageName))
   const imports = orderedLibraries.map(library => `import ${library.plugin} from ${sourceString(library.packageName)}`)
   const styleImports = [...styles].sort().map(style => `import ${sourceString(style)}`)
-  const uses = ['router', ...orderedLibraries.map(library => library.plugin)].map(item => `.use(${item})`).join('')
-  return `import { createApp } from 'vue'
-import App from './App.vue'
-import { router } from './router'
-${imports.join('\n')}${imports.length ? '\n' : ''}${styleImports.join('\n')}${styleImports.length ? '\n' : ''}import './styles.css'
-
-createApp(App)${uses}.mount('#app')
-`
+  return style.rawEntrySource({
+    imports,
+    styleImports,
+    libraryUses: ['router', ...orderedLibraries.map(library => library.plugin)],
+  })
 }
 
 function sourceSurfaces(context: EmitContext): SourceSurface[] {
@@ -2273,18 +2365,26 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
   const { compilation } = context
   const surfaces = sourceSurfaces(context)
   const needsDemoNavigation = surfaces.some(surface => surface.kind !== 'page' || emittedInteractions(surface, context).length > 0)
+  const needsDatasetTable = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-table'))
+  const needsDatasetList = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-list'))
   return [
     textFile('index.html', 'text', htmlSource(compilation.ir.name)),
     textFile('src/App.vue', 'vue', appSource(context)),
-    textFile('src/data/datasets.ts', 'typescript', datasetsSource(compilation)),
+    ...(needsDatasetTable
+      ? [textFile('src/components/DemoDatasetTable.vue', 'vue', datasetTableComponentSource(context.style))]
+      : []),
+    ...(needsDatasetList
+      ? [textFile('src/components/DemoDatasetList.vue', 'vue', datasetListComponentSource(context.style))]
+      : []),
+    textFile('src/data/datasets.ts', 'typescript', datasetsSource(context.datasets)),
     textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources)),
     ...(needsDemoNavigation ? [textFile('src/demo-navigation.ts', 'typescript', demoNavigationSource(compilation))] : []),
     ...demoValueFiles(context),
     textFile('src/router.ts', 'typescript', routerSource(compilation, context.surfaceDirectories)),
-    textFile('src/styles.css', 'css', projectStyles),
-    textFile('src/theme.css', 'css', themeSource(compilation.ir.theme as ProjectTheme)),
+    textFile(context.style.rawStyleFile, 'css', context.style.stylesSource(compilation.ir.theme as ProjectTheme)),
+    textFile('src/theme.css', 'css', context.style.themeSource(compilation.ir.theme as ProjectTheme)),
     textFile('tsconfig.json', 'json', tsconfig),
-    textFile('vite.config.ts', 'typescript', viteConfig),
+    textFile('vite.config.ts', 'typescript', context.style.vitePluginSource),
   ]
 }
 
@@ -2292,13 +2392,14 @@ function bindingCommonFiles(context: BindingEmitContext): SourceTextFile[] {
   const { compilation } = context
   return [
     textFile('src/bindings.ts', 'typescript', bindingEntrySource(context)),
-    textFile('src/data/datasets.ts', 'typescript', datasetsSource(compilation)),
+    textFile('src/data/datasets.ts', 'typescript', datasetsSource(context.datasets)),
     textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources)),
     ...demoValueFiles(context),
     textFile('src/host.ts', 'typescript', bindingHostSource),
-    textFile('src/theme.css', 'css', themeSource(compilation.ir.theme as ProjectTheme)),
+    textFile(context.style.bindingStyleFile, 'css', context.style.stylesSource(compilation.ir.theme as ProjectTheme)),
+    textFile('src/theme.css', 'css', context.style.themeSource(compilation.ir.theme as ProjectTheme)),
     textFile('tsconfig.json', 'json', tsconfig),
-    textFile('vite.config.ts', 'typescript', bindingViteConfig),
+    textFile('vite.config.ts', 'typescript', context.style.bindingVitePluginSource),
   ]
 }
 
@@ -2318,11 +2419,13 @@ export function emitRawProject(
   compilation: ProjectCompilation,
   components: ReadonlyMap<string, SourceComponentResolution>,
   dependencies: Readonly<Record<string, string>>,
+  datasets: CollectedSourceDatasets,
   resources: CollectedSourceResources,
   validation: SourceValidationEmissionPlan,
+  style: SourceStyleBackend,
 ): RawSourceFileSetV1 {
   const surfaceDirectories = uniqueSlugs(compilation.ir.surfaceOrder)
-  const context: EmitContext = { compilation, components, resources, surfaceDirectories, validation }
+  const context: EmitContext = { compilation, components, datasets, resources, surfaceDirectories, validation, style }
   const surfaceFiles = compilation.ir.surfaceOrder.flatMap((surfaceId) => {
     const surface = compilation.ir.surfacesById[surfaceId]
     if (!surface)
@@ -2341,8 +2444,8 @@ export function emitRawProject(
     ...rawCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,
-    textFile('package.json', 'json', packageManifest(compilation.ir.name, dependencies)),
-    textFile('src/main.ts', 'typescript', rawMainSource(components)),
+    textFile('package.json', 'json', packageManifest(compilation.ir.name, dependencies, true, style)),
+    textFile('src/main.ts', 'typescript', rawMainSource(components, style)),
   ])
 }
 
@@ -2350,11 +2453,13 @@ export function emitBindingProject(
   compilation: ProjectCompilation,
   components: ReadonlyMap<string, SourceComponentResolution>,
   binding: SourceConfigFormBindingResolution,
+  datasets: CollectedSourceDatasets,
   resources: CollectedSourceResources,
   validation: SourceValidationEmissionPlan,
+  style: SourceStyleBackend,
 ): ConfigBindingFileSetV1 {
   const surfaceDirectories = uniqueSlugs(compilation.ir.surfaceOrder)
-  const context: BindingEmitContext = { compilation, components, resources, surfaceDirectories, binding, validation }
+  const context: BindingEmitContext = { compilation, components, datasets, resources, surfaceDirectories, binding, validation, style }
   const surfaceFiles = compilation.ir.surfaceOrder.flatMap((surfaceId) => {
     const surface = compilation.ir.surfacesById[surfaceId]
     if (!surface)
@@ -2372,6 +2477,6 @@ export function emitBindingProject(
     textFile('package.json', 'json', packageManifest(compilation.ir.name, {
       ...binding.dependencies,
       ...bindingValidationDependencies(context),
-    }, false)),
+    }, false, style)),
   ])
 }

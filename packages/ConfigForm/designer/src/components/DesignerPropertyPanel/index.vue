@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { useDesignerLocale } from '../../locale'
-import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
+import { DesignerDataBindingEditor, DesignerInteractionEditor, DesignerPropertyForm, DesignerResponsiveSettings } from './components'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
 
 const props = defineProps<DesignerPropertyPanelProps>()
@@ -39,45 +39,77 @@ const {
   tabs: () => propertyTabs.value,
 })
 
+function updateDatasetBinding(bindingKey: string, reference: DesignerPropertyPanelEmits['updateDatasetBinding'][2]): void {
+  if (props.node)
+    emit('updateDatasetBinding', props.node.id, bindingKey, reference)
+}
+
+function updateResourceBinding(bindingKey: string, resourceId: string | undefined): void {
+  if (props.node)
+    emit('updateResourceBinding', props.node.id, bindingKey, resourceId)
+}
+
+function saveOptionsAsDataset(bindingKey: string, name: string): void {
+  if (props.node)
+    emit('saveOptionsAsDataset', props.node.id, bindingKey, name)
+}
+
+function materializeOptionsSnapshot(bindingKey: string): void {
+  if (props.node)
+    emit('materializeOptionsSnapshot', props.node.id, bindingKey)
+}
+
 defineExpose({ propertyPanelRef })
 </script>
 
 <template>
   <aside ref="propertyPanelRef" class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
-    <template v-if="node">
-      <div class="mx-config-form-designer__property-heading">
-        <strong>{{ selectedNodes.length > 1 ? locale.t('property.selectedCount', '{count} selected', { count: selectedNodes.length }) : node.kind === 'field' ? (node.label || node.field) : primaryMaterial ? locale.materialTitle(primaryMaterial) : node.component }}</strong>
-      </div>
-      <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
-        <button
-          v-for="tab in propertyTabs"
-          :id="propertyTabId(tab.id)"
-          :key="tab.id"
-          type="button"
-          role="tab"
-          :aria-controls="propertyTabPanelId(tab.id)"
-          :aria-selected="activeTab === tab.id"
-          :data-property-tab="tab.id"
-          :tabindex="activeTab === tab.id ? 0 : -1"
-          @click="selectPropertyTab(tab.id)"
-          @keydown="handlePropertyTabKeydown($event, tab.id)"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-
-      <div
+    <div class="mx-config-form-designer__property-heading">
+      <strong>{{ selectedNodes.length > 1 ? locale.t('property.selectedCount', '{count} selected', { count: selectedNodes.length }) : node ? (node.kind === 'field' ? (node.label || node.field) : primaryMaterial ? locale.materialTitle(primaryMaterial) : node.component) : locale.t('property.form', 'Form') }}</strong>
+    </div>
+    <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
+      <button
         v-for="tab in propertyTabs"
-        :id="propertyTabPanelId(tab.id)"
+        :id="propertyTabId(tab.id)"
         :key="tab.id"
-        class="mx-config-form-designer__property-fields"
-        :data-property-panel="tab.id"
-        role="tabpanel"
-        :aria-labelledby="propertyTabId(tab.id)"
-        :hidden="activeTab !== tab.id"
-        :inert="activeTab !== tab.id ? true : undefined"
+        type="button"
+        role="tab"
+        :aria-controls="propertyTabPanelId(tab.id)"
+        :aria-selected="activeTab === tab.id"
+        :data-property-tab="tab.id"
         :tabindex="activeTab === tab.id ? 0 : -1"
+        @click="selectPropertyTab(tab.id)"
+        @keydown="handlePropertyTabKeydown($event, tab.id)"
       >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <div
+      v-for="tab in propertyTabs"
+      :id="propertyTabPanelId(tab.id)"
+      :key="tab.id"
+      class="mx-config-form-designer__property-fields"
+      :data-property-panel="tab.id"
+      role="tabpanel"
+      :aria-labelledby="propertyTabId(tab.id)"
+      :hidden="activeTab !== tab.id"
+      :inert="activeTab !== tab.id ? true : undefined"
+      :tabindex="activeTab === tab.id ? 0 : -1"
+    >
+      <DesignerInteractionEditor
+        v-if="tab.id === 'interactions'"
+        :component-definition="componentDefinition"
+        :get-component-definition="getComponentDefinition"
+        :graph="graph"
+        :interactions="interactions"
+        :node="node"
+        :readonly="node ? sectionReadonly(tab.id) : readonly"
+        :surface-id="surfaceId"
+        :surfaces="surfaces"
+        @update="emit('updateInteractions', $event)"
+      />
+      <template v-else-if="node">
         <DesignerPropertyForm
           :entries="propertyEntries[tab.id]"
           :renderer="renderer"
@@ -87,14 +119,20 @@ defineExpose({ propertyPanelRef })
           :node="node"
           @commit="commitNodePath"
         />
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="mx-config-form-designer__property-heading">
-        <strong>{{ locale.t('property.form', 'Form') }}</strong>
-      </div>
-      <div class="mx-config-form-designer__property-fields">
+        <DesignerDataBindingEditor
+          v-if="tab.id === 'properties' && selectedNodes.length === 1"
+          :component-definition="componentDefinition"
+          :datasets="datasets"
+          :node="node"
+          :readonly="sectionReadonly(tab.id)"
+          :resources="resources"
+          @materialize-options="materializeOptionsSnapshot"
+          @save-options="saveOptionsAsDataset"
+          @update-dataset="updateDatasetBinding"
+          @update-resource="updateResourceBinding"
+        />
+      </template>
+      <template v-else>
         <DesignerPropertyForm
           :entries="formEntries"
           :renderer="renderer"
@@ -111,8 +149,8 @@ defineExpose({ propertyPanelRef })
           :renderer="renderer"
           @update-form="emit('updateForm', $event)"
         />
-      </div>
-    </template>
+      </template>
+    </div>
 
     <ul v-if="selectedDiagnostics.length" class="mx-config-form-designer__property-diagnostics" :aria-label="locale.t('property.diagnostics', 'Diagnostics')">
       <li v-for="(diagnostic, index) in selectedDiagnostics" :key="`${diagnostic.code}-${index}`">

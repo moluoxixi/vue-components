@@ -36,10 +36,13 @@ import {
   createWorkbenchPreviewSession,
 } from '../../session'
 import { useWorkbenchControllerLifecycle } from '../composables/use-workbench-controller-lifecycle'
+import { createWorkbenchAssetCommands } from './controller-assets'
 import { createWorkbenchCreationCommands } from './controller-creation'
 import { createWorkbenchSurfaceCommands } from './controller-page-commands'
 import { createWorkbenchPersistenceCommands } from './controller-persistence'
 import { createWorkbenchProjectBinding } from './controller-project-binding'
+import { createWorkbenchProjectCommands } from './controller-project-commands'
+import { createWorkbenchThemeCommands } from './controller-theme-commands'
 
 export function createWorkbenchController(
   props: Readonly<WorkbenchControllerProps>,
@@ -160,7 +163,8 @@ export function createWorkbenchController(
   async function readEmbeddedResource(
     input: ProjectEmbeddedResourceRead,
   ): Promise<Uint8Array | undefined> {
-    return repository.value?.readEmbedded(input)
+    return projectSession.value?.readEmbedded(input)
+      ?? await repository.value?.readEmbedded(input)
   }
   const previewState = computed(() => {
     if (configError.value || previewSession.error.value) {
@@ -283,6 +287,28 @@ export function createWorkbenchController(
     ui,
     workbenchLocale,
   })
+  const projectCommands = createWorkbenchProjectCommands({
+    busy,
+    closeProject: projectBinding.closeProject,
+    currentProject,
+    executeProjectActions: projectBinding.executeProjectActions,
+    getPersistenceSession: projectBinding.getPersistenceSession,
+    hasUnsavedChanges,
+    openProject: projectBinding.openProject,
+    refreshProjects: projectBinding.refreshProjects,
+    repository,
+    ui,
+    workbenchLocale,
+  })
+  const assetCommands = createWorkbenchAssetCommands({
+    busy,
+    currentProject,
+    executeProjectActions: projectBinding.executeProjectActions,
+    readEmbedded: readEmbeddedResource,
+  })
+  const themeCommands = createWorkbenchThemeCommands({
+    executeProjectActions: projectBinding.executeProjectActions,
+  })
   listRecoveryDraftsPort = persistenceCommands.listRecoveryDrafts
 
   useWorkbenchControllerLifecycle({
@@ -308,12 +334,17 @@ export function createWorkbenchController(
   return {
     projects,
     busy,
+    closeProject: projectBinding.closeProject,
     componentRegistry,
     configError,
+    ...assetCommands,
+    ...themeCommands,
     createFromJsonImport: creationCommands.createFromJsonImport,
     createNamedCheckpoint: persistenceCommands.createNamedCheckpoint,
     createSurfaceFromTemplate: creationCommands.createSurfaceFromTemplate,
     createProjectFromTemplate: creationCommands.createProjectFromTemplate,
+    deleteProject: projectCommands.deleteProject,
+    duplicateProject: creationCommands.duplicateProject,
     currentProject,
     currentGraph,
     currentSurface,
@@ -333,10 +364,12 @@ export function createWorkbenchController(
     previewState,
     readEmbeddedResource,
     prepareJsonImport: creationCommands.prepareJsonImport,
+    exportProject: creationCommands.exportProject,
     registry,
     repositoryRevision,
     recoveryDrafts,
     requestOpenProject: projectBinding.requestOpenProject,
+    renameProject: projectCommands.renameProject,
     restoreProjectVersion: persistenceCommands.restoreProjectVersion,
     restoreRecoveryDraft: persistenceCommands.restoreRecoveryDraft,
     reloadCurrentProject: persistenceCommands.reloadCurrentProject,

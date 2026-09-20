@@ -10,6 +10,7 @@ import {
   PROJECT_DOCUMENT_VERSION,
   PROJECT_THEME_VERSION,
   registryLockFingerprint,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
@@ -43,7 +44,7 @@ const registry = createDesignerRegistry({ materials: [
 ] })
 
 const graph: SurfaceGraph = {
-  version: 2,
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {},
   root: [

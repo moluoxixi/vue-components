@@ -4,6 +4,7 @@ import type {
   ConfigFormValueScopeDefinition,
 } from '@moluoxixi/config-form-core'
 import type {
+  DatasetViewQuery,
   DeepReadonly,
   FormSettings,
   ModelDiagnostic,
@@ -147,6 +148,15 @@ export const formSettingsSchema: z.ZodType<FormSettings> = z.object({
   }).strict().optional(),
 }).strict()
 
+const safeExpressionNodeSchema = z.unknown()
+  .superRefine(validateSafeExpressionNode)
+  .transform(value => value as SafeExpressionNode) as z.ZodType<SafeExpressionNode>
+
+export const safeExpressionSchema: z.ZodType<SafeExpression> = z.object({
+  version: z.literal(1),
+  ast: safeExpressionNodeSchema,
+}).strict()
+
 const datasetProjectionSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('options'),
@@ -167,9 +177,16 @@ const datasetProjectionSchema = z.discriminatedUnion('kind', [
   }).strict(),
 ])
 
+const datasetViewQuerySchema: z.ZodType<DatasetViewQuery> = z.object({
+  filter: z.lazy(() => safeExpressionSchema).optional(),
+  sort: z.array(z.object({ path: safePathSchema, direction: z.enum(['asc', 'desc']) }).strict()).optional(),
+  page: z.object({ index: z.number().int().min(0), size: z.number().int().positive() }).strict().optional(),
+}).strict()
+
 const datasetReferenceSchema = z.object({
   datasetId: identifierSchema,
   projection: datasetProjectionSchema,
+  query: datasetViewQuerySchema.optional(),
 }).strict()
 
 const resourceReferenceSchema = z.object({ resourceId: identifierSchema }).strict()
@@ -234,15 +251,6 @@ export const surfaceGraphSchema: z.ZodType<SurfaceGraph> = surfaceGraphBaseSchem
 
 export const nodeSubgraphSchema: z.ZodType<SurfaceGraph> = surfaceGraphBaseSchema
   .superRefine((graph, context) => validateSurfaceGraph(graph, context, false)) as z.ZodType<SurfaceGraph>
-
-const safeExpressionNodeSchema = z.unknown()
-  .superRefine(validateSafeExpressionNode)
-  .transform(value => value as SafeExpressionNode) as z.ZodType<SafeExpressionNode>
-
-export const safeExpressionSchema: z.ZodType<SafeExpression> = z.object({
-  version: z.literal(1),
-  ast: safeExpressionNodeSchema,
-}).strict()
 
 const stateProjectionTargetSchema = z.discriminatedUnion('kind', [
   z.object({

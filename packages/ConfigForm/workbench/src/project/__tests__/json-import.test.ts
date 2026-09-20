@@ -4,6 +4,7 @@ import {
   createComponentContractRegistry,
   createRegistryContractSnapshot,
   registryLockFingerprint,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
@@ -690,7 +691,7 @@ describe('config model JSON import', () => {
         mask: true,
         close: { escape: true, mask: true, button: true },
       },
-      graph: { version: 2, props: {}, form: {}, root: [], nodesById: {} },
+      graph: { version: SURFACE_GRAPH_VERSION, props: {}, form: {}, root: [], nodesById: {} },
     }
 
     const result = await prepareConfigImport({

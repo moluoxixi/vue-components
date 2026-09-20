@@ -1,4 +1,4 @@
-import type { ProjectDocument, ProjectSurface } from '@moluoxixi/config-form-model'
+import type { ProjectDocument, ProjectSurface, RegistryLock } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter } from '../../../adapters'
 import type { ProjectIdentityFactory } from '../../types'
 import type {
@@ -6,12 +6,14 @@ import type {
   InstantiateTemplateSurfaceInput,
   PreparedTemplatePreview,
   ProjectTemplateCatalogEntry,
+  TemplateCreationTarget,
 } from '../types'
 import {
   assertProjectDocument,
   PROJECT_DOCUMENT_VERSION,
   PROJECT_THEME_VERSION,
   projectSurfaceSchema,
+  SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { DEFAULT_PROJECT_IDENTITY_FACTORY } from '../../defaults'
 import { prepareIsolatedProjectPreview, remapProjectSurfaceIdentity } from '../../services'
@@ -78,22 +80,99 @@ export function instantiateTemplateProject(
   })
 }
 
+function instantiateTemplateSurfacePreviewProject(
+  template: ProjectTemplateCatalogEntry,
+  registryLock: RegistryLock,
+  identityFactory: ProjectIdentityFactory = DEFAULT_PROJECT_IDENTITY_FACTORY,
+): { document: ProjectDocument, surfaceId: string } {
+  const projectId = identityFactory.create('project', `${template.manifest.id}-preview`)
+  const surfaceId = identityFactory.create('surface', template.surface.id)
+  const surface = instantiateTemplateSurface(template, {
+    id: surfaceId,
+    identityFactory,
+    name: template.manifest.displayName,
+    route: '/',
+  })
+  if (surface.kind === 'page') {
+    return {
+      document: assertProjectDocument({
+        version: PROJECT_DOCUMENT_VERSION,
+        id: projectId,
+        name: template.manifest.displayName,
+        homeSurfaceId: surface.id,
+        surfaceOrder: [surface.id],
+        surfacesById: { [surface.id]: surface },
+        datasetOrder: [],
+        datasetsById: {},
+        resources: {},
+        theme: { version: PROJECT_THEME_VERSION },
+        registryLock: structuredClone(registryLock),
+        settings: {},
+      }),
+      surfaceId: surface.id,
+    }
+  }
+
+  const homeSurfaceId = identityFactory.create('surface', 'template-preview-home')
+  return {
+    document: assertProjectDocument({
+      version: PROJECT_DOCUMENT_VERSION,
+      id: projectId,
+      name: template.manifest.displayName,
+      homeSurfaceId,
+      surfaceOrder: [homeSurfaceId, surface.id],
+      surfacesById: {
+        [homeSurfaceId]: {
+          id: homeSurfaceId,
+          kind: 'page',
+          name: 'Template preview home',
+          route: '/',
+          parameters: [],
+          outputs: [],
+          interactions: [],
+          graph: {
+            version: SURFACE_GRAPH_VERSION,
+            props: {},
+            form: {},
+            root: [],
+            nodesById: {},
+          },
+        },
+        [surface.id]: surface,
+      },
+      datasetOrder: [],
+      datasetsById: {},
+      resources: {},
+      theme: { version: PROJECT_THEME_VERSION },
+      registryLock: structuredClone(registryLock),
+      settings: {},
+    }),
+    surfaceId: surface.id,
+  }
+}
+
 export function prepareTemplatePreview(
   template: ProjectTemplateCatalogEntry,
   adapter: Pick<WorkbenchAdapter, 'designerRegistry' | 'registrySnapshot'>,
+  target: TemplateCreationTarget,
   identityFactory?: ProjectIdentityFactory,
 ): PreparedTemplatePreview {
-  assertProjectTemplateSurfaceKind(template)
-  const project = instantiateTemplateProject(template, {
-    identityFactory,
-    name: template.manifest.displayName,
-    registryLock: registryLockFromSnapshot(adapter.registrySnapshot),
-  })
+  const registryLock = registryLockFromSnapshot(adapter.registrySnapshot)
+  const prepared = target === 'project'
+    ? (() => {
+        const document = instantiateTemplateProject(template, {
+          identityFactory,
+          name: template.manifest.displayName,
+          registryLock,
+        })
+        return { document, surfaceId: document.homeSurfaceId }
+      })()
+    : instantiateTemplateSurfacePreviewProject(template, registryLock, identityFactory)
   return prepareIsolatedProjectPreview({
     adapter,
     adapterId: template.manifest.adapter,
-    document: project,
-    surfaceId: project.homeSurfaceId,
-    revision: `template:${template.manifest.id}:${getProjectTemplateSeedFingerprint(template)}:${project.id}`,
+    document: prepared.document,
+    surfaceId: prepared.surfaceId,
+    revision: `template:${template.manifest.id}:${getProjectTemplateSeedFingerprint(template)}:${prepared.document.id}`,
   })
 }

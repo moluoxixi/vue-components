@@ -4,6 +4,7 @@ import { PrototypeSurfaceHost } from '@moluoxixi/config-form-prototype-runtime/v
 import { computed, markRaw } from 'vue'
 import { ExperienceSurfaceRenderer } from './components'
 import { useRuntimeHostDesignGeometry, useRuntimeHostProtocol } from './composables'
+import { projectThemeStyle } from './services/theme'
 
 const protocol = useRuntimeHostProtocol()
 const geometry = useRuntimeHostDesignGeometry({
@@ -39,6 +40,11 @@ const prototypeArtifacts = computed(() => Object.fromEntries(
     component: markRaw(ExperienceSurfaceRenderer),
   }]),
 ))
+const themeStyle = computed(() => projectThemeStyle(
+  runtimeMode.value === 'experience'
+    ? experience.value?.compilation.ir.theme
+    : design.value?.compilation.theme,
+))
 const {
   designEditor,
   handleDesignContextMenu,
@@ -55,6 +61,7 @@ const {
     :data-mode="runtimeMode"
     :data-runtime-session="runtimeSessionKey"
     :data-variant="design?.variant"
+    :style="themeStyle"
     @pointerdown.capture="handleDesignPointerDown"
     @contextmenu.capture="handleDesignContextMenu"
     @pointermove.capture="postDesignPointer('design.pointerMove', $event)"

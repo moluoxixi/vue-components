@@ -2,6 +2,7 @@
 
 import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import { resolve } from 'node:path'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { compile } from 'sass'
 import { describe, expect, it, vi } from 'vitest'
@@ -22,7 +23,7 @@ const registry = createDesignerRegistry({ materials: [{
 }] })
 
 const emptyGraph: SurfaceGraph = {
-  version: 2,
+  version: SURFACE_GRAPH_VERSION,
   form: {},
   props: {},
   root: [],

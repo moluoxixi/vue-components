@@ -7,6 +7,7 @@ import type {
   GenerateVueSourceInput,
   GenerateVueSourceResult,
   RawSourceFileSetV1,
+  SourceStyleTarget,
 } from '../types'
 import {
   CANONICAL_PROJECT_IR_VERSION,
@@ -14,6 +15,7 @@ import {
   hasOnlyCurrentCanonicalSurfaceKeys,
 } from '@moluoxixi/config-form-compiler'
 import { parseProjectCompilationSnapshot } from '@moluoxixi/config-form-model'
+import { collectSourceDatasets } from './datasets'
 import { emitBindingProject, emitRawProject } from './emitter'
 import {
   resolveConfigFormBinding,
@@ -21,6 +23,7 @@ import {
   validateResolverIdentity,
 } from './resolution'
 import { collectSourceResources } from './resources'
+import { createSourceStyleBackend, isSourceStyleTarget } from './style-backend'
 import { compileSourceValidationPlan } from './validation'
 
 function inputFailure<T>(message: string, context?: Record<string, unknown>): ContractResult<T> {
@@ -68,9 +71,17 @@ function validateCompilationContract(compilation: ProjectCompilation): ContractR
   return { success: true, data: true, diagnostics: [] }
 }
 
-function validateInput(input: GenerateVueSourceInput): ContractResult<true> {
+function validateInput(input: GenerateVueSourceInput): ContractResult<SourceStyleTarget> {
   if (!input || typeof input !== 'object')
     return inputFailure('Source generation input must be an object.')
+  const styleTarget = input.styleTarget ?? 'css'
+  if (!isSourceStyleTarget(styleTarget)) {
+    return inputFailure('Source generation style target must be "css" or "tailwind-v4".', {
+      actual: styleTarget,
+      expected: ['css', 'tailwind-v4'],
+      path: ['styleTarget'],
+    })
+  }
   const compilation = input.compilation
   if (
     !compilation
@@ -96,7 +107,7 @@ function validateInput(input: GenerateVueSourceInput): ContractResult<true> {
     return inputFailure('Source generation requires a component resolver.')
   if (!input.resourceReader || typeof input.resourceReader.readEmbedded !== 'function')
     return inputFailure('Source generation requires an embedded Resource reader.')
-  return { success: true, data: true, diagnostics: [] }
+  return { success: true, data: styleTarget, diagnostics: [] }
 }
 
 function generatorFailure<T>(diagnostics: ModelDiagnostic[]): ContractResult<T> {
@@ -107,6 +118,7 @@ export async function generateVueSource(input: GenerateVueSourceInput): Generate
   const valid = validateInput(input)
   if (!valid.success)
     return valid
+  const style = createSourceStyleBackend({ target: valid.data })
   const identity = validateResolverIdentity(input.compilation, input.componentResolver)
   if (!identity.success)
     return generatorFailure(identity.diagnostics)
@@ -116,6 +128,9 @@ export async function generateVueSource(input: GenerateVueSourceInput): Generate
   const validation = compileSourceValidationPlan(input.compilation)
   if (!validation.success)
     return generatorFailure(validation.diagnostics)
+  const datasets = collectSourceDatasets(input.compilation)
+  if (!datasets.success)
+    return generatorFailure(datasets.diagnostics)
   const resources = await collectSourceResources(input.compilation, input.resourceReader)
   if (!resources.success)
     return generatorFailure(resources.diagnostics)
@@ -124,8 +139,10 @@ export async function generateVueSource(input: GenerateVueSourceInput): Generate
       input.compilation,
       components.data.byKey,
       components.data.dependencies,
+      datasets.data,
       resources.data,
       validation.data,
+      style,
     )
     return { success: true, data, diagnostics: [] }
   }
@@ -142,6 +159,7 @@ export async function generateConfigFormBindings(
   const valid = validateInput(input)
   if (!valid.success)
     return valid
+  const style = createSourceStyleBackend({ target: valid.data })
   if (!input.bindingResolver || typeof input.bindingResolver.resolveConfigFormBinding !== 'function')
     return inputFailure('ConfigForm binding generation requires a binding resolver.')
   const identity = validateResolverIdentity(input.compilation, input.componentResolver)
@@ -156,6 +174,9 @@ export async function generateConfigFormBindings(
   const validation = compileSourceValidationPlan(input.compilation)
   if (!validation.success)
     return generatorFailure(validation.diagnostics)
+  const datasets = collectSourceDatasets(input.compilation)
+  if (!datasets.success)
+    return generatorFailure(datasets.diagnostics)
   const resources = await collectSourceResources(input.compilation, input.resourceReader)
   if (!resources.success)
     return generatorFailure(resources.diagnostics)
@@ -164,8 +185,10 @@ export async function generateConfigFormBindings(
       input.compilation,
       components.data.byKey,
       binding.data,
+      datasets.data,
       resources.data,
       validation.data,
+      style,
     )
     return { success: true, data, diagnostics: [] }
   }

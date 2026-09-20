@@ -19,6 +19,7 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
+      datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
       setters: [
         s.choiceDefaultValueSetter('select', s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
         s.optionsSetter(s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),

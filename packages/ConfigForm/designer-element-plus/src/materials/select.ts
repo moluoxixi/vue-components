@@ -16,6 +16,7 @@ export default defineDesignerMaterialModule({
       category: 'Choices',
       icon: shared.List,
       runtime: { component: shared.ElementSelectField, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusChoiceReadonly },
+      datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
       setters: [
         shared.choiceDefaultValueSetter('select', shared.DESIGNER_OPTION_VALUE_TYPES),
         shared.optionsSetter(shared.DESIGNER_OPTION_VALUE_TYPES),

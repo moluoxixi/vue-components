@@ -1,4 +1,5 @@
 export * from './commands'
+export * from './dataset'
 export * from './engine'
 export * from './history'
 export * from './hit-testing'

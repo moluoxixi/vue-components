@@ -9,6 +9,7 @@ import type {
   SurfaceId,
   SurfaceNode,
 } from '../../../types'
+import { matchesResourceMediaType } from '../../registry'
 import { analyzeSurfaceValueScopes } from '../../value-scope'
 
 export function validateRegistryLock(
@@ -167,7 +168,7 @@ function validateNode(
       return
     }
     const resource = document.resources[reference.resourceId]
-    if (resource && capability.mediaTypes && !capability.mediaTypes.includes(resource.mediaType ?? '')) {
+    if (resource && !matchesResourceMediaType(resource.mediaType, capability.mediaTypes)) {
       add(diagnostics, 'resource_reference_invalid', `Resource media type is not allowed for ${node.component}.${key}.`, surface.id, [...base, 'resourceBindings', key, 'resourceId'], node.id)
     }
   })

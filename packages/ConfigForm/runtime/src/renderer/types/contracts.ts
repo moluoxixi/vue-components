@@ -15,6 +15,22 @@ export type ConfigFormRendererFieldAttrs = HTMLAttributes
 export type ConfigFormComponentRegistration = HeadlessComponentRegistration<Component>
 export type ConfigFormComponentRegistry = HeadlessComponentRegistry<Component>
 
+/** Closed semantic interaction vocabulary consumed by prototype hosts. */
+export type ConfigFormRendererSemanticTrigger
+  = 'activate' | 'submit' | 'rowActivate' | 'itemActivate'
+
+/** Provider event names are compiled data, not user-authored event bindings. */
+export type ConfigFormRendererSemanticEvents = Partial<Record<
+  ConfigFormRendererSemanticTrigger,
+  string
+>>
+
+export interface ConfigFormRendererSemanticActivation {
+  nodeId: string
+  trigger: ConfigFormRendererSemanticTrigger
+  args: readonly unknown[]
+}
+
 /**
  * The renderer mode controls whether form controls are allowed to update the
  * local model. Preview mode is interactive;
@@ -31,6 +47,8 @@ export type ConfigFormRendererNode<TValues extends ConfigFormValues = ConfigForm
   > & {
     /** Stable model id supplied by a designer/LowCode page model. */
     id: string
+    /** Closed provider event mapping for a declared semantic trigger. */
+    semanticEvents?: ConfigFormRendererSemanticEvents
   }
 
 export type ConfigFormRendererField<TValues extends ConfigFormValues = ConfigFormValues>
@@ -42,6 +60,8 @@ export type ConfigFormRendererField<TValues extends ConfigFormValues = ConfigFor
   > & {
     /** Stable model id supplied by a designer/LowCode page model. */
     id: string
+    /** Closed provider event mapping for a declared semantic trigger. */
+    semanticEvents?: ConfigFormRendererSemanticEvents
   }
 
 export interface ConfigFormControlBinding {

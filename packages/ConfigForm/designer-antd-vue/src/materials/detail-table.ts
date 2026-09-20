@@ -20,7 +20,7 @@ export default defineDesignerMaterialModule({
         s.propSetter('readonly', 'Read only', 'boolean'),
         s.disabledSetter,
       ],
-      slots: [{ name: 'default', title: 'Columns', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Columns', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id, field }) => ({
         id,
         kind: 'layout',

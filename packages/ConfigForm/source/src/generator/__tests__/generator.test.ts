@@ -1,8 +1,12 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type {
   ContractResult,
+  DatasetProjection,
+  DatasetViewQuery,
   ModelJsonObject,
+  ProjectDataset,
   ProjectDocument,
+  ProjectTheme,
 } from '@moluoxixi/config-form-model'
 import type {
   GenerateConfigFormBindingsInput,
@@ -12,12 +16,15 @@ import type {
   SourceComponentResolver,
   SourceConfigFormBindingResolver,
   SourceResourceReader,
+  SourceStyleTarget,
 } from '../types'
 import { createHash } from 'node:crypto'
+import { CANONICAL_PROJECT_IR_VERSION } from '@moluoxixi/config-form-compiler'
 import {
   getProjectDocumentContentHash,
   PROJECT_DOCUMENT_VERSION,
   PROJECT_THEME_VERSION,
+  queryDatasetView,
   registryLockFingerprint,
   SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
@@ -543,7 +550,7 @@ function compilation(providerId: TestProviderId = 'element-plus'): ProjectCompil
     registryAdapter: providerId,
     registryAdapterVersion: '3',
     registryFingerprint: 'sha256:registry',
-    compilerVersion: '7.0.0',
+    compilerVersion: '8.0.0',
     environmentHash: 'sha256:environment',
     irHash: 'sha256:ir',
   }
@@ -553,7 +560,7 @@ function compilation(providerId: TestProviderId = 'element-plus'): ProjectCompil
     origin: { kind: 'committed', editVersion: 1 },
     key,
     ir: {
-      version: 6,
+      version: CANONICAL_PROJECT_IR_VERSION,
       identity: key,
       name: 'Source Demo',
       homeSurfaceId: 'home',
@@ -611,7 +618,14 @@ function componentResolver(
     adapter: { adapter: providerId, adapterVersion: '3', registryFingerprint: 'sha256:registry' },
     resolveComponent(request) {
       requests.push(request)
-      const isNative = request.componentKey === 'layout.flex'
+      const render = request.componentKey === 'layout.flex'
+        ? 'layout-flex'
+        : request.componentKey === 'element.table'
+          ? 'dataset-table'
+          : request.componentKey === 'element.list'
+            ? 'dataset-list'
+            : 'component'
+      const isNative = render !== 'component'
       const dependencies: Readonly<Record<string, string>> = isNative
         ? {}
         : { [uiPackage]: version }
@@ -632,13 +646,16 @@ function componentResolver(
                     ? (isAntd ? 'a-table' : 'el-table')
                     : (isAntd ? 'a-button' : 'el-button'),
           configComponent: request.componentKey,
-          render: request.componentKey === 'layout.flex' ? 'layout-flex' : 'component',
+          render,
           styleImports: isNative ? [] : [stylesheet],
           dependencies,
           semanticListeners: {
             activate: { event: 'click', listenerProp: 'onClick', item: { kind: 'none' } },
             ...(request.componentKey === 'element.table'
-              ? { rowActivate: { event: 'row-click', listenerProp: 'onRowClick', item: { kind: 'argument' as const, index: 1 } } }
+              ? { rowActivate: { event: 'row-click', listenerProp: 'onRowClick', item: { kind: 'argument' as const, index: 0 } } }
+              : {}),
+            ...(request.componentKey === 'element.list'
+              ? { itemActivate: { event: 'item-click', listenerProp: 'onItemClick', item: { kind: 'argument' as const, index: 0 } } }
               : {}),
           },
           ...(isNative ? {} : { library: { packageName: uiPackage, plugin, version, stylesheet } }),
@@ -718,6 +735,20 @@ function textAt(fileSet: { files: readonly { kind: string, path: string, content
   return file.content ?? ''
 }
 
+function generatedConst(
+  fileSet: { files: readonly { kind: string, path: string, content?: string }[] },
+  path: string,
+  name: string,
+): unknown {
+  const source = textAt(fileSet, path)
+  const prefix = `export const ${name} = `
+  const start = source.indexOf(prefix)
+  const end = source.indexOf(' as const', start + prefix.length)
+  if (start < 0 || end < 0)
+    throw new Error(`Expected generated const ${name} in ${path}.`)
+  return JSON.parse(source.slice(start + prefix.length, end))
+}
+
 describe('source generators', () => {
   it('generates deterministic raw Vue source that directly uses provider UI', async () => {
     const requests: SourceComponentRequest[] = []
@@ -736,6 +767,7 @@ describe('source generators', () => {
     expect(first.data.files.map(file => file.path)).toEqual(expect.arrayContaining([
       'package.json',
       'src/App.vue',
+      'src/components/DemoDatasetTable.vue',
       'src/data/datasets.ts',
       'src/data/resources.ts',
       'src/main.ts',
@@ -763,7 +795,7 @@ describe('source generators', () => {
     expect(homeSource).toContain('navigation.navigate("summary"')
     expect(homeSource).toContain('@row-click="handleOpenRowDetailsListener"')
     expect(homeSource).toContain('function handleOpenRowDetailsListener(...demoArgs: unknown[]): Promise<void>')
-    expect(homeSource).toContain('return handleOpenRowDetails(demoArgs[1])')
+    expect(homeSource).toContain('return handleOpenRowDetails(demoArgs[0])')
     expect(homeSource).not.toContain('@row-click="(...demoArgs')
     expect(homeSource).toContain('readDemoPath(item, ["name"])')
     expect(homeSource).toContain('\'aria-required\': \'true\'')
@@ -877,8 +909,8 @@ describe('source generators', () => {
       'src/demo-navigation.ts',
       'src/main.ts',
       'src/router.ts',
-      'src/styles.css',
     ]))
+    expect(textAt(result.data, 'src/bindings.ts')).toContain('import \'./styles.css\'')
     const generated = text(result.data)
     expect(generated).toMatch(/import \{ ElementConfigForm \} from ['"]@moluoxixi\/config-form-element['"]/)
     expect(generated).toMatch(/import \{ createConfigFormModel \} from ['"]@moluoxixi\/config-form-headless['"]/)
@@ -895,7 +927,7 @@ describe('source generators', () => {
     expect(homeConfig).toContain('"minItems": 2')
     expect(homeConfig).toContain('actions.open("details"')
     expect(homeConfig).toContain('function handleOpenRowDetailsListener(...demoArgs: unknown[]): Promise<void>')
-    expect(homeConfig).toContain('return handleOpenRowDetails(demoArgs[1])')
+    expect(homeConfig).toContain('return handleOpenRowDetails(demoArgs[0])')
     expect(homeConfig).toContain('"onRowClick": handleOpenRowDetailsListener')
     expect(homeConfig).not.toContain('"onRowClick": (...demoArgs')
     expect(homeConfig).toContain('readDemoPath(item, ["name"])')
@@ -923,6 +955,273 @@ describe('source generators', () => {
     await verifyGeneratedConsumer(result.data)
   }, 30_000)
 
+  it('normalizes CSS defaults and fails closed for invalid style targets in both APIs', async () => {
+    const [implicitRaw, explicitRaw, implicitBinding, explicitBinding] = await Promise.all([
+      generateVueSource(rawInput()),
+      generateVueSource(rawInput({ styleTarget: 'css' })),
+      generateConfigFormBindings(bindingInput()),
+      generateConfigFormBindings(bindingInput({ styleTarget: 'css' })),
+    ])
+    expect(implicitRaw).toEqual(explicitRaw)
+    expect(implicitBinding).toEqual(explicitBinding)
+
+    const [invalidRaw, invalidBinding] = await Promise.all([
+      generateVueSource(rawInput({ styleTarget: 'less' as SourceStyleTarget })),
+      generateConfigFormBindings(bindingInput({ styleTarget: 'less' as SourceStyleTarget })),
+    ])
+    for (const invalid of [invalidRaw, invalidBinding]) {
+      expect(invalid).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'source_input_invalid', context: { path: ['styleTarget'] } }],
+      })
+      expect('data' in invalid).toBe(false)
+    }
+  })
+
+  it('uses the shared queried Dataset view for Raw and Config Binding output', async () => {
+    const datasetCompilation = compilation()
+    const dataset: ProjectDataset = {
+      id: 'statuses',
+      name: 'Statuses',
+      rows: [
+        { value: 'draft', label: { second: 2, first: 1 }, rowKey: 'row-a', title: 'Alpha', description: 'Second', active: true, rank: 2 },
+        { value: 2, label: true, rowKey: 'row-b', title: 'Beta', description: 'Hidden', active: false, rank: 4 },
+        { value: 'review', label: 'Review', rowKey: 'row-c', title: 'Gamma', description: 'Third', active: true, rank: 1 },
+        { value: 'done', label: 'Done', rowKey: 'row-d', title: 'Delta', description: 'First', active: true, rank: 3 },
+      ],
+    }
+    const datasetsById = datasetCompilation.ir.datasetsById as Record<string, ProjectDataset>
+    datasetsById.statuses = dataset
+    const nodes = datasetCompilation.ir.surfacesById.home!.nodesById as unknown as Record<string, {
+      component: string
+      componentFingerprint: string
+      datasetBindings?: Record<string, { datasetId: string, projection: DatasetProjection, query?: DatasetViewQuery }>
+      resourceBindings?: Record<string, unknown>
+    }>
+    const query: DatasetViewQuery = {
+      filter: { version: 1, ast: { kind: 'reference', scope: 'item', path: ['active'] } },
+      sort: [{ path: ['rank'], direction: 'desc' }],
+      page: { index: 0, size: 2 },
+    }
+    const projections = {
+      options: { kind: 'options', labelPath: ['label'], valuePath: ['value'] },
+      table: {
+        kind: 'table',
+        rowKeyPath: ['rowKey'],
+        columns: [
+          { key: 'value', valuePath: ['value'] },
+          { key: 'missing', valuePath: ['missing'] },
+        ],
+      },
+      list: {
+        kind: 'list',
+        itemKeyPath: ['rowKey'],
+        titlePath: ['title'],
+        descriptionPath: ['description'],
+      },
+    } satisfies Record<string, DatasetProjection>
+    nodes.status!.datasetBindings = { options: { datasetId: dataset.id, projection: projections.options, query } }
+    nodes.rows!.datasetBindings = { rows: { datasetId: dataset.id, projection: projections.table, query } }
+    nodes.logo!.component = 'element.list'
+    nodes.logo!.componentFingerprint = 'fingerprint:element.list'
+    delete nodes.logo!.resourceBindings
+    nodes.logo!.datasetBindings = { items: { datasetId: dataset.id, projection: projections.list, query } }
+
+    const [raw, binding] = await Promise.all([
+      generateVueSource(rawInput({ compilation: datasetCompilation })),
+      generateConfigFormBindings(bindingInput({ compilation: datasetCompilation })),
+    ])
+    expect(raw.success).toBe(true)
+    expect(binding.success).toBe(true)
+    if (!raw.success || !binding.success)
+      return
+    const rawViews = generatedConst(raw.data, 'src/data/datasets.ts', 'datasetViews') as Record<string, unknown>
+    const bindingViews = generatedConst(binding.data, 'src/data/datasets.ts', 'datasetViews') as Record<string, unknown>
+    for (const [viewKey, projection] of [
+      ['home/status/options', projections.options],
+      ['home/rows/rows', projections.table],
+      ['home/logo/items', projections.list],
+    ] as const) {
+      const projected = queryDatasetView(dataset, projection, query)
+      expect(projected.success).toBe(true)
+      if (projected.success) {
+        expect(rawViews[viewKey]).toEqual(projected.data)
+        expect(bindingViews[viewKey]).toEqual(projected.data)
+      }
+    }
+    expect(raw.data.files.map(file => file.path)).toEqual(expect.arrayContaining([
+      'src/components/DemoDatasetList.vue',
+      'src/components/DemoDatasetTable.vue',
+    ]))
+    const rawSurface = textAt(raw.data, 'src/surfaces/home/Surface.vue')
+    expect(rawSurface).toContain('import DemoDatasetList')
+    expect(rawSurface).toContain('import DemoDatasetTable')
+    expect(rawSurface).toContain('datasetViews[\'home/rows/rows\'].items')
+    expect(rawSurface).toContain('datasetViews[\'home/rows/rows\'].total')
+    expect(rawSurface).toContain('datasetViews[\'home/logo/items\'].items')
+    expect(rawSurface).toContain('datasetViews[\'home/logo/items\'].total')
+    expect(binding.data.files.some(file => file.path.startsWith('src/components/DemoDataset'))).toBe(false)
+    const bindingConfig = textAt(binding.data, 'src/surfaces/home/config.ts')
+    expect(bindingConfig).toContain('datasetViews[\'home/rows/rows\'].items')
+    expect(bindingConfig).toContain('datasetViews[\'home/rows/rows\'].total')
+    expect(bindingConfig).toContain('datasetViews[\'home/logo/items\'].items')
+    expect(bindingConfig).toContain('datasetViews[\'home/logo/items\'].total')
+    assertGeneratedVueFilesCompile(raw.data)
+    assertGeneratedVueFilesCompile(binding.data)
+  })
+
+  it('propagates shared Dataset projection failures from both APIs without reading resources', async () => {
+    const invalidCompilation = compilation()
+    const statuses = invalidCompilation.ir.datasetsById.statuses as unknown as { rows: ModelJsonObject[] }
+    statuses.rows = [
+      { label: 'First', value: 'duplicate' },
+      { label: 'Second', value: 'duplicate' },
+    ]
+    const rawReader = resourceReader()
+    const bindingReader = resourceReader()
+    const [raw, binding] = await Promise.all([
+      generateVueSource(rawInput({ compilation: invalidCompilation, resourceReader: rawReader })),
+      generateConfigFormBindings(bindingInput({ compilation: invalidCompilation, resourceReader: bindingReader })),
+    ])
+    for (const result of [raw, binding]) {
+      expect(result).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'dataset_projection_invalid', datasetId: 'statuses', context: { reason: 'option_value_duplicate' } }],
+      })
+      expect('data' in result).toBe(false)
+    }
+    expect(rawReader.readEmbedded).not.toHaveBeenCalled()
+    expect(bindingReader.readEmbedded).not.toHaveBeenCalled()
+  })
+
+  it('emits deterministic Tailwind v4 projects with complete theme and semantic parity', async () => {
+    const themedCompilation = compilation()
+    const themedIr = themedCompilation.ir as { theme: ProjectTheme }
+    const themedLayout = themedCompilation.ir.surfacesById.home!.nodesById.layout as unknown as {
+      props: Record<string, unknown>
+    }
+    themedLayout.props = {
+      ...themedLayout.props,
+      align: 'flex-start',
+      justify: 'flex-end',
+    }
+    themedIr.theme = {
+      version: PROJECT_THEME_VERSION,
+      colors: { warning: '#F59E0B', canvas: '#F5F7FA', primary: '#336699' },
+      typography: {
+        family: 'monospace',
+        baseSize: 15,
+        lineHeight: 1.6,
+        bodyWeight: 500,
+        headingWeight: 700,
+      },
+      spacing: { xl: 32, xs: 4, md: 16 },
+      border: { width: 2, style: 'dashed' },
+      radius: { lg: 12, sm: 4, md: 8 },
+      shadows: {
+        sm: { x: 0, y: 1, blur: 3, spread: 0, color: '#112233' },
+        lg: { x: 0, y: 18, blur: 48, spread: -2, color: 'rgb(15 23 42 / 22%)' },
+      },
+    }
+    const [cssRaw, firstRaw, secondRaw, cssBinding, firstBinding, secondBinding] = await Promise.all([
+      generateVueSource(rawInput({ compilation: themedCompilation })),
+      generateVueSource(rawInput({ compilation: themedCompilation, styleTarget: 'tailwind-v4' })),
+      generateVueSource(rawInput({ compilation: themedCompilation, styleTarget: 'tailwind-v4' })),
+      generateConfigFormBindings(bindingInput({ compilation: themedCompilation })),
+      generateConfigFormBindings(bindingInput({ compilation: themedCompilation, styleTarget: 'tailwind-v4' })),
+      generateConfigFormBindings(bindingInput({ compilation: themedCompilation, styleTarget: 'tailwind-v4' })),
+    ])
+    expect(firstRaw).toEqual(secondRaw)
+    expect(firstBinding).toEqual(secondBinding)
+    expect(cssRaw.success && firstRaw.success && cssBinding.success && firstBinding.success).toBe(true)
+    if (!cssRaw.success || !firstRaw.success || !cssBinding.success || !firstBinding.success)
+      return
+
+    const manifest = JSON.parse(textAt(firstRaw.data, 'package.json')) as {
+      dependencies: Record<string, string>
+      devDependencies: Record<string, string>
+    }
+    expect(manifest.dependencies).not.toHaveProperty('tailwindcss')
+    expect(manifest.dependencies).not.toHaveProperty('@tailwindcss/vite')
+    expect(manifest.devDependencies).toMatchObject({ '@tailwindcss/vite': '^4.1.13', 'tailwindcss': '^4.1.13' })
+    expect(textAt(firstRaw.data, 'vite.config.ts')).toContain('import Tailwind from \'@tailwindcss/vite\'')
+    expect(textAt(firstRaw.data, 'src/styles.css')).toContain('@import \'tailwindcss\'')
+    const homeSurface = textAt(firstRaw.data, 'src/surfaces/home/Surface.vue')
+    expect(homeSurface).toContain('mx-auto w-[min(960px,calc(100%_-_32px))]')
+    expect(homeSurface).toContain('items-start justify-end')
+    const appSource = textAt(firstRaw.data, 'src/App.vue')
+    expect(appSource).toContain('[&[open]]:grid')
+    expect(appSource).toContain('[&_.demo-surface]:w-full')
+
+    const theme = textAt(firstRaw.data, 'src/theme.css')
+    expect(theme).toContain('--demo-font-family: ui-monospace, monospace;')
+    expect(theme).toContain('--demo-font-size: 15px;')
+    expect(theme).toContain('--demo-line-height: 1.6;')
+    expect(theme).toContain('--demo-font-body-weight: 500;')
+    expect(theme).toContain('--demo-font-heading-weight: 700;')
+    expect(theme).toContain('--demo-border-width: 2px;')
+    expect(theme).toContain('--demo-border-style: dashed;')
+    expect(theme).toContain('--demo-radius-lg: 12px;')
+    expect(theme).toContain('--demo-shadow-lg: 0px 18px 48px -2px rgb(15 23 42 / 22%);')
+    expect(theme).toContain('@theme inline {')
+    expect(theme).toContain('--font-body: var(--demo-font-family);')
+    expect(theme).toContain('--text-base: var(--demo-font-size);')
+    expect(theme).toContain('--leading-normal: var(--demo-line-height);')
+    expect(theme).toContain('--font-weight-body: var(--demo-font-body-weight);')
+    expect(theme).toContain('--font-weight-heading: var(--demo-font-heading-weight);')
+    expect(theme).toContain('--border-width-demo: var(--demo-border-width);')
+    expect(theme).toContain('--border-style-demo: var(--demo-border-style);')
+    expect(theme).toContain('--shadow-sm: var(--demo-shadow-sm);')
+
+    const cssTheme = textAt(cssRaw.data, 'src/theme.css')
+    expect(cssTheme).toContain('--demo-font-family: ui-monospace, monospace;')
+    expect(cssTheme).toContain('--demo-font-body-weight: 500;')
+    expect(cssTheme).toContain('--demo-font-heading-weight: 700;')
+    expect(cssTheme).toContain('--demo-border-width: 2px;')
+    expect(cssTheme).toContain('--demo-border-style: dashed;')
+    expect(cssTheme).toContain('--demo-shadow-lg: 0px 18px 48px -2px rgb(15 23 42 / 22%);')
+    expect(cssTheme).not.toContain('@theme')
+    expect(textAt(cssRaw.data, 'src/styles.css')).toContain('font-family: var(--demo-font-family')
+
+    expect(textAt(firstBinding.data, 'src/bindings.ts')).toContain('import \'./styles.css\'')
+    expect(textAt(firstBinding.data, 'src/surfaces/home/config.ts')).toContain('fieldAttrs')
+    expect(textAt(firstBinding.data, 'vite.config.ts')).toContain('import Tailwind from \'@tailwindcss/vite\'')
+    for (const path of ['src/data/datasets.ts', 'src/data/resources.ts', 'src/demo-values.ts', 'src/demo-navigation.ts', 'src/router.ts'])
+      expect(textAt(firstRaw.data, path)).toBe(textAt(cssRaw.data, path))
+    for (const path of ['src/data/datasets.ts', 'src/data/resources.ts', 'src/demo-values.ts', 'src/host.ts'])
+      expect(textAt(firstBinding.data, path)).toBe(textAt(cssBinding.data, path))
+  })
+
+  it('typechecks and builds Element Plus Raw and ConfigForm binding Tailwind consumers', async () => {
+    const [raw, binding] = await Promise.all([
+      generateVueSource(rawInput({ styleTarget: 'tailwind-v4' })),
+      generateConfigFormBindings(bindingInput({ styleTarget: 'tailwind-v4' })),
+    ])
+    expect(raw.success && binding.success).toBe(true)
+    if (!raw.success || !binding.success)
+      return
+    assertGeneratedVueFilesCompile(raw.data)
+    assertGeneratedRuntimeBoundary(raw.data)
+    assertGeneratedVueFilesCompile(binding.data)
+    assertGeneratedRuntimeBoundary(binding.data)
+    await verifyGeneratedConsumer(raw.data)
+    await verifyGeneratedConsumer(binding.data)
+  }, 30_000)
+
+  it('typechecks and builds an Ant Design Vue Raw Tailwind consumer', async () => {
+    const result = await generateVueSource(rawInput({
+      compilation: compilation('antd-vue'),
+      componentResolver: componentResolver([], 'antd-vue'),
+      styleTarget: 'tailwind-v4',
+    }))
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    assertGeneratedVueFilesCompile(result.data)
+    assertGeneratedRuntimeBoundary(result.data)
+    await verifyGeneratedConsumer(result.data)
+  }, 30_000)
+
   it.each([
     { label: 'an old ProjectDocument version', path: ['snapshot', 'document', 'version'], value: PROJECT_DOCUMENT_VERSION - 1 },
     { label: 'a future ProjectDocument version', path: ['snapshot', 'document', 'version'], value: PROJECT_DOCUMENT_VERSION + 1 },
@@ -930,8 +1229,8 @@ describe('source generators', () => {
     { label: 'an old SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: SURFACE_GRAPH_VERSION - 1 },
     { label: 'a future SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: SURFACE_GRAPH_VERSION + 1 },
     { label: 'a missing SurfaceGraph version', path: ['snapshot', 'document', 'surfacesById', 'home', 'graph', 'version'], value: DELETE_COMPILATION_VALUE },
-    { label: 'an old Canonical Project IR version', path: ['ir', 'version'], value: 5 },
-    { label: 'a future Canonical Project IR version', path: ['ir', 'version'], value: 7 },
+    { label: 'an old Canonical Project IR version', path: ['ir', 'version'], value: CANONICAL_PROJECT_IR_VERSION - 1 },
+    { label: 'a future Canonical Project IR version', path: ['ir', 'version'], value: CANONICAL_PROJECT_IR_VERSION + 1 },
     { label: 'a missing Canonical Project IR version', path: ['ir', 'version'], value: DELETE_COMPILATION_VALUE },
     { label: 'an old compiler key version', path: ['key', 'compilerVersion'], value: '6.0.0' },
     { label: 'mixed compiler versions', path: ['ir', 'identity', 'compilerVersion'], value: '6.0.0' },

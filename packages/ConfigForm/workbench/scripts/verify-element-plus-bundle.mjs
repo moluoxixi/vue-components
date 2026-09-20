@@ -5,9 +5,13 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const expectedDynamicStyles = {
   'src/adapters/services/element-plus-inspector.ts': [
+    'button',
+    'cascader',
+    'checkbox',
     'input',
     'input-number',
     'segmented',
+    'select',
     'switch',
   ],
   'src/adapters/services/element-plus-runtime.ts': [
@@ -100,7 +104,7 @@ const emittedCss = output
   .filter(file => file.endsWith('.css'))
   .map(file => readFileSync(resolve(outputDirectory, file), 'utf8'))
   .join('\n')
-for (const unusedSelector of ['.el-calendar', '.el-carousel', '.el-color-picker', '.el-tour']) {
+for (const unusedSelector of ['.el-calendar', '.el-carousel', '.el-tour']) {
   if (emittedCss.includes(unusedSelector))
     throw new Error(`Workbench CSS contains unused Element Plus selector ${unusedSelector}; check for a full theme import`)
 }

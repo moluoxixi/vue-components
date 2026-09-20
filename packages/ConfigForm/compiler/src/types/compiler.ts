@@ -191,6 +191,10 @@ export interface SurfaceCompilationDocument {
   registryUsage: CanonicalSurfaceRegistryUsage[]
   key: CanonicalSurfaceIdentity
   surface: CanonicalSurfaceIR
+  /** Project-level visual tokens projected into Design runtime hosts. */
+  theme: ProjectTheme
+  /** Immutable snapshots for the Datasets referenced by this Surface only. */
+  datasetsById: Record<DatasetId, ProjectDataset>
 }
 
 /** Indivisible Surface-scoped compiler output for Design hosts. */

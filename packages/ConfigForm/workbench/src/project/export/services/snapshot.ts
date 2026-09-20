@@ -59,10 +59,12 @@ function freezeFileSet<TFileSet extends SourceFileSetV1>(fileSet: TFileSet): TFi
 }
 
 export async function buildExportSnapshot(input: BuildExportSnapshotInput): Promise<ExportSnapshot> {
+  const styleTarget = input.styleTarget ?? 'css'
   const rawInput = {
     compilation: input.compilation,
     componentResolver: input.componentResolver,
     resourceReader: input.resourceReader,
+    styleTarget,
   }
   const [rawSource, configBindings] = await Promise.all([
     generateArtifact('Raw Vue source', () => generateVueSource(rawInput)),
@@ -76,6 +78,7 @@ export async function buildExportSnapshot(input: BuildExportSnapshotInput): Prom
     compilation: input.compilation,
     configBindings,
     rawSource,
+    styleTarget,
   })
 }
 

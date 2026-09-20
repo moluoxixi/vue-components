@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DatasetReference } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type {
@@ -29,7 +30,9 @@ import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_
 import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
+  datasets: () => [],
   readonly: false,
+  resources: () => [],
   workspaceNavigation: 'internal',
 })
 const emit = defineEmits<DesignSurfaceEmits>()
@@ -170,6 +173,22 @@ const dragAnnouncement = computed(() => {
 const runtimeProjection = computed(() => ({
   values: createDesignPreviewModel(controller.graph.value),
 }))
+
+function emitDatasetBinding(nodeId: string, bindingKey: string, reference: DatasetReference | undefined): void {
+  emit('updateDatasetBinding', nodeId, bindingKey, reference)
+}
+
+function emitResourceBinding(nodeId: string, bindingKey: string, resourceId: string | undefined): void {
+  emit('updateResourceBinding', nodeId, bindingKey, resourceId)
+}
+
+function emitSaveOptionsAsDataset(nodeId: string, bindingKey: string, name: string): void {
+  emit('saveOptionsAsDataset', nodeId, bindingKey, name)
+}
+
+function emitMaterializeOptionsSnapshot(nodeId: string, bindingKey: string): void {
+  emit('materializeOptionsSnapshot', nodeId, bindingKey)
+}
 const selectedComponentDefinition = computed(() => {
   const component = controller.selectedNode.value?.component
   return component ? props.componentRegistry.get(component) : undefined
@@ -185,6 +204,7 @@ const {
   handleRootKeydown,
   handleUndo,
   handleUpdateForm,
+  handleUpdateInteractions,
   handleUpdatePath,
   handleUpdatePaths,
   moveNodeRelative,
@@ -315,6 +335,7 @@ defineExpose<DesignSurfaceExpose>({
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
+            :datasets="datasets"
             :component-definition="selectedComponentDefinition"
             :get-material="registry.getMaterial"
             :get-component-definition="componentRegistry.get"
@@ -323,9 +344,18 @@ defineExpose<DesignSurfaceExpose>({
             :property-controls="registry.propertyControls"
             :readonly="readonly"
             :renderer="renderer"
+            :resources="resources"
+            :interactions="surface?.interactions"
+            :surface-id="surfaceId"
+            :surfaces="surfaces"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"
+            @update-interactions="handleUpdateInteractions"
+            @update-dataset-binding="emitDatasetBinding"
+            @update-resource-binding="emitResourceBinding"
+            @save-options-as-dataset="emitSaveOptionsAsDataset"
+            @materialize-options-snapshot="emitMaterializeOptionsSnapshot"
           />
         </slot>
       </section>

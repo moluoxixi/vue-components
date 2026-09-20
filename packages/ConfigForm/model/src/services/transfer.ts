@@ -9,6 +9,9 @@ import type {
   ProjectTransferWriteInputV1,
   RegistryLock,
   ResourceTransferContentV1,
+  ResourceTransferEnvelopeV1,
+  ResourceTransferReadResultV1,
+  ResourceTransferWriteInputV1,
   SurfaceTransferEnvelopeV1,
   SurfaceTransferReadResultV1,
   SurfaceTransferWriteInputV1,
@@ -18,6 +21,7 @@ import {
   PROJECT_DOCUMENT_VERSION,
   PROJECT_THEME_VERSION,
   PROJECT_TRANSFER_VERSION,
+  RESOURCE_TRANSFER_VERSION,
   SURFACE_GRAPH_VERSION,
   SURFACE_TRANSFER_VERSION,
 } from '../constants'
@@ -52,6 +56,20 @@ const projectTransferEnvelopeSchema = z.object({
   document: z.unknown(),
   embeddedContents: z.array(embeddedContentSchema),
 }).strict()
+const resourceTransferPayloadSchema = z.union([
+  z.object({
+    resource: projectResourceSchema,
+    content: transferContentSchema,
+  }).strict(),
+  z.object({
+    resource: projectResourceSchema,
+  }).strict(),
+])
+const resourceTransferEnvelopeSchema = z.object({
+  kind: z.literal('config-form-resource'),
+  version: z.literal(RESOURCE_TRANSFER_VERSION),
+  payload: resourceTransferPayloadSchema,
+}).strict()
 const surfaceTransferEnvelopeSchema = z.object({
   kind: z.literal('config-form-surface'),
   version: z.literal(SURFACE_TRANSFER_VERSION),
@@ -64,6 +82,90 @@ const surfaceTransferEnvelopeSchema = z.object({
   embeddedContents: z.array(embeddedContentSchema),
   registryLock: registryLockSchema,
 }).strict()
+
+export async function writeResourceTransfer(
+  input: ResourceTransferWriteInputV1,
+): Promise<ContractResult<ResourceTransferEnvelopeV1>> {
+  let parsed: ReturnType<typeof projectResourceSchema.safeParse>
+  try {
+    parsed = projectResourceSchema.safeParse(input.resource)
+  }
+  catch {
+    return resourceFailure('', 'Resource transfer structure cannot be inspected safely.', ['payload'])
+  }
+  if (!parsed.success)
+    return zodFailure('resource_content_invalid', parsed.error.issues)
+  const resource = parsed.data
+  if (resource.kind === 'url') {
+    if ('bytes' in input)
+      return resourceFailure(resource.id, 'URL Resources cannot carry embedded bytes.', ['payload', 'bytes'])
+    return success({
+      kind: 'config-form-resource',
+      version: RESOURCE_TRANSFER_VERSION,
+      payload: { resource: structuredClone(resource) },
+    })
+  }
+  if (!('bytes' in input) || !(input.bytes instanceof Uint8Array))
+    return resourceFailure(resource.id, 'Embedded Resource transfer requires bytes.', ['payload', 'content'])
+  const bytes = new Uint8Array(input.bytes)
+  const budgetFailure = validateResourceBudget(resource, bytes.byteLength, bytes.byteLength)
+  if (budgetFailure)
+    return failure(budgetFailure)
+  if (await sha256ContentHash(bytes) !== resource.contentHash)
+    return resourceFailure(resource.id, 'Resource content hash does not match metadata.', ['payload', 'content', 'data'])
+  return success({
+    kind: 'config-form-resource',
+    version: RESOURCE_TRANSFER_VERSION,
+    payload: {
+      resource: structuredClone(resource),
+      content: { encoding: 'base64', data: encodeBase64(bytes) },
+    },
+  })
+}
+
+export async function readResourceTransfer(
+  input: unknown,
+): Promise<ContractResult<ResourceTransferReadResultV1>> {
+  let versionFailure: ModelDiagnostic | undefined
+  try {
+    versionFailure = validateEnvelopeVersion(input, 'ResourceTransfer', RESOURCE_TRANSFER_VERSION)
+  }
+  catch {
+    return resourceFailure('', 'Resource transfer structure cannot be inspected safely.', [])
+  }
+  if (versionFailure)
+    return failure(versionFailure)
+  let parsed: ReturnType<typeof resourceTransferEnvelopeSchema.safeParse>
+  try {
+    parsed = resourceTransferEnvelopeSchema.safeParse(input)
+  }
+  catch {
+    return resourceFailure('', 'Resource transfer structure cannot be inspected safely.', ['payload'])
+  }
+  if (!parsed.success)
+    return zodFailure('resource_content_invalid', parsed.error.issues)
+  const payload = parsed.data.payload
+  const resource = payload.resource
+  if (resource.kind === 'url') {
+    if ('content' in payload)
+      return resourceFailure(resource.id, 'URL Resources must not carry embedded content.', ['payload', 'content'])
+    return success({ resource: structuredClone(resource) })
+  }
+  if (!('content' in payload))
+    return resourceFailure(resource.id, 'Embedded Resource content is missing.', ['payload', 'content'])
+  const byteLength = canonicalBase64ByteLength(payload.content.data)
+  if (byteLength === undefined)
+    return resourceFailure(resource.id, 'Resource content must use canonical padded base64.', ['payload', 'content', 'data'])
+  const budgetFailure = validateResourceBudget(resource, byteLength, byteLength)
+  if (budgetFailure)
+    return failure(budgetFailure)
+  const bytes = decodeBase64(payload.content.data)
+  if (!bytes)
+    return resourceFailure(resource.id, 'Resource content must use canonical padded base64.', ['payload', 'content', 'data'])
+  if (await sha256ContentHash(bytes) !== resource.contentHash)
+    return resourceFailure(resource.id, 'Resource content hash does not match metadata.', ['payload', 'content', 'data'])
+  return success({ resource: structuredClone(resource), bytes: new Uint8Array(bytes) })
+}
 
 export async function writeProjectTransfer(
   input: ProjectTransferWriteInputV1,

@@ -39,14 +39,35 @@ vi.mock('..', async () => {
     }),
     WorkbenchShell: defineComponent({
       name: 'WorkbenchShell',
-      emits: ['create', 'creationFocusRestored'],
+      emits: ['create', 'creationFocusRestored', 'exit'],
       setup(_props, { emit }) {
         return () => h('button', {
-          'data-create-trigger': 'topbar-new-page',
+          'data-create-trigger': 'topbar-new-surface',
           'data-designer-entry': '',
           'data-shell': '',
-          'onClick': () => emit('create', { focusKey: 'topbar-new-page', target: 'page' }),
+          'onClick': () => emit('create', { focusKey: 'topbar-new-surface', target: 'surface' }),
         })
+      },
+    }),
+  }
+})
+
+vi.mock('../../features/projects', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    ProjectManager: defineComponent({
+      name: 'ProjectManager',
+      props: {
+        controller: Object,
+        ui: Object,
+      },
+      emits: ['create', 'open'],
+      setup(_props, { emit }) {
+        return () => h('section', { 'data-project-manager': '' }, [
+          h('button', { 'data-open-project': '', 'onClick': () => emit('open') }),
+          h('button', { 'data-create-project': '', 'onClick': () => emit('create', 'template') }),
+          h('button', { 'data-import-project': '', 'onClick': () => emit('create', 'json') }),
+        ])
       },
     }),
   }
@@ -94,11 +115,12 @@ describe('workbench app shell', () => {
     const wrapper = mount(App, { attachTo: document.body })
     mountedWrappers.push(wrapper)
 
-    expect(wrapper.find('[data-shell]').exists()).toBe(true)
+    expect(wrapper.find('[data-project-manager]').exists()).toBe(true)
+    await wrapper.get('[data-open-project]').trigger('click')
     await wrapper.get('[data-shell]').trigger('click')
     expect(wrapper.get('[data-template-workspace]').attributes()).toMatchObject({
       'data-can-close': 'true',
-      'data-target': 'page',
+      'data-target': 'surface',
     })
 
     await wrapper.get('[data-close]').trigger('click')
@@ -113,7 +135,7 @@ describe('workbench app shell', () => {
     expect(document.activeElement).toBe(wrapper.get('[data-designer-entry]').element)
   })
 
-  it('opens project creation when initialization has no current project', () => {
+  it('keeps project management as the first screen and routes create/import explicitly', async () => {
     mocks.provideController.mockReturnValue({
       controller: {
         currentProject: shallowRef(),
@@ -125,9 +147,16 @@ describe('workbench app shell', () => {
     const wrapper = mount(App)
     mountedWrappers.push(wrapper)
 
+    expect(wrapper.find('[data-project-manager]').exists()).toBe(true)
+    expect(wrapper.find('[data-template-workspace]').exists()).toBe(false)
+
+    await wrapper.get('[data-import-project]').trigger('click')
     expect(wrapper.get('[data-template-workspace]').attributes()).toMatchObject({
-      'data-can-close': 'false',
+      'data-can-close': 'true',
       'data-target': 'project',
     })
+
+    await wrapper.get('[data-close]').trigger('click')
+    expect(wrapper.find('[data-project-manager]').exists()).toBe(true)
   })
 })

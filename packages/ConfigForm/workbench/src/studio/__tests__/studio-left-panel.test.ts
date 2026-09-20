@@ -128,7 +128,7 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('jumpHistory')).toEqual([[0]])
   })
 
-  it('implements roving keyboard focus for the four views', async () => {
+  it('implements roving keyboard focus for every view and exposes the theme workspace', async () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
@@ -140,6 +140,9 @@ describe('studio left panel', () => {
         registry,
         selectedIds: [],
       },
+      slots: {
+        theme: '<div data-project-theme-editor>Theme editor</div>',
+      },
     })
 
     const components = wrapper.get('[data-designer-left-tab="components"]')
@@ -148,11 +151,13 @@ describe('studio left panel', () => {
       'aria-label': 'Components',
       'title': 'Components',
     })
-    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(4)
+    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(5)
     componentTab.focus()
     await componentTab.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'ArrowRight', key: 'ArrowRight' }))
     await nextTick()
     expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="layers"]').element.closest('[role="tab"]'))
+    await wrapper.get('[data-designer-left-tab="theme"]').trigger('click')
+    expect(wrapper.get('[data-project-theme-editor]').text()).toBe('Theme editor')
     wrapper.unmount()
   })
 

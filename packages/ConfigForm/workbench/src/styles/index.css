@@ -12,6 +12,7 @@
 @import url(../features/persistence/style/index.css);
 @import url(../features/export/style/index.css);
 @import url(../features/pages/style/index.css);
+@import url(../features/projects/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css);

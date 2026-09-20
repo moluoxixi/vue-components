@@ -19,6 +19,7 @@ const stylesheetLayers = [
   { importPath: '../features/persistence/style/index.css', source: new URL('../../features/persistence/style/index.css', import.meta.url) },
   { importPath: '../features/export/style/index.css', source: new URL('../../features/export/style/index.css', import.meta.url) },
   { importPath: '../features/pages/style/index.css', source: new URL('../../features/pages/style/index.css', import.meta.url) },
+  { importPath: '../features/projects/style/index.css', source: new URL('../../features/projects/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
@@ -31,6 +32,7 @@ const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/in
 const runtimeHostBootstrap = readFileSync(new URL('../../runtime-host/services/bootstrap.ts', import.meta.url), 'utf8')
 const tailwindStylesheet = readFileSync(new URL('../tailwind.css', import.meta.url), 'utf8')
 const exportDialogComponent = readFileSync(new URL('../../features/export/index.vue', import.meta.url), 'utf8')
+const projectThemeEditor = readFileSync(new URL('../../app/components/ProjectThemeEditor/index.vue', import.meta.url), 'utf8')
 const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
@@ -116,6 +118,7 @@ describe('workbench theme contract', () => {
       ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
       ['../../features/persistence/style/index.css', '.persistence-dialog', '.export-preview-dialog'],
       ['../../features/pages/style/index.css', '.page-manager-dialog-shell', '.export-preview-dialog'],
+      ['../../features/projects/style/index.css', '.project-manager', '.page-manager-dialog-shell'],
       ['../../app/style/index.css', '.workbench-message', '.export-preview-dialog'],
       ['../../app/components/TemplateCreationWorkspace/style/index.css', '.template-creation-workspace', '.json-import-pane'],
       ['../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', '.template-catalog-panel', '.json-import-pane'],
@@ -178,7 +181,7 @@ describe('workbench theme contract', () => {
     expect(stylesheet).not.toContain('--el-input-focus-border-color:')
   })
 
-  it('configures Tailwind v4 as an export-only Workbench utility layer', async () => {
+  it('configures Tailwind v4 as an explicitly scoped Workbench utility layer', async () => {
     const viteConfig = await import('../../../vite.config.ts?raw').then(module => module.default)
 
     expect(viteConfig).toMatch(/import tailwindcss from '@tailwindcss\/vite'/)
@@ -187,12 +190,15 @@ describe('workbench theme contract', () => {
     expect(tailwindStylesheet).toContain('@import "tailwindcss/utilities.css" layer(utilities) source(none);')
     expect(tailwindStylesheet).not.toMatch(/@import\s+["']tailwindcss["']/)
     expect(tailwindStylesheet).not.toContain('preflight.css')
-    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(1)
+    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(2)
     expect(tailwindStylesheet).toContain('@source "../features/export/index.vue";')
+    expect(tailwindStylesheet).toContain('@source "../app/components/ProjectThemeEditor/index.vue";')
     expect(tailwindStylesheet).toContain('--color-wb-editor-surface: var(--wb-editor-surface);')
     expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
     expect(exportDialogComponent).toContain('bg-wb-editor-surface')
     expect(exportDialogComponent).toContain('text-wb-accent-text')
+    expect(projectThemeEditor).toContain('border-[var(--wb-control-border)]')
+    expect(projectThemeEditor).toContain('text-[var(--wb-muted)]')
     expect(runtimeHostBootstrap).toContain('import \'../styles/index.css\'')
     expect(runtimeHostBootstrap).not.toContain('import \'../../styles/index.css\'')
     expect(runtimeHostBootstrap).not.toContain('tailwind.css')
@@ -350,6 +356,13 @@ describe('workbench theme contract', () => {
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-accent: var(--wb-accent);')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
+    )).toContain('--mx-designer-accent-text: var(--wb-accent-text);')
+    expect(selectorBlock(
+      '.mx-config-form-designer__tabs button[aria-selected=true]',
+      designerStylesheet,
+    )).toContain('color: var(--mx-designer-accent-text);')
     expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
     const paletteItem = selectorBlock(
       '.mx-config-form-designer__palette-item',
@@ -372,6 +385,7 @@ describe('workbench theme contract', () => {
     expect(stylesheet).toContain('--mx-designer-runtime-border: #d9dee7;')
     expect(stylesheet).toContain('--mx-designer-runtime-surface: #fff;')
     expect(designerStylesheet).toContain('--mx-designer-runtime-surface: #ffffff;')
+    expect(designerStylesheet).toContain('--mx-designer-accent-text: var(--mx-designer-accent);')
     expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-overlay-surface, #fff);')
     expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
     for (const [foreground, minimum] of [

@@ -71,7 +71,7 @@ function assertSourceBinding(definition: DesignerMaterialDefinition, layerName: 
 
   if (!source.configComponent.trim()
     || !SOURCE_TAG_RE.test(source.tag)
-    || !['component', 'layout-flex', 'layout-grid', 'section'].includes(source.render)
+    || !['component', 'dataset-list', 'dataset-table', 'layout-flex', 'layout-grid', 'section'].includes(source.render)
     || !libraryValid
     || !optionsValid) {
     throw new DesignerRegistryError(

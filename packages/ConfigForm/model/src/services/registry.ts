@@ -27,6 +27,24 @@ export class ComponentContractRegistryError extends Error {
   }
 }
 
+export function matchesResourceMediaType(
+  mediaType: string | undefined,
+  acceptedMediaTypes: readonly string[] | undefined,
+): boolean {
+  if (!acceptedMediaTypes)
+    return true
+  if (!mediaType)
+    return false
+  const actual = mediaType.split(';', 1)[0]!.trim().toLowerCase()
+  const [actualType] = actual.split('/', 1)
+  return acceptedMediaTypes.some((candidate) => {
+    const accepted = candidate.trim().toLowerCase()
+    return accepted === actual
+      || accepted === '*/*'
+      || (accepted.endsWith('/*') && accepted.slice(0, -2) === actualType)
+  })
+}
+
 export function createComponentContractRegistry(
   contracts: readonly ComponentContract[],
   options: CreateComponentContractRegistryOptions,

@@ -1,4 +1,4 @@
-import type { ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, PrototypeInteraction } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref } from 'vue'
 import type { DesignerController } from '../../../composables'
 import type { DesignerDropTarget } from '../../../graph'
@@ -12,6 +12,7 @@ import {
   createMoveCommand,
   createNodePathCommand,
   createResizeCommand,
+  createSurfaceInteractionsCommand,
   findDesignNode,
 } from '../../../graph'
 
@@ -157,6 +158,10 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     dispatch(createFormCommand(options.controller.graph.value, options.surfaceId(), changes))
   }
 
+  function handleUpdateInteractions(interactions: PrototypeInteraction[]): void {
+    dispatch(createSurfaceInteractionsCommand(options.surfaceId(), interactions))
+  }
+
   function mutationUndoTarget(positionBefore?: number): MutationUndoTarget {
     const history = options.historyControl().history
     const position = positionBefore === undefined
@@ -298,6 +303,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     handleRootKeydown,
     handleUndo,
     handleUpdateForm,
+    handleUpdateInteractions,
     handleUpdatePath,
     handleUpdatePaths,
     moveNodeRelative,

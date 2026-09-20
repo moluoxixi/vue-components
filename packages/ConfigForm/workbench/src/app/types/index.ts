@@ -1,4 +1,5 @@
 export type * from './appearance'
+export type * from './assets'
 export type * from './controller'
 export type * from './shell'
 export type * from './topbar'

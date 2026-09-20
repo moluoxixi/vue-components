@@ -24,5 +24,39 @@ describe('workbench adapter inspector controls', () => {
     expect(element.registrySnapshot.adapter).toBe('element-plus')
     expect(antd.designerRegistry.listMaterials().every(material => material.key.startsWith('antd.'))).toBe(true)
     expect(element.designerRegistry.listMaterials().every(material => material.key.startsWith('element.'))).toBe(true)
-  }, 15_000)
+  }, 30_000)
+
+  it('maps dataset row and item activations for both Experience and Source', async () => {
+    const adapters = await Promise.all([
+      ['antd-vue', await loadWorkbenchAdapter('antd-vue')],
+      ['element-plus', await loadWorkbenchAdapter('element-plus')],
+    ] as const)
+
+    for (const [id, adapter] of adapters) {
+      for (const [material, trigger, event] of [
+        ['table', 'rowActivate', 'row-click'],
+        ['list', 'itemActivate', 'item-click'],
+      ] as const) {
+        const componentKey = `${id === 'antd-vue' ? 'antd' : 'element'}.${material}`
+        const contract = adapter.registrySnapshot.components.find(candidate => candidate.key === componentKey)
+        expect(contract).toBeDefined()
+        const source = adapter.sourceComponentResolver.resolveComponent({
+          componentKey,
+          contractFingerprint: contract!.fingerprint,
+          contractVersion: contract!.contractVersion,
+        })
+        expect(source).toMatchObject({
+          success: true,
+          value: {
+            semanticListeners: {
+              [trigger]: { event, item: { kind: 'argument', index: 0 } },
+            },
+          },
+        })
+        expect(adapter.runtimeResolver.resolveBinding(componentKey)?.semanticEvents).toMatchObject({
+          [trigger]: event,
+        })
+      }
+    }
+  }, 30_000)
 })

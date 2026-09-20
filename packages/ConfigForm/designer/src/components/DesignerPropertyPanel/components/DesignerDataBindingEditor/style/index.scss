@@ -1,0 +1,102 @@
+@forward '../../../../../styles/foundation';
+
+.mx-config-form-designer__data-binding-editor,
+.mx-config-form-designer__data-binding-section,
+.mx-config-form-designer__data-binding-fields,
+.mx-config-form-designer__data-binding-list,
+.mx-config-form-designer__data-binding-row {
+  display: grid;
+  min-width: 0;
+}
+
+.mx-config-form-designer__data-binding-editor {
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__data-binding-heading,
+.mx-config-form-designer__data-binding-title,
+.mx-config-form-designer__data-binding-actions,
+.mx-config-form-designer__data-binding-row-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__data-binding-heading,
+.mx-config-form-designer__data-binding-title {
+  font-size: 12px;
+}
+
+.mx-config-form-designer__data-binding-title code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mx-designer-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__data-binding-section {
+  gap: 9px;
+  padding-top: 10px;
+  border-top: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__data-binding-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.mx-config-form-designer__data-binding-section label,
+.mx-config-form-designer__data-binding-row label {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+}
+
+.mx-config-form-designer__data-binding-fields,
+.mx-config-form-designer__data-binding-list {
+  gap: 8px;
+}
+
+.mx-config-form-designer__data-binding-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto;
+  align-items: end;
+  gap: 6px;
+}
+
+.mx-config-form-designer__data-binding-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.mx-config-form-designer__data-binding-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.mx-config-form-designer__data-binding-error,
+.mx-config-form-designer__data-binding-empty {
+  margin: 0;
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mx-config-form-designer__data-binding-error {
+  color: var(--mx-designer-danger);
+}
+
+.mx-config-form-designer__data-binding-filter textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@container config-form-inspector (max-width: 285px) {
+  .mx-config-form-designer__data-binding-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

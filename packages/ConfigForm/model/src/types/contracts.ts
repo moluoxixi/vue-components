@@ -8,10 +8,12 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import type {
+  DATASET_TRANSFER_VERSION,
   PROJECT_DOCUMENT_VERSION,
   PROJECT_THEME_VERSION,
   PROJECT_TRANSFER_VERSION,
   REGISTRY_CONTRACT_SNAPSHOT_VERSION,
+  RESOURCE_TRANSFER_VERSION,
   SURFACE_GRAPH_VERSION,
   SURFACE_TRANSFER_VERSION,
 } from '../constants'
@@ -176,6 +178,7 @@ export type DatasetProjection = DatasetOptionsProjection | DatasetTableProjectio
 export interface DatasetReference<T extends DatasetProjection = DatasetProjection> {
   datasetId: DatasetId
   projection: T
+  query?: DatasetViewQuery
 }
 
 export interface StaticResourceReference {
@@ -231,6 +234,49 @@ export interface ProjectDataset {
   description?: string
   rows: ModelJsonObject[]
   defaultProjection?: DatasetProjection
+}
+
+export interface DatasetViewSortRule {
+  path: string[]
+  direction: 'asc' | 'desc'
+}
+
+export interface DatasetViewQuery {
+  filter?: SafeExpression
+  sort?: DatasetViewSortRule[]
+  page?: {
+    index: number
+    size: number
+  }
+}
+
+export interface DatasetViewResult<T> {
+  items: readonly T[]
+  total: number
+}
+
+export interface DatasetPathReadSuccess {
+  found: true
+  value: ModelJsonValue
+}
+
+export interface DatasetPathReadMissing {
+  found: false
+}
+
+export type DatasetPathReadResult = DatasetPathReadSuccess | DatasetPathReadMissing
+
+export interface DatasetTransferEnvelopeV1 {
+  kind: 'config-form-dataset'
+  version: typeof DATASET_TRANSFER_VERSION
+  dataset: ProjectDataset
+}
+
+export interface CreateDatasetFromRowsInput {
+  id: DatasetId
+  name: string
+  description?: string
+  rows: unknown
 }
 
 export interface ControlledLength {
@@ -533,7 +579,8 @@ export interface ElementNodeSettings extends CommonNodeSettings {
 export type SurfaceNodeSettings = FieldNodeSettings | LayoutNodeSettings | ElementNodeSettings
 
 export type ProjectOperation
-  = | { type: 'surface.add' | 'surface.copy', surface: ProjectSurface, index?: number }
+  = | { type: 'project.rename', name: string }
+    | { type: 'surface.add' | 'surface.copy', surface: ProjectSurface, index?: number }
     | { type: 'surface.remove', surfaceId: SurfaceId }
     | { type: 'surface.move', surfaceId: SurfaceId, index: number }
     | { type: 'surface.rename', surfaceId: SurfaceId, name: string }
@@ -551,6 +598,7 @@ export type ProjectOperation
     | { type: 'dataset.remove', datasetId: DatasetId }
     | { type: 'dataset.move', datasetId: DatasetId, index: number }
     | { type: 'dataset.rename', datasetId: DatasetId, name: string }
+    | { type: 'dataset.replace', datasetId: DatasetId, dataset: ProjectDataset }
     | { type: 'dataset.replaceRows', datasetId: DatasetId, rows: ModelJsonObject[] }
     | { type: 'dataset.setDefaultProjection', datasetId: DatasetId, projection?: DatasetProjection }
     | { type: 'resource.add', resource: ProjectResource }
@@ -720,6 +768,24 @@ export interface ResourceTransferContentV1 {
   encoding: 'base64'
   data: string
 }
+
+export type ResourceTransferPayloadV1
+  = | { resource: ProjectEmbeddedResource, content: ResourceTransferContentV1 }
+    | { resource: ProjectUrlResource }
+
+export interface ResourceTransferEnvelopeV1 {
+  kind: 'config-form-resource'
+  version: typeof RESOURCE_TRANSFER_VERSION
+  payload: ResourceTransferPayloadV1
+}
+
+export type ResourceTransferReadResultV1
+  = | { resource: ProjectEmbeddedResource, bytes: Uint8Array }
+    | { resource: ProjectUrlResource }
+
+export type ResourceTransferWriteInputV1
+  = | { resource: DeepReadonly<ProjectEmbeddedResource>, bytes: Uint8Array }
+    | { resource: DeepReadonly<ProjectUrlResource> }
 
 export interface ProjectEmbeddedResourceRead {
   projectId: ProjectId

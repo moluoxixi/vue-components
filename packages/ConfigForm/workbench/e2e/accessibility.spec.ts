@@ -52,11 +52,22 @@ async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promi
   })
 }
 
+async function openProjectCreation(page: Page): Promise<void> {
+  const workspace = page.getByRole('main', { name: 'Create project', exact: true })
+  if (!await workspace.isVisible()) {
+    const newProject = page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).first()
+    await expect(newProject).toBeVisible({ timeout: 15_000 })
+    await newProject.click()
+  }
+  await expect(workspace).toBeVisible({ timeout: 15_000 })
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
 test('keeps all palette and resolved-theme combinations accessible', async ({ page }) => {
+  await openProjectCreation(page)
   const creationWorkspace = page.getByRole('main', { name: 'Create project' })
   await expect(creationWorkspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await expect(creationWorkspace).toHaveAttribute('data-palette', 'ink')
@@ -72,20 +83,22 @@ test('keeps all palette and resolved-theme combinations accessible', async ({ pa
 })
 
 test('follows system color changes and keeps explicit modes stable', async ({ page }) => {
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'ink')
+  await createProject(page, 'element')
+  await expect(page.locator('.workbench-app')).toHaveAttribute('data-palette', 'ink')
   await setAppearance(page, 'system', 'morandi')
   await page.emulateMedia({ colorScheme: 'dark' })
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('.workbench-app')).toHaveAttribute('data-theme', 'dark')
   await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-theme', 'dark')
   await page.emulateMedia({ colorScheme: 'light' })
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('.workbench-app')).toHaveAttribute('data-theme', 'light')
 
   await setAppearance(page, 'dark', 'morandi')
   await page.emulateMedia({ colorScheme: 'light' })
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('.workbench-app')).toHaveAttribute('data-theme', 'dark')
 })
 
 test('keeps the desktop popover and mobile drawer accessible with focus restoration', async ({ page }) => {
+  await createProject(page, 'element')
   const desktopTrigger = page.getByRole('button', { name: 'Open appearance settings' })
   await openAppearance(page)
   await expectNoAccessibilityViolations(page, 'desktop appearance popover')
@@ -102,7 +115,7 @@ test('keeps the desktop popover and mobile drawer accessible with focus restorat
   const drawer = page.getByRole('dialog', { name: 'Appearance' })
   await expect(drawer).toBeVisible()
   await drawer.locator('.appearance-palette-option', { hasText: 'Morandi Cream' }).click()
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'morandi')
+  await expect(page.locator('.workbench-app')).toHaveAttribute('data-palette', 'morandi')
   await expectNoAccessibilityViolations(page, 'mobile appearance drawer')
   await drawer.getByRole('button', { name: 'Close' }).focus()
   await page.keyboard.press('Tab')
@@ -131,7 +144,7 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(page.locator('[data-workspace-panel="properties"]')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('complementary', { name: 'Properties' })).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('.mx-config-form-designer__properties .mx-config-form-designer__tabs > [role="tab"]'))
-      .toHaveText(['Properties', 'Validation'])
+      .toHaveText(['Properties', 'Validation', 'Interactions'])
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
     await page.getByRole('button', { name: 'Export' }).click()

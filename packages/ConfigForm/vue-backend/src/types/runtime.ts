@@ -1,6 +1,7 @@
 import type {
   ConfigFormComponentRegistry,
   ConfigFormRendererNode,
+  ConfigFormRendererSemanticEvents,
   ConfigFormResponsiveLayout,
   ConfigFormSurfaceRuntimePlan,
 } from '@moluoxixi/config-form'
@@ -68,6 +69,8 @@ export interface VueRuntimeComponentBinding {
   readonlyRender?: (context: VueRuntimeReadonlyRenderContext) => VNodeChild
   trigger?: string
   valueProp?: string
+  /** Closed semantic trigger to provider event mapping for prototype hosts. */
+  semanticEvents?: ConfigFormRendererSemanticEvents
 }
 
 export interface VueRuntimeBindingResolver {

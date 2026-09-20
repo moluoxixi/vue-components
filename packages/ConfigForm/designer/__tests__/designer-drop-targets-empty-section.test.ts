@@ -1,5 +1,6 @@
 import type { SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDragSource, DesignerRuntimeNodeGeometry } from '../src/components/DesignerCanvas/types'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { effectScope, ref } from 'vue'
 import { useDesignerCanvasDropTargets } from '../src/components/DesignerCanvas/composables/use-designer-canvas-drop-targets'
@@ -9,7 +10,7 @@ const sectionNode: SurfaceNode = { id: 'sec-1', kind: 'layout', component: 'elem
 const candidate: SurfaceNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {} }
 
 const graph: SurfaceGraph = {
-  version: 2,
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {} as never,
   root: [{ nodeId: 'input-1', placement: {} }, { nodeId: 'sec-1', placement: {} }],

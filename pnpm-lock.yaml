@@ -1151,6 +1151,9 @@ importers:
       '@moluoxixi/config-form-core':
         specifier: workspace:*
         version: link:../core
+      '@moluoxixi/config-form-model':
+        specifier: workspace:*
+        version: link:../model
       '@moluoxixi/zod3-to-rule':
         specifier: workspace:*
         version: link:../../zod3-to-rule

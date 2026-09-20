@@ -130,7 +130,7 @@ function isSurfaceKey(value: unknown, projectId: string, surfaceId: string): boo
 
 function isSurfaceCompilation(value: unknown): value is SurfaceCompilation {
   if (!isRecord(value) || !isJsonValue(value)
-    || !hasExactKeys(value, ['snapshotIdentity', 'registryUsage', 'key', 'surface'])
+    || !hasExactKeys(value, ['snapshotIdentity', 'registryUsage', 'key', 'surface', 'theme', 'datasetsById'])
     || !isRecord(value.surface) || !isRecord(value.key) || !isRecord(value.snapshotIdentity)) {
     return false
   }
@@ -146,6 +146,8 @@ function isSurfaceCompilation(value: unknown): value is SurfaceCompilation {
     && key.projectId === snapshotIdentity.projectId
     && key.surfaceId === snapshotIdentity.surfaceId
     && hasOnlyCurrentCanonicalSurfaceKeys(surface)
+    && isJsonRecord(value.theme)
+    && isJsonRecord(value.datasetsById)
     && Array.isArray(value.registryUsage)
     && (value.registryUsage as unknown[]).every(item => isRecord(item)
       && hasExactKeys(item, ['key', 'contractVersion', 'fingerprint'])

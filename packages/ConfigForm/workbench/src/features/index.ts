@@ -1,4 +1,7 @@
+export * from './assets'
 export * from './export'
 export * from './pages'
 export * from './persistence'
+export * from './projects'
 export * from './templates'
+export * from './theme'

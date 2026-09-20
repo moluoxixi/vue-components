@@ -187,6 +187,17 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       controller.setInstanceTouched(address)
       void controller.validateInstance(address, 'blur')
     })
+    for (const [trigger, event] of Object.entries(field.semanticEvents ?? {})) {
+      if (!event)
+        continue
+      componentListeners.addListener(componentProps, event, (...args: unknown[]) => {
+        props.onSemanticActivate?.({
+          nodeId: field.id,
+          trigger: trigger as Parameters<NonNullable<typeof props.onSemanticActivate>>[0]['trigger'],
+          args,
+        })
+      })
+    }
     componentListeners.wrapComponentListeners(componentProps, new Set([bindingEventKey, blurEventKey]))
 
     return h(binding.resolveComponent(registration?.component ?? field.component), {

@@ -13,7 +13,7 @@ import type {
   SurfaceCompilation,
   SurfaceCompilationSnapshotIdentity,
 } from '../../../types'
-import { deepFreeze } from '../../../utils'
+import { clone, deepFreeze } from '../../../utils'
 import { prepareCompilerContext } from './context'
 import {
   compileIncrementalPreparedSurface,
@@ -316,6 +316,8 @@ function rebindSurfaceCompilation(
     registryUsage: compilation.registryUsage,
     key: compilation.key,
     surface: compilation.surface,
+    theme: clone(snapshot.document.theme),
+    datasetsById: compilation.datasetsById,
   })
 }
 

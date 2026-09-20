@@ -131,6 +131,7 @@ export function createWorkbenchSurfaceCommands(options: {
           case 'surface.route': return [{ type: 'surface.route' as const, surfaceId: action.surfaceId, route: action.route }]
           case 'surface.home': return [{ type: 'project.home' as const, surfaceId: action.surfaceId }]
           case 'surface.move': return [{ type: 'surface.move' as const, surfaceId: action.surfaceId, index: action.index }]
+          case 'surface.presentation': return [{ type: 'surface.presentation' as const, surfaceId: action.surfaceId, presentation: action.presentation }]
           case 'surface.remove': return [{ type: 'surface.remove' as const, surfaceId: action.surfaceId }]
           case 'surface.duplicate': {
             const source = document.surfacesById[action.surfaceId]

@@ -1,3 +1,4 @@
+import type { ProjectSurface } from '@moluoxixi/config-form-model'
 import type { ProjectTemplateAdapter, ProjectTemplateCategory } from './contracts'
 
 export interface TemplateCatalogFilter {
@@ -12,6 +13,7 @@ export interface BuiltInSeedDefinition {
   description: string
   displayName: string
   id: string
+  kind?: ProjectSurface['kind']
   order: number
   tags: string[]
 }

@@ -52,23 +52,43 @@ function registrySnapshot(entry: ProjectTemplateCatalogEntry): RegistryContractS
 }
 
 describe('template catalog', () => {
-  it('loads four stable JSON-safe built-ins through a data-only provider', async () => {
+  it('loads provider-symmetric Page, Dialog, and Drawer built-ins through a data-only provider', async () => {
     const templates = await builtIns()
     expect(templates.map(template => template.manifest.id)).toEqual([
       'element-blank',
       'element-profile',
+      'element-dialog',
+      'element-drawer',
       'antd-blank',
       'antd-profile',
+      'antd-dialog',
+      'antd-drawer',
     ])
-    expect(templates.map(template => template.manifest.category)).toEqual(['blank', 'starter', 'blank', 'starter'])
-    expect(JSON.parse(JSON.stringify(await builtInTemplateCatalogProvider.list()))).toHaveLength(4)
+    expect(templates.map(template => template.surface.kind)).toEqual([
+      'page',
+      'page',
+      'dialog',
+      'drawer',
+      'page',
+      'page',
+      'dialog',
+      'drawer',
+    ])
+    expect(JSON.parse(JSON.stringify(await builtInTemplateCatalogProvider.list()))).toHaveLength(8)
     expect(templates.filter(template => template.manifest.category === 'blank').every(template => Object.keys(template.surface.graph.nodesById).length === 0)).toBe(true)
   })
 
   it('filters display metadata, tags, category, and provider without mutating entries', async () => {
     const templates = await builtIns()
     expect(filterTemplateCatalog(templates, { query: 'Ant Design Vue profile' }).map(item => item.manifest.id)).toEqual(['antd-profile'])
-    expect(filterTemplateCatalog(templates, { category: 'blank' }).map(item => item.manifest.id)).toEqual(['element-blank', 'antd-blank'])
+    expect(filterTemplateCatalog(templates, { category: 'blank' }).map(item => item.manifest.id)).toEqual([
+      'element-blank',
+      'element-dialog',
+      'element-drawer',
+      'antd-blank',
+      'antd-dialog',
+      'antd-drawer',
+    ])
     expect(filterTemplateCatalog(templates, { providerId: 'missing' })).toEqual([])
     const filtered = filterTemplateCatalog(templates, { query: 'profile' })
     filtered[0]!.manifest.tags.push('mutated')
@@ -88,7 +108,7 @@ describe('template catalog', () => {
       failedProvider,
       malformedProvider,
     ]).load()
-    expect(result.templates).toHaveLength(4)
+    expect(result.templates).toHaveLength(8)
     expect(result.diagnostics.map(item => item.code)).toEqual(expect.arrayContaining([
       'TEMPLATE_PROVIDER_DUPLICATE',
       'TEMPLATE_PROVIDER_FAILED',
@@ -199,7 +219,10 @@ describe('template catalog', () => {
         name: `Invalid ${overlay.kind} project`,
         registryLock: adapter.componentRegistry.lock,
       })).toThrow('TEMPLATE_TARGET_KIND_INVALID')
-      expect(() => prepareTemplatePreview(template, adapter)).toThrow('TEMPLATE_TARGET_KIND_INVALID')
+      expect(() => prepareTemplatePreview(template, adapter, 'project')).toThrow('TEMPLATE_TARGET_KIND_INVALID')
+      const preview = prepareTemplatePreview(template, adapter, 'surface', deterministicFactory(`preview-${overlay.kind}`))
+      expect(preview.compilation.surface.kind).toBe(overlay.kind)
+      expect(preview.compilation.snapshotIdentity.surfaceId).toBe(preview.compilation.surface.id)
     }
   })
 

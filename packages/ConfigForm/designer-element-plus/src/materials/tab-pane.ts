@@ -16,7 +16,7 @@ export default defineDesignerMaterialModule({
       runtime: { component: shared.ElTabPane },
       allowedParents: [{ material: 'element.tabs', slot: 'default' }],
       setters: [shared.propSetter('label', 'Label', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.tab-pane', props: { label: 'Tab', name: id }, slots: { default: [] } }),
     },
     locale: { title: '标签面板', category: '布局', setters: { label: '标签', disabled: '禁用' }, slots: { default: '内容' } },

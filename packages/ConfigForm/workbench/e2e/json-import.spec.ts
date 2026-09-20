@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
+import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { expect, test } from '@playwright/test'
 import { createProject, readDownloadText, setAppearance } from './helpers'
 
@@ -73,7 +74,7 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
     kind: 'config-form-project',
     version: 1,
     document: {
-      version: 7,
+      version: PROJECT_DOCUMENT_VERSION,
       registryLock: { adapter: 'element-plus' },
     },
   })
@@ -86,7 +87,7 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
 
   await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
   await expect(workspace.getByText('Project version', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('v7', { exact: true })).toBeVisible()
+  await expect(workspace.getByText(`v${PROJECT_DOCUMENT_VERSION}`, { exact: true })).toBeVisible()
   await expect(workspace.locator('iframe[data-design-runtime-host]')).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const axe = await new AxeBuilder({ page })
@@ -114,7 +115,7 @@ test('imports an Ant Design Vue Surface JSON file as one undoable command', asyn
     surfaceOrder: [expect.any(String)],
   })
   expect(exportedSurface.surfacesById[exportedSurface.rootSurfaceId]).toMatchObject({
-    graph: { version: 2 },
+    graph: { version: SURFACE_GRAPH_VERSION },
   })
   exportedSurface.surfacesById[exportedSurface.rootSurfaceId].route = '/imported-profile'
   const importSource = JSON.stringify(exportedSurface)
@@ -144,7 +145,9 @@ for (const viewport of [
 ]) {
   test(`keeps invalid diagnostics localized and usable at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
+    await page.getByRole('button', { name: 'Import JSON', exact: true }).click()
     let workspace = page.getByRole('main', { name: 'Create project' })
+    await expect(workspace).toBeVisible()
     await chooseJsonImport(workspace)
     await workspace.getByRole('textbox', { name: 'Config Model JSON' }).fill('{')
     await workspace.getByRole('button', { name: 'Analyze JSON' }).click()

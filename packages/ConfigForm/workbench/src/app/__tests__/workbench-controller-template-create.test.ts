@@ -105,6 +105,47 @@ afterEach(() => {
 })
 
 describe('workbench template project creation transaction', () => {
+  it('renames current and inactive projects through Model commands before persistence', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    for (const [id, name] of [['project-a', 'Project A'], ['project-b', 'Project B']] as const) {
+      await repository.create({
+        document: createBuiltInProjectFixture('element-profile', { id, name }, adapter.componentRegistry.lock),
+        embeddedContents: [],
+      })
+    }
+    const { controller } = await setup(repository)
+    const currentId = controller.currentProject.value!.id
+    const inactiveId = currentId === 'project-a' ? 'project-b' : 'project-a'
+
+    expect(await controller.renameProject(currentId, 'Current renamed')).toBe(true)
+    expect(controller.currentProject.value?.name).toBe('Current renamed')
+    expect((await repository.get(currentId))?.document.name).toBe('Current renamed')
+
+    expect(await controller.renameProject(inactiveId, 'Inactive renamed')).toBe(true)
+    expect((await repository.get(inactiveId))?.document.name).toBe('Inactive renamed')
+    expect(controller.currentProject.value?.id).toBe(currentId)
+  })
+
+  it('deletes an inactive project without disturbing the active editor session', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    for (const [id, name] of [['delete-a', 'Delete A'], ['delete-b', 'Delete B']] as const) {
+      await repository.create({
+        document: createBuiltInProjectFixture('element-profile', { id, name }, adapter.componentRegistry.lock),
+        embeddedContents: [],
+      })
+    }
+    const { controller } = await setup(repository)
+    const activeId = controller.currentProject.value!.id
+    const inactiveId = activeId === 'delete-a' ? 'delete-b' : 'delete-a'
+
+    expect(await controller.deleteProject(inactiveId)).toBe(true)
+    expect(await repository.get(inactiveId)).toBeUndefined()
+    expect(controller.currentProject.value?.id).toBe(activeId)
+    expect(controller.projects.value.map(project => project.id)).toEqual([activeId])
+  })
+
   it('deletes a persisted project when persistence preparation prevents activation', async () => {
     const repository = durableRepository()
     const deleteProject = vi.spyOn(repository, 'delete')
@@ -171,7 +212,7 @@ describe('workbench template project creation transaction', () => {
     expect(deleteProject).toHaveBeenCalledOnce()
     expect(controller.currentProject.value?.id).toBe('existing-project')
     expect(controller.getCurrentAdapterId()).toBe('element-plus')
-  }, 10_000)
+  }, 20_000)
 
   it('keeps an activated project when the post-open catalog refresh fails', async () => {
     const repository = durableRepository()

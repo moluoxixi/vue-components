@@ -27,6 +27,7 @@ import {
   CONFIG_FORM_COMPILER_VERSION,
   hasOnlyCurrentCanonicalSurfaceKeys,
 } from '@moluoxixi/config-form-compiler'
+import { queryDatasetView } from '@moluoxixi/config-form-model'
 import {
   compileRules,
   parseRuleSet,
@@ -181,13 +182,42 @@ function cloneNodeMetadata(
 function compileNodeBase(
   node: CanonicalRuntimeNode,
   binding: VueRuntimeComponentBinding,
+  datasetsById: CompileDatasets,
+  path: Array<string | number>,
+  diagnostics: VueRuntimeDiagnostic[],
 ): Record<string, unknown> {
   const span = node.placement.props.span
   const extensions = cloneNodeMetadata(node)
+  const props = structuredClone(node.props) as Record<string, unknown>
+  for (const [bindingKey, reference] of Object.entries(node.datasetBindings ?? {})) {
+    const dataset = datasetsById[reference.datasetId]
+    if (!dataset) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_DATASET_UNKNOWN',
+        `Dataset binding references an unavailable Dataset: ${reference.datasetId}.`,
+        [...path, 'datasetBindings', bindingKey, 'datasetId'],
+        node.id,
+      ))
+      continue
+    }
+    const projected = queryDatasetView(dataset, reference.projection, reference.query)
+    if (!projected.success) {
+      diagnostics.push(...projected.diagnostics.map(item => createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_DATASET_PROJECTION_INVALID',
+        item.message,
+        ['datasetsById', reference.datasetId, ...(item.path ?? [])],
+        node.id,
+      )))
+      continue
+    }
+    props[bindingKey] = structuredClone(projected.data.items)
+    props[`${bindingKey}Total`] = projected.data.total
+  }
   return {
     id: node.id,
     component: binding.component,
-    props: structuredClone(node.props) as Record<string, unknown>,
+    props,
+    ...(binding.semanticEvents ? { semanticEvents: { ...binding.semanticEvents } } : {}),
     ...(extensions ? { extensions } : {}),
     ...(typeof span === 'number' ? { span } : {}),
   }
@@ -196,6 +226,7 @@ function compileNodeBase(
 function compileField(
   node: CanonicalRuntimeFieldNode,
   binding: VueRuntimeComponentBinding,
+  datasetsById: CompileDatasets,
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
@@ -204,7 +235,7 @@ function compileField(
   diagnoseDefaultBase(node, path, validationResult, diagnostics)
   const validation = validationResult?.compiled
   return {
-    ...compileNodeBase(node, binding),
+    ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined
@@ -237,12 +268,18 @@ function compileField(
 function compileElement(
   node: CanonicalRuntimeElementNode,
   binding: VueRuntimeComponentBinding,
+  datasetsById: CompileDatasets,
+  path: Array<string | number>,
+  diagnostics: VueRuntimeDiagnostic[],
 ): ConfigFormRendererNode {
-  return compileNodeBase(node, binding) as unknown as ConfigFormRendererNode
+  return compileNodeBase(node, binding, datasetsById, path, diagnostics) as unknown as ConfigFormRendererNode
 }
+
+type CompileDatasets = Readonly<Record<string, Parameters<typeof queryDatasetView>[0]>>
 
 function compileNode(
   surface: CanonicalRuntimeSurface,
+  datasetsById: CompileDatasets,
   nodeId: string,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
@@ -283,7 +320,8 @@ function compileNode(
   }
 
   const fragmentCache = getRuntimeNodeFragmentCache(resolver)
-  const cached = fragmentCache.get(node as object)
+  const cacheable = Object.keys(datasetsById).length === 0
+  const cached = cacheable ? fragmentCache.get(node as object) : undefined
   if (cached) {
     diagnostics.push(...cached.diagnostics)
     return cached.node
@@ -323,21 +361,21 @@ function compileNode(
 
   let compiled: ConfigFormRendererNode
   if (node.kind === 'field') {
-    compiled = compileField(node, binding, path, resolver, diagnostics)
+    compiled = compileField(node, binding, datasetsById, path, resolver, diagnostics)
   }
   else if (node.kind === 'element') {
-    compiled = compileElement(node, binding)
+    compiled = compileElement(node, binding, datasetsById, path, diagnostics)
   }
   else {
     const nextAncestors = new Set(ancestors)
     nextAncestors.add(node.id)
     compiled = {
-      ...compileNodeBase(node, binding),
+      ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
       ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
       slots: Object.fromEntries(Object.entries(node.slots).map(([slotName, childIds]) => [
         slotName,
         childIds.flatMap((childId) => {
-          const child = compileNode(surface, childId, resolver, diagnostics, {
+          const child = compileNode(surface, datasetsById, childId, resolver, diagnostics, {
             parentId: node.id,
             slot: slotName,
           }, nextAncestors)
@@ -347,7 +385,7 @@ function compileNode(
     } as unknown as ConfigFormRendererNode
   }
 
-  if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
+  if (cacheable && !hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
     fragmentCache.set(node as object, {
       diagnostics: diagnostics.slice(diagnosticStart),
       node: compiled,
@@ -430,9 +468,13 @@ export function compileCanonicalSurfaceRuntime(
     }
   }
 
+  const datasetsById = surfaceScoped
+    ? compilation.datasetsById
+    : compilation.ir.datasetsById
+
   const diagnostics: VueRuntimeDiagnostic[] = []
   const fields = surface.rootIds.flatMap((nodeId) => {
-    const compiled = compileNode(surface, nodeId, resolver, diagnostics, {
+    const compiled = compileNode(surface, datasetsById, nodeId, resolver, diagnostics, {
       parentId: null,
       slot: null,
     }, new Set())

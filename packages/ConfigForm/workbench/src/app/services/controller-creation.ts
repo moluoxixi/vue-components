@@ -13,6 +13,8 @@ import type { WorkbenchUiStore } from '../types'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   analyzeTemplateEligibility,
+  createProjectTransferDocument,
+  downloadProjectTransfer,
   instantiateTemplateProject,
   instantiateTemplateSurface,
   nextProjectSurfaceId,
@@ -262,8 +264,86 @@ export function createWorkbenchCreationCommands(options: {
     }
   }
 
+  async function duplicateProject(projectId: string): Promise<boolean> {
+    const activeRepository = repository.value
+    if (!activeRepository || busy.value)
+      return false
+    if (currentProject.value?.id === projectId && hasUnsavedChanges.value) {
+      ui.notify(workbenchLocale.value.t(
+        'project.duplicateBlocked',
+        'Save or resolve the current project before duplicating it.',
+      ))
+      return false
+    }
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const source = await activeRepository.get(projectId)
+      if (!source)
+        throw new TypeError(`Project does not exist: ${projectId}`)
+      const document = structuredClone(source.document) as ProjectDocument
+      document.name = `${document.name.slice(0, 155)} copy`
+      const transfer = await createProjectTransferDocument(
+        document,
+        input => activeRepository.readEmbedded(input),
+      )
+      const prepared = await prepareConfigImport({
+        source: JSON.stringify(transfer),
+        target: 'project',
+      })
+      if (!prepared.success)
+        throw new TypeError(prepared.diagnostics[0]?.message ?? 'Project copy could not be prepared.')
+      if (prepared.prepared.target !== 'project')
+        throw new TypeError('Project copy preparation returned an invalid target.')
+      const adapter = await loadWorkbenchAdapter(prepared.prepared.adapter)
+      if (isDisposed() || repository.value !== activeRepository)
+        return false
+      return await persistPreparedProject(
+        prepared.prepared.document,
+        adapter,
+        activeRepository,
+        prepared.prepared.embeddedContents,
+      )
+    }
+    catch (error) {
+      ui.notify(error)
+      return false
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function exportProject(projectId: string): Promise<string | undefined> {
+    const activeRepository = repository.value
+    if (!activeRepository || busy.value)
+      return undefined
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const project = await activeRepository.get(projectId)
+      if (!project)
+        throw new TypeError(`Project does not exist: ${projectId}`)
+      const filename = await downloadProjectTransfer({
+        document: project.document,
+        readEmbedded: input => activeRepository.readEmbedded(input),
+      })
+      ui.notify(workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }))
+      return filename
+    }
+    catch (error) {
+      ui.notify(error)
+      return undefined
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
   return {
     createFromJsonImport,
+    duplicateProject,
+    exportProject,
     createSurfaceFromTemplate,
     createProjectFromTemplate,
     prepareJsonImport,

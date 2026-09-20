@@ -3,6 +3,7 @@
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { ExportDialog } from '..'
@@ -59,6 +60,9 @@ describe('export dialog', () => {
     expect(root.get('[role="tree"]').text()).toContain('package.json')
     expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
     expect(root.get('.export-dialog-heading h2').text()).toBe('Raw Vue source')
+    expect(root.findAll('.export-style-target .el-segmented__item')).toHaveLength(2)
+    expect(root.get('.export-style-target').text()).toContain('CSS')
+    expect(root.get('.export-style-target').text()).toContain('Tailwind v4')
     expect(root.text()).toContain('Snapshot model revision 7')
     expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
@@ -70,6 +74,49 @@ describe('export dialog', () => {
     expect(root.find('.config-json-view').exists()).toBe(false)
     expect(root.find('.config-json-scope').exists()).toBe(false)
     expect(root.find('.config-view-tabs').exists()).toBe(false)
+
+    wrapper.unmount()
+    target.remove()
+  })
+
+  it('regenerates both outputs with a session-only Tailwind v4 target', async () => {
+    const input = await createInput()
+    let captureCalls = 0
+    const target = document.createElement('main')
+    target.id = 'workbench-overlays'
+    document.body.append(target)
+    const wrapper = mount(ExportDialog, {
+      props: {
+        capture: () => {
+          captureCalls += 1
+          return input
+        },
+        currentCompilation: input.compilation,
+        mode: 'source',
+        theme: 'light',
+      },
+      global: { stubs: { SourceTextViewer: true } },
+    })
+    const root = new DOMWrapper(target)
+    await flushPromises()
+    expect(captureCalls).toBe(1)
+
+    const targetOptions = root.findAll('.export-style-target .el-segmented__item')
+    await targetOptions[1]!.trigger('click')
+    await flushPromises()
+    expect(captureCalls).toBe(1)
+
+    const viewer = wrapper.findComponent(ConfigFormSourceViewer)
+    const rawFiles = viewer.props('files') as { files: readonly { kind: string, path: string, content?: string }[] }
+    const rawManifest = rawFiles.files.find(file => file.path === 'package.json')
+    expect(rawManifest?.content).toContain('"@tailwindcss/vite": "^4.1.13"')
+    expect('styleTarget' in input.compilation.snapshot.document).toBe(false)
+
+    await wrapper.setProps({ mode: 'config' })
+    await flushPromises()
+    const bindingFiles = viewer.props('files') as { files: readonly { kind: string, path: string, content?: string }[] }
+    const bindingManifest = bindingFiles.files.find(file => file.path === 'package.json')
+    expect(bindingManifest?.content).toContain('"tailwindcss": "^4.1.13"')
 
     wrapper.unmount()
     target.remove()

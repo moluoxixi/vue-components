@@ -1,6 +1,8 @@
 export { default as DesignRuntimeHostFrame } from './DesignRuntimeHostFrame/index.vue'
 export { default as PreviewDrawer } from './PreviewDrawer/index.vue'
 export { default as PreviewRuntimeHostFrame } from './PreviewRuntimeHostFrame/index.vue'
+export { default as ProjectThemeEditor } from './ProjectThemeEditor/index.vue'
+export type * from './ProjectThemeEditor/types'
 export { default as StudioLeftPanel } from './StudioLeftPanel/index.vue'
 export { default as TemplateCreationWorkspace } from './TemplateCreationWorkspace/index.vue'
 export { default as WorkbenchAppearanceDrawer } from './WorkbenchAppearanceDrawer.vue'

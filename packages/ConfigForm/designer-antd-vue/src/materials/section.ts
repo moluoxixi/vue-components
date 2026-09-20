@@ -15,7 +15,7 @@ export default defineDesignerMaterialModule({
       icon: s.LayoutPanelTop,
       runtime: { component: s.AntdSection },
       setters: [s.propSetter('title', 'Title', 'text'), s.propSetter('description', 'Description', 'textarea')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({
         id,
         kind: 'layout',

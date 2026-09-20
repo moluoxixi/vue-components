@@ -53,6 +53,7 @@ describe('export snapshot', () => {
     const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
+    expect(snapshot.styleTarget).toBe('css')
     expect(input.componentResolver).not.toHaveProperty('resolveConfigFormBinding')
     expect(input.bindingResolver).not.toHaveProperty('resolveComponent')
     const rawSource = expectReady(snapshot.rawSource)
@@ -66,6 +67,29 @@ describe('export snapshot', () => {
     expect(Object.isFrozen(configBindings.files)).toBe(true)
     expect(rawSource.files.every(Object.isFrozen)).toBe(true)
     expect(configBindings.files.every(Object.isFrozen)).toBe(true)
+  })
+
+  it('passes one normalized Tailwind target to both independent generators', async () => {
+    const input = await fixture()
+    const snapshot = await buildExportSnapshot({ ...input, styleTarget: 'tailwind-v4' })
+    const rawSource = expectReady(snapshot.rawSource)
+    const configBindings = expectReady(snapshot.configBindings)
+
+    expect(snapshot.styleTarget).toBe('tailwind-v4')
+    for (const fileSet of [rawSource, configBindings]) {
+      const manifestFile = fileSet.files.find(file => file.path === 'package.json')
+      expect(manifestFile?.kind).toBe('text')
+      if (manifestFile?.kind !== 'text')
+        continue
+      const manifest = JSON.parse(manifestFile.content) as { devDependencies?: Record<string, string> }
+      expect(manifest.devDependencies).toMatchObject({
+        '@tailwindcss/vite': '^4.1.13',
+        'tailwindcss': '^4.1.13',
+      })
+      const styles = fileSet.files.find(file => file.path === 'src/styles.css')
+      expect(styles?.kind === 'text' ? styles.content : '').toContain('@import \'tailwindcss\'')
+    }
+    expect('styleTarget' in input.compilation.snapshot.document).toBe(false)
   })
 
   it('keeps raw Vue ready when ConfigForm binding generation fails', async () => {

@@ -16,7 +16,7 @@ export default defineDesignerMaterialModule({
       runtime: { component: shared.ElCollapseItem },
       allowedParents: [{ material: 'element.collapse', slot: 'default' }],
       setters: [shared.propSetter('title', 'Title', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.collapse-item', props: { title: 'Item', name: id }, slots: { default: [] } }),
     },
     locale: { title: '折叠项', category: '布局', setters: { title: '标题', disabled: '禁用' }, slots: { default: '内容' } },

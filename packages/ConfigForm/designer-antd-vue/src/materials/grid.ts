@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
         s.propSetter('columns', 'Columns', 'number', undefined, { min: 1, max: 12, step: 1 }),
         s.propSetter('gap', 'Gap', 'number', undefined, { min: 0, max: 64, step: 4 }),
       ],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({
         id,
         kind: 'layout',

@@ -9,3 +9,15 @@ export interface DesignerPropertyFormEntry {
   inheritedValue?: unknown
   hint?: string
 }
+
+export interface DesignerInteractionSurfaceOption {
+  readonly id: string
+  readonly kind: 'dialog' | 'drawer' | 'page'
+  readonly name: string
+  readonly outputs: readonly { readonly name: string }[]
+  readonly parameters: readonly {
+    readonly defaultValue?: unknown
+    readonly name: string
+    readonly required: boolean
+  }[]
+}

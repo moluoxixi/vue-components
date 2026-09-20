@@ -15,15 +15,42 @@ import { createCompilerFixture, createExperienceCompilerFixture } from './compil
 const adapter = vi.hoisted(() => ({ load: vi.fn().mockResolvedValue({ runtimeResolver: {} }) }))
 vi.mock('../../adapters', () => ({ loadWorkbenchRuntimeAdapter: adapter.load }))
 vi.mock('@moluoxixi/config-form-vue-backend', () => ({
-  compileCanonicalSurfaceRuntime: vi.fn((input: { compilation: { surface?: { id?: string } }, surfaceId?: string }) => {
+  compileCanonicalSurfaceRuntime: vi.fn((input: {
+    compilation: {
+      surface?: { id?: string, interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }
+      ir?: { surfacesById?: Record<string, { interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }> }
+    }
+    surfaceId?: string
+  }) => {
     const surfaceId = input.surfaceId ?? input.compilation.surface?.id ?? 'home'
+    const interactions = input.compilation.surface?.interactions
+      ?? input.compilation.ir?.surfacesById?.[surfaceId]?.interactions
+      ?? []
+    const interaction = interactions.find(candidate => candidate.kind === 'primaryUiAction')
+    const semanticEventByTrigger: Record<string, string> = {
+      rowActivate: 'row-click',
+      itemActivate: 'item-click',
+    }
+    const semanticTrigger = interaction?.trigger
+    const semanticEvent = semanticTrigger === undefined
+      ? undefined
+      : semanticEventByTrigger[semanticTrigger] ?? semanticTrigger
     return {
       success: true,
       artifact: {
         compilationKey: {},
         surfaceId,
         renderer: {
-          fields: [{ id: `${surfaceId}-action` }],
+          fields: [{
+            id: `${surfaceId}-action`,
+            ...(interaction
+              ? {
+                  semanticEvents: {
+                    [interaction.trigger!]: semanticEvent,
+                  },
+                }
+              : {}),
+          }],
           plan: {
             valueSchema: { valueScopes: [], scopedFields: [] },
             runtime: { variables: [], dataSources: [] },
@@ -43,6 +70,7 @@ vi.mock('@moluoxixi/config-form', async () => {
       props: {
         fields: { type: Array, default: () => [] },
         model: { type: Object, required: true },
+        onSemanticActivate: { type: Function, required: false },
       },
       setup(props, { expose }) {
         expose({
@@ -59,10 +87,19 @@ vi.mock('@moluoxixi/config-form', async () => {
         })
         return () => h('div', [
           h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.model.read())),
-          ...props.fields.map(field => h('button', {
-            'data-config-node-id': (field as { id: string }).id,
-            'type': 'button',
-          }, (field as { id: string }).id)),
+          ...props.fields.map((field) => {
+            const node = field as { id: string, semanticEvents?: Record<string, string> }
+            const trigger = Object.keys(node.semanticEvents ?? {})[0]
+            return h('button', {
+              'data-config-node-id': node.id,
+              'type': 'button',
+              'onClick': () => trigger && props.onSemanticActivate?.({
+                nodeId: node.id,
+                trigger,
+                args: trigger === 'rowActivate' || trigger === 'itemActivate' ? [{ id: 'item-1' }] : [],
+              }),
+            }, node.id)
+          }),
         ])
       },
     }),
@@ -76,7 +113,7 @@ function compilation() {
   return result.compilation
 }
 
-function experienceCompilation(homeTrigger: 'activate' | 'submit' = 'activate') {
+function experienceCompilation(homeTrigger: 'activate' | 'submit' | 'rowActivate' | 'itemActivate' = 'activate') {
   const result = compileCanonicalProject(createExperienceCompilerFixture(3, homeTrigger))
   if (!result.success)
     throw new Error('Experience fixture compilation failed')
@@ -296,6 +333,43 @@ describe('runtime host app v7', () => {
     wrapper.unmount()
     post.mockRestore()
   })
+
+  it.each(['rowActivate', 'itemActivate'] as const)(
+    'dispatches semantic %s from rendered provider controls',
+    async (trigger) => {
+      const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+      const project = experienceCompilation(trigger)
+      const initialized = initializePrototypeProjectSession({
+        compilation: project,
+        homeInstanceId: 'page-1',
+        createRowId: ({ scopeId, attempt }) => `home-${scopeId}-${attempt}`,
+      })
+      if (!initialized.success)
+        throw new Error(initialized.diagnostics[0]?.message ?? 'Experience session failed')
+      const wrapper = mount(RuntimeHostApp, { attachTo: document.body })
+
+      dispatch({
+        type: 'experience.sync',
+        sessionId: 'experience-1',
+        payload: {
+          adapter: 'element-plus',
+          compilation: project,
+          locale: 'en-US',
+          session: initialized.data,
+        },
+      }, 1)
+
+      await vi.waitFor(() => {
+        expect(document.querySelector('[data-config-node-id="home-action"]')).not.toBeNull()
+      })
+      document.querySelector<HTMLElement>('[data-config-node-id="home-action"]')!.click()
+      await vi.waitFor(() => {
+        expect(document.querySelectorAll('.mx-prototype-host__overlay')).toHaveLength(1)
+      })
+      wrapper.unmount()
+      post.mockRestore()
+    },
+  )
 
   it('dispatches semantic submit without forwarding the DOM event', async () => {
     const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})

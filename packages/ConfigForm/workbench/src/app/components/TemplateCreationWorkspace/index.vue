@@ -56,7 +56,7 @@ const query = ref('')
 const category = ref<ProjectTemplateCategory | 'all'>('all')
 const providerId = ref('all')
 const mobilePane = ref<'catalog' | 'details'>('catalog')
-const creationMode = ref<'json' | 'template'>('template')
+const creationMode = ref<'json' | 'template'>(props.initialMode ?? 'template')
 const loadingCatalog = ref(true)
 const loadingPreview = ref(false)
 const submitting = ref(false)
@@ -223,6 +223,8 @@ function handleEscape(event: KeyboardEvent): void {
     closeCatalogDrawer()
     return
   }
+  if (event.target instanceof Element && event.target.closest('#workbench-overlays'))
+    return
   if (mobilePane.value === 'details' && isMobile.value) {
     event.preventDefault()
     showCatalog()
@@ -267,7 +269,7 @@ async function prepareSelectedTemplate(): Promise<void> {
       request,
       eligibility.value.eligible ? 'eligible' : 'ineligible',
     )
-    const prepared = prepareTemplatePreview(template, adapter)
+    const prepared = prepareTemplatePreview(template, adapter, props.target)
     if (disposed || request !== previewRequest || selectedId.value !== template.manifest.id)
       return
     preview.value = prepared

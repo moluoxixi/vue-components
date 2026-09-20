@@ -2,6 +2,7 @@
 
 import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { DesignerRuntimePointerHandlers } from '../src/components/DesignerCanvas/types'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
@@ -15,7 +16,7 @@ import { createDesignerDragController } from '../src/components/DesignerCanvas/s
 import { createDesignerCanvasSelection } from '../src/components/DesignerCanvas/services/canvas-selection'
 
 const graph: SurfaceGraph = {
-  version: 2,
+  version: SURFACE_GRAPH_VERSION,
   form: { columns: 24, fieldSpan: 24 },
   props: {},
   root: [{ nodeId: 'field', placement: { span: 12 } }],

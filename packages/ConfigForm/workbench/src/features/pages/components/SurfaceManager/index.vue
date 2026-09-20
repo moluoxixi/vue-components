@@ -8,11 +8,13 @@ import {
   FolderPlus,
   Home,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, ref, watch } from 'vue'
+import { SurfacePresentationEditor } from './components'
 
 const props = defineProps<SurfaceManagerProps>()
 
@@ -22,6 +24,7 @@ const search = ref('')
 const names = ref<Record<string, string>>({})
 const routes = ref<Record<string, string>>({})
 const pendingDeleteId = ref<string>()
+const editingPresentationId = ref<string>()
 const locale = computed(() => createDesignerLocale(props.locale))
 
 const surfaces = computed(() => props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean))
@@ -186,10 +189,21 @@ function confirmDelete(): void {
           <ElButton native-type="button" text circle :title="locale.t('pageManager.duplicate', 'Duplicate surface')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'surface.duplicate', surfaceId: page.id })">
             <Copy :size="15" aria-hidden="true" />
           </ElButton>
+          <ElButton v-if="page.kind !== 'page'" native-type="button" text circle :title="locale.t('surface.presentation', 'Surface presentation')" :aria-label="locale.t('surface.presentationFor', 'Edit presentation for {name}', { name: page.name })" :aria-expanded="editingPresentationId === page.id" :disabled="busy" @click="editingPresentationId = editingPresentationId === page.id ? undefined : page.id">
+            <SlidersHorizontal :size="15" aria-hidden="true" />
+          </ElButton>
           <ElButton native-type="button" text circle type="danger" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.surfaceOrder.length === 1" @click="pendingDeleteId = page.id">
             <Trash2 :size="15" aria-hidden="true" />
           </ElButton>
         </div>
+        <SurfacePresentationEditor
+          v-if="page.kind !== 'page' && editingPresentationId === page.id"
+          :surface="page"
+          :disabled="busy"
+          :locale="props.locale"
+          @cancel="editingPresentationId = undefined"
+          @save="emit('action', { type: 'surface.presentation', surfaceId: page.id, presentation: $event }); editingPresentationId = undefined"
+        />
       </div>
       <p v-if="filteredSurfaces.length === 0" class="page-manager__empty">{{ locale.t('pageManager.noMatch', 'No pages match this search.') }}</p>
     </div>

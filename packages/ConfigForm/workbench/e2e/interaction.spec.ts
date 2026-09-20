@@ -62,6 +62,33 @@ async function expectTopbarFits(page: Page): Promise<void> {
   }
 }
 
+async function expectVisibleWorkspacePanelsDoNotOverlap(page: Page): Promise<void> {
+  const geometry = await page.locator([
+    '.designer-left-panel',
+    '.mx-config-form-designer__canvas',
+    '.mx-config-form-designer__properties',
+  ].join(',')).evaluateAll((elements) => {
+    const viewportWidth = document.documentElement.clientWidth
+    const boxes = elements.flatMap((element) => {
+      const style = getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      return style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0
+        ? []
+        : [{ height: rect.height, width: rect.width, x: rect.x, y: rect.y }]
+    })
+    return { boxes, viewportWidth }
+  })
+
+  for (const box of geometry.boxes) {
+    expect(box.x).toBeGreaterThanOrEqual(-1)
+    expect(box.x + box.width).toBeLessThanOrEqual(geometry.viewportWidth + 1)
+  }
+  for (let left = 0; left < geometry.boxes.length; left += 1) {
+    for (let right = left + 1; right < geometry.boxes.length; right += 1)
+      expect(rectsIntersect(geometry.boxes[left]!, geometry.boxes[right]!)).toBe(false)
+  }
+}
+
 async function chooseResponsiveTopbarAction(page: Page, width: number, name: string): Promise<void> {
   if (width > 900) {
     await page.getByRole('button', { name }).click()
@@ -311,7 +338,7 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
     expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
     expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
     await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
-    await expect(material.locator('svg, .mx-config-form-designer__palette-icon')).toHaveCount(1)
+    await expect(material.locator('svg, .mx-config-form-designer__palette-icon, .designer-material-kind')).toHaveCount(1)
     await expect(material.locator('[data-specimen-node-id], .mx-config-form-designer__palette-item-preview')).toHaveCount(0)
   }
 }
@@ -411,6 +438,98 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
+test('authors, persists, restores, and executes a primary interaction through Studio', async ({ page }) => {
+  await page.getByRole('button', { name: 'New project', exact: true }).first().click()
+  await createProject(page, 'element')
+
+  const inspector = page.locator('.mx-config-form-designer__properties')
+  await expect(inspector.getByRole('tab', { name: 'Interactions', exact: true })).toBeVisible()
+  await expect(inspector.getByRole('tab', { name: 'Validation', exact: true })).toHaveCount(0)
+  await inspector.getByRole('tab', { name: 'Interactions', exact: true }).click()
+  await expect(inspector.locator('[data-interaction-editor]')).toBeVisible()
+  await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
+
+  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
+  const creation = page.getByRole('main', { name: 'Create page' })
+  await expect(creation).toBeVisible()
+  await creation.getByRole('option', { name: /^Element Plus blank dialog/ }).click()
+  const createDialog = creation.getByRole('button', { name: 'Create page', exact: true })
+  await expect(createDialog).toBeEnabled({ timeout: 15_000 })
+  await createDialog.click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+
+  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
+  await expect(creation).toBeVisible()
+  await creation.getByRole('option', { name: /^Element Plus blank drawer/ }).click()
+  const createDrawer = creation.getByRole('button', { name: 'Create page', exact: true })
+  await expect(createDrawer).toBeEnabled({ timeout: 15_000 })
+  await createDrawer.click()
+  await expect(page.getByRole('region', { name: 'Drawer title', exact: true })).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  const pages = page.getByRole('listbox', { name: 'Pages', exact: true })
+  await expect(pages.getByRole('option')).toHaveCount(1)
+  await expect(page.getByRole('listbox', { name: 'Dialogs', exact: true }).getByRole('option')).toHaveCount(1)
+  await expect(page.getByRole('listbox', { name: 'Drawers', exact: true }).getByRole('option')).toHaveCount(1)
+  await pages.getByRole('option').click()
+
+  await page.getByRole('tab', { name: 'Components', exact: true }).click()
+  await page.locator('[data-material-key="element.button"]').click()
+
+  await expect(inspector.getByRole('tab', { name: 'Interactions', exact: true })).toBeVisible()
+  await inspector.getByRole('tab', { name: 'Interactions', exact: true }).click()
+  const interactionEditor = inspector.locator('[data-interaction-editor]')
+  await expect(interactionEditor).toBeVisible()
+  await interactionEditor.getByRole('button', { name: 'Add primary action', exact: true }).click()
+  const rule = interactionEditor.locator('[data-interaction-id]').last()
+  await expect(rule).toBeVisible()
+
+  const action = rule.getByRole('combobox', { name: 'Action', exact: true })
+  const actionListboxId = await action.getAttribute('aria-controls')
+  expect(actionListboxId).toBeTruthy()
+  await rule.locator('.el-select__wrapper:has(input[aria-label="Action"])').click()
+  await page.locator(`[id="${actionListboxId}"]`).getByRole('option', { name: /^open$/i }).click()
+  await expect(rule.getByRole('combobox', { name: 'Target surface', exact: true })).toBeVisible()
+  await expect(rule).toContainText('Element Plus blank dialog')
+
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(rule.locator('.el-select__wrapper:has(input[aria-label="Action"])')).toContainText('navigate')
+  await expect(rule).toContainText('Element Plus profile form')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(interactionEditor.locator('[data-interaction-id]')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Redo', exact: true }).click()
+  await page.getByRole('button', { name: 'Redo', exact: true }).click()
+  await expect(rule.locator('.el-select__wrapper:has(input[aria-label="Action"])')).toContainText('open')
+  await expect(rule).toContainText('Element Plus blank dialog')
+
+  const saveOptions = page.getByRole('button', { name: 'Save options', exact: true })
+  await saveOptions.click()
+  const saveNow = page.getByRole('menuitem', { name: 'Save now', exact: true })
+  await expect(saveNow).toBeVisible()
+  if (await saveNow.isEnabled())
+    await saveNow.click()
+  else
+    await page.keyboard.press('Escape')
+  await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 15_000 })
+
+  await page.reload()
+  await page.getByRole('region', { name: 'Projects', exact: true })
+    .getByRole('button', { name: /^Element Plus profile form/ })
+    .click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+  await page.getByRole('tree', { name: 'Surface layers', exact: true })
+    .getByRole('button', { name: 'Button', exact: true })
+    .click()
+  await inspector.getByRole('tab', { name: 'Interactions', exact: true }).click()
+  await expect(inspector.locator('[data-interaction-editor] [data-interaction-id]')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Show preview', exact: true }).click()
+  const runtime = previewRuntime(page)
+  await runtime.getByRole('button', { name: 'Button', exact: true }).click()
+  await expect(runtime.getByRole('dialog', { name: 'Dialog title', exact: true })).toBeVisible()
+})
+
 const visualCases = [
   ...(['ink', 'morandi', 'cyber', 'glass'] as const).flatMap(palette =>
     (['light', 'dark'] as const).map(theme => ({ height: 1000, locale: 'en' as const, palette, theme, width: 1440 }))),
@@ -437,6 +556,8 @@ for (const visualCase of visualCases) {
     await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
     await expect(page.locator('iframe[data-design-runtime-variant="canvas"]')).toBeVisible()
     await expect(page.locator('.mx-config-form-designer__camera-controls')).toBeVisible()
+    await expectTopbarFits(page)
+    await expectVisibleWorkspacePanelsDoNotOverlap(page)
     await expect(page.locator('.workbench-app')).toHaveScreenshot(
       `workbench-${width}-${palette}-${theme}-${locale}.png`,
       { animations: 'disabled' },
@@ -495,7 +616,7 @@ test('provides focus and Escape command hints, including disabled reasons and re
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Show preview' }).click()
-  await expect(page.getByRole('complementary', { name: 'Page preview' })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Surface preview' })).toBeVisible()
   await page.waitForTimeout(400)
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
   await page.keyboard.press('Tab')
@@ -520,18 +641,18 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await expect(sidebarLabels.first()).toBeVisible()
   await expect(sidebarLabels.last()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'New page' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'New Surface' })).toBeHidden()
 
   const more = page.getByRole('button', { name: 'More actions' })
   await more.click()
   const menu = page.locator('[data-mobile-action-menu]')
   await expect(menu.getByRole('status')).toContainText(/^v\d+ · /)
-  await expect(page.getByRole('button', { name: 'Manage pages' })).toBeVisible()
-  await expect(menu.getByRole('menuitem', { name: 'Manage pages' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Manage Surfaces' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Manage Surfaces' })).toHaveCount(0)
   await expect(menu.getByRole('menuitem', { name: 'Save' })).toHaveCount(0)
   await expect(menu.getByRole('menuitem', { name: 'Create named checkpoint' })).toHaveCount(0)
   await expect(menu.getByRole('menuitem', { name: 'Version history' })).toHaveCount(0)
-  await expect(menu.getByRole('menuitem', { name: 'New page' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'New Surface' })).toBeVisible()
   await menu.getByRole('menuitem', { name: 'Switch to Chinese' }).click()
   await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toHaveText('保存')
@@ -566,12 +687,12 @@ test('keeps status and lower-priority commands reachable without topbar overflow
       width: rect.width,
     }
   }))
-  expect(mobileDockMetrics).toHaveLength(5)
+  expect(mobileDockMetrics).toHaveLength(6)
   expect(mobileDockMetrics.every(item => item.fontSize === '11px')).toBe(true)
   expect(mobileDockMetrics.every(item => item.height >= 44 && item.width >= 44)).toBe(true)
   await page.getByRole('button', { name: '更多操作' }).click()
-  await expect(page.getByRole('button', { name: '管理页面' })).toBeHidden()
-  await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '管理页面' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '管理界面' })).toBeHidden()
+  await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '管理界面' })).toBeVisible()
   await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '保存' })).toHaveCount(0)
   await expect(page.locator('[data-mobile-action-menu]').getByRole('status')).toContainText(/^v\d+ · /)
   await page.locator('[data-mobile-action-menu]').press('Escape')
@@ -708,8 +829,8 @@ for (const adapter of [
 }
 
 for (const adapter of [
-  { count: 20, id: 'element', name: 'Element' },
-  { count: 25, id: 'antd', name: 'Ant' },
+  { count: 33, id: 'element', name: 'Element' },
+  { count: 38, id: 'antd', name: 'Ant' },
 ] as const) {
   test(`renders every registered ${adapter.name} material as a dense icon and name row`, async ({ page }) => {
     await createProject(page, adapter.id)
@@ -722,7 +843,7 @@ for (const adapter of [
 
     for (const material of materials) {
       await page.locator(`[data-material-key="${adapter.id}.${material}"]`).click()
-      await expectInspectorTabs(page, ['Properties', 'Validation'])
+      await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
       if (material === 'input')
         await expectInspectorTabGeometry(page, 304)
     }
@@ -745,37 +866,11 @@ for (const adapter of [
     await page.mouse.click(sheetBox.x + sheetBox.width - 20, sheetBox.y + Math.min(sheetBox.height - 20, 420))
     await expect(sheet).not.toBeFocused()
     await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(0)
-    const designInputStyle = await designInput.evaluate((element) => {
-      const style = getComputedStyle(element)
-      return {
-        caretColor: style.caretColor,
-        cursor: style.cursor,
-        pointerEvents: style.pointerEvents,
-        userSelect: style.userSelect,
-      }
-    })
-    expect(designInputStyle).toEqual({
-      caretColor: 'rgba(0, 0, 0, 0)',
-      cursor: 'default',
-      pointerEvents: 'none',
-      userSelect: 'none',
-    })
-    const designControls = await runtimeForm.locator('input,textarea,select,button,[role]').evaluateAll(elements => elements.map((element) => {
-      const style = getComputedStyle(element)
-      return {
-        pointerEvents: style.pointerEvents,
-        tabIndex: (element as HTMLElement).tabIndex,
-        userSelect: style.userSelect,
-        userDrag: style.webkitUserDrag,
-      }
-    }))
-    expect(designControls.length).toBeGreaterThan(0)
-    for (const control of designControls) {
-      expect(control.pointerEvents).toBe('none')
-      expect(control.userSelect).toBe('none')
-      expect(control.userDrag).toBe('none')
-      expect(control.tabIndex).toBe(-1)
-    }
+    expect(await designInput.evaluate((element) => {
+      element.focus()
+      return document.activeElement === element
+    })).toBe(false)
+    await expect(runtimeForm.locator(':focus')).toHaveCount(0)
     await selectCanvasNode(page, nameNode, designInput)
     await expect(canvas).toHaveAttribute('data-editor-overlay-mode', 'selected')
 
@@ -796,7 +891,7 @@ for (const adapter of [
     const propertyHeading = propertyPanel.locator('.mx-config-form-designer__property-heading')
     await expect(propertyHeading).toBeVisible()
     await expect(propertyHeading).not.toContainText('element.input')
-    await expectInspectorTabs(page, ['Properties', 'Validation'])
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
     await expectInspectorTabGeometry(page, 304)
 
     const nodeToolbar = selection.getByRole('toolbar', { name: 'Node actions' })
@@ -937,13 +1032,14 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(propertiesTrigger).toHaveAttribute('aria-expanded', 'true')
     await expect(canvasPanel).toBeVisible()
     expectSameSize(await visibleBox(workspace), initialWorkspace)
+    await expectInspectorTabs(page, ['Properties', 'Interactions'])
 
     const nameNode = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
     await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
     const selection = page.locator('[data-editor-focus-node-id^="profile-name-"]')
     await expect(propertiesPanel).toBeVisible()
     await expect(selection).toBeFocused()
-    await expectInspectorTabs(page, ['Properties', 'Validation'])
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
     await expectInspectorTabGeometry(page, 304)
     await selection.focus()
     await page.keyboard.press('Escape')
@@ -962,10 +1058,12 @@ for (const adapter of ['element', 'antd'] as const) {
   test(`keeps the ${adapter} 390px Inspector tabs on one reachable track`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await createProject(page, adapter)
+    await page.getByRole('tab', { name: 'Inspector' }).click()
+    await expectInspectorTabs(page, ['Properties', 'Interactions'])
     await page.getByRole('tab', { name: 'Layers' }).click()
     await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('tab', { name: 'Inspector' }).click()
-    await expectInspectorTabs(page, ['Properties', 'Validation'])
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
     await expectInspectorTabGeometry(page)
   })
 }
@@ -976,6 +1074,9 @@ for (const adapter of [
 ] as const) {
   test(`keeps ${adapter.name} property and validation editing stable across field kinds`, async ({ page }) => {
     await installRuntimeHostErrorCapture(page)
+    const persistedProjectName = adapter.id === 'element'
+      ? /^Element Plus profile form/
+      : /^Ant Design Vue profile form/
     const browserErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error')
@@ -1006,7 +1107,9 @@ for (const adapter of [
     const requiredMessage = textValidation.getByRole('textbox', { name: 'Required message', exact: true })
     await requiredMessage.fill('Name is required')
     await requiredMessage.press('Enter')
-    await textValidation.getByRole('checkbox', { name: 'Blur', exact: true }).check()
+    const blurTrigger = textValidation.getByRole('checkbox', { name: 'Blur', exact: true })
+    await textValidation.locator('label.el-checkbox').filter({ hasText: 'Blur' }).click()
+    await expect(blurTrigger).toBeChecked()
     await toggleElementSwitch(textValidation, 'Enable validation')
     await textValidation.getByRole('button', { name: 'Add rule', exact: true }).click()
     await chooseElementOption(page, textValidation, 'Rule 1 type', 'Pattern')
@@ -1078,6 +1181,9 @@ for (const adapter of [
     expect(await readRuntimeHostErrors(page)).toEqual([])
     await page.reload()
 
+    await page.getByRole('region', { name: 'Projects', exact: true })
+      .getByRole('button', { name: persistedProjectName })
+      .click()
     await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
     await expect(designRuntime(page).locator('[data-config-node-id^="profile-name-"]')).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Layers', exact: true }).click()
@@ -1103,6 +1209,9 @@ for (const adapter of [
     expect(await readRuntimeHostErrors(page)).toEqual([])
     await page.reload()
 
+    await page.getByRole('region', { name: 'Projects', exact: true })
+      .getByRole('button', { name: persistedProjectName })
+      .click()
     await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
     await page.getByRole('tab', { name: 'Layers', exact: true }).click()
     await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
@@ -1141,8 +1250,15 @@ test('has no Events, Flow, or Automation entry and keeps Designer JSON function-
   expect(forbiddenRoutes).toEqual([])
 })
 
-test('runs variable-backed data source requests only for explicit tests and Preview', async ({ page }) => {
+test('keeps Dataset-authored mock data local in Design and Preview', async ({ page }) => {
+  await installRuntimeHostErrorCapture(page)
   const requestUrls: string[] = []
+  const browserErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      browserErrors.push(message.text())
+  })
+  page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await page.route('**/api/runtime-options**', async (route) => {
     requestUrls.push(route.request().url())
     await route.fulfill({
@@ -1153,45 +1269,31 @@ test('runs variable-backed data source requests only for explicit tests and Prev
   })
 
   await createProject(page, 'element')
-  await page.getByRole('tab', { name: 'Data', exact: true }).click()
-  await expect(page.getByText('Page data', { exact: true })).toBeVisible()
-  await expect(page.getByText('No variables', { exact: true })).toBeVisible()
-  await expect(page.getByText('No data sources', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Edit page data', exact: true }).click()
-
-  const dialog = page.locator('[data-data-workspace-dialog]:visible')
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('button', { name: 'Manage data', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Assets', exact: true })
   await expect(dialog).toBeVisible()
-  await dialog.getByTestId('add-data-entry').click()
-  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Endpoint')
-  const initialValue = dialog.locator('.data-editor__section')
-  await chooseElementOption(page, initialValue, 'Value type', 'Text')
-  await initialValue.getByRole('textbox').fill('/api/runtime-options?region=CN')
-
-  await dialog.locator('.data-kind-switch .el-segmented__item').filter({ hasText: 'Data sources' }).click()
-  await dialog.getByTestId('add-data-entry').click()
-  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Runtime options')
-  const url = dialog.locator('.data-request-grid .data-field--wide').filter({ hasText: 'URL' }).first()
-  await chooseElementOption(page, url, 'Value source', 'Variable')
-  await chooseElementOption(page, url, 'Variable', 'Endpoint')
-  await dialog.locator('.el-switch:has(input[aria-label="Automatic loading"])').click()
-
-  await dialog.getByTestId('test-data-source').click()
-  await expect(dialog.locator('.data-test__result')).toHaveAttribute('data-status', 'success')
-  await expect(dialog.getByTestId('data-test-preview')).toContainText('China')
-  expect(requestUrls).toHaveLength(1)
-  expect(new URL(requestUrls[0]!).searchParams.get('region')).toBe('CN')
-
-  await dialog.getByTestId('save-data').click()
-  await expect(dialog).toHaveCount(0)
-  await expect(page.getByText('Endpoint', { exact: true })).toBeVisible()
-  await expect(page.getByText('Runtime options', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'New Dataset', exact: true }).click()
+  const datasetName = dialog.getByRole('textbox', { name: 'Dataset name', exact: true })
+  await datasetName.fill('Runtime options')
+  await datasetName.press('Tab')
+  await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify([
+    { label: 'China', value: 'cn' },
+  ]))
+  await dialog.locator('[data-asset-dataset-save]').click()
+  await expect(dialog.getByRole('status')).toContainText('Dataset saved.')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Open dataset Runtime options', exact: true })).toBeVisible()
   await expect(designRuntime(page).locator('[data-config-node-id^="profile-name-"] input')).toBeVisible()
-  expect(requestUrls).toHaveLength(1)
+  expect(requestUrls).toEqual([])
 
   await page.getByRole('button', { name: 'Show preview' }).click()
   await expect(previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })).toBeVisible()
-  await expect.poll(() => requestUrls.length).toBe(2)
-  expect(new URL(requestUrls[1]!).searchParams.get('region')).toBe('CN')
+  await page.waitForTimeout(250)
+  expect(requestUrls).toEqual([])
+  expect(await readRuntimeHostErrors(page)).toEqual([])
+  expect(browserErrors).toEqual([])
 })
 
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
@@ -1201,7 +1303,7 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
   await selectCanvasNode(page, roleNode, roleNode.locator('.el-select__wrapper'))
   await page.getByRole('button', { name: 'Show preview' }).click()
 
-  const preview = page.getByRole('complementary', { name: 'Page preview' })
+  const preview = page.getByRole('complementary', { name: 'Surface preview' })
   const stage = preview.locator('.preview-stage')
   const runtime = previewRuntime(page)
   const layout = runtime.locator('[data-config-form-responsive-layout]').first()
@@ -1544,7 +1646,7 @@ test('pins the selected Preview viewport when the host window is wider', async (
   await createProject(page, 'element')
   await page.getByRole('button', { name: 'Show preview' }).click()
 
-  const preview = page.getByRole('complementary', { name: 'Page preview' })
+  const preview = page.getByRole('complementary', { name: 'Surface preview' })
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
   const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
@@ -1644,7 +1746,7 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   await expect(page.getByRole('menuitem', { name: 'Indent', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
   const pageName = page.locator('.designer-pages button > span > span').first()
   await expect(pageName).not.toHaveText('')
   expect((await visibleBox(pageName)).width).toBeGreaterThan(80)

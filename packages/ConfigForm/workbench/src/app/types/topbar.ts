@@ -25,6 +25,7 @@ export interface WorkbenchTopbarEmits {
   export: [command: WorkbenchExportCommand]
   newSurface: [focusKey: string]
   openAppearance: []
+  openProjects: []
   openSurfaces: []
   openVersions: []
   createCheckpoint: []

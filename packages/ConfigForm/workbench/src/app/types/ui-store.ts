@@ -1,7 +1,7 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { createWorkbenchUiStore } from '../state/ui-store'
 
-export type MobileStudioView = 'canvas' | 'components' | 'inspector' | 'layers' | 'pages'
+export type MobileStudioView = 'canvas' | 'components' | 'inspector' | 'layers' | 'pages' | 'theme'
 
 export interface WorkbenchUiStoreOptions {
   locale?: DesignerLocaleOptions

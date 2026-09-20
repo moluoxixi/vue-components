@@ -119,7 +119,7 @@ function validateComponentResolution(
     || !/^[A-Z][\w.:-]*$/i.test(resolution.tag)
     || typeof resolution.configComponent !== 'string'
     || !resolution.configComponent.trim()
-    || !['component', 'layout-flex', 'layout-grid', 'section'].includes(resolution.render)
+    || !['component', 'dataset-list', 'dataset-table', 'layout-flex', 'layout-grid', 'section'].includes(resolution.render)
     || !Array.isArray(resolution.styleImports)
     || resolution.styleImports.some(item => typeof item !== 'string' || !item.trim())
     || !isRecord(resolution.dependencies)

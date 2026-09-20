@@ -2,6 +2,7 @@ import type {
   ProjectCompilation,
   SurfaceCompilation,
 } from '@moluoxixi/config-form-compiler'
+import type { DatasetViewQuery } from '@moluoxixi/config-form-model'
 import type {
   CanonicalRuntimeSurface,
   VueRuntimeBindingResolver,
@@ -175,6 +176,7 @@ function surfaceCompilation(surfaceId = 'home'): SurfaceCompilation {
     registryUsage: registryUsage.map(({ key, contractVersion, fingerprint }) => ({ key, contractVersion, fingerprint })),
     key,
     surface,
+    datasetsById: {},
   } as unknown as SurfaceCompilation
 }
 
@@ -208,6 +210,111 @@ function mutableSurface(compilation = surfaceCompilation()): CanonicalRuntimeSur
 }
 
 describe('vue Surface backend', () => {
+  it('projects referenced Dataset rows into component props and fails closed on invalid projections', () => {
+    const compilation = surfaceCompilation()
+    const surface = mutableSurface(compilation)
+    const field = surface.nodesById.name
+    if (!field || field.kind !== 'field')
+      throw new TypeError('Expected the name field fixture.')
+    const query: DatasetViewQuery = {
+      filter: { version: 1, ast: { kind: 'reference', scope: 'item', path: ['active'] } },
+      sort: [{ path: ['rank'], direction: 'desc' }],
+      page: { index: 0, size: 2 },
+    }
+    field.datasetBindings = {
+      options: {
+        datasetId: 'people',
+        projection: { kind: 'options', labelPath: ['label'], valuePath: ['id'] },
+        query,
+      },
+      rows: {
+        datasetId: 'people',
+        projection: {
+          kind: 'table',
+          rowKeyPath: ['id'],
+          columns: [
+            { key: 'name', valuePath: ['label'] },
+            { key: 'rank', valuePath: ['rank'] },
+          ],
+        },
+        query,
+      },
+      items: {
+        datasetId: 'people',
+        projection: {
+          kind: 'list',
+          itemKeyPath: ['id'],
+          titlePath: ['label'],
+          descriptionPath: ['description'],
+        },
+        query,
+      },
+    }
+    const datasetsById = {
+      people: {
+        id: 'people',
+        name: 'People',
+        rows: [
+          { id: 'ada', label: 'Ada', active: true, rank: 2, description: 'Second' },
+          { id: 'grace', label: 'Grace', active: false, rank: 4, description: 'Hidden' },
+          { id: 'linus', label: 'Linus', active: true, rank: 1, description: 'Third' },
+          { id: 'alan', label: 'Alan', active: true, rank: 3, description: 'First' },
+        ],
+      },
+    }
+    const projected = compileCanonicalSurfaceRuntime({
+      compilation: { ...compilation, surface, datasetsById } as unknown as SurfaceCompilation,
+    }, resolver(compilation))
+    expect(projected.success).toBe(true)
+    if (!projected.success)
+      return
+    const section = projected.artifact.renderer.fields[0]
+    const children = section && !('field' in section) && Array.isArray(section.slots?.default)
+      ? section.slots.default
+      : []
+    expect(children[0]?.props).toMatchObject({
+      options: [
+        { label: 'Alan', value: 'alan' },
+        { label: 'Ada', value: 'ada' },
+      ],
+      optionsTotal: 3,
+      rows: [
+        { rowKey: 'alan', name: 'Alan', rank: 3 },
+        { rowKey: 'ada', name: 'Ada', rank: 2 },
+      ],
+      rowsTotal: 3,
+      items: [
+        { itemKey: 'alan', title: 'Alan', description: 'First' },
+        { itemKey: 'ada', title: 'Ada', description: 'Second' },
+      ],
+      itemsTotal: 3,
+    })
+
+    field.datasetBindings = {
+      options: {
+        datasetId: 'people',
+        projection: { kind: 'options', labelPath: ['label'], valuePath: ['id'] },
+      },
+    }
+    datasetsById.people.rows[1] = {
+      id: 'ada',
+      label: 'Duplicate',
+      active: false,
+      rank: 4,
+      description: 'Duplicate',
+    }
+    expect(compileCanonicalSurfaceRuntime({
+      compilation: { ...compilation, surface, datasetsById } as unknown as SurfaceCompilation,
+    }, resolver(compilation))).toMatchObject({
+      success: false,
+      diagnostics: [{
+        code: 'VUE_RUNTIME_DATASET_PROJECTION_INVALID',
+        nodeId: 'name',
+        path: ['datasetsById', 'people', 'rows', 1, 'id'],
+      }],
+    })
+  })
+
   it('renders field, layout, and element nodes without mutating Canonical IR', () => {
     const compilation = surfaceCompilation()
     const snapshot = structuredClone(compilation.surface)
@@ -464,6 +571,6 @@ describe('vue Surface backend', () => {
       success: false,
       diagnostics: [{ code: 'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED', path: ['key', 'compilerVersion'] }],
     })
-    expect(CONFIG_FORM_COMPILER_VERSION).toBe('7.0.0')
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('8.0.0')
   })
 })

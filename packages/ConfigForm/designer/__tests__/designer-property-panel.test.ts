@@ -1,9 +1,11 @@
 import type { ComponentContract, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
+import { ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
@@ -72,7 +74,7 @@ function field(
 
 function graph(nodes: SurfaceNode[], spans: Record<string, number> = {}, form: SurfaceGraph['form'] = {}): SurfaceGraph {
   return {
-    version: 2,
+    version: SURFACE_GRAPH_VERSION,
     props: {},
     form,
     root: nodes.map(node => ({
@@ -83,7 +85,7 @@ function graph(nodes: SurfaceNode[], spans: Record<string, number> = {}, form: S
   }
 }
 
-function contract(key: string): ComponentContract {
+function contract(key: string, overrides: Partial<ComponentContract> = {}): ComponentContract {
   return {
     key,
     version: '1',
@@ -97,6 +99,7 @@ function contract(key: string): ComponentContract {
     slots: [],
     allowedParents: [],
     defaults: {},
+    ...overrides,
   }
 }
 
@@ -238,7 +241,7 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.find('.mx-config-form-designer__validation-editor').exists()).toBe(false)
   })
 
-  it('renders exactly properties and validation tabs with keyboard navigation', async () => {
+  it('renders properties, validation, and interactions tabs with keyboard navigation', async () => {
     const scrollIntoView = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -258,14 +261,14 @@ describe('designer property panel lite Inspector', () => {
     })
 
     expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
-      .toEqual(['properties', 'validation'])
+      .toEqual(['properties', 'validation', 'interactions'])
     const properties = wrapper.get('[data-property-tab="properties"]')
     ;(properties.element as HTMLElement).focus()
     await properties.trigger('keydown', { key: 'End' })
-    const validation = wrapper.get('[data-property-tab="validation"]')
-    expect(validation.attributes('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(validation.element)
-    await validation.trigger('keydown', { key: 'ArrowRight' })
+    const interactions = wrapper.get('[data-property-tab="interactions"]')
+    expect(interactions.attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(interactions.element)
+    await interactions.trigger('keydown', { key: 'ArrowRight' })
     expect(properties.attributes('aria-selected')).toBe('true')
     expect(document.activeElement).toBe(properties.element)
     expect(scrollIntoView).toHaveBeenCalled()
@@ -323,7 +326,7 @@ describe('designer property panel lite Inspector', () => {
     })
 
     expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
-      .toEqual(['properties', 'validation'])
+      .toEqual(['properties', 'validation', 'interactions'])
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
     expect(wrapper.get('input[aria-label="Required"]').attributes('disabled'))
       .toBeDefined()
@@ -389,6 +392,85 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.emitted()).not.toHaveProperty('configureFlow')
   })
 
+  it('authors Dataset bindings, preserves query fields, and materializes options explicitly', async () => {
+    const node = field('role', 'test.select', {
+      props: { options: [{ label: 'Inline', value: 'inline' }] },
+      datasetBindings: {
+        options: {
+          datasetId: 'roles',
+          projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
+          query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
+        },
+      },
+    })
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.select'),
+        componentDefinition: contract('test.select', {
+          datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
+        }),
+        datasets: [{
+          id: 'roles',
+          name: 'Roles',
+          rows: [{ id: 1, rank: 1, meta: { label: 'Designer' } }],
+        }],
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    await wrapper.get('[data-apply-dataset-binding]').trigger('click')
+    expect(wrapper.emitted('updateDatasetBinding')?.at(-1)).toEqual([
+      'role',
+      'options',
+      {
+        datasetId: 'roles',
+        projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
+        query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
+      },
+    ])
+    await wrapper.get('[data-materialize-options]').trigger('click')
+    expect(wrapper.emitted('materializeOptionsSnapshot')?.at(-1)).toEqual(['role', 'options'])
+  })
+
+  it('saves inline options as a Dataset and filters Resource choices by media capability', async () => {
+    const node = field('role', 'test.select', {
+      props: { options: [{ label: 'Inline', value: 'inline' }] },
+    })
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.select'),
+        componentDefinition: contract('test.select', {
+          datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
+          resourceBindings: [{ key: 'image', mediaTypes: ['image/*'] }],
+        }),
+        resources: [
+          { id: 'logo', name: 'Logo', kind: 'url', url: '/logo.png', mediaType: 'image/png' },
+          { id: 'manual', name: 'Manual', kind: 'url', url: '/manual.pdf', mediaType: 'application/pdf' },
+        ],
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-save-options-dataset]').trigger('click')
+    expect(wrapper.emitted('saveOptionsAsDataset')?.at(-1)).toEqual(['role', 'options', 'role options'])
+
+    const resourceSelect = wrapper.findAllComponents(ElSelect)
+      .find(component => component.attributes('data-resource-select') !== undefined)
+    expect(resourceSelect).toBeDefined()
+    expect(resourceSelect!.findAllComponents({ name: 'ElOption' }).map(option => option.props('value')))
+      .toEqual(['logo'])
+    resourceSelect!.vm.$emit('update:modelValue', 'logo')
+    await nextTick()
+    expect(wrapper.emitted('updateResourceBinding')?.at(-1)).toEqual(['role', 'image', 'logo'])
+  })
+
   it('refreshes the active root span fraction without persisting derived state', async () => {
     const node = field('name', 'test.input')
     const material = fieldMaterial('test.input')
@@ -428,6 +510,26 @@ describe('designer property panel lite Inspector', () => {
 
     expect(wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]')
       .attributes('data-hint-label')).toBe('12 / 24 · 1/2')
+  })
+
+  it('keeps the Surface interaction overview discoverable without a selected node', async () => {
+    const node = field('name', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        getComponentDefinition: () => contract('test.input'),
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+      .toEqual(['properties', 'interactions'])
+    await wrapper.get('[data-property-tab="interactions"]').trigger('click')
+    expect(wrapper.find('[data-interaction-editor]').exists()).toBe(true)
+    expect(wrapper.find('[data-property-tab="validation"]').exists()).toBe(false)
+    expect(wrapper.get('button[aria-label="Add state rule"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button[aria-label="Add value rule"]').attributes('disabled')).toBeUndefined()
   })
 
   it('edits canonical pixel gap and label width through numeric controls', async () => {

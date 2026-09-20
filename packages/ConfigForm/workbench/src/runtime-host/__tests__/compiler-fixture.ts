@@ -25,7 +25,7 @@ const contracts: ComponentContract[] = [{
   key: 'element.action',
   version: '1',
   kind: 'element',
-  semanticTriggers: ['activate', 'submit'],
+  semanticTriggers: ['activate', 'submit', 'rowActivate', 'itemActivate'],
   stateProjectionProperties: [],
   datasetBindings: [],
   resourceBindings: [],
@@ -89,7 +89,7 @@ export function createCompilerFixture(editVersion = 1) {
 
 export function createExperienceCompilerFixture(
   editVersion = 1,
-  homeTrigger: 'activate' | 'submit' = 'activate',
+  homeTrigger: 'activate' | 'submit' | 'rowActivate' | 'itemActivate' = 'activate',
 ) {
   const registry = createComponentContractRegistry(contracts, {
     adapter: 'fixture',

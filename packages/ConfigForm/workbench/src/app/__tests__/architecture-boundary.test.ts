@@ -724,7 +724,7 @@ describe('workbench production architecture boundary', () => {
     const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
 
     expect(app).toContain('TemplateCreationWorkspace')
-    expect(app).toContain('ref<\'create\' | \'designer\'>')
+    expect(app).toContain('ref<\'projects\' | \'create\' | \'designer\'>')
     expect(workspace).toContain('createTemplateCatalogService')
     expect(workspace).toContain('DesignRuntimeHostFrame')
     expect(shell).not.toContain('TemplateDialog')

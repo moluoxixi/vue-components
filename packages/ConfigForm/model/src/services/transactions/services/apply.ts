@@ -183,6 +183,14 @@ function applyProjectChange(
 
 function applyOperation(document: ProjectDocument, operation: ProjectOperation): AppliedOperation {
   switch (operation.type) {
+    case 'project.rename': {
+      const name = requireDisplayName(operation.name, 'PROJECT_NAME_INVALID')
+      if (document.name === name)
+        return unchanged()
+      const previous = document.name
+      document.name = name
+      return { inverse: [{ type: 'project.rename', name: previous }], change: { project: true } }
+    }
     case 'surface.add':
     case 'surface.copy': {
       const surface = parseValue(projectSurfaceSchema.safeParse(operation.surface), 'PROJECT_SURFACE_INVALID', 'Surface is invalid.')
@@ -358,6 +366,16 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       const previous = dataset.name
       dataset.name = name
       return { inverse: [{ type: 'dataset.rename', datasetId: dataset.id, name: previous }], change: { datasetIds: new Set([dataset.id]) } }
+    }
+    case 'dataset.replace': {
+      const previous = requireDataset(document, operation.datasetId)
+      const dataset = parseValue(projectDatasetSchema.safeParse(operation.dataset), 'PROJECT_DATASET_INVALID', 'Dataset is invalid.')
+      if (dataset.id !== operation.datasetId)
+        invalid('PROJECT_DATASET_ID_CHANGE_INVALID', 'Dataset replacement cannot change its id.', undefined, undefined, { datasetId: operation.datasetId })
+      if (semanticallyEqual(previous, dataset))
+        return unchanged()
+      document.datasetsById[operation.datasetId] = dataset
+      return { inverse: [{ type: 'dataset.replace', datasetId: operation.datasetId, dataset: clone(previous) }], change: { datasetIds: new Set([operation.datasetId]) } }
     }
     case 'dataset.replaceRows': {
       const dataset = requireDataset(document, operation.datasetId)

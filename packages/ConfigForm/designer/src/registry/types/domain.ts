@@ -123,6 +123,8 @@ export interface DesignerSourceOptionsBinding {
 
 export type DesignerSourceRenderKind
   = | 'component'
+    | 'dataset-list'
+    | 'dataset-table'
     | 'layout-flex'
     | 'layout-grid'
     | 'section'

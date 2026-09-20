@@ -32,9 +32,11 @@ const internalConsumerDependencies = new Map<string, string>([
 
 const externalConsumerDependencies = new Map<string, string>([
   ['@vitejs/plugin-vue', join(packageRoot, 'node_modules/@vitejs/plugin-vue')],
+  ['@tailwindcss/vite', installedPackagePath('@tailwindcss/vite', resolve(workspaceRoot, 'packages/ConfigForm/workbench/node_modules/@tailwindcss/vite'))],
   ['ant-design-vue', installedPackagePath('ant-design-vue', resolve(workspaceRoot, 'packages/ConfigForm/designer-antd-vue/node_modules/ant-design-vue'))],
   ['element-plus', installedPackagePath('element-plus', resolve(workspaceRoot, 'packages/ConfigForm/element/node_modules/element-plus'))],
   ['sass', join(packageRoot, 'node_modules/sass')],
+  ['tailwindcss', installedPackagePath('tailwindcss', resolve(workspaceRoot, 'packages/ConfigForm/workbench/node_modules/tailwindcss'))],
   ['vite', join(packageRoot, 'node_modules/vite')],
   ['vue', join(packageRoot, 'node_modules/vue')],
   ['vue-router', installedPackagePath('vue-router', resolve(workspaceRoot, 'packages/ConfigForm/workbench/node_modules/vue-router'))],
@@ -168,7 +170,6 @@ export function assertGeneratedRuntimeBoundary(fileSet: SourceFileSetV1): void {
       'src/demo-navigation.ts',
       'src/main.ts',
       'src/router.ts',
-      'src/styles.css',
     ])
     const emittedForbiddenPath = fileSet.files.find(file => forbiddenBindingPaths.has(file.path))
     if (emittedForbiddenPath)
@@ -293,7 +294,6 @@ async function linkConsumerDependencies(root: string, fileSet: SourceFileSetV1):
     await symlink(target, linkPath, process.platform === 'win32' ? 'junction' : 'dir')
   }
 }
-
 interface GeneratedDemoNavigation {
   overlays: readonly {
     instanceId: string
@@ -737,6 +737,8 @@ export async function verifyGeneratedConsumer(fileSet: SourceFileSetV1): Promise
         failure.stderr,
       ].filter(Boolean).join('\n'))
     }
+    if (fileSet.kind === 'config-bindings' && !existsSync(join(consumerRoot, 'dist/style.css')))
+      throw new Error('config-bindings generated consumer build did not emit dist/style.css.')
   }
   finally {
     await rm(consumerRoot, { recursive: true, force: true })

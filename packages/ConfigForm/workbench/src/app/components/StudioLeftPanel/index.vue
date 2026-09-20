@@ -8,7 +8,7 @@ import type {
   StudioLeftView,
   StudioLayerAction,
 } from '../../../studio'
-import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
+import { Blocks, Check, ChevronDown, ChevronUp, Database, Files, History, Image, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, Paintbrush, PanelRight, PanelsTopLeft, Plus, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import './style/index.scss'
@@ -19,6 +19,7 @@ const emit = defineEmits<StudioLeftPanelEmits>()
 
 const internalActiveView = ref<StudioLeftView>('components')
 const materialQuery = ref('')
+const assetQuery = ref('')
 const activeView = computed(() => props.activeView ?? internalActiveView.value)
 const layerTree = useTemplateRef<HTMLElement>('layerTree')
 const pageList = useTemplateRef<HTMLElement>('pageList')
@@ -27,6 +28,7 @@ const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers') },
   { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Surfaces') },
+  { icon: Paintbrush, id: 'theme' as const, label: locale.value.t('designer.view.theme', 'Theme') },
   { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History') },
 ])
 const historyPositions = computed(() => {
@@ -57,6 +59,34 @@ const filteredMaterials = computed(() => {
     .includes(query))
 })
 const materialCategories = computed(() => [...new Set(filteredMaterials.value.map(material => locale.value.materialCategory(material)))])
+const surfaceGroups = computed(() => {
+  const query = assetQuery.value.trim().toLocaleLowerCase()
+  const definitions = [
+    { id: 'page' as const, icon: Files, label: locale.value.t('assets.pages', 'Pages') },
+    { id: 'dialog' as const, icon: PanelsTopLeft, label: locale.value.t('assets.dialogs', 'Dialogs') },
+    { id: 'drawer' as const, icon: PanelRight, label: locale.value.t('assets.drawers', 'Drawers') },
+  ]
+  return definitions.map(group => ({
+    ...group,
+    items: props.project.surfaceOrder
+      .map(id => props.project.surfacesById[id])
+      .flatMap(surface => surface?.kind === group.id ? [surface] : [])
+      .filter(surface => !query || `${surface.name} ${surface.id} ${surface.kind === 'page' ? surface.route : surface.kind}`.toLocaleLowerCase().includes(query)),
+  }))
+})
+const visibleSurfaceIds = computed(() => surfaceGroups.value.flatMap(group => group.items.map(surface => surface!.id)))
+const filteredDatasets = computed(() => {
+  const query = assetQuery.value.trim().toLocaleLowerCase()
+  return props.project.datasetOrder
+      .map(id => props.project.datasetsById[id])
+    .flatMap(dataset => dataset ? [dataset] : [])
+    .filter(dataset => !query || `${dataset.name} ${dataset.id}`.toLocaleLowerCase().includes(query))
+})
+const filteredResources = computed(() => {
+  const query = assetQuery.value.trim().toLocaleLowerCase()
+  return Object.values(props.project.resources)
+    .filter(resource => !query || `${resource.name} ${resource.id} ${resource.kind}`.toLocaleLowerCase().includes(query))
+})
 const expandedMaterialCategories = ref<string[]>([])
 
 watch(materialCategories, categories => {
@@ -219,13 +249,12 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
     emit('selectSurface', surfaceId)
     return
   }
-  const pages = props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean)
-  const current = pages.findIndex(page => page.id === surfaceId)
-  const next = navigationIndex(event, current, pages.length)
+  const current = visibleSurfaceIds.value.indexOf(surfaceId)
+  const next = navigationIndex(event, current, visibleSurfaceIds.value.length)
   if (next === undefined || next === current)
     return
   event.preventDefault()
-  const nextId = pages[next]!.id
+  const nextId = visibleSurfaceIds.value[next]!
   emit('selectSurface', nextId)
   focusItem(pageList.value, 'surfaceId', nextId)
 }
@@ -350,32 +379,69 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
     </ElScrollbar>
 
     <div v-else-if="activeView === 'pages'" class="designer-pages-panel">
+      <ElInput
+        v-model="assetQuery"
+        class="designer-asset-search"
+        clearable
+        :placeholder="locale.t('assets.search', 'Search assets')"
+        :aria-label="locale.t('assets.search', 'Search assets')"
+      >
+        <template #prefix><Search :size="14" aria-hidden="true" /></template>
+      </ElInput>
       <ElScrollbar>
-      <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.project', 'Project pages')">
-        <ElButton
-          v-for="surfaceId in project.surfaceOrder"
-          :key="surfaceId"
-          text
-          native-type="button"
-          role="option"
-          :aria-selected="surfaceId === currentSurfaceId"
-          :aria-current="surfaceId === currentSurfaceId ? 'page' : undefined"
-          :data-surface-id="surfaceId"
-          :tabindex="surfaceId === currentSurfaceId ? 0 : -1"
-          :class="{ 'is-current': surfaceId === currentSurfaceId }"
-          @click="emit('selectSurface', surfaceId)"
-          @keydown="handleSurfaceKeydown($event, surfaceId)"
-        >
-          <Files :size="14" aria-hidden="true" />
-          <span>{{ project.surfacesById[surfaceId]?.name }}</span>
-          <small>{{ project.surfacesById[surfaceId]?.kind === 'page' ? project.surfacesById[surfaceId].route : project.surfacesById[surfaceId]?.kind }}</small>
-        </ElButton>
+      <nav ref="pageList" class="designer-pages" :aria-label="locale.t('assets.project', 'Project assets')">
+        <section v-for="group in surfaceGroups" :key="group.id" class="designer-asset-group" :aria-labelledby="`asset-group-${group.id}`">
+          <header :id="`asset-group-${group.id}`">
+            <component :is="group.icon" :size="13" aria-hidden="true" />
+            <strong>{{ group.label }}</strong>
+            <span>{{ group.items.length }}</span>
+          </header>
+          <div role="listbox" :aria-label="group.label">
+            <ElButton
+              v-for="surface in group.items"
+              :key="surface.id"
+              text
+              native-type="button"
+              role="option"
+              :aria-selected="surface.id === currentSurfaceId"
+              :aria-current="surface.id === currentSurfaceId ? 'page' : undefined"
+              :data-surface-id="surface.id"
+              :tabindex="surface.id === currentSurfaceId ? 0 : -1"
+              :class="{ 'is-current': surface.id === currentSurfaceId }"
+              @click="emit('selectSurface', surface.id)"
+              @keydown="handleSurfaceKeydown($event, surface.id)"
+            >
+              <component :is="group.icon" :size="14" aria-hidden="true" />
+              <span>{{ surface.name }}</span>
+              <small>{{ surface.kind === 'page' ? surface.route : surface.kind }}</small>
+            </ElButton>
+            <p v-if="group.items.length === 0">{{ locale.t('assets.emptyGroup', 'No matching assets') }}</p>
+          </div>
+        </section>
+        <section class="designer-asset-group" aria-labelledby="asset-group-dataset">
+          <header id="asset-group-dataset"><Database :size="13" aria-hidden="true" /><strong>{{ locale.t('assets.datasets', 'Datasets') }}</strong><span>{{ filteredDatasets.length }}</span></header>
+          <ul><li v-for="dataset in filteredDatasets" :key="dataset.id"><ElButton text native-type="button" :aria-label="locale.t('assets.openDataset', 'Open dataset {name}', { name: dataset.name })" @click="emit('manageAssets', 'dataset', dataset.id)"><Database :size="13" aria-hidden="true" /><span>{{ dataset.name }}</span><small>{{ dataset.rows.length }}</small></ElButton></li></ul>
+          <p v-if="filteredDatasets.length === 0">{{ locale.t('assets.emptyGroup', 'No matching assets') }}</p>
+        </section>
+        <section class="designer-asset-group" aria-labelledby="asset-group-resource">
+          <header id="asset-group-resource"><Image :size="13" aria-hidden="true" /><strong>{{ locale.t('assets.resources', 'Resources') }}</strong><span>{{ filteredResources.length }}</span></header>
+          <ul><li v-for="resource in filteredResources" :key="resource.id"><ElButton text native-type="button" :aria-label="locale.t('assets.openResource', 'Open resource {name}', { name: resource.name })" @click="emit('manageAssets', 'resource', resource.id)"><Image :size="13" aria-hidden="true" /><span>{{ resource.name }}</span><small>{{ resource.kind }}</small></ElButton></li></ul>
+          <p v-if="filteredResources.length === 0">{{ locale.t('assets.emptyGroup', 'No matching assets') }}</p>
+        </section>
       </nav>
       </ElScrollbar>
+      <ElButton native-type="button" class="manage-data-button" @click="emit('manageAssets')">
+        <Plus :size="14" aria-hidden="true" />
+        {{ locale.t('assets.manage', 'Manage data') }}
+      </ElButton>
       <ElButton native-type="button" class="manage-pages-button" @click="emit('manageSurfaces')">
         <Settings2 :size="14" aria-hidden="true" />
         {{ locale.t('pages.manage', 'Manage pages') }}
       </ElButton>
+    </div>
+
+    <div v-else-if="activeView === 'theme'" class="designer-theme-panel">
+      <slot name="theme" />
     </div>
 
     <div v-else class="designer-history-panel">

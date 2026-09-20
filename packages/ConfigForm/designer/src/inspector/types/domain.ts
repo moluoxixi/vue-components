@@ -7,6 +7,7 @@ import type {
 export type InspectorSectionId
   = | 'properties'
     | 'validation'
+    | 'interactions'
 
 export interface InspectorNodeCapabilityInput {
   node: SurfaceNode

@@ -5,18 +5,19 @@
 
 ## 当前实现基线
 
-截至当前版本，仓库是 Runtime-first / Surface Foundation 实现：
+截至当前版本，仓库同时提供生产 Runtime 与本地优先的 ConfigForm Studio：
 
-- `ProjectDocument v7` 使用 `homeSurfaceId/surfaceOrder/surfacesById`，统一承载
+- `ProjectDocument v8` 使用 `homeSurfaceId/surfaceOrder/surfacesById`，统一承载
   Page/Dialog/Drawer `SurfaceAsset`，并提供 Dataset、Resource、参数/结果和主题合同。
-- `SurfaceGraph v2`、RuleSet v2、Registry snapshot v3、Canonical IR v6、Compiler 7.0.0、
+- `SurfaceGraph v3`、RuleSet v2、Registry snapshot v3、Canonical IR v7、Compiler 8.0.0、
   IndexedDB codec v4、Project/Surface transfer v1 已切换为严格 current-contract-only
   reader。字段 Required 独立于通用 RuleSet；`time` 不映射为 `date` base，Select
   options、已有 enum/literal base 与失效默认值由一个命令原子结算。
-- Designer 当前聚焦单个 Surface，默认 Inspector 仍只有 `properties` 与 `validation`；
-  Design/Experience 切换和完整 Interactions 作者 UI 尚属后续任务。
-- Workbench persistence、Preview Runtime Host、缓存和生成器已使用 Surface 身份；项目
-  资产管理界面仍是迁移中的内部基线，动态 Runtime Data Source 不进入 Studio Demo 合同。
+- Designer 聚焦单个 Surface，Inspector 提供 `properties`、`validation` 与
+  `interactions`；字段 Required、状态/值联动和单一主要 UI 动作均通过 Model 命令保存。
+- Studio 已提供项目与 Surface/Dataset/Resource 资产管理、主题、Design/Experience、
+  自动保存、JSON 导入导出和 Dataset/Resource 绑定；动态 Runtime Data Source 不进入
+  Studio Demo 合同。
 - `@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和样式入口，
   共享纯 reducer、SurfaceInstance 栈、参数/结果事务与 overlay host。
 - `@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer` 和样式入口；Workbench
@@ -59,6 +60,9 @@ Surface 创建选择、独立设计面和调用路径上下文。
 完成定义：用户可在独立设计面管理和编辑三类 Surface；资产任务不提前实现
 Design/Experience 切换，也不发明交互绑定合同。
 
+当前状态：已完成项目管理、三类 Surface 资产树、独立设计面、真实 Dialog/Drawer
+外壳、自动保存、刷新重开和响应式入口。
+
 ### 4. Studio Datasets
 
 建立 Dataset v1、项目级编辑、JSON 导入导出、options 保存为 Dataset，以及共享的
@@ -67,6 +71,9 @@ Resource transfer v1，并在既有 Project transfer v1 中填充/校验 embedde
 
 完成定义：Dataset versioned envelope 只接受精确 v1；显式 raw rows ingestion 只把
 JSON 对象数组创建为 v1 Dataset，两条入口不互相兼容；运行期数据只读。
+
+当前状态：已完成 Dataset/Resource 管理、JSON 导入导出、共享本地查询、物料绑定、
+options 保存为 Dataset 和解除引用后的内联快照。
 
 ### 5. Studio Materials
 
@@ -77,6 +84,9 @@ JSON 对象数组创建为 v1 Dataset，两条入口不互相兼容；运行期�
 完成定义：数据物料只消费共享 Dataset view，不复制查询器；选择状态属于物料，不写
 回 Dataset；Designer adapter 仍不拥有业务副作用。
 
+当前状态：已完成双 Provider 业务物料、Table/List/Select 数据视图与选择、主题、
+响应式 Grid/Flex 和受控视觉属性。
+
 ### 6. Studio Interactions
 
 提供 Design/Experience 模式切换，以及状态投影、`set/copy/clear` 值动作和单一主要
@@ -85,6 +95,9 @@ UI 动作的作者体验，包括页面跳转、返回、Dialog/Drawer 打开关
 
 完成定义：初始化只执行状态投影；值动作只由用户/结果变化触发；一个语义触发器最多
 一个主要 UI 动作；非法表达式或循环使用稳定诊断阻止 Experience 和 Source。
+
+当前状态：已完成 Surface 级联动总览、字段状态和值联动、页面与浮层动作、参数、
+结果回写、Design/Experience 切换和持久化恢复。
 
 ### 7. 独立 Source 包
 
@@ -118,12 +131,12 @@ Workbench 只保留弹窗、刷新、复制、下载、ZIP 与通知等应用命
 | 合同                             | 基线     | 当前        | 所属阶段                                                  |
 | -------------------------------- | -------- | ----------- | --------------------------------------------------------- |
 | RuleSet                          | `1`      | `2`         | 校验与源码合同硬化                                        |
-| ProjectDocument                  | `6`      | `7`         | 校验与源码合同硬化                                        |
-| SurfaceGraph                     | `1`      | `2`         | 校验与源码合同硬化                                        |
+| ProjectDocument                  | `7`      | `8`         | Studio Datasets：Dataset view query 硬切                  |
+| SurfaceGraph                     | `2`      | `3`         | Studio Datasets：节点 Dataset query 硬切                  |
 | Project theme                    | 不存在   | `1`         | Surface Foundation；Studio Materials 只消费，不扩宽 shape |
 | Registry snapshot                | `2`      | `3`         | Surface Foundation；Studio Materials 只扩充条目和作者映射 |
-| Canonical Project IR             | `5`      | `6`         | 校验与源码合同硬化                                        |
-| Compiler                         | `6.0.0`  | `7.0.0`     | 校验与源码合同硬化                                        |
+| Canonical Project IR             | `6`      | `7`         | Studio Datasets：查询投影                                 |
+| Compiler                         | `7.0.0`  | `8.0.0`     | Studio Datasets：查询投影                                 |
 | IndexedDB manifest/entity codec  | `3`      | `4`         | Surface Foundation                                        |
 | Page transfer / Surface transfer | `Page 2` | `Surface 1` | Surface Foundation                                        |
 | Runtime Host protocol            | `6`      | `7`         | Surface Foundation                                        |

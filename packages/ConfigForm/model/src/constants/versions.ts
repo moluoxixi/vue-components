@@ -1,6 +1,8 @@
-export const PROJECT_DOCUMENT_VERSION = 7 as const
-export const SURFACE_GRAPH_VERSION = 2 as const
+export const PROJECT_DOCUMENT_VERSION = 8 as const
+export const SURFACE_GRAPH_VERSION = 3 as const
 export const REGISTRY_CONTRACT_SNAPSHOT_VERSION = 3 as const
 export const PROJECT_THEME_VERSION = 1 as const
 export const PROJECT_TRANSFER_VERSION = 1 as const
 export const SURFACE_TRANSFER_VERSION = 1 as const
+export const DATASET_TRANSFER_VERSION = 1 as const
+export const RESOURCE_TRANSFER_VERSION = 1 as const

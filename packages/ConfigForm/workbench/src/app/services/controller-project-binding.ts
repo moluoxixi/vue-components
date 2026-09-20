@@ -322,6 +322,23 @@ export function createWorkbenchProjectBinding(options: {
     await openProject(id, surfaceId)
   }
 
+  async function closeProject(): Promise<void> {
+    openProjectRequestId += 1
+    disposeProjectSubscription()
+    await disposeProjectPersistence()
+    projectSession.value = undefined
+    projectSessionSnapshot.value = undefined
+    persistenceSnapshot.value = undefined
+    currentSurfaceId.value = ''
+    projectedSurfaceId = ''
+    currentAdapter.value = undefined
+    recoveryDrafts.value = []
+    configError.value = ''
+    designSession.clear()
+    exportService.clear()
+    previewSession.clear()
+  }
+
   async function initializeRepository(): Promise<void> {
     const openedRepository = await openDefaultProjectRepository({})
     if (isDisposed()) {
@@ -351,6 +368,7 @@ export function createWorkbenchProjectBinding(options: {
   }
 
   return {
+    closeProject,
     disposeProjectPersistence,
     disposeProjectSubscription,
     executeProjectActions,

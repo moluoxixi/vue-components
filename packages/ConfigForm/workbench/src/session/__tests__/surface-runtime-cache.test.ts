@@ -29,6 +29,8 @@ function compilation(
     registryUsage: [],
     key,
     surface: {} as SurfaceCompilation['surface'],
+    theme: { version: 1 },
+    datasetsById: {},
   }
 }
 

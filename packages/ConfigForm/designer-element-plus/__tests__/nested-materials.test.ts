@@ -1,6 +1,6 @@
 import type { LayoutNode, ProjectDocument, SurfaceGraph } from '@moluoxixi/config-form-model'
 import { createNodePathCommand, DEFAULT_DESIGNER_PROPERTY_CONTROLS, isDesignerSetterPathAllowed, useDesignerController } from '@moluoxixi/config-form-designer'
-import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
+import { createComponentContractRegistry, createProjectDomainEngine, PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { effectScope, shallowRef } from 'vue'
 import { createElementPlusDesignerRegistry, ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY } from '../index'
@@ -8,7 +8,7 @@ import { createElementPlusDesignerRegistry, ELEMENT_PLUS_DESIGNER_MATERIAL_REGIS
 function fixture() {
   const registry = createElementPlusDesignerRegistry()
   const contracts = createComponentContractRegistry(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.contracts, { adapter: 'element', version: '1' })
-  const graph = shallowRef<SurfaceGraph>({ version: 2, props: {}, form: {}, root: [], nodesById: {} })
+  const graph = shallowRef<SurfaceGraph>({ version: SURFACE_GRAPH_VERSION, props: {}, form: {}, root: [], nodesById: {} })
   const document: ProjectDocument = {
     version: PROJECT_DOCUMENT_VERSION,
     id: 'nested',

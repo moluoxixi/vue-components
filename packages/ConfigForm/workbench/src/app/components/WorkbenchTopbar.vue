@@ -7,6 +7,7 @@ import {
   Download,
   FileJson2,
   Files,
+  FolderKanban,
   Languages,
   MoreHorizontal,
   PanelRightClose,
@@ -99,6 +100,11 @@ function chooseExport(command: WorkbenchExportCommand): void {
     </div>
 
     <div class="topbar-actions">
+      <WorkbenchCommandHint :label="locale.t('projects.back', 'Back to projects')">
+        <ElButton native-type="button" class="topbar-secondary-action" circle :aria-label="locale.t('projects.back', 'Back to projects')" @click="emit('openProjects')">
+          <FolderKanban :size="17" aria-hidden="true" />
+        </ElButton>
+      </WorkbenchCommandHint>
       <WorkbenchCommandHint v-if="project" :label="locale.t('surfaces.manage', 'Manage Surfaces')">
         <ElButton
           native-type="button"

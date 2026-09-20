@@ -88,7 +88,7 @@ function material(
 }
 
 describe('resolveInspectorCapabilities', () => {
-  it('always exposes exactly properties and validation without projecting advanced runtime configuration', () => {
+  it('exposes properties, validation, and the prototype interaction authoring section', () => {
     const node = field('name', 'test.input', {
       datasetBindings: {},
       validation: { version: 2, base: { type: 'string' }, rules: [] },
@@ -104,6 +104,7 @@ describe('resolveInspectorCapabilities', () => {
     expect(projection.sections).toEqual([
       { id: 'properties', canCreate: true, editable: true, hasStoredContent: true },
       { id: 'validation', canCreate: true, editable: true, hasStoredContent: true },
+      { id: 'interactions', canCreate: true, editable: true, hasStoredContent: false },
     ])
     expect(projection).not.toHaveProperty('commonEvents')
     expect(projection).not.toHaveProperty('commonBindings')
@@ -140,7 +141,7 @@ describe('resolveInspectorCapabilities', () => {
     ])
 
     expect(projection.commonSetters.map(setter => setter.path)).toEqual([['props', 'placeholder']])
-    expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation'])
+    expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation', 'interactions'])
   })
 
   it('keeps field-level validation editable for mixed rules without exposing a shared rule editor', () => {
@@ -199,7 +200,7 @@ describe('resolveInspectorCapabilities', () => {
   ])('keeps $name selections conservatively read-only', ({ input }) => {
     const projection = resolveInspectorCapabilities([input])
 
-    expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation'])
+    expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation', 'interactions'])
     expect(projection.sections.every(section => section.editable === false)).toBe(true)
     expect(projection.commonSetters).toEqual([])
   })
@@ -215,6 +216,7 @@ describe('resolveInspectorCapabilities', () => {
     expect(projection.sections).toEqual([
       { id: 'properties', canCreate: true, editable: true, hasStoredContent: true },
       { id: 'validation', canCreate: false, editable: false, hasStoredContent: false },
+      { id: 'interactions', canCreate: true, editable: true, hasStoredContent: false },
     ])
   })
 

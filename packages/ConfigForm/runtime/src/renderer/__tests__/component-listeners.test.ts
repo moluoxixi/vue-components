@@ -16,6 +16,14 @@ const Control = defineComponent({
   }),
 })
 
+const SemanticControl = defineComponent({
+  emits: ['row-click'],
+  setup: (_, { emit }) => () => h('button', {
+    type: 'button',
+    onClick: () => emit('row-click', { id: 'row-1', title: 'Ada' }),
+  }, 'activate row'),
+})
+
 const plan: ConfigFormSurfaceRuntimePlan = {
   optionBindings: [],
   runtime: { dataSources: [], variables: [] },
@@ -81,6 +89,49 @@ describe('code-config component listeners', () => {
     await wrapper.get('button').trigger('click')
 
     expect(onClick).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('converts only declared provider events into closed semantic activations', async () => {
+    const onSemanticActivate = vi.fn()
+    const wrapper = mount(ConfigFormRenderer as Component, { props: {
+      model: createConfigFormModel(shallowRef({})),
+      fields: [{
+        id: 'dataset-table',
+        component: SemanticControl,
+        props: {},
+        semanticEvents: { rowActivate: 'row-click' },
+      }],
+      onSemanticActivate,
+    } })
+
+    await wrapper.get('button').trigger('click')
+
+    expect(onSemanticActivate).toHaveBeenCalledWith({
+      nodeId: 'dataset-table',
+      trigger: 'rowActivate',
+      args: [{ id: 'row-1', title: 'Ada' }],
+    })
+    wrapper.unmount()
+  })
+
+  it('suppresses declared semantic activations in design mode', async () => {
+    const onSemanticActivate = vi.fn()
+    const wrapper = mount(ConfigFormRenderer as Component, { props: {
+      mode: 'design',
+      model: createConfigFormModel(shallowRef({})),
+      fields: [{
+        id: 'dataset-table',
+        component: SemanticControl,
+        props: {},
+        semanticEvents: { rowActivate: 'row-click' },
+      }],
+      onSemanticActivate,
+    } })
+
+    await wrapper.get('button').trigger('click')
+
+    expect(onSemanticActivate).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

@@ -10,6 +10,9 @@ import type {
 
 export type SourceLanguage = 'vue' | 'typescript' | 'json' | 'css' | 'scss' | 'text'
 
+/** Closed style-generation target.  The default remains the existing CSS output. */
+export type SourceStyleTarget = 'css' | 'tailwind-v4'
+
 export interface SourceTextFile {
   kind: 'text'
   path: string
@@ -65,7 +68,13 @@ export interface SourceOptionsResolution {
   valueProp?: string
 }
 
-export type SourceRenderKind = 'component' | 'layout-flex' | 'layout-grid' | 'section'
+export type SourceRenderKind
+  = | 'component'
+    | 'dataset-list'
+    | 'dataset-table'
+    | 'layout-flex'
+    | 'layout-grid'
+    | 'section'
 
 export type SourceSemanticItemResolution
   = | { readonly kind: 'none' }
@@ -145,6 +154,8 @@ interface SourceGenerationInputBase {
   compilation: ProjectCompilation
   componentResolver: SourceComponentResolver
   resourceReader: SourceResourceReader
+  /** Optional output target; omitted values are normalized to `css`. */
+  styleTarget?: SourceStyleTarget
 }
 
 export interface GenerateVueSourceInput extends SourceGenerationInputBase {}

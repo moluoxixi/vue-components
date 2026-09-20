@@ -36,10 +36,14 @@ const providerSemanticListeners: Readonly<Record<
   'antd-vue': Object.freeze({
     activate: Object.freeze({ event: 'click', listenerProp: 'onClick', item: Object.freeze({ kind: 'none' }) }),
     submit: Object.freeze({ event: 'submit', listenerProp: 'onSubmit', item: Object.freeze({ kind: 'none' }) }),
+    rowActivate: Object.freeze({ event: 'row-click', listenerProp: 'onRowClick', item: Object.freeze({ kind: 'argument', index: 0 }) }),
+    itemActivate: Object.freeze({ event: 'item-click', listenerProp: 'onItemClick', item: Object.freeze({ kind: 'argument', index: 0 }) }),
   }),
   'element-plus': Object.freeze({
     activate: Object.freeze({ event: 'click', listenerProp: 'onClick', item: Object.freeze({ kind: 'none' }) }),
     submit: Object.freeze({ event: 'submit', listenerProp: 'onSubmit', item: Object.freeze({ kind: 'none' }) }),
+    rowActivate: Object.freeze({ event: 'row-click', listenerProp: 'onRowClick', item: Object.freeze({ kind: 'argument', index: 0 }) }),
+    itemActivate: Object.freeze({ event: 'item-click', listenerProp: 'onItemClick', item: Object.freeze({ kind: 'argument', index: 0 }) }),
   }),
 })
 

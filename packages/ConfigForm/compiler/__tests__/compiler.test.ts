@@ -45,8 +45,8 @@ describe('surface canonical compiler', () => {
     })
     expect(Object.isFrozen(compilation)).toBe(true)
     expect(Object.isFrozen(compilation.ir)).toBe(true)
-    expect(CANONICAL_PROJECT_IR_VERSION).toBe(6)
-    expect(CONFIG_FORM_COMPILER_VERSION).toBe('7.0.0')
+    expect(CANONICAL_PROJECT_IR_VERSION).toBe(7)
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('8.0.0')
   })
 
   it('compiles one Surface without recursively inlining cyclic open targets', () => {

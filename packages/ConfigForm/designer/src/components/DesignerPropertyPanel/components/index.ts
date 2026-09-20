@@ -1,5 +1,7 @@
 export { default as DesignerBreakpointLayoutSettings } from './DesignerBreakpointLayoutSettings/index.vue'
+export { default as DesignerDataBindingEditor } from './DesignerDataBindingEditor/index.vue'
 export { default as DesignerDefaultValueSetter } from './DesignerDefaultValueSetter/index.vue'
+export { default as DesignerInteractionEditor } from './DesignerInteractionEditor/index.vue'
 export { default as DesignerOptionsSetter } from './DesignerOptionsSetter/index.vue'
 export { default as DesignerPropertyForm } from './DesignerPropertyForm/index.vue'
 export { default as DesignerResponsiveSettings } from './DesignerResponsiveSettings/index.vue'
