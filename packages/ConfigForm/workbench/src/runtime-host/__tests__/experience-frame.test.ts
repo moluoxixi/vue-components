@@ -5,8 +5,8 @@ import { initializePrototypeProjectSession } from '@moluoxixi/config-form-protot
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import PreviewRuntimeHostFrame from '../../app/components/PreviewRuntimeHostFrame/index.vue'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '..'
+import PreviewRuntimeHostFrame from '../../app/components/PreviewRuntimeHostFrame/index.vue'
 import { createExperienceCompilerFixture } from './compiler-fixture'
 
 const hostId = '11111111-1111-4111-8111-111111111111'
@@ -28,7 +28,7 @@ function fixture() {
   return { compilation: compiled.compilation, session: initialized.data }
 }
 
-describe('Experience Runtime Host frame', () => {
+describe('experience Runtime Host frame', () => {
   it('suppresses a child session echo and rejects stale or non-live instance state', async () => {
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(hostId)
     const current = fixture()

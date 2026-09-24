@@ -158,12 +158,12 @@ describe('workbench topbar', () => {
     })
 
     try {
-      const newSurfaceButton = wrapper.get('button[aria-label="New Surface"]')
+      const newSurfaceButton = wrapper.get('button[aria-label="New page"]')
       ;(newSurfaceButton.element as HTMLButtonElement).focus()
       await vi.advanceTimersByTimeAsync(400)
       await nextTick()
       const tooltip = overlayRoot().get('.workbench-command-tooltip')
-      expect(tooltip.text()).toBe('New Surface')
+      expect(tooltip.text()).toBe('New page')
       expect(tooltip.attributes('role')).toBe('tooltip')
       expect(newSurfaceButton.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
     }

@@ -1,34 +1,26 @@
-.page-manager-dialog-shell {
-  overflow: hidden;
+.page-manager-page {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
   color: var(--wb-text);
-  border: 1px solid var(--wb-separator);
-  background: var(--wb-elevated);
-  box-shadow: var(--wb-shadow-overlay);
+  background: var(--wb-bg);
 }
 
-.page-manager-dialog-shell .el-dialog__header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--wb-separator);
+.page-manager-page > .page-manager {
+  min-height: 0;
+  flex: 1;
 }
 
-.page-manager-dialog-shell .el-dialog__body {
-  padding: 0;
-}
-
-:is(.workbench-app, .workbench-overlays)[data-theme="light"] .page-manager-dialog-shell {
+:is(.page-manager-page)[data-theme="light"] {
   color: var(--wb-text);
-  border-color: var(--wb-separator);
-  background: var(--wb-elevated);
+  background: var(--wb-bg);
 }
 
-@media (max-width: 700px) {
-
-  .page-manager-dialog-shell {
-    width: 100% !important;
-    height: 100%;
-    max-height: none;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-  }
+.page-manager-page__state {
+  margin: auto;
+  color: var(--wb-muted);
+  font-size: 13px;
 }

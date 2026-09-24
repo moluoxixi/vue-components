@@ -4,7 +4,7 @@ import { isRuntimeHostToParentMessage, RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOC
 const state = { fields: [], touched: [], validation: {}, values: {} }
 const base = { channel: RUNTIME_HOST_CHANNEL, version: RUNTIME_HOST_PROTOCOL_VERSION, hostId: 'host', projectId: 'project', revision: 'revision', sequence: 1 }
 
-describe('Runtime Host Experience instance state v7', () => {
+describe('runtime Host Experience instance state v7', () => {
   it('requires live instance identity fields and a finite monotonic state revision', () => {
     const message = { ...base, type: 'experience.instanceState', sessionId: 'session', instanceId: 'page-1', payload: { ...state, surfaceId: 'home', stateRevision: 1, projection: [] } }
     expect(isRuntimeHostToParentMessage(message)).toBe(true)

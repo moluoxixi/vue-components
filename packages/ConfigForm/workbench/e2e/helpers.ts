@@ -20,11 +20,13 @@ const templateNames: Record<WorkbenchAdapter, RegExp> = {
 
 export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
   const workspace = page.getByRole('main', { name: 'Create project' })
-  if (!await workspace.isVisible()) {
-    const newProject = page.getByRole('button', { name: 'New project', exact: true }).first()
-    await expect(newProject).toBeVisible({ timeout: 15_000 })
+  const newProject = page.getByRole('button', { name: 'New project', exact: true }).first()
+  // The creation workspace is a lazy route, so a caller may still be on the
+  // projects list when this runs. Wait for either entry point instead of
+  // sampling visibility once.
+  await expect(workspace.or(newProject)).toBeVisible({ timeout: 15_000 })
+  if (!await workspace.isVisible())
     await newProject.click()
-  }
   await expect(workspace).toBeVisible({ timeout: 15_000 })
   const catalogOpener = workspace.locator('[data-template-catalog-open]')
   if (await catalogOpener.isVisible()) {

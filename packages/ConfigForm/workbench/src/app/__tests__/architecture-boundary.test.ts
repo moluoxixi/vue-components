@@ -697,7 +697,6 @@ describe('workbench production architecture boundary', () => {
       'previewOpen',
       'previewExpanded',
       'previewViewport',
-      'pageManagerOpen',
       'exportPreviewMode',
       'appearanceDrawerOpen',
       'themePreference',
@@ -705,10 +704,15 @@ describe('workbench production architecture boundary', () => {
       'localeId',
       'message',
     ]
+    const uiShallowRefs = ['creationOrigin']
 
     uiRefs.forEach((name) => {
       expect(controller).not.toContain(`const ${name} = ref`)
       expect(uiStore).toContain(`const ${name} = ref`)
+    })
+    uiShallowRefs.forEach((name) => {
+      expect(controller).not.toContain(`const ${name} =`)
+      expect(uiStore).toContain(`const ${name} = shallowRef`)
     })
     expect(uiStore).toContain('const resolvedTheme = computed')
     expect(shell).toContain('useWorkbenchUiStore()')
@@ -717,14 +721,44 @@ describe('workbench production architecture boundary', () => {
     expect(uiStore).not.toContain('ExportSnapshot')
   })
 
-  it('keeps template browsing in the App-level creation workspace', () => {
+  it('keeps the URL as the only owner of the open project and Surface', () => {
     const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
-    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+    const routeSync = readFileSync(new URL('../composables/use-workbench-route-sync.ts', import.meta.url), 'utf8')
+    const featureRouterImports = collectProductionTextFiles(join(configFormRoot, 'workbench/src/features'))
+      .filter(path => /from 'vue-router'/.test(readFileSync(path, 'utf8')))
+      .map(path => normalizedRelative(configFormRoot, path))
 
-    expect(app).toContain('TemplateCreationWorkspace')
-    expect(app).toContain('ref<\'projects\' | \'create\' | \'designer\'>')
+    expect(app).toContain('<RouterView')
+    expect(app).toContain('useWorkbenchRouteSync')
+    expect(app).not.toContain('ref<\'projects\' | \'create\' | \'designer\'>')
+    expect(routerSource).toContain('createWebHashHistory')
+    expect(routerSource).toContain('ProjectsView.vue')
+    expect(routerSource).toContain('DesignView.vue')
+    expect(routerSource).toContain('PagesView.vue')
+    expect(routeSync).toContain('shouldBlockProjectSwitch')
+    // Navigation stays a shell concern: lazy features receive commands and
+    // events, they never reach for the router themselves.
+    expect(featureRouterImports).toEqual([])
+    for (const removed of ['pageManagerOpen', 'pageManagerLoaded', 'openSurfaceManager', 'closeSurfaceManager']) {
+      expect(uiStore).not.toContain(removed)
+      expect(shell).not.toContain(removed)
+    }
+  })
+
+  it('keeps template browsing in the App-level creation workspace', () => {
+    const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
+    const creationView = readFileSync(new URL('../components/CreationView.vue', import.meta.url), 'utf8')
+    const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
+    const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
+    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+
+    expect(app).toContain('<RouterView')
+    expect(creationView).toContain('TemplateCreationWorkspace')
+    expect(routerSource).toContain('import(\'../components/CreationView.vue\')')
     expect(workspace).toContain('createTemplateCatalogService')
     expect(workspace).toContain('DesignRuntimeHostFrame')
     expect(shell).not.toContain('TemplateDialog')

@@ -26,7 +26,7 @@ function snapshot(values: ReadonlyMap<string, NamespaceValue | null>): Record<st
   return Object.fromEntries([...values.entries()].sort(([left], [right]) => left.localeCompare(right)))
 }
 
-describe('IndexedDB prefix transactions', () => {
+describe('indexedDB prefix transactions', () => {
   it('serializes concurrent namespace replacement and deletion without a mixed result', async () => {
     const dbName = `prefix-transaction-concurrent-${sequence++}`
     const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })

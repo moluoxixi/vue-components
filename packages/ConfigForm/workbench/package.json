@@ -30,6 +30,7 @@
     "element-plus": "catalog:ui",
     "fflate": "catalog:",
     "vue": "catalog:build",
+    "vue-router": "catalog:build",
     "zod": "catalog:dev"
   },
   "devDependencies": {
@@ -47,7 +48,6 @@
     "tailwindcss": "catalog:build",
     "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
     "vite": "catalog:dev",
-    "vue-router": "catalog:build",
     "vitest": "catalog:dev",
     "vue-tsc": "catalog:dev"
   }

@@ -32,11 +32,11 @@ describe('workbench UI store', () => {
     vi.useRealTimers()
   })
 
-  it('owns dialog, preview, mobile navigation, theme, locale, and message state', async () => {
+  it('owns routed-workspace, preview, mobile navigation, theme, locale, and message state', async () => {
     const ui = createWorkbenchUiStore({ locale: { locale: 'en-US' } })
 
     ui.openExportPreview('source')
-    ui.openSurfaceManager()
+    ui.setCreationOrigin({ focusKey: 'topbar-new-surface', path: '/projects/project-a/design/home' })
     ui.notify('Saved')
     ui.togglePreview()
     ui.setThemePreference('dark')
@@ -47,8 +47,10 @@ describe('workbench UI store', () => {
 
     expect(ui.exportDialogLoaded.value).toBe(true)
     expect(ui.exportPreviewMode.value).toBe('source')
-    expect(ui.pageManagerLoaded.value).toBe(true)
-    expect(ui.pageManagerOpen.value).toBe(true)
+    expect(ui.creationOrigin.value).toEqual({
+      focusKey: 'topbar-new-surface',
+      path: '/projects/project-a/design/home',
+    })
     expect(ui.message.value).toBe('Saved')
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.mobileStudioView.value).toBe('theme')
@@ -101,17 +103,17 @@ describe('workbench UI store', () => {
     })
   })
 
-  it('closes preview expansion and page manager through explicit UI operations', () => {
+  it('closes preview expansion and clears the creation origin through explicit UI operations', () => {
     const ui = createWorkbenchUiStore({})
     ui.togglePreview()
     ui.previewExpanded.value = true
     ui.togglePreview()
-    ui.openSurfaceManager()
-    ui.closeSurfaceManager()
+    ui.setCreationOrigin({ path: '/projects' })
+    ui.clearCreationOrigin()
 
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.previewExpanded.value).toBe(false)
-    expect(ui.pageManagerOpen.value).toBe(false)
+    expect(ui.creationOrigin.value).toBeUndefined()
   })
 
   it('publishes a one-shot actionable notice without turning it into document state', () => {

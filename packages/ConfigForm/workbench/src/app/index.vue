@@ -4,8 +4,7 @@ import type { DatasetReference, ProjectSurface } from '@moluoxixi/config-form-mo
 import type { CSSProperties } from 'vue'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { TemplateCreationTarget } from '../project'
-import type { WorkbenchExportCommand, WorkbenchShellEmits, WorkbenchShellProps } from './types'
-import type { MobileStudioView } from './types'
+import type { WorkbenchExportCommand, MobileStudioView } from './types'
 import {
   Blocks,
   Copy,
@@ -25,7 +24,14 @@ import {
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
+import {
+  pageCreatePath,
+  projectCreatePath,
+  projectPagesPath,
+  projectsPath,
+} from './router'
 import { DesignRuntimeHostFrame, PreviewDrawer, ProjectThemeEditor, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
@@ -35,22 +41,17 @@ import {
   useWorkbenchUiStore,
 } from './composables'
 
-defineProps<WorkbenchShellProps>()
-
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
 const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog))
-const SurfaceManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.SurfaceManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
 
-const emit = defineEmits<WorkbenchShellEmits>()
-
+const router = useRouter()
 const controller = useWorkbenchController()
 const designSession = useWorkbenchDesignSession()
 const previewSession = useWorkbenchPreviewSession()
 const exportService = useWorkbenchExportService()
 const ui = useWorkbenchUiStore()
 const {
-  projects,
   busy,
   componentRegistry,
   configError,
@@ -61,14 +62,12 @@ const {
   designerLayers,
   dirty,
   getCurrentAdapterId,
-  handleSurfaceAction,
   localeOptions,
   previewState,
   readEmbeddedResource,
   registry,
   repositoryRevision,
   recoveryDrafts,
-  requestOpenProject,
   reloadCurrentProject,
   materializeOptionsSnapshot,
   saveProject,
@@ -109,7 +108,6 @@ const {
 const {
   clearNotice,
   closeExportPreview,
-  closeSurfaceManager,
   exportDialogLoaded,
   exportPreviewMode,
   localeId,
@@ -118,15 +116,13 @@ const {
   notice,
   openExportPreview,
   openAppearanceDrawer,
-  openSurfaceManager,
-  pageManagerLoaded,
-  pageManagerOpen,
   paletteFamily,
   previewExpanded,
   previewOpen,
   previewViewport,
   resolvedTheme,
   selectMobileStudioView: selectMobileView,
+  setCreationOrigin,
   setPaletteFamily,
   setThemePreference,
   showNotice,
@@ -329,7 +325,9 @@ function handleMaterializeOptions(nodeId: string, bindingKey: string): void {
 }
 
 function showSurfaceManager(): void {
-  openSurfaceManager()
+  const projectId = currentProject.value?.id
+  if (projectId)
+    void router.push(projectPagesPath(projectId))
 }
 
 function showAssetManager(kind?: 'dataset' | 'resource', id?: string): void {
@@ -337,8 +335,23 @@ function showAssetManager(kind?: 'dataset' | 'resource', id?: string): void {
   assetManagerOpen.value = true
 }
 
+function exitToProjects(): void {
+  void router.push(projectsPath())
+}
+
+/**
+ * Creation is a routed workspace, so the command records where it came from and
+ * navigates; the creation screen returns here and restores trigger focus.
+ */
 function requestCreation(target: TemplateCreationTarget, focusKey: string): void {
-  emit('create', { focusKey, target })
+  const projectId = currentProject.value?.id
+  setCreationOrigin({ focusKey, path: router.currentRoute.value.fullPath })
+  if (target === 'project') {
+    void router.push(projectCreatePath('template'))
+    return
+  }
+  if (projectId)
+    void router.push(pageCreatePath(projectId))
 }
 
 function showPersistenceDialog(mode: PersistenceDialogMode): void {
@@ -388,7 +401,7 @@ watch(recoveryDrafts, (drafts) => {
       @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
       @new-surface="requestCreation('surface', $event)"
-      @open-projects="emit('exit')"
+      @open-projects="exitToProjects"
       @open-appearance="openAppearanceDrawer"
       @open-surfaces="showSurfaceManager"
       @open-versions="showPersistenceDialog('versions')"
@@ -641,22 +654,6 @@ watch(recoveryDrafts, (drafts) => {
         <span>{{ view.label }}</span>
       </button>
     </nav>
-
-    <SurfaceManagerDialog
-      v-if="pageManagerLoaded"
-      :project="currentProject"
-      :projects="projects"
-      :busy="busy"
-      :locale="localeOptions"
-      :open="pageManagerOpen"
-      :return-focus-key="creationReturnFocusKey"
-      @close="closeSurfaceManager"
-      @create-surface="requestCreation('surface', 'page-manager-new-surface')"
-      @create-project="requestCreation('project', 'page-manager-new-project')"
-      @open-project="requestOpenProject($event)"
-      @action="handleSurfaceAction"
-      @return-focus-restored="emit('creationFocusRestored')"
-    />
 
     <AssetManagerDialog
       v-if="currentProject"

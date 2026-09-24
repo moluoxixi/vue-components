@@ -31,9 +31,11 @@ async function exportJson(
 }
 
 async function openProjectCreation(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
-  await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  await page.getByRole('dialog', { name: 'Surfaces' }).getByRole('button', { name: 'New project' }).click()
+  // Project creation is a project-management action: page management only creates pages.
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Projects', exact: true })).toBeVisible()
+  // The command lives in the project-management topbar, not in the list region.
+  await page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).click()
   await expect(page.getByRole('main', { name: 'Create project' })).toBeVisible()
 }
 

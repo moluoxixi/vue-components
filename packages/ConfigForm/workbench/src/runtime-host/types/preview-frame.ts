@@ -1,9 +1,9 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { WorkbenchAdapterId } from '../../adapters'
 import type {
+  PrototypeTransitionSnapshotV1,
   RuntimeHostExperienceSyncPayloadV7,
   RuntimeHostInstanceStatePayloadV7,
-  PrototypeTransitionSnapshotV1,
 } from './protocol'
 
 /** Parent-side props for the Experience Runtime Host iframe. */

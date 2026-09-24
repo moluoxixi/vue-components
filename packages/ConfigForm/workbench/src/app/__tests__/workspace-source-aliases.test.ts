@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { configFormSourceAliases } from '../../../scripts/workspace-source-aliases'
 
-describe('ConfigForm workspace source resolution', () => {
+describe('configForm workspace source resolution', () => {
   const resolveAlias = (name: string) => configFormSourceAliases.find(alias =>
     alias.find instanceof RegExp && alias.find.test(name))
 

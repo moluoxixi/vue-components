@@ -3,6 +3,7 @@ import type { PreviewViewport, StudioLeftView } from '../../studio'
 import type {
   MobileStudioView,
   ShowWorkbenchNoticeOptions,
+  WorkbenchCreationOrigin,
   WorkbenchNotice,
   WorkbenchPaletteFamily,
   WorkbenchThemePreference,
@@ -40,8 +41,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const previewOpen = ref(false)
   const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
-  const pageManagerOpen = ref(false)
-  const pageManagerLoaded = ref(false)
+  const creationOrigin = shallowRef<WorkbenchCreationOrigin>()
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
   const appearanceDrawerOpen = ref(false)
@@ -109,13 +109,17 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     exportPreviewMode.value = mode
   }
 
-  function closeSurfaceManager(): void {
-    pageManagerOpen.value = false
+  /**
+   * Records where the routed creation workspace was opened from. Cancel and
+   * success both navigate back here, and the destination restores focus to the
+   * recorded trigger.
+   */
+  function setCreationOrigin(origin: WorkbenchCreationOrigin): void {
+    creationOrigin.value = origin
   }
 
-  function openSurfaceManager(): void {
-    pageManagerLoaded.value = true
-    pageManagerOpen.value = true
+  function clearCreationOrigin(): void {
+    creationOrigin.value = undefined
   }
 
   function selectMobileStudioView(view: MobileStudioView): void {
@@ -198,11 +202,12 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   return {
     appearanceDrawerOpen,
+    clearCreationOrigin,
     clearMessage,
     closeAppearanceDrawer,
     clearNotice,
     closeExportPreview,
-    closeSurfaceManager,
+    creationOrigin,
     exportDialogLoaded,
     exportPreviewMode,
     localeId,
@@ -212,15 +217,13 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     notify,
     openAppearanceDrawer,
     openExportPreview,
-    openSurfaceManager,
-    pageManagerLoaded,
-    pageManagerOpen,
     paletteFamily,
     previewExpanded,
     previewOpen,
     previewViewport,
     resolvedTheme,
     selectMobileStudioView,
+    setCreationOrigin,
     setPaletteFamily,
     setThemePreference,
     showNotice,

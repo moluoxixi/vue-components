@@ -6,6 +6,20 @@ changing Monaco language services, assets, Preview/Experience, Source
 composition, dialog focus behavior, or accessibility gates. Current Workbench
 facts and target Studio responsibilities must be labeled separately.
 
+## Workbench Control Set
+
+Element Plus is the Workbench control set. Reach for it before hand-rolling markup and styling:
+
+- **Commands and links use `ElButton`**: `type="primary"` for the main action, `text`/`circle` for icon
+  commands, and `link type="primary"` for a link-styled command (page names that open a screen, breadcrumbs).
+  Reset only the deltas the screen needs — inline metrics, `--wb-accent` palette color, hover underline — and
+  keep the selector specific enough (`.block .item.el-button`) to beat `.el-button.is-text`.
+- **Raw `<button>` is reserved for composite widgets and foreign design systems**: `role="tab"`/`role="option"`
+  items, segmented controls, table rows that are one big click target, the designer's own
+  `mx-config-form-designer__*` icon buttons, and the 44px mobile dock. Those need ARIA roles or layout that
+  `ElButton`'s own spacing, height, and disabled styling would fight.
+- Never ship native `input`/`textarea`/`select`; the architecture gate fails on them.
+
 ## Workbench Stylesheet Ownership
 
 - `src/styles/index.css` is the synchronous cascade manifest used by the main
@@ -422,9 +436,11 @@ function chooseMobileAction(action: MobileAction): void {
 
 Required regression coverage:
 
-- Choosing Page Manager, Source, or another dialog workspace from the mobile action menu focuses the stable menu trigger
-  before the host event is emitted.
+- Choosing Source or another dialog workspace from the mobile action menu focuses the stable menu trigger before the host
+  event is emitted.
 - Closing the resulting dialog restores focus to that trigger, not `body` or an unmounted menu item.
+- Page management is a routed screen rather than a dialog; its focus contract belongs to the application-routing
+  scenario below.
 - Escape and pointer-close paths share the same restoration behavior.
 
 ---
@@ -636,3 +652,143 @@ instancesById[next.instanceId] = cloneWorkbenchJson(next.values)
 ```
 
 ---
+
+---
+## Scenario: Workbench Application Routing
+
+### 1. Scope / Trigger
+
+Apply this contract when changing the Workbench/Studio application shell, its route table, the URL ⇄ workspace
+synchronization, or any command that navigates between project management, page management, the form designer, and the
+creation workspaces.
+
+### 2. Signatures
+
+```ts
+createWorkbenchRouter(options?: { base?: string }): Router
+projectsPath(): string
+projectCreatePath(mode: 'json' | 'template'): string
+projectPagesPath(projectId: string): string
+pageCreatePath(projectId: string): string
+pageDesignPath(projectId: string, pageId: string): string
+readWorkbenchRouteTarget(route: Pick<RouteLocationNormalized, 'params'>): WorkbenchRouteTarget
+hasWorkbenchPage(document: WorkbenchPageSource, pageId: string): boolean
+useWorkbenchRouteSync(options: WorkbenchRouteSyncOptions): void
+useCreationReturnFocus(): void
+useWorkbenchManagementNav(): {
+  active: ComputedRef<WorkbenchManagementTarget | undefined>
+  select: (target: WorkbenchManagementTarget) => Promise<void>
+}
+```
+
+The hierarchy is **project › page › design**. A `pageId` segment carries the Surface id of any kind (page, dialog, or
+drawer), because page management lists all three kinds and they share one form designer.
+
+Route table (hash history, base defaults to `location.pathname`):
+
+| Path | Name | Screen |
+| --- | --- | --- |
+| `/` | — | redirect to `/projects` |
+| `/projects` | `projects` | project management, the first screen |
+| `/projects/new` | `project-create` | creation workspace, template mode, project target |
+| `/projects/import` | `project-import` | creation workspace, JSON mode, project target |
+| `/projects/:projectId/pages` | `project-pages` | page management of one project |
+| `/projects/:projectId/pages/new` | `page-create` | creation workspace, page target |
+| `/projects/:projectId/pages/:pageId/design` | `page-design` | the form designer of one page |
+| `/:pathMatch(.*)*` | — | redirect to `/projects` |
+
+`/projects/new` and `/projects/import` are two segments deep while every project-scoped path is at least three, so a
+static segment can never shadow a real project id. There is deliberately no project-level `design` route: the designer
+belongs to a page, and a URL must never read as "the project's designer".
+
+### 3. Contracts
+
+- Hash history is mandatory. The published artifact is served by a static host at a non-root base with no rewrite rule,
+  and `designer.html` must stay a byte-equivalent copy of `index.html`. `createWebHashHistory()` without an explicit
+  base resolves against `location.pathname`, so every published entry keeps working deep links.
+- The URL is the only owner of "which project and which page are open". `App.vue` provides the contexts and renders
+  `RouterView`; the removed local view flag must not come back.
+- There is no unconditional boot-time project. The route decides what is open, so the projects list stays a list.
+- Route → workspace: a project route opens exactly the project it names. A missing project returns to `/projects` with a
+  notice; a `pageId` the project no longer has returns to that project's page management with a notice.
+- Workspace → route: only the designer rewrites the URL, to the canonical `.../pages/:pageId/design` path. Page
+  management and page creation keep their own path while the same project stays open.
+- Project switching is refused while the open project has unsaved work or an unresolved configuration error. Navigation
+  inside the same project and navigation back to the projects list always pass.
+- The hierarchy stays walkable in both directions. Project management enters a project at its page list; page management
+  links back to project management and each row opens that page's designer; the designer links back to page management
+  and to project management.
+- Page management is a routed screen owned by `features/pages`, not an overlay: no `ElDialog` shell, and no
+  `pageManagerOpen`/`pageManagerLoaded` chrome state.
+- Project management and page management are **sibling consoles**, not one screen reached from the other. Both render the
+  shared `ManagementShell` rail, so either console is always one click away and the active one carries
+  `aria-current="page"`. Page management is the only console that needs a project, so its rail command opens the open
+  project, or the most recently updated project, and reports an empty workspace instead of failing silently. The
+  designer keeps its own chrome and does not render the rail.
+- Each console owns its own creation entry. Project management creates projects; page management creates pages. They are
+  different operations — creating a project replaces the active project and is not undoable, while creating a page is one
+  undoable command inside the current project — so page management must not offer a second project-creation entry.
+- Page management is a **browsing surface first**. Rows render the page name as text and the route as a link that opens
+  that page's designer; name and route only become editable fields after the row's edit command puts that row into edit
+  mode. Escape cancels an edit without emitting a command, and leaving the screen never leaves edits uncommitted.
+- Navigation stays a shell concern. Lazy features keep receiving commands and events and never import `vue-router`.
+- A creation route records its origin (`path` plus trigger key). Cancel returns to that origin and restores focus to
+  `[data-create-trigger="<key>"]`; success opens the created page's designer and focuses `[data-designer-entry]`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| URL names an unknown project | Notice, then `replace('/projects')` |
+| Page management is selected with an open project | Open that project's page list |
+| Page management is selected with no open project | Open the most recently updated project, then its page list |
+| Page management is selected in an empty workspace | Notice, stay on the projects list |
+| URL names a page the project no longer has | Notice, then `replace('/projects/:projectId/pages')` |
+| URL names a page the workspace just created but the snapshot lags behind | Trust the selected page and keep the URL |
+| Deep link resolves before the repository is ready | Wait for `initialized`, then reconcile once |
+| Open project is dirty and the target is another project | Abort the navigation, keep the URL, notify |
+| Target is the same project or `/projects` | Proceed |
+| Open project is closed from the workspace | `replace('/projects')` |
+| Creation cancelled | Return to the origin route and focus the recorded trigger |
+| Creation succeeded | Open the created page's designer and focus `[data-designer-entry]` |
+| A feature imports `vue-router` | Fail the architecture gate |
+
+### 5. Good / Base / Bad Cases
+
+- Good: `designer.html#/projects/<id>/pages/<pageId>/design` reopens the same project and page after a refresh or from a
+  shared link, and browser back returns to the previous screen.
+- Base: entering a project from the projects list pushes its page-management route; the projects screen itself never
+  opens a page.
+- Bad: keep a `view` ref beside the router, auto-open `projects[0]` on boot, hang the designer off a project-level
+  `design` path, canonicalize a page-management URL into a design URL, block navigation inside the same project because
+  a draft is dirty, or let a lazy feature navigate itself.
+
+### 6. Tests Required
+
+- Router unit tests cover the root and unknown redirects, one named route per screen, the page-scoped designer path,
+  path builders round-tripping through the table, malformed parameters, page existence, and the switch-guard matrix.
+- Route-sync tests cover deep-link opening, page management opening a project without selecting a page, an unknown
+  project, a removed page, a just-created page the snapshot has not published yet, the repository-ready wait, the
+  designer rewriting the URL for another page, refusal while dirty, and close-project fallback.
+- Shell tests mount `App` against the real route table with stub screens and prove one screen per deep link plus global
+  chrome persistence, while the architecture gate proves the URL owns the workspace and features never import the router.
+- Browser coverage walks project › page › design through the URL, proves both consoles are one rail click apart with the
+  active one marked, proves cancel and success focus restoration through the routed creation workspace, and proves page
+  management renders as a screen without a dialog shell.
+- The accessibility gate covers both management consoles at desktop and mobile widths, including the rail landmark.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+// Project-scoped designer: reads as "the project has a designer".
+{ path: '/projects/:projectId/design/:surfaceId', name: 'surface-design' }
+```
+
+Correct:
+
+```ts
+// Page-scoped designer: a project owns pages, and the designer belongs to a page.
+{ path: '/projects/:projectId/pages/:pageId/design', name: 'page-design' }
+```

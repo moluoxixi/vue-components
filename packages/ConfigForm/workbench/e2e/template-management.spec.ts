@@ -31,7 +31,7 @@ async function openPageCreation(page: Page): Promise<void> {
   }
   else {
     await page.locator('[data-create-trigger="topbar-mobile-menu"]').click()
-    await page.getByRole('menuitem', { name: 'New Surface', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'New page', exact: true }).click()
   }
   await expect(page.getByRole('main', { name: 'Create page' })).toBeVisible()
 }
@@ -128,6 +128,7 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const createdPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
   expect(createdPageNodeId).not.toBe(firstPageNodeId)
 
@@ -138,11 +139,11 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await page.getByRole('button', { name: 'Redo', exact: true }).click()
   await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
   await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  const pages = page.getByRole('dialog', { name: 'Surfaces' })
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
   await expect(pages.locator('.page-manager__row')).toHaveCount(2)
 })
 
-test('restores Topbar and Pages triggers on cancel and closes Pages after success', async ({ page }) => {
+test('restores Topbar and Pages triggers on cancel and leaves page management after success', async ({ page }) => {
   await openProjectCreation(page)
   await createProject(page, 'element')
   const topbarNewSurface = page.locator('[data-create-trigger="topbar-new-surface"]')
@@ -153,8 +154,8 @@ test('restores Topbar and Pages triggers on cancel and closes Pages after succes
 
   await page.getByRole('tab', { name: 'Surfaces' }).click()
   await page.getByRole('button', { name: 'Manage pages' }).click()
-  const pages = page.getByRole('dialog', { name: 'Surfaces' })
-  const newSurface = pages.getByRole('button', { name: 'New Surface', exact: true })
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const newSurface = pages.getByRole('button', { name: 'New page', exact: true })
   await newSurface.click()
 
   workspace = page.getByRole('main', { name: 'Create page' })
@@ -168,6 +169,62 @@ test('restores Topbar and Pages triggers on cancel and closes Pages after succes
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(pages).not.toBeVisible()
   await expect(page.locator('[data-designer-entry]')).toBeFocused()
+})
+
+test('walks the project, page, and design hierarchy through the URLs', async ({ page }) => {
+  await openProjectCreation(page)
+  await createProject(page, 'element')
+
+  // Creating a project opens the form designer of its home page.
+  await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages\/[^/]+\/design$/)
+  const projectId = page.url().match(/#\/projects\/([^/]+)\//)![1]
+
+  // The designer links up to page management (the desktop entry lives in the
+  // Surfaces panel; the topbar button is the mobile variant).
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+
+  // Rows browse first: the page name links to its designer, there is no route
+  // column, and no field is editable until the row's edit command is used.
+  await expect(pages.locator('[role="columnheader"]')).toHaveText(['Surface', 'Actions'])
+  await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
+  await expect(pages.locator('.page-manager__link').first()).toBeVisible()
+  await pages.getByRole('button', { name: /^Edit / }).first().click()
+  await expect(pages.locator('.page-manager__row input').first()).toBeVisible()
+  await expect(pages.locator('input[aria-label^="Surface name"]')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
+
+  // Both management consoles are one click apart, and the rail marks the active one.
+  const rail = page.getByRole('navigation', { name: 'Management' })
+  await expect(rail.getByRole('button', { name: 'Page management', exact: true })).toHaveAttribute('aria-current', 'page')
+  await rail.getByRole('button', { name: 'Projects', exact: true }).click()
+  const projects = page.getByRole('region', { name: 'Projects', exact: true })
+  await expect(projects).toBeVisible()
+  await expect(page).toHaveURL(/#\/projects$/)
+  await expect(rail.getByRole('button', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
+
+  // The rail reaches page management again without reopening the project by hand.
+  await rail.getByRole('button', { name: 'Page management', exact: true }).click()
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+
+  await pages.getByRole('button', { name: /^Open .* in the designer$/ }).first().click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages/[^/]+/design$`))
+
+  // The designer links back to project management as well.
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  await expect(projects).toBeVisible()
+  await expect(page).toHaveURL(/#\/projects$/)
+
+  // A project row enters that project's page management.
+  await projects.getByRole('button').first().click()
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 })
 
 test('keeps long Registry diagnostics and the create action visible at 390px', async ({ page }) => {

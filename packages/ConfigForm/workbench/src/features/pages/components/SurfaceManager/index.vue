@@ -3,10 +3,12 @@ import type { SurfaceManagerEmits, SurfaceManagerProps } from './types'
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUpRight,
+  Check,
   Copy,
   FilePlus2,
-  FolderPlus,
   Home,
+  Pencil,
   Search,
   SlidersHorizontal,
   Trash2,
@@ -25,6 +27,7 @@ const names = ref<Record<string, string>>({})
 const routes = ref<Record<string, string>>({})
 const pendingDeleteId = ref<string>()
 const editingPresentationId = ref<string>()
+const editingId = ref<string>()
 const locale = computed(() => createDesignerLocale(props.locale))
 
 const surfaces = computed(() => props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean))
@@ -34,7 +37,39 @@ watch(surfaces, (items) => {
   routes.value = Object.fromEntries(items.flatMap(surface => surface.kind === 'page' ? [[surface.id, surface.route]] : []))
   if (pendingDeleteId.value && !items.some(surface => surface.id === pendingDeleteId.value))
     pendingDeleteId.value = undefined
+  if (editingId.value && !items.some(surface => surface.id === editingId.value))
+    editingId.value = undefined
 }, { deep: true, immediate: true })
+
+/**
+ * Rows are read-only until a row is explicitly put into edit mode: the list is a
+ * browsing surface, and inline inputs on every row read as a bulk editor.
+ */
+function beginEdit(surfaceId: string): void {
+  if (editingId.value && editingId.value !== surfaceId)
+    finishEdit()
+  editingId.value = surfaceId
+}
+
+function finishEdit(): void {
+  const surfaceId = editingId.value
+  if (!surfaceId)
+    return
+  commitName(surfaceId)
+  commitRoute(surfaceId)
+  editingId.value = undefined
+}
+
+function cancelEdit(): void {
+  const surfaceId = editingId.value
+  const current = surfaceId ? props.project.surfacesById[surfaceId] : undefined
+  if (surfaceId && current) {
+    names.value[surfaceId] = current.name
+    if (current.kind === 'page')
+      routes.value[surfaceId] = current.route
+  }
+  editingId.value = undefined
+}
 
 const filteredSurfaces = computed(() => {
   const query = search.value.trim().toLocaleLowerCase()
@@ -95,10 +130,16 @@ function confirmDelete(): void {
   <section class="page-manager" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
       <div>
-        <span>{{ locale.t('pageManager.eyebrow', 'Project structure') }}</span>
-        <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Surfaces') }}</h2>
+        <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
+          <ElButton link type="primary" class="page-manager__breadcrumb-link" @click="emit('openProjects')">
+            {{ locale.t('pageManager.projects', 'Projects') }}
+          </ElButton>
+          <span aria-hidden="true">/</span>
+          <span class="page-manager__breadcrumb-current">{{ project.name }}</span>
+        </nav>
+        <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page management') }}</h2>
       </div>
-      <ElButton native-type="button" text circle :title="locale.t('pageManager.close', 'Close page manager')" :aria-label="locale.t('pageManager.close', 'Close page manager')" @click="emit('close')">
+      <ElButton native-type="button" text circle :title="locale.t('pageManager.back', 'Back to designer')" :aria-label="locale.t('pageManager.back', 'Back to designer')" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
       </ElButton>
     </header>
@@ -107,7 +148,7 @@ function confirmDelete(): void {
       <label>
         <span>{{ locale.t('pageManager.project', 'Project') }}</span>
         <ElSelect :model-value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Project')" append-to="#workbench-overlays" @change="selectProject">
-          <ElOption v-for="item in projects" :key="item.id" :value="item.id" :label="`${item.name} · ${locale.t('pageManager.surfaceCount', '{count} surfaces', { count: item.surfaceCount })}`" />
+          <ElOption v-for="item in projects" :key="item.id" :value="item.id" :label="`${item.name} · ${locale.t('pageManager.pageCount', '{count} pages', { count: item.surfaceCount })}`" />
         </ElSelect>
       </label>
       <label class="page-manager__search">
@@ -119,13 +160,9 @@ function confirmDelete(): void {
         </ElInput>
       </label>
       <div class="page-manager__create-actions">
-        <ElButton data-create-trigger="page-manager-new-project" native-type="button" :disabled="busy" @click="emit('createProject')">
-          <FolderPlus :size="16" aria-hidden="true" />
-          {{ locale.t('pageManager.newProject', 'New project') }}
-        </ElButton>
         <ElButton data-create-trigger="page-manager-new-surface" native-type="button" type="primary" :disabled="busy" @click="emit('createSurface')">
           <FilePlus2 :size="16" aria-hidden="true" />
-          {{ locale.t('pageManager.newSurface', 'New Surface') }}
+          {{ locale.t('pages.new', 'New page') }}
         </ElButton>
       </div>
     </div>
@@ -133,7 +170,6 @@ function confirmDelete(): void {
     <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
       <div class="page-manager__table-header" role="row">
         <span role="columnheader">{{ locale.t('pageManager.page', 'Surface') }}</span>
-        <span role="columnheader">{{ locale.t('pageManager.route', 'Route') }}</span>
         <span role="columnheader">{{ locale.t('pageManager.actions', 'Actions') }}</span>
       </div>
       <div
@@ -141,32 +177,73 @@ function confirmDelete(): void {
         :key="page.id"
         class="page-manager__row"
         role="row"
+        @keydown.esc="cancelEdit"
       >
-        <label role="cell">
+        <div class="page-manager__name-cell" role="cell">
           <span class="sr-only">{{ locale.t('pageManager.pageName', 'Surface name') }}</span>
-          <ElInput
-            v-model="names[page.id]"
-            size="small"
+          <template v-if="editingId === page.id">
+            <ElInput
+              v-model="names[page.id]"
+              size="small"
+              autofocus
+              :disabled="busy"
+              :aria-label="locale.t('pageManager.pageNameAria', 'Surface name for {name}', { name: page.name })"
+              @blur="commitName(page.id)"
+              @keydown.enter="handleTextKeydown"
+              @keydown.esc="cancelEdit"
+            />
+            <ElInput
+              v-if="page.kind === 'page'"
+              v-model="routes[page.id]"
+              class="page-manager__route-input"
+              size="small"
+              :disabled="busy"
+              :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
+              @blur="commitRoute(page.id)"
+              @keydown.enter="handleTextKeydown"
+              @keydown.esc="cancelEdit"
+            />
+          </template>
+          <ElButton
+            v-else
+            link
+            type="primary"
+            class="page-manager__link"
+            :title="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
+            :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
             :disabled="busy"
-            :aria-label="locale.t('pageManager.pageNameAria', 'Surface name for {name}', { name: page.name })"
-            @blur="commitName(page.id)"
-            @keydown="handleTextKeydown"
-          />
-          <small>{{ page.id }} · {{ page.kind }}</small>
-        </label>
-        <label role="cell">
-          <span class="sr-only">{{ locale.t('pageManager.route', 'Surface route') }}</span>
-          <ElInput
-            v-if="page.kind === 'page'"
-            v-model="routes[page.id]"
-            size="small"
-            :disabled="busy"
-            :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
-            @blur="commitRoute(page.id)"
-            @keydown="handleTextKeydown"
-          />
-        </label>
+            @click="emit('openPage', page.id)"
+          >
+            <span class="page-manager__link-label">{{ page.name }}</span>
+            <ArrowUpRight :size="13" aria-hidden="true" />
+          </ElButton>
+          <small>{{ page.id }} · {{ page.kind }}{{ page.kind === 'page' ? ` · ${page.route}` : '' }}</small>
+        </div>
         <div class="page-manager__actions" role="cell">
+          <ElButton
+            v-if="editingId !== page.id"
+            native-type="button"
+            text
+            circle
+            :title="locale.t('pageManager.edit', 'Edit page')"
+            :aria-label="locale.t('pageManager.editAria', 'Edit {name}', { name: page.name })"
+            :disabled="busy"
+            @click="beginEdit(page.id)"
+          >
+            <Pencil :size="15" aria-hidden="true" />
+          </ElButton>
+          <ElButton
+            v-else
+            native-type="button"
+            text
+            circle
+            :title="locale.t('pageManager.finish', 'Done')"
+            :aria-label="locale.t('pageManager.finishAria', 'Finish editing {name}', { name: page.name })"
+            :disabled="busy"
+            @click="finishEdit()"
+          >
+            <Check :size="15" aria-hidden="true" />
+          </ElButton>
           <ElButton
             native-type="button"
             text
@@ -235,7 +312,7 @@ function confirmDelete(): void {
 .page-manager {
   display: grid;
   width: 100%;
-  height: min(700px, calc(100vh - 104px));
+  min-height: 0;
   max-height: none;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
@@ -260,6 +337,28 @@ function confirmDelete(): void {
 
 .page-manager__header span,
 .page-manager__row small {
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.page-manager__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-manager__breadcrumb-link.el-button {
+  height: auto;
+  padding: 0;
+  color: var(--wb-accent);
+  font-size: 11px;
+}
+
+.page-manager__breadcrumb-link.el-button:hover {
+  text-decoration: underline;
+}
+
+.page-manager__breadcrumb-current {
   color: var(--wb-muted);
   font-size: 11px;
 }
@@ -315,7 +414,7 @@ function confirmDelete(): void {
 
 .page-manager__table-header,
 .page-manager__row {
-  grid-template-columns: minmax(190px, 1.15fr) minmax(170px, 1fr) 190px;
+  grid-template-columns: minmax(220px, 1fr) minmax(190px, auto);
   column-gap: 12px;
 }
 
@@ -341,6 +440,52 @@ function confirmDelete(): void {
 
 .page-manager__row label {
   min-width: 0;
+}
+
+.page-manager__row > [role="cell"] {
+  min-width: 0;
+}
+
+.page-manager__name-cell .page-manager__link.el-button {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.page-manager__route-input {
+  margin-top: 4px;
+}
+
+/* The page name is the page's online address, so it reads as a link rather than
+   as an always-editable field. Element Plus supplies the link button base; these
+   rules add the Workbench palette color, the underline, and the inline metrics.
+   Element Plus wraps slot content in one span, so the label row lives there. */
+.page-manager__link.el-button {
+  height: auto;
+  padding: 0;
+  color: var(--wb-accent);
+  font-size: 12px;
+}
+
+.page-manager__link.el-button > span {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-manager__link-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-manager__link.el-button:hover:not(.is-disabled) {
+  text-decoration: underline;
+}
+
+.page-manager__link.el-button.is-disabled {
+  color: var(--wb-muted);
 }
 
 .page-manager__row small {
@@ -411,7 +556,6 @@ function confirmDelete(): void {
 @media (max-width: 680px) {
   .page-manager {
     width: 100%;
-    height: calc(100vh - 49px);
     max-height: none;
   }
 

@@ -1,2 +1,2 @@
-export { default as SurfaceManagerDialog } from './index.vue'
+export { default as SurfaceManagerPage } from './index.vue'
 export type * from './types'

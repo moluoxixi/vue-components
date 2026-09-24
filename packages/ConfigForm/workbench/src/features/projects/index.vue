@@ -101,11 +101,11 @@ async function runAction(command: string, project: ProjectSummary): Promise<void
     <header class="project-manager__topbar">
       <div class="brand-lockup"><span>ConfigForm</span><strong>Studio</strong></div>
       <div class="project-manager__commands">
-        <ElButton native-type="button" @click="emit('create', 'json')">
+        <ElButton native-type="button" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
           <FileJson2 :size="16" aria-hidden="true" />
           {{ locale.t('projects.import', 'Import JSON') }}
         </ElButton>
-        <ElButton native-type="button" type="primary" data-project-create @click="emit('create', 'template')">
+        <ElButton native-type="button" type="primary" data-project-create data-create-trigger="project-manager-create" @click="emit('create', 'template')">
           <Plus :size="16" aria-hidden="true" />
           {{ locale.t('projects.create', 'New project') }}
         </ElButton>

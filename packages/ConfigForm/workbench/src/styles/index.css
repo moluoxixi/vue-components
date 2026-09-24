@@ -6,6 +6,7 @@
 @import url(../app/components/WorkbenchAppearancePanel/style/index.css);
 @import url(../app/components/WorkbenchAppearanceDrawer/style/index.css);
 @import url(../app/components/WorkbenchTopbar/style/index.css);
+@import url(../app/components/ManagementShell/style/index.css);
 @import url(../app/style/index.css);
 @import url(../app/components/PreviewDrawer/style/index.css);
 @import url(./studio.css);

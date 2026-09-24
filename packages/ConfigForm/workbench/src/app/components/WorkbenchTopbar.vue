@@ -105,11 +105,11 @@ function chooseExport(command: WorkbenchExportCommand): void {
           <FolderKanban :size="17" aria-hidden="true" />
         </ElButton>
       </WorkbenchCommandHint>
-      <WorkbenchCommandHint v-if="project" :label="locale.t('surfaces.manage', 'Manage Surfaces')">
+      <WorkbenchCommandHint v-if="project" :label="locale.t('pages.manage', 'Manage pages')">
         <ElButton
           native-type="button"
           class="mobile-page-manager-button"
-          :aria-label="locale.t('surfaces.manage', 'Manage Surfaces')"
+          :aria-label="locale.t('pages.manage', 'Manage pages')"
           circle
           @click="emit('openSurfaces')"
         >
@@ -119,10 +119,10 @@ function chooseExport(command: WorkbenchExportCommand): void {
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-        <WorkbenchCommandHint :label="locale.t('surfaces.new', 'New Surface')">
-          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('surfaces.new', 'New Surface')" :title="locale.t('surfaces.new', 'New Surface')" data-create-trigger="topbar-new-surface" @click="emit('newSurface', 'topbar-new-surface')">
+        <WorkbenchCommandHint :label="locale.t('pages.new', 'New page')">
+          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('pages.new', 'New page')" :title="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-surface" @click="emit('newSurface', 'topbar-new-surface')">
             <Plus :size="17" aria-hidden="true" />
-            <span class="topbar-command-label">{{ locale.t('surfaces.new', 'New Surface') }}</span>
+            <span class="topbar-command-label">{{ locale.t('pages.new', 'New page') }}</span>
           </ElButton>
         </WorkbenchCommandHint>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
@@ -209,8 +209,8 @@ function chooseExport(command: WorkbenchExportCommand): void {
               <ElDropdownItem v-if="project" class="topbar-status-item" disabled>
                 <span role="status">v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}</span>
               </ElDropdownItem>
-              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openSurfaces"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('surfaces.manage', 'Manage Surfaces') }}</span></ElDropdownItem>
-              <ElDropdownItem command="newSurface"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('surfaces.new', 'New Surface') }}</span></ElDropdownItem>
+              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openSurfaces"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
+              <ElDropdownItem command="newSurface"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></ElDropdownItem>
               <ElDropdownItem command="openAppearance"><Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span></ElDropdownItem>
             </ElDropdownMenu>

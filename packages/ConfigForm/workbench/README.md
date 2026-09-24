@@ -8,6 +8,20 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
 ## 当前实现
 
 - 组合公开的 Model、Compiler、Vue backend、Runtime、Designer 与 provider adapter。
+- 应用壳是真正的路由应用，层级为**项目 › 页面 › 表单设计器**：`/projects`（项目管理）、
+  `/projects/new|import`（新建项目）、`/projects/:projectId/pages`（页面管理）、
+  `/projects/:projectId/pages/new`（新建页面）、`/projects/:projectId/pages/:pageId/design`
+  （该页面的表单设计器）各自独立成路由。设计器属于页面而非项目，`pageId` 承载三类
+  Surface（page/dialog/drawer）的 id，页面管理同时列这三类。
+- **项目管理与页面管理是两个平级的管理台**，都渲染共享的 `ManagementShell` 侧边导航：
+  任一屏都能一键到达另一屏，当前屏带 `aria-current="page"`。页面管理是唯一需要项目的
+  管理台，它的导航命令会打开当前项目或最近更新的项目，工作区为空时给出提示而不是静默失败。
+  两个管理台各自只负责自己的创建入口：**项目管理创建项目，页面管理只创建页面**（新建项目
+  会切换当前项目且不可撤销，新建页面是当前项目内一条可撤销命令，因此不放在同一屏）。
+  设计器保留自己的外壳，不渲染该导航。
+- 哈希历史让刷新、分享链接和浏览器前进后退都能还原同一项目与同一页面；路由模块位于
+  `src/app/router`，URL 与工作区状态由 `useWorkbenchRouteSync` 双向同步，懒加载 features
+  仍只接收命令与事件、不直接依赖路由。
 - `ProjectDocument v8`、`SurfaceGraph v3`、RuleSet v2、Canonical IR v7、Compiler
   8.0.0、持久化、Experience Runtime Host、缓存和 Source generator 都以 Surface 为
   身份；Designer Inspector 提供 `properties`、`validation` 与 `interactions`。

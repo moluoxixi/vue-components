@@ -4,6 +4,9 @@ export interface SurfaceManagerEmits {
   action: [action: ProjectSurfaceAction]
   close: []
   createSurface: []
-  createProject: []
+  /** Open one page's form designer. */
+  openPage: [id: string]
   openProject: [id: string]
+  /** Leave page management for the projects list. */
+  openProjects: []
 }

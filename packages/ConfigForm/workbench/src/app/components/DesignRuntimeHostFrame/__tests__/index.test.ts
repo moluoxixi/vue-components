@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
-import { compileCanonicalSurface } from '@moluoxixi/config-form-compiler'
 import type { VueWrapper } from '@vue/test-utils'
+import { compileCanonicalSurface } from '@moluoxixi/config-form-compiler'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
@@ -9,8 +9,8 @@ import {
   RUNTIME_HOST_CHANNEL,
   RUNTIME_HOST_PROTOCOL_VERSION,
 } from '../../../../runtime-host'
-import DesignRuntimeHostFrame from '../index.vue'
 import { createCompilerFixture } from '../../../../runtime-host/__tests__/compiler-fixture'
+import DesignRuntimeHostFrame from '../index.vue'
 
 const hostId = '11111111-1111-4111-8111-111111111111'
 let mountedWrapper: VueWrapper | undefined

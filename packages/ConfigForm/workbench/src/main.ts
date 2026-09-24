@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import { createWorkbenchRouter } from './app/router'
 import '@moluoxixi/config-form-designer/design-surface/style'
 import './styles/index.css'
 
-createApp(App).mount('#app')
+createApp(App).use(createWorkbenchRouter()).mount('#app')

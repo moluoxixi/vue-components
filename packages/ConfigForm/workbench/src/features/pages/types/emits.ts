@@ -1,10 +1,12 @@
 import type { ProjectSurfaceAction } from '../../../project'
 
-export interface SurfaceManagerDialogEmits {
+export interface SurfaceManagerPageEmits {
+  action: [action: ProjectSurfaceAction]
   close: []
   createSurface: []
-  createProject: []
+  /** Open one page's form designer. */
+  openPage: [id: string]
   openProject: [id: string]
-  action: [action: ProjectSurfaceAction]
-  returnFocusRestored: []
+  /** Leave page management for the projects list. */
+  openProjects: []
 }
