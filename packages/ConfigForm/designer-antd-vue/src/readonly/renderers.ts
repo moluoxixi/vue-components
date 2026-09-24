@@ -1,8 +1,6 @@
 import type { DesignerReadonlyRenderContext } from '@moluoxixi/config-form-designer'
-import type { VNodeChild } from 'vue'
-import { h } from 'vue'
-import { normalizeAntdVueOptions, readAntdVueOptionSource } from '../options'
-import { AntdChoiceReadonlyContent } from './components'
+import { DESIGNER_OPTION_VALUE_TYPES } from '@moluoxixi/config-form-designer'
+import { normalizeAntdVueOptions } from '../options'
 
 export function renderAntdVueRawReadonly({ value }: DesignerReadonlyRenderContext): string {
   return formatReadonlyValue(value)
@@ -12,11 +10,11 @@ export function renderAntdVuePasswordReadonly({ value }: DesignerReadonlyRenderC
   return value == null || value === '' ? '' : '********'
 }
 
-export function renderAntdVueChoiceReadonly({ componentProps, value }: DesignerReadonlyRenderContext): VNodeChild {
-  const options = normalizeAntdVueOptions(Array.isArray(componentProps.options) ? componentProps.options : undefined)
-  const optionSource = readAntdVueOptionSource(componentProps.optionSource)
-  if (optionSource)
-    return h(AntdChoiceReadonlyContent, { value, options, optionSource })
+export function renderAntdVueChoiceReadonly({ componentProps, value }: DesignerReadonlyRenderContext): string {
+  const options = normalizeAntdVueOptions(
+    Array.isArray(componentProps.options) ? componentProps.options : undefined,
+    DESIGNER_OPTION_VALUE_TYPES,
+  )
   if (Array.isArray(value))
     return value.map(item => resolveOptionLabel(options, item)).join('、')
   return resolveOptionLabel(options, value)

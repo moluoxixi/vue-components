@@ -20,8 +20,9 @@ import type {
 
 const EMPTY_CHANGE_SET: ProjectChangeSet = Object.freeze({
   project: false,
-  pageIds: Object.freeze([]),
-  nodeIds: Object.freeze([]),
+  surfaceIds: Object.freeze([]),
+  datasetIds: Object.freeze([]),
+  resourceIds: Object.freeze([]),
   nodeChanges: Object.freeze([]),
 })
 
@@ -72,8 +73,9 @@ function identityFromSnapshot(snapshot: ProjectEditorSessionSnapshot): EditIdent
 function mergeChangeSets(left: ProjectChangeSet, right: ProjectChangeSet): ProjectChangeSet {
   return Object.freeze({
     project: left.project || right.project,
-    pageIds: Object.freeze([...new Set([...left.pageIds, ...right.pageIds])]),
-    nodeIds: Object.freeze([...new Set([...left.nodeIds, ...right.nodeIds])]),
+    surfaceIds: Object.freeze([...new Set([...left.surfaceIds, ...right.surfaceIds])]),
+    datasetIds: Object.freeze([...new Set([...left.datasetIds, ...right.datasetIds])]),
+    resourceIds: Object.freeze([...new Set([...left.resourceIds, ...right.resourceIds])]),
     nodeChanges: Object.freeze([...left.nodeChanges, ...right.nodeChanges]),
   })
 }
@@ -157,15 +159,36 @@ export function createProjectPersistenceSession(
     draftMaxTimer = clearTimer(draftMaxTimer)
   }
 
-  function draftCapture(): ProjectRecoveryDraftCapture {
-    const snapshot = editor.snapshot
+  async function draftCapture(
+    snapshot: ProjectEditorSessionSnapshot,
+    changeSet: ProjectChangeSet,
+  ): Promise<ProjectRecoveryDraftCapture> {
+    const embeddedResources = Object.values(snapshot.document.resources)
+      .filter(resource => resource.kind === 'embedded')
+      .sort((left, right) => left.id.localeCompare(right.id))
+    const embeddedContents = await Promise.all(embeddedResources.map(async (resource) => {
+      const bytes = await options.readEmbedded({
+        projectId,
+        resourceId: resource.id,
+        contentHash: resource.contentHash,
+      })
+      if (!bytes)
+        throw new Error(`Embedded Resource bytes are unavailable: ${resource.id}`)
+      return {
+        resourceId: resource.id,
+        contentHash: resource.contentHash,
+        bytes: new Uint8Array(bytes),
+      }
+    }))
     return {
+      version: 2,
       baseRepositoryRevision: snapshot.repositoryRevision,
-      changeSet: pendingChangeSet,
+      changeSet,
       contentHash: snapshot.contentHash,
       document: snapshot.document,
       draftId,
       editVersion: snapshot.editVersion,
+      embeddedContents,
       projectId,
       registryLock: snapshot.document.registryLock,
       sessionId,
@@ -176,12 +199,15 @@ export function createProjectPersistenceSession(
     clearDraftTimers()
     if (draftStore.persistence !== 'durable' || !editor.snapshot.dirty || (conflict && stopping))
       return draftQueue
-    const capture = draftCapture()
+    const capturedSnapshot = editor.snapshot
+    const capturedChangeSet = pendingChangeSet
+    const capturePromise = draftCapture(capturedSnapshot, capturedChangeSet)
     const sequence = editSequence
     draftCoverage = 'pending'
     publish()
     const write = draftQueue.then(async () => {
       try {
+        const capture = await capturePromise
         await draftStore.put(capture)
         durableDraftIdentity = { contentHash: capture.contentHash, editVersion: capture.editVersion }
         if (editSequence === sequence)

@@ -1,0 +1,6 @@
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"Source 公共 API、双输出、依赖白名单与真实 consumer 门禁"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"Tailwind 不进入持久化模型且 Raw/Binding 保持产品边界"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"主题、布局、Source parity 与当前版本合同"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"导出会话、源码弹窗、主题隔离和浏览器质量要求"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"样式后端单一实现与 emitter 复用边界"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Source 到 Workbench 导出会话的跨层数据流"}

@@ -11,6 +11,10 @@ import type {
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import { REGISTRY_CONTRACT_SNAPSHOT_VERSION } from '../constants'
 import { componentContractSchema, registryContractSnapshotSchema } from '../schemas'
+import { registryKeySchema, registryVersionSchema } from '../schemas/identity'
+import { registryLockFingerprint } from '../schemas/registry-identity'
+
+export { registryLockFingerprint } from '../schemas/registry-identity'
 
 export class ComponentContractRegistryError extends Error {
   readonly code: string
@@ -23,11 +27,31 @@ export class ComponentContractRegistryError extends Error {
   }
 }
 
+export function matchesResourceMediaType(
+  mediaType: string | undefined,
+  acceptedMediaTypes: readonly string[] | undefined,
+): boolean {
+  if (!acceptedMediaTypes)
+    return true
+  if (!mediaType)
+    return false
+  const actual = mediaType.split(';', 1)[0]!.trim().toLowerCase()
+  const [actualType] = actual.split('/', 1)
+  return acceptedMediaTypes.some((candidate) => {
+    const accepted = candidate.trim().toLowerCase()
+    return accepted === actual
+      || accepted === '*/*'
+      || (accepted.endsWith('/*') && accepted.slice(0, -2) === actualType)
+  })
+}
+
 export function createComponentContractRegistry(
   contracts: readonly ComponentContract[],
   options: CreateComponentContractRegistryOptions,
 ): ComponentContractRegistry {
-  if (!options.adapter.trim() || !options.version.trim()) {
+  const adapter = registryKeySchema.safeParse(options.adapter)
+  const version = registryVersionSchema.safeParse(options.version)
+  if (!adapter.success || !version.success) {
     throw new ComponentContractRegistryError(
       'MODEL_REGISTRY_IDENTITY_INVALID',
       'Component contract registries require non-empty adapter and version values.',
@@ -45,7 +69,7 @@ export function createComponentContractRegistry(
         `Invalid component contract ${input.key || '<unknown>'}${path}: ${issue?.message ?? 'invalid contract'}`,
       )
     }
-    const contract = structuredClone(result.data)
+    const contract = canonicalizeComponentContract(result.data)
     if (byKey.has(contract.key)) {
       throw new ComponentContractRegistryError(
         'MODEL_COMPONENT_CONTRACT_DUPLICATE',
@@ -53,13 +77,16 @@ export function createComponentContractRegistry(
       )
     }
     assertUniqueNames(contract.key, 'property', contract.props.map(item => item.key))
-    assertUniqueNames(contract.key, 'event', contract.events.map(item => item.name))
     assertUniqueNames(contract.key, 'binding', contract.bindings.map(item => item.name))
     assertUniqueNames(contract.key, 'slot', contract.slots.map(item => item.name))
-    if (contract.kind === 'field' && contract.slots.length > 0) {
+    assertUniqueNames(contract.key, 'semantic trigger', contract.semanticTriggers)
+    assertUniqueNames(contract.key, 'state projection property', contract.stateProjectionProperties.map(pathIdentity))
+    assertUniqueNames(contract.key, 'Dataset binding', contract.datasetBindings.map(item => item.key))
+    assertUniqueNames(contract.key, 'Resource binding', contract.resourceBindings.map(item => item.key))
+    if (contract.kind !== 'layout' && contract.slots.length > 0) {
       throw new ComponentContractRegistryError(
         'MODEL_COMPONENT_FIELD_SLOT_INVALID',
-        `Field component contracts cannot define slots: ${contract.key}`,
+        `Only layout component contracts can define slots: ${contract.key}`,
       )
     }
     byKey.set(contract.key, contract)
@@ -74,8 +101,8 @@ export function createComponentContractRegistry(
     },
   ]))
   const lock: RegistryLock = deepFreeze({
-    adapter: options.adapter,
-    version: options.version,
+    adapter: adapter.data,
+    version: version.data,
     fingerprint: registryLockFingerprint(componentLocks),
     components: componentLocks,
   })
@@ -177,7 +204,20 @@ export function createRegistryContractSnapshot(
 
 /** Parse and verify both registry-level and per-component semantic identities. */
 export function parseRegistryContractSnapshot(input: unknown): RegistryContractSnapshotParseResult {
-  const parsed = registryContractSnapshotSchema.safeParse(input)
+  let parsed: ReturnType<typeof registryContractSnapshotSchema.safeParse>
+  try {
+    parsed = registryContractSnapshotSchema.safeParse(input)
+  }
+  catch {
+    return {
+      success: false,
+      diagnostics: [{
+        code: 'MODEL_REGISTRY_SNAPSHOT_INVALID',
+        message: 'Registry snapshot structure cannot be inspected safely.',
+        path: [],
+      }],
+    }
+  }
   if (!parsed.success) {
     return {
       success: false,
@@ -286,14 +326,12 @@ function formatIssuePath(path: PropertyKey[]): string {
   ), '')
 }
 
-function contractFingerprint(contract: ComponentContract): string {
-  return `fnv1a:${getConfigFormJsonSemanticHash(contract)}`
+export function componentContractFingerprint(contract: ComponentContract): string {
+  return `fnv1a:${getConfigFormJsonSemanticHash(canonicalizeComponentContract(contract))}`
 }
 
-export function registryLockFingerprint(components: RegistryLock['components']): string {
-  const ordered = Object.fromEntries(Object.entries(components)
-    .sort(([left], [right]) => left.localeCompare(right)))
-  return `fnv1a:${getConfigFormJsonSemanticHash(ordered)}`
+function contractFingerprint(contract: ComponentContract): string {
+  return componentContractFingerprint(contract)
 }
 
 function freezeRegistrySnapshot(snapshot: RegistryContractSnapshot): RegistryContractSnapshot {
@@ -305,4 +343,19 @@ function deepFreeze<T>(value: T): T {
     return value
   Object.values(value).forEach(child => deepFreeze(child))
   return Object.freeze(value)
+}
+
+function canonicalizeComponentContract(contract: ComponentContract): ComponentContract {
+  const copy = structuredClone(contract)
+  copy.semanticTriggers.sort((left, right) => left.localeCompare(right))
+  copy.stateProjectionProperties.sort((left, right) => pathIdentity(left).localeCompare(pathIdentity(right)))
+  copy.datasetBindings.sort((left, right) => left.key.localeCompare(right.key))
+  copy.datasetBindings.forEach(binding => binding.projectionKinds.sort((left, right) => left.localeCompare(right)))
+  copy.resourceBindings.sort((left, right) => left.key.localeCompare(right.key))
+  copy.resourceBindings.forEach(binding => binding.mediaTypes?.sort((left, right) => left.localeCompare(right)))
+  return copy
+}
+
+function pathIdentity(path: readonly string[]): string {
+  return JSON.stringify(path)
 }

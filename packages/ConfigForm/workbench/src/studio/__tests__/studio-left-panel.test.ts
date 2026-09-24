@@ -8,7 +8,7 @@ import { nextTick } from 'vue'
 import { StudioLeftPanel } from '../../app'
 import {
   createProjectDocumentFixture,
-  duplicateProjectPage,
+  duplicateProjectSurface,
 } from '../../project/__tests__/fixtures'
 
 const registry = createDesignerRegistry({ materials: [{
@@ -25,13 +25,13 @@ const registry = createDesignerRegistry({ materials: [{
 
 function studioProject(): ProjectDocument {
   const base = createProjectDocumentFixture({ id: 'app' })
-  const pageA = duplicateProjectPage(base.pagesById[base.homePageId]!, 'page-a', 'Page A', '/a')
-  const pageB = duplicateProjectPage(pageA, 'page-b', 'Page B', '/b')
+  const pageA = duplicateProjectSurface(base.surfacesById[base.homeSurfaceId]!, 'page-a', 'Surface A', '/a')
+  const pageB = duplicateProjectSurface(pageA, 'page-b', 'Surface B', '/b')
   return createProjectDocumentFixture({
     id: 'app',
-    homePageId: pageA.id,
-    pageOrder: [pageA.id, pageB.id],
-    pagesById: { [pageA.id]: pageA, [pageB.id]: pageB },
+    homeSurfaceId: pageA.id,
+    surfaceOrder: [pageA.id, pageB.id],
+    surfacesById: { [pageA.id]: pageA, [pageB.id]: pageB },
   })
 }
 
@@ -52,7 +52,7 @@ describe('studio left panel', () => {
     const wrapper = mount(StudioLeftPanel, {
       props: {
         project,
-        currentPageId: 'page-a',
+        currentSurfaceId: 'page-a',
         form: {},
         layers: [],
         materials: registry.listMaterials(),
@@ -86,7 +86,7 @@ describe('studio left panel', () => {
     const wrapper = mount(StudioLeftPanel, {
       props: {
         project,
-        currentPageId: 'page-a',
+        currentSurfaceId: 'page-a',
         form: {},
         history: {
           entries: [{ id: 'rename', label: 'Rename field', editVersion: 1, timestamp: 1_000 }],
@@ -116,11 +116,11 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('arrangeLayer')).toEqual([['moveBefore', 'field']])
 
     await wrapper.get('[data-designer-left-tab="pages"]').trigger('click')
-    expect(wrapper.get('[data-page-id="page-a"]').text()).toContain('Page A')
+    expect(wrapper.get('[data-surface-id="page-a"]').text()).toContain('Surface A')
     await wrapper.findAll('.designer-pages button')[1]!.trigger('click')
     await wrapper.get('.manage-pages-button').trigger('click')
-    expect(wrapper.emitted('selectPage')).toEqual([['page-b']])
-    expect(wrapper.emitted('managePages')).toHaveLength(1)
+    expect(wrapper.emitted('selectSurface')).toEqual([['page-b']])
+    expect(wrapper.emitted('manageSurfaces')).toHaveLength(1)
 
     await wrapper.get('[data-designer-left-tab="history"]').trigger('click')
     expect(wrapper.get('.designer-history-list').text()).toContain('Rename field')
@@ -128,17 +128,20 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('jumpHistory')).toEqual([[0]])
   })
 
-  it('implements roving keyboard focus for the four views', async () => {
+  it('implements roving keyboard focus for every view and exposes the theme workspace', async () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
         project,
-        currentPageId: 'page-a',
+        currentSurfaceId: 'page-a',
         form: {},
         layers: [],
         materials: registry.listMaterials(),
         registry,
         selectedIds: [],
+      },
+      slots: {
+        theme: '<div data-project-theme-editor>Theme editor</div>',
       },
     })
 
@@ -148,11 +151,13 @@ describe('studio left panel', () => {
       'aria-label': 'Components',
       'title': 'Components',
     })
-    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(4)
+    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(5)
     componentTab.focus()
     await componentTab.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'ArrowRight', key: 'ArrowRight' }))
     await nextTick()
     expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="layers"]').element.closest('[role="tab"]'))
+    await wrapper.get('[data-designer-left-tab="theme"]').trigger('click')
+    expect(wrapper.get('[data-project-theme-editor]').text()).toBe('Theme editor')
     wrapper.unmount()
   })
 
@@ -161,7 +166,7 @@ describe('studio left panel', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPageId: 'page-a',
+        currentSurfaceId: 'page-a',
         form: {},
         layers: [
           { id: 'field-a', label: 'First', component: 'test.input', depth: 0, canMoveBefore: false, canMoveAfter: true, canIndent: false, canOutdent: false },
@@ -184,11 +189,11 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('arrangeLayer')?.at(-1)).toEqual(['outdent', 'field-b'])
 
     await wrapper.get('[data-designer-left-tab="pages"]').trigger('click')
-    const firstPage = wrapper.get('[data-page-id="page-a"]')
-    ;(firstPage.element as HTMLButtonElement).focus()
-    await firstPage.trigger('keydown', { key: 'ArrowDown' })
-    expect(document.activeElement?.getAttribute('data-page-id')).toBe('page-b')
-    expect(wrapper.emitted('selectPage')?.at(-1)).toEqual(['page-b'])
+    const firstSurface = wrapper.get('[data-surface-id="page-a"]')
+    ;(firstSurface.element as HTMLButtonElement).focus()
+    await firstSurface.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement?.getAttribute('data-surface-id')).toBe('page-b')
+    expect(wrapper.emitted('selectSurface')?.at(-1)).toEqual(['page-b'])
     wrapper.unmount()
   })
 
@@ -197,7 +202,7 @@ describe('studio left panel', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPageId: 'page-a',
+        currentSurfaceId: 'page-a',
         form: {},
         layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 0, canMoveBefore: false, canMoveAfter: true, canIndent: true, canOutdent: false }],
         materials: registry.listMaterials(),

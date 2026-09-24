@@ -1,26 +1,19 @@
 import type {
   ModelJsonObject,
   NodeSubgraph,
-  PageGraph,
   ProjectCommand,
   ProjectCommandAction,
   ProjectNodePatchKey,
   ProjectOperation,
-  RegisteredBinding,
-  RegisteredEventAction,
+  PrototypeInteraction,
+  SurfaceGraph,
+  SurfaceNode,
+  SurfaceNodeSettings,
 } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
+import { resolveDesignerOptionValidationBase } from '../../options'
+import { assertDesignerSetterPathAllowed } from './setter-path'
 
-const NODE_PATCH_KEYS = new Set<ProjectNodePatchKey>([
-  'conditions',
-  'defaultValue',
-  'extensions',
-  'field',
-  'label',
-  'reactions',
-  'validateOn',
-  'validation',
-])
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
 
 export function createDesignerCommandId(prefix = 'design'): string {
@@ -45,70 +38,44 @@ export function createOperationCommand(
 }
 
 export function createInsertCommand(
-  pageId: string,
+  surfaceId: string,
   subgraph: NodeSubgraph,
   target: DesignerDropTarget,
   options: { id?: string, label?: string } = {},
 ): ProjectCommand {
   return createOperationCommand(
     options.label ?? 'Insert component',
-    [{ type: 'node.insert', pageId, subgraph, target }],
+    [{ type: 'node.insert', surfaceId, subgraph, target }],
     { id: options.id },
   )
 }
 
 export function createMoveCommand(
-  pageId: string,
+  surfaceId: string,
   nodeId: string,
   target: DesignerDropTarget,
   options: { id?: string, label?: string } = {},
 ): ProjectCommand {
   return createOperationCommand(
     options.label ?? 'Move component',
-    [{ type: 'node.move', pageId, nodeId, target }],
+    [{ type: 'node.move', surfaceId, nodeId, target }],
     { id: options.id },
   )
 }
 
-export function createRemoveCommand(pageId: string, nodeIds: string[]): ProjectCommand {
+export function createRemoveCommand(surfaceId: string, nodeIds: string[]): ProjectCommand {
   return createOperationCommand(
     nodeIds.length === 1 ? 'Remove component' : 'Remove components',
-    nodeIds.map(nodeId => ({ type: 'node.remove', pageId, nodeId })),
+    nodeIds.map(nodeId => ({ type: 'node.remove', surfaceId, nodeId })),
   )
 }
 
-export function createStoredConfigRemovalCommand(
-  pageId: string,
-  nodeId: string,
-  path: string[],
-): ProjectCommand {
-  const [property, key, ...extra] = path
-  const recordProperties = new Set(['bindings', 'conditions', 'events'])
-  const fieldProperties = new Set(['validation', 'validateOn'])
-  if (
-    !property
-    || extra.length > 0
-    || (recordProperties.has(property) && !key)
-    || (fieldProperties.has(property) && key !== undefined)
-    || (!recordProperties.has(property) && !fieldProperties.has(property))
-  ) {
-    throw new TypeError('DESIGN_STORED_CONFIG_PATH_INVALID: Stored configuration removal requires one exact supported path.')
-  }
-  return createOperationCommand('Remove stored configuration', [{
-    type: 'node.config.remove',
-    pageId,
-    nodeId,
-    property: property as 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn',
-    ...(key === undefined ? {} : { key }),
-  }])
-}
-
-export function createResizeCommand(pageId: string, nodeId: string, span: number | null): ProjectCommand {
+export function createResizeCommand(surfaceId: string, nodeId: string, span: number | null): ProjectCommand {
   return {
     id: createDesignerCommandId('resize'),
     label: 'Resize component',
-    mergeKey: `resize:${pageId}:${nodeId}`,
-    actions: [{ type: 'node.resize', pageId, nodeId, span }],
+    mergeKey: `resize:${surfaceId}:${nodeId}`,
+    actions: [{ type: 'node.resize', surfaceId, nodeId, span }],
   }
 }
 
@@ -141,26 +108,108 @@ function assignPath(root: ModelJsonObject, path: string[], value: unknown): Mode
   return next
 }
 
+function optionValues(value: unknown): Array<string | number | boolean> {
+  if (!Array.isArray(value))
+    return []
+  return value.flatMap((option) => {
+    if (typeof option !== 'object' || option === null || Array.isArray(option))
+      return []
+    const optionValue = (option as Record<string, unknown>).value
+    return typeof optionValue === 'string'
+      || typeof optionValue === 'boolean'
+      || (typeof optionValue === 'number' && Number.isFinite(optionValue))
+      ? [optionValue]
+      : []
+  })
+}
+
+function optionValueExists(
+  values: readonly (string | number | boolean)[],
+  value: unknown,
+): boolean {
+  return values.some(candidate => Object.is(candidate, value))
+}
+
+export function doesDesignerOptionUpdateClearDefaultValue(
+  node: SurfaceNode,
+  path: readonly string[],
+  value: unknown,
+): boolean {
+  if (node.kind !== 'field'
+    || node.defaultValue === undefined
+    || path.length !== 2
+    || path[0] !== 'props'
+    || path[1] !== 'options') {
+    return false
+  }
+  const values = optionValues(value)
+  return Array.isArray(node.defaultValue)
+    ? node.defaultValue.some(item => !optionValueExists(values, item))
+    : !optionValueExists(values, node.defaultValue)
+}
+
+export function countDesignerOptionDefaultClears(
+  graph: SurfaceGraph,
+  nodeIds: readonly string[],
+  path: readonly string[],
+  value: unknown,
+): number {
+  return nodeIds.reduce((count, nodeId) => {
+    const node = graph.nodesById[nodeId]
+    return count + (node && doesDesignerOptionUpdateClearDefaultValue(node, path, value) ? 1 : 0)
+  }, 0)
+}
+
+function fieldSettingsForOptionUpdate(
+  node: Extract<SurfaceNode, { kind: 'field' }>,
+  path: readonly string[],
+  value: unknown,
+): SurfaceNodeSettings | undefined {
+  const clearDefaultValue = doesDesignerOptionUpdateClearDefaultValue(node, path, value)
+  const updateValidation = path.length === 2
+    && path[0] === 'props'
+    && path[1] === 'options'
+    && (node.validation?.base.type === 'enum' || node.validation?.base.type === 'literal')
+  if (!clearDefaultValue && !updateValidation)
+    return undefined
+  const {
+    id: _id,
+    props: _props,
+    ...settings
+  } = node
+  const next = structuredClone(settings)
+  if (clearDefaultValue)
+    delete next.defaultValue
+  if (updateValidation) {
+    const base = resolveDesignerOptionValidationBase(value)
+    if (base)
+      next.validation = { ...structuredClone(node.validation!), base }
+    else
+      delete next.validation
+  }
+  return next
+}
+
 export function createNodePathCommand(
-  graph: PageGraph,
-  pageId: string,
+  graph: SurfaceGraph,
+  surfaceId: string,
   nodeIds: string[],
   path: string[],
   value: unknown,
 ): ProjectCommand {
   if (nodeIds.length === 0)
     throw new TypeError('DESIGN_SELECTION_EMPTY: A property update requires at least one node.')
+  assertDesignerSetterPathAllowed(path)
   const [rootKey, ...nestedPath] = path
-  if (!rootKey || UNSAFE_PATH_SEGMENTS.has(rootKey))
-    throw new TypeError('DESIGN_PROPERTY_PATH_INVALID: Property paths must contain safe non-empty segments.')
+  const writableRoot = rootKey!
 
-  if (rootKey === 'span') {
+  if (writableRoot === 'span') {
     const span = value === undefined || value === null ? null : Number(value)
     return {
       id: createDesignerCommandId('resize'),
       label: nodeIds.length === 1 ? 'Resize component' : 'Resize components',
-      mergeKey: `resize:${pageId}:${[...nodeIds].sort().join(',')}`,
-      actions: nodeIds.map(nodeId => ({ type: 'node.resize', pageId, nodeId, span })),
+      mergeKey: `resize:${surfaceId}:${[...nodeIds].sort().join(',')}`,
+      actions: nodeIds.map(nodeId => ({ type: 'node.resize', surfaceId, nodeId, span })),
     }
   }
 
@@ -168,65 +217,45 @@ export function createNodePathCommand(
     const node = graph.nodesById[nodeId]
     if (!node)
       throw new TypeError(`DESIGN_NODE_UNKNOWN: Node does not exist: ${nodeId}`)
-    if (rootKey === 'props') {
+    if (writableRoot === 'props') {
       const props = nestedPath.length === 0
         ? cloneRecord(value as ModelJsonObject | undefined)
         : assignPath(node.props, nestedPath, value)
-      return { type: 'operation.apply', operations: [{ type: 'node.props', pageId, nodeId, props }] }
-    }
-    if (rootKey === 'events') {
-      const events = nestedPath.length === 0
-        ? structuredClone((value ?? {}) as Record<string, RegisteredEventAction[]>)
-        : assignPath(node.events as ModelJsonObject, nestedPath, value) as Record<string, RegisteredEventAction[]>
-      return { type: 'operation.apply', operations: [{ type: 'node.events', pageId, nodeId, events }] }
-    }
-    if (rootKey === 'bindings') {
-      const bindings = nestedPath.length === 0
-        ? structuredClone((value ?? {}) as Record<string, RegisteredBinding>)
-        : assignPath(node.bindings as ModelJsonObject, nestedPath, value) as Record<string, RegisteredBinding>
-      return { type: 'operation.apply', operations: [{ type: 'node.bindings', pageId, nodeId, bindings }] }
-    }
-    if (!NODE_PATCH_KEYS.has(rootKey as ProjectNodePatchKey))
-      throw new TypeError(`DESIGN_PROPERTY_UNSUPPORTED: Unsupported node property: ${rootKey}`)
-
-    if (nestedPath.length === 0) {
-      return {
-        type: 'node.patch',
-        pageId,
-        nodeId,
-        patch: value === undefined
-          ? { unset: [rootKey as ProjectNodePatchKey] }
-          : { set: { [rootKey]: structuredClone(value) } },
+      const operations: ProjectOperation[] = [{ type: 'node.props', surfaceId, nodeId, props }]
+      const settings = node.kind === 'field'
+        ? fieldSettingsForOptionUpdate(node, path, value)
+        : undefined
+      if (settings) {
+        operations.push({
+          type: 'node.settings',
+          surfaceId,
+          nodeId,
+          settings,
+        })
       }
+      return { type: 'operation.apply', operations }
     }
-
-    const current = (node as unknown as Record<string, unknown>)[rootKey]
-    const nested = assignPath(
-      typeof current === 'object' && current !== null && !Array.isArray(current)
-        ? current as ModelJsonObject
-        : {},
-      nestedPath,
-      value,
-    )
     return {
       type: 'node.patch',
-      pageId,
+      surfaceId,
       nodeId,
-      patch: { set: { [rootKey]: nested } },
+      patch: value === undefined
+        ? { unset: [writableRoot as ProjectNodePatchKey] }
+        : { set: { [writableRoot]: structuredClone(value) } },
     }
   })
 
   return {
     id: createDesignerCommandId('property'),
     label: nodeIds.length === 1 ? 'Update component' : 'Update components',
-    mergeKey: `property:${pageId}:${[...nodeIds].sort().join(',')}:${path.join('.')}`,
+    mergeKey: `property:${surfaceId}:${[...nodeIds].sort().join(',')}:${path.join('.')}`,
     actions,
   }
 }
 
 export function createFormCommand(
-  graph: PageGraph,
-  pageId: string,
+  graph: SurfaceGraph,
+  surfaceId: string,
   changes: Record<string, unknown>,
 ): ProjectCommand {
   const form = structuredClone(graph.form) as Record<string, unknown>
@@ -237,8 +266,19 @@ export function createFormCommand(
       form[key] = structuredClone(value)
   })
   return createOperationCommand('Update form', [{
-    type: 'page.form',
-    pageId,
+    type: 'surface.form',
+    surfaceId,
     form,
-  }], { mergeKey: `form:${pageId}:${Object.keys(changes).sort().join(',')}` })
+  }], { mergeKey: `form:${surfaceId}:${Object.keys(changes).sort().join(',')}` })
+}
+
+export function createSurfaceInteractionsCommand(
+  surfaceId: string,
+  interactions: readonly PrototypeInteraction[],
+): ProjectCommand {
+  return createOperationCommand('Update interactions', [{
+    type: 'surface.interactions',
+    surfaceId,
+    interactions: structuredClone(interactions) as PrototypeInteraction[],
+  }])
 }

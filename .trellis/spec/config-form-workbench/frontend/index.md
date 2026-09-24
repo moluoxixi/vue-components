@@ -10,10 +10,14 @@ repository-wide directory contract.
 | Guide | Description | Status |
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
-| [Quality Contracts](./quality-guidelines.md) | Monaco Vue SFC services, dialog focus restoration, and accessibility gates | Ready |
+| [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Current Workbench status, target Studio ownership, Preview/Source, and removed event domain | Ready |
+| [Studio Domain Contracts](../../config-form/frontend/studio-domain-contracts.md) | Assets, Experience session, Dataset, Source resolver, versions, and diagnostics | Current contract |
+| [Quality Contracts](./quality-guidelines.md) | Monaco Vue SFC services, JSON value boundaries, dialog focus restoration, and accessibility gates | Ready |
 
 ## Pre-Development Checklist
 
 - Read the repository directory contract before adding or moving a Workbench feature.
-- Read the quality contracts before changing Monaco, menus/dialogs, themes, or accessibility tests.
+- Read the ConfigForm product boundary before changing Preview, Source, transport, or Designer composition.
+- Read the Studio domain contract before changing assets, persistence, Dataset authoring, Experience, Runtime Host, import/export, or Source composition.
+- Read the quality contracts before changing Monaco, reactive JSON cloning, polymorphic editor values, menus/dialogs, themes, or accessibility tests.
 - Run the validation commands named by the relevant contract.

@@ -4,7 +4,7 @@ import type {
   ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { ConfigFormRuntimeEventPayload } from './contracts'
+import type { ConfigFormSurfaceRuntimeDataSourceStateChange } from '../../runtime'
 
 export interface ConfigFormRendererEmits<TValues extends ConfigFormValues = ConfigFormValues> {
   (event: 'change', values: TValues): void
@@ -12,6 +12,7 @@ export interface ConfigFormRendererEmits<TValues extends ConfigFormValues = Conf
   (event: 'errorsChange', errors: ConfigFormErrors): void
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
   (event: 'metaChange', meta: ConfigFormMeta): void
-  (event: 'runtimeEvent', context: ConfigFormRuntimeEventPayload<TValues>): void
+  (event: 'variablesChange', variables: Readonly<Record<string, unknown>>): void
+  (event: 'dataSourceStateChange', change: ConfigFormSurfaceRuntimeDataSourceStateChange): void
   (event: 'submit', values: TValues): void
 }

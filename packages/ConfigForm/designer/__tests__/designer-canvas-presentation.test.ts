@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
-import type { PageGraph } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import { resolve } from 'node:path'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { compile } from 'sass'
 import { describe, expect, it, vi } from 'vitest'
@@ -21,15 +22,15 @@ const registry = createDesignerRegistry({ materials: [{
   createNode: ({ id, field = 'input' }) => ({ id, field, kind: 'field', component: 'test.input' }),
 }] })
 
-const emptyGraph: PageGraph = {
-  version: 2,
+const emptyGraph: SurfaceGraph = {
+  version: SURFACE_GRAPH_VERSION,
   form: {},
   props: {},
   root: [],
   nodesById: {},
 }
 
-const populatedGraph: PageGraph = {
+const populatedGraph: SurfaceGraph = {
   ...emptyGraph,
   root: [{ nodeId: 'field', placement: {} }],
   nodesById: {
@@ -39,18 +40,17 @@ const populatedGraph: PageGraph = {
       kind: 'field',
       field: 'field',
       props: {},
-      events: {},
-      bindings: {},
+      datasetBindings: {},
     },
   },
 }
 
-function mountCanvas(graph: PageGraph = emptyGraph) {
+function mountCanvas(graph: SurfaceGraph = emptyGraph) {
   return mount(DesignerCanvas, {
     props: {
       candidatePreview: () => undefined,
       graph,
-      pageId: 'home',
+      surfaceId: 'home',
       registry,
     },
     slots: {

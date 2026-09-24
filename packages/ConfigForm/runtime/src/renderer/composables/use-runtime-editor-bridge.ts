@@ -1,8 +1,8 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererNode,
   ConfigFormRendererProps,
-  ConfigFormRuntimeEventContext,
   ConfigFormRuntimeNodeMetadata,
 } from '../types'
 import type { RuntimeEditorBridgeState } from '../types/internal'
@@ -54,6 +54,7 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
   function createNodeMetadata(
     node: ConfigFormRendererNode<TValues>,
     path: string,
+    scope: ConfigFormScopePath,
     slot?: string,
   ): ConfigFormRuntimeNodeMetadata<TValues> {
     const metadata = createRuntimeNodeMetadata(
@@ -61,6 +62,7 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
       path,
       isConfigFormField(node) ? 'field' : 'component',
       props.mode ?? 'preview',
+      scope,
       slot,
     )
     const state = ensureEditorBridge()?.readState?.(metadata)
@@ -111,29 +113,11 @@ export function useRuntimeEditorBridge<TValues extends ConfigFormValues>(
     })
   }
 
-  function shouldInterceptEditorEvent(
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    event: string,
-    args: unknown[],
-  ): boolean {
-    if (props.mode !== 'design')
-      return false
-
-    const context: ConfigFormRuntimeEventContext<TValues> = {
-      args,
-      event,
-      metadata,
-    }
-    const decision = ensureEditorBridge()?.interceptEvent?.(context)
-    return decision !== false
-  }
-
   onBeforeUnmount(cleanupRegistrations)
 
   return {
     createNodeMetadata,
     nodeMetadataAttrs,
     registerNodeElement,
-    shouldInterceptEditorEvent,
   }
 }

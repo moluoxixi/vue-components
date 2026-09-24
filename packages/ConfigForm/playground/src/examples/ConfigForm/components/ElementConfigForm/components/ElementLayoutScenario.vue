@@ -18,7 +18,23 @@ const inlineModel = shallowRef<ElementKnownValues>(createElementKnownValues('inl
 const gridModel = shallowRef<ElementKnownValues>(createElementKnownValues('grid'))
 const inlineSubmitted = shallowRef<Partial<ElementKnownValues>>({})
 const gridSubmitted = shallowRef<Partial<ElementKnownValues>>({})
-const inlineFields = createElementKnownFields('element-inline', true, defineField)
+const codeListenerCalls = shallowRef(0)
+const inlineFields = [
+  ...createElementKnownFields('element-inline', true, defineField),
+  defineField({
+    cellAttrs: {},
+    component: ElButton,
+    id: 'element-code-listener',
+    props: {
+      'data-testid': 'element-code-listener',
+      'nativeType': 'button',
+      'onClick': () => codeListenerCalls.value += 1,
+      'type': 'default',
+    },
+    slots: { default: () => '调用代码监听器' },
+    span: 24,
+  }),
+]
 const gridFields = createElementKnownFields('element-grid', true, defineField)
 const submittedText = computed(() => JSON.stringify({
   grid: gridSubmitted.value,
@@ -89,6 +105,9 @@ const gridModelPort = createConfigFormModel(gridModel)
     </ElementConfigForm>
 
     <pre class="config-form-demo__preview" data-testid="element-layout-preview">{{ submittedText }}</pre>
+    <output data-testid="element-code-listener-count" aria-label="Code listener invocations" aria-live="polite">
+      {{ codeListenerCalls }}
+    </output>
     <ElementStressScenario />
   </section>
 </template>

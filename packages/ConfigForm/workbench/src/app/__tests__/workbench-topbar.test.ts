@@ -7,7 +7,7 @@ import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
 import { WorkbenchCommandHint, WorkbenchTopbar } from '../components'
 
 const project = createProjectDocumentFixture({ id: 'app', name: 'Account app' })
-const currentPage = project.pagesById[project.homePageId]!
+const currentSurface = project.surfacesById[project.homeSurfaceId]!
 
 function overlayRoot(): DOMWrapper<Element> {
   return new DOMWrapper(document.getElementById('workbench-overlays')!)
@@ -25,7 +25,7 @@ describe('workbench topbar', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPage,
+        currentSurface,
         localeId: 'en-US',
         paletteFamily: 'ink',
         statusLabel: 'Saved locally',
@@ -38,14 +38,29 @@ describe('workbench topbar', () => {
     await trigger.trigger('click')
     const overlays = overlayRoot()
     const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
-    expect(items).toHaveLength(2)
+    expect(items).toHaveLength(4)
     expect(overlays.find('[data-export-menu]').exists()).toBe(true)
-    expect(items.map(item => item.text())).toEqual(['Export source', 'Export config'])
+    expect(items.map(item => item.text())).toEqual([
+      'Export raw Vue source',
+      'Export ConfigForm bindings',
+      'Export project JSON',
+      'Export current Surface JSON',
+    ])
     expect(trigger.attributes('aria-haspopup')).toBe('menu')
     expect(items.every(item => item.attributes('role') === 'menuitem')).toBe(true)
     await items[1]!.trigger('click')
     expect(wrapper.emitted('export')).toEqual([['config']])
     expect(overlays.get('[data-export-menu]').isVisible()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+
+    await trigger.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[2]!.trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json']])
+    expect(document.activeElement).toBe(trigger.element)
+
+    await trigger.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[3]!.trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json'], ['surface-json']])
     expect(document.activeElement).toBe(trigger.element)
 
     await trigger.trigger('click')
@@ -60,7 +75,7 @@ describe('workbench topbar', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPage,
+        currentSurface,
         dirty: true,
         localeId: 'en-US',
         paletteFamily: 'ink',
@@ -87,35 +102,13 @@ describe('workbench topbar', () => {
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[2]!.trigger('click')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
-    await wrapper.get('[data-create-trigger="topbar-new-page"]').trigger('click')
+    await wrapper.get('[data-create-trigger="topbar-new-surface"]').trigger('click')
     expect(wrapper.get('button[aria-label="Open appearance settings"]')).toBeDefined()
     expect(wrapper.emitted('save')).toHaveLength(1)
     expect(wrapper.emitted('createCheckpoint')).toHaveLength(1)
     expect(wrapper.emitted('openVersions')).toHaveLength(1)
     expect(wrapper.emitted('togglePreview')).toHaveLength(1)
-    expect(wrapper.emitted('newPage')).toEqual([['topbar-new-page']])
-    wrapper.unmount()
-  })
-
-  it('does not expose a global flow workspace action', async () => {
-    const wrapper = mount(WorkbenchTopbar, {
-      attachTo: document.body,
-      props: {
-        project,
-        currentPage,
-        localeId: 'en-US',
-        paletteFamily: 'ink',
-        statusLabel: 'Saved locally',
-        themePreference: 'system',
-      },
-    })
-
-    const trigger = wrapper.get('button[aria-label="More actions"]')
-    await trigger.trigger('click')
-    expect(overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').some(
-      item => item.text().includes('Event flow orchestration'),
-    )).toBe(false)
-    expect(wrapper.emitted('openFlow')).toBeUndefined()
+    expect(wrapper.emitted('newSurface')).toEqual([['topbar-new-surface']])
     wrapper.unmount()
   })
 
@@ -125,7 +118,7 @@ describe('workbench topbar', () => {
       props: {
         project,
         busy: true,
-        currentPage,
+        currentSurface,
         localeId: 'en-US',
         paletteFamily: 'ink',
         repositoryRevision: 7,
@@ -135,7 +128,7 @@ describe('workbench topbar', () => {
     })
 
     const commandHints = wrapper.findAllComponents(WorkbenchCommandHint)
-    expect(commandHints).toHaveLength(4)
+    expect(commandHints).toHaveLength(5)
     expect(commandHints.every(hint => Boolean(hint.props('label')))).toBe(true)
     const save = wrapper.get('button[aria-label^="Save options"]')
     expect(save.attributes('aria-disabled')).toBe('true')
@@ -156,7 +149,7 @@ describe('workbench topbar', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPage,
+        currentSurface,
         localeId: 'en-US',
         paletteFamily: 'ink',
         statusLabel: 'Saved locally',
@@ -165,14 +158,14 @@ describe('workbench topbar', () => {
     })
 
     try {
-      const flow = wrapper.get('button[aria-label="New page"]')
-      ;(flow.element as HTMLButtonElement).focus()
+      const newSurfaceButton = wrapper.get('button[aria-label="New page"]')
+      ;(newSurfaceButton.element as HTMLButtonElement).focus()
       await vi.advanceTimersByTimeAsync(400)
       await nextTick()
       const tooltip = overlayRoot().get('.workbench-command-tooltip')
       expect(tooltip.text()).toBe('New page')
       expect(tooltip.attributes('role')).toBe('tooltip')
-      expect(flow.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
+      expect(newSurfaceButton.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
     }
     finally {
       wrapper.unmount()
@@ -186,7 +179,7 @@ describe('workbench topbar', () => {
       attachTo: document.body,
       props: {
         project,
-        currentPage,
+        currentSurface,
         localeId: 'en-US',
         paletteFamily: 'glass',
         statusLabel: 'Saved locally',

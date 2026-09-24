@@ -2,8 +2,8 @@ import type {
   ConfigFormRendererField,
   ConfigFormRendererNode,
   ConfigFormResponsiveLayout,
+  ConfigFormSurfaceRuntimePlan,
 } from '@moluoxixi/config-form'
-import type { ConfigFormReactionCondition } from '@moluoxixi/config-form-core'
 import type {
   CompiledRuleSet,
   RuleCompileContext,
@@ -11,30 +11,78 @@ import type {
   RuleSet,
 } from '@moluoxixi/zod3-to-rule'
 import type {
+  CanonicalRuntimeElementNode,
   CanonicalRuntimeFieldNode,
   CanonicalRuntimeNode,
-  CanonicalRuntimePage,
-  CompileCanonicalPageRuntimeInput,
+  CanonicalRuntimeSurface,
+  CompileCanonicalSurfaceRuntimeInput,
   VueRuntimeBindingResolver,
   VueRuntimeCompileResult,
   VueRuntimeComponentBinding,
   VueRuntimeDiagnostic,
   VueRuntimeRendererConfig,
 } from '../types'
-import { evaluateConfigFormReactionCondition } from '@moluoxixi/config-form-core'
-import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
+import {
+  CANONICAL_PROJECT_IR_VERSION,
+  CONFIG_FORM_COMPILER_VERSION,
+  hasOnlyCurrentCanonicalSurfaceKeys,
+} from '@moluoxixi/config-form-compiler'
+import { queryDatasetView } from '@moluoxixi/config-form-model'
+import {
+  compileRules,
+  parseRuleSet,
+  RuleCompileError,
+  rulesToZod,
+} from '@moluoxixi/zod3-to-rule'
 import { getRuntimeNodeFragmentCache } from '../state'
 import { createVueRuntimeDiagnostic, hasVueRuntimeErrors } from '../utils'
 
-type CanonicalRuntimeCondition = NonNullable<
-  NonNullable<CanonicalRuntimeNode['conditions']>[keyof NonNullable<CanonicalRuntimeNode['conditions']>]
->
+function compilationContractDiagnostics(
+  compilation: CompileCanonicalSurfaceRuntimeInput['compilation'],
+): VueRuntimeDiagnostic[] {
+  const surfaceScoped = 'surface' in compilation
+  const irVersion = surfaceScoped ? compilation.key.irVersion : compilation.ir.version
+  const diagnostics: VueRuntimeDiagnostic[] = []
+  if (irVersion !== CANONICAL_PROJECT_IR_VERSION) {
+    diagnostics.push(createVueRuntimeDiagnostic(
+      'VUE_RUNTIME_IR_VERSION_UNSUPPORTED',
+      `Unsupported Canonical IR version: ${String(irVersion)}. Expected ${CANONICAL_PROJECT_IR_VERSION}.`,
+      surfaceScoped ? ['key', 'irVersion'] : ['ir', 'version'],
+    ))
+  }
 
-function compileCondition(condition: CanonicalRuntimeCondition) {
-  const executable = structuredClone(condition) as ConfigFormReactionCondition
-  return (values: Record<string, unknown>): boolean => (
-    evaluateConfigFormReactionCondition(executable, values)
-  )
+  const compilerVersions = [
+    { path: ['key', 'compilerVersion'], value: compilation.key.compilerVersion },
+    ...(!surfaceScoped
+      ? [{ path: ['ir', 'identity', 'compilerVersion'], value: compilation.ir.identity.compilerVersion }]
+      : []),
+  ]
+  for (const { path, value } of compilerVersions) {
+    if (value !== CONFIG_FORM_COMPILER_VERSION) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED',
+        `Unsupported compiler version: ${String(value)}. Expected ${CONFIG_FORM_COMPILER_VERSION}.`,
+        path,
+      ))
+    }
+  }
+
+  const surfaces = surfaceScoped
+    ? [{ surface: compilation.surface, path: ['surface'] }]
+    : Object.entries(compilation.ir.surfacesById).map(([surfaceId, surface]) => ({
+        surface,
+        path: ['ir', 'surfacesById', surfaceId],
+      }))
+  for (const { surface, path } of surfaces) {
+    if (!hasOnlyCurrentCanonicalSurfaceKeys(surface)) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED',
+        'Canonical Surface contains fields outside the current IR contract.',
+        path,
+      ))
+    }
+  }
+  return diagnostics
 }
 
 function createRuleContext(
@@ -66,20 +114,30 @@ function ruleDiagnostic(
   )
 }
 
+interface CompiledFieldValidation {
+  compiled: CompiledRuleSet
+  ruleSet: RuleSet
+}
+
 function compileValidation(
   node: CanonicalRuntimeFieldNode,
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
-): CompiledRuleSet | undefined {
+): CompiledFieldValidation | undefined {
   if (!node.validation)
     return undefined
 
-  const ruleSet = structuredClone(node.validation) as RuleSet
+  const parsed = parseRuleSet(structuredClone(node.validation))
+  if (!parsed.success) {
+    diagnostics.push(...parsed.diagnostics.map(item => ruleDiagnostic(item, path, node.id)))
+    return undefined
+  }
+  const ruleSet = parsed.data
   try {
     const compiled = compileRules(ruleSet, createRuleContext(ruleSet, resolver))
     diagnostics.push(...compiled.diagnostics.map(item => ruleDiagnostic(item, path, node.id)))
-    return compiled
+    return { compiled, ruleSet }
   }
   catch (error) {
     if (!(error instanceof RuleCompileError))
@@ -89,38 +147,23 @@ function compileValidation(
   }
 }
 
-function diagnoseDefaultRules(
+function diagnoseDefaultBase(
   node: CanonicalRuntimeFieldNode,
   path: Array<string | number>,
-  validation: CompiledRuleSet | undefined,
+  validation: CompiledFieldValidation | undefined,
   diagnostics: VueRuntimeDiagnostic[],
 ): void {
-  if (node.defaultValue === undefined)
+  if (node.defaultValue === undefined || !validation)
     return
 
-  const required = node.validation?.rules.some(rule => rule.kind === 'required')
-    || (node.conditions?.required?.kind === 'literal' && node.conditions.required.value)
-  if (node.defaultValue === null && required) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_DEFAULT_REQUIRED_NULL',
-      'A required field cannot use null as its default value.',
-      [...path, 'defaultValue'],
-      node.id,
-    ))
-    return
-  }
-
-  if (!node.validation || !validation)
-    return
-
-  const candidate = node.validation.base.type === 'date' && typeof node.defaultValue === 'string'
-    ? new Date(node.defaultValue)
-    : node.defaultValue
-  const result = validation.schema.safeParse(candidate)
+  const result = rulesToZod({
+    ...validation.ruleSet,
+    rules: [],
+  }).safeParse(node.defaultValue)
   if (!result.success) {
     diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_DEFAULT_RULE_INVALID',
-      result.error.issues[0]?.message ?? 'Default value does not satisfy the field rules.',
+      'VUE_RUNTIME_DEFAULT_BASE_INVALID',
+      result.error.issues[0]?.message ?? 'Default value does not satisfy the field base type.',
       [...path, 'defaultValue'],
       node.id,
     ))
@@ -129,71 +172,82 @@ function diagnoseDefaultRules(
 
 function cloneNodeMetadata(
   node: CanonicalRuntimeNode,
-  runtimeFlowEvents: readonly string[] = [],
 ): Record<string, unknown> | undefined {
-  const lowCodeMetadata = {
-    ...(Object.keys(node.events).length > 0 ? { events: structuredClone(node.events) } : {}),
-    ...(Object.keys(node.bindings).length > 0 ? { bindings: structuredClone(node.bindings) } : {}),
-    ...(runtimeFlowEvents.length > 0 ? { flowEvents: [...runtimeFlowEvents] } : {}),
-  }
-  const extensions = {
-    ...(node.extensions ? structuredClone(node.extensions) : {}),
-    ...(Object.keys(lowCodeMetadata).length > 0 ? { 'mx.low-code': lowCodeMetadata } : {}),
-  }
+  if (!node.extensions)
+    return undefined
+  const extensions = structuredClone(node.extensions) as Record<string, unknown>
   return Object.keys(extensions).length > 0 ? extensions : undefined
 }
 
 function compileNodeBase(
   node: CanonicalRuntimeNode,
   binding: VueRuntimeComponentBinding,
-  runtimeFlowEvents?: readonly string[],
-) {
+  datasetsById: CompileDatasets,
+  path: Array<string | number>,
+  diagnostics: VueRuntimeDiagnostic[],
+): Record<string, unknown> {
   const span = node.placement.props.span
-  const extensions = cloneNodeMetadata(node, runtimeFlowEvents)
+  const extensions = cloneNodeMetadata(node)
+  const props = structuredClone(node.props) as Record<string, unknown>
+  for (const [bindingKey, reference] of Object.entries(node.datasetBindings ?? {})) {
+    const dataset = datasetsById[reference.datasetId]
+    if (!dataset) {
+      diagnostics.push(createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_DATASET_UNKNOWN',
+        `Dataset binding references an unavailable Dataset: ${reference.datasetId}.`,
+        [...path, 'datasetBindings', bindingKey, 'datasetId'],
+        node.id,
+      ))
+      continue
+    }
+    const projected = queryDatasetView(dataset, reference.projection, reference.query)
+    if (!projected.success) {
+      diagnostics.push(...projected.diagnostics.map(item => createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_DATASET_PROJECTION_INVALID',
+        item.message,
+        ['datasetsById', reference.datasetId, ...(item.path ?? [])],
+        node.id,
+      )))
+      continue
+    }
+    props[bindingKey] = structuredClone(projected.data.items)
+    props[`${bindingKey}Total`] = projected.data.total
+  }
   return {
     id: node.id,
     component: binding.component,
-    props: structuredClone(node.props) as Record<string, unknown>,
+    props,
+    ...(binding.semanticEvents ? { semanticEvents: { ...binding.semanticEvents } } : {}),
     ...(extensions ? { extensions } : {}),
-    ...(node.reactions
-      ? { reactions: structuredClone(node.reactions) as ConfigFormRendererNode['reactions'] }
-      : {}),
     ...(typeof span === 'number' ? { span } : {}),
-    ...(node.conditions?.visible ? { visible: compileCondition(node.conditions.visible) } : {}),
-    ...(node.conditions?.hidden ? { hidden: compileCondition(node.conditions.hidden) } : {}),
   }
 }
 
 function compileField(
   node: CanonicalRuntimeFieldNode,
   binding: VueRuntimeComponentBinding,
+  datasetsById: CompileDatasets,
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
-  runtimeFlowEvents?: readonly string[],
 ): ConfigFormRendererField {
-  const validation = compileValidation(node, path, resolver, diagnostics)
-  diagnoseDefaultRules(node, path, validation, diagnostics)
-  const required = node.conditions?.required
-    ? compileCondition(node.conditions.required)
-    : validation?.required
-
+  const validationResult = compileValidation(node, path, resolver, diagnostics)
+  diagnoseDefaultBase(node, path, validationResult, diagnostics)
+  const validation = validationResult?.compiled
   return {
-    ...compileNodeBase(node, binding, runtimeFlowEvents),
+    ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined
       ? {}
       : { defaultValue: structuredClone(node.defaultValue) }),
     validateOn: [...node.validateOn],
-    ...(required === undefined ? {} : { required }),
-    ...(validation?.requiredMessage === undefined
+    ...(node.required === undefined ? {} : { required: node.required }),
+    ...(node.requiredMessage === undefined
       ? {}
-      : { requiredMessage: validation.requiredMessage }),
+      : { requiredMessage: node.requiredMessage }),
     ...(validation ? { schema: validation.schema } : {}),
     ...(validation?.validator ? { validator: validation.validator } : {}),
-    ...(node.conditions?.disabled ? { disabled: compileCondition(node.conditions.disabled) } : {}),
-    ...(node.conditions?.readonly ? { readonly: compileCondition(node.conditions.readonly) } : {}),
     ...(binding.valueProp ? { valueProp: binding.valueProp } : {}),
     ...(binding.trigger ? { trigger: binding.trigger } : {}),
     ...(binding.blurTrigger ? { blurTrigger: binding.blurTrigger } : {}),
@@ -208,11 +262,24 @@ function compileField(
         }
       : {}),
     ...(binding.getValueFromEvent ? { getValueFromEvent: binding.getValueFromEvent } : {}),
-  }
+  } as ConfigFormRendererField
 }
 
+function compileElement(
+  node: CanonicalRuntimeElementNode,
+  binding: VueRuntimeComponentBinding,
+  datasetsById: CompileDatasets,
+  path: Array<string | number>,
+  diagnostics: VueRuntimeDiagnostic[],
+): ConfigFormRendererNode {
+  return compileNodeBase(node, binding, datasetsById, path, diagnostics) as unknown as ConfigFormRendererNode
+}
+
+type CompileDatasets = Readonly<Record<string, Parameters<typeof queryDatasetView>[0]>>
+
 function compileNode(
-  page: CanonicalRuntimePage,
+  surface: CanonicalRuntimeSurface,
+  datasetsById: CompileDatasets,
   nodeId: string,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
@@ -220,11 +287,11 @@ function compileNode(
   ancestors: ReadonlySet<string>,
 ): ConfigFormRendererNode | undefined {
   const path = ['nodesById', nodeId]
-  const node = page.nodesById[nodeId]
+  const node = surface.nodesById[nodeId]
   if (!node) {
     diagnostics.push(createVueRuntimeDiagnostic(
       'VUE_RUNTIME_IR_NODE_UNKNOWN',
-      `Canonical page references an unknown node: ${nodeId}`,
+      `Canonical Surface references an unknown node: ${nodeId}`,
       path,
       nodeId,
     ))
@@ -233,7 +300,7 @@ function compileNode(
   if (ancestors.has(nodeId)) {
     diagnostics.push(createVueRuntimeDiagnostic(
       'VUE_RUNTIME_IR_CYCLE',
-      `Canonical page contains a node cycle at ${nodeId}.`,
+      `Canonical Surface contains a node cycle at ${nodeId}.`,
       path,
       nodeId,
     ))
@@ -251,16 +318,15 @@ function compileNode(
     ))
     return undefined
   }
-  const nodeFlowEvents = node.flowEvents
-  const flowEventsKey = (nodeFlowEvents ?? []).join('\u0000')
+
   const fragmentCache = getRuntimeNodeFragmentCache(resolver)
-  const cached = fragmentCache.get(node as object)
-  if (cached && cached.flowEventsKey === flowEventsKey) {
+  const cacheable = Object.keys(datasetsById).length === 0
+  const cached = cacheable ? fragmentCache.get(node as object) : undefined
+  if (cached) {
     diagnostics.push(...cached.diagnostics)
     return cached.node
   }
   const diagnosticStart = diagnostics.length
-
   const binding = resolver.resolveBinding(node.component)
   if (!binding) {
     diagnostics.push(createVueRuntimeDiagnostic(
@@ -293,53 +359,65 @@ function compileNode(
     return undefined
   }
 
+  let compiled: ConfigFormRendererNode
   if (node.kind === 'field') {
-    const compiled = compileField(node, binding, path, resolver, diagnostics, nodeFlowEvents)
-    if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
-      fragmentCache.set(node as object, {
-        diagnostics: diagnostics.slice(diagnosticStart),
-        flowEventsKey,
-        node: compiled,
-      })
-    }
-    return compiled
+    compiled = compileField(node, binding, datasetsById, path, resolver, diagnostics)
+  }
+  else if (node.kind === 'element') {
+    compiled = compileElement(node, binding, datasetsById, path, diagnostics)
+  }
+  else {
+    const nextAncestors = new Set(ancestors)
+    nextAncestors.add(node.id)
+    compiled = {
+      ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
+      ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
+      slots: Object.fromEntries(Object.entries(node.slots).map(([slotName, childIds]) => [
+        slotName,
+        childIds.flatMap((childId) => {
+          const child = compileNode(surface, datasetsById, childId, resolver, diagnostics, {
+            parentId: node.id,
+            slot: slotName,
+          }, nextAncestors)
+          return child ? [child] : []
+        }),
+      ])),
+    } as unknown as ConfigFormRendererNode
   }
 
-  const nextAncestors = new Set(ancestors)
-  nextAncestors.add(nodeId)
-  const slots = Object.fromEntries(Object.entries(node.slots).map(([slotName, childIds]) => [
-    slotName,
-    childIds.flatMap((childId) => {
-      const child = compileNode(page, childId, resolver, diagnostics, {
-        parentId: node.id,
-        slot: slotName,
-      }, nextAncestors)
-      return child ? [child] : []
-    }),
-  ]))
-  const compiled = {
-    ...compileNodeBase(node, binding, nodeFlowEvents),
-    slots,
-  }
-  if (!hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
+  if (cacheable && !hasVueRuntimeErrors(diagnostics.slice(diagnosticStart))) {
     fragmentCache.set(node as object, {
       diagnostics: diagnostics.slice(diagnosticStart),
-      flowEventsKey,
       node: compiled,
     })
   }
   return compiled
 }
 
+function surfaceRuntimePlan(surface: CanonicalRuntimeSurface): ConfigFormSurfaceRuntimePlan {
+  return Object.freeze({
+    optionBindings: Object.freeze([]),
+    runtime: Object.freeze({
+      dataSources: Object.freeze([]),
+      variables: Object.freeze([]),
+    }),
+    valueSchema: Object.freeze({
+      scopedFields: Object.freeze(structuredClone(surface.scopedFields)),
+      valueScopes: Object.freeze(structuredClone(surface.valueScopes)),
+    }),
+  })
+}
+
 function rendererConfig(
-  page: CanonicalRuntimePage,
+  surface: CanonicalRuntimeSurface,
   fields: ConfigFormRendererNode[],
   resolver: VueRuntimeBindingResolver,
 ): VueRuntimeRendererConfig {
-  const form = page.form
+  const form = surface.form
   return {
     ...(resolver.components ? { components: resolver.components } : {}),
     fields,
+    plan: surfaceRuntimePlan(surface),
     ...(form.readonly === undefined ? {} : { readonly: form.readonly }),
     ...(form.inline === undefined ? {} : { inline: form.inline }),
     ...(form.columns === undefined ? {} : { columns: form.columns }),
@@ -353,39 +431,50 @@ function rendererConfig(
   }
 }
 
-/** Bind framework-neutral Canonical IR to the shared Vue renderer contract. */
-export function compileCanonicalPageRuntime(
-  input: CompileCanonicalPageRuntimeInput,
+/** Bind framework-neutral Canonical Surface IR to the shared Vue renderer contract. */
+export function compileCanonicalSurfaceRuntime(
+  input: CompileCanonicalSurfaceRuntimeInput,
   resolver: VueRuntimeBindingResolver,
 ): VueRuntimeCompileResult {
   const { compilation } = input
-  const pageScoped = 'page' in compilation
-  const pageId = pageScoped ? compilation.key.pageId : input.pageId
-  if (!pageId) {
+  const contractDiagnostics = compilationContractDiagnostics(compilation)
+  if (contractDiagnostics.length > 0)
+    return { success: false, diagnostics: contractDiagnostics }
+
+  const surfaceScoped = 'surface' in compilation
+  const surfaceId = surfaceScoped ? compilation.key.surfaceId : input.surfaceId
+  if (!surfaceId) {
     return {
       success: false,
       diagnostics: [createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_PAGE_ID_REQUIRED',
-        'ProjectCompilation runtime input requires a page id.',
-        ['pageId'],
-      )],
-    }
-  }
-  const page = pageScoped ? compilation.page : compilation.ir.pagesById[pageId]
-  if (!page) {
-    return {
-      success: false,
-      diagnostics: [createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_IR_PAGE_UNKNOWN',
-        `Canonical project does not contain page: ${pageId}`,
-        ['pagesById', pageId],
+        'VUE_RUNTIME_SURFACE_ID_REQUIRED',
+        'ProjectCompilation runtime input requires a surface id.',
+        ['surfaceId'],
       )],
     }
   }
 
+  const surface = (surfaceScoped
+    ? compilation.surface
+    : compilation.ir.surfacesById[surfaceId]) as unknown as CanonicalRuntimeSurface | undefined
+  if (!surface) {
+    return {
+      success: false,
+      diagnostics: [createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_SURFACE_UNKNOWN',
+        `Canonical project does not contain Surface: ${surfaceId}`,
+        ['surfacesById', surfaceId],
+      )],
+    }
+  }
+
+  const datasetsById = surfaceScoped
+    ? compilation.datasetsById
+    : compilation.ir.datasetsById
+
   const diagnostics: VueRuntimeDiagnostic[] = []
-  const fields = page.rootIds.flatMap((nodeId) => {
-    const compiled = compileNode(page, nodeId, resolver, diagnostics, {
+  const fields = surface.rootIds.flatMap((nodeId) => {
+    const compiled = compileNode(surface, datasetsById, nodeId, resolver, diagnostics, {
       parentId: null,
       slot: null,
     }, new Set())
@@ -395,12 +484,17 @@ export function compileCanonicalPageRuntime(
     return { success: false, diagnostics }
 
   const compilationKey = Object.freeze({ ...compilation.key })
-  const plan = Object.freeze({
-    renderer: rendererConfig(page, fields, resolver),
-  })
+  const renderer = Object.freeze(rendererConfig(surface, fields, resolver))
+  const artifact = {
+    compilationKey,
+    surfaceId: surface.id,
+    kind: surface.kind,
+    ...(surface.kind === 'page' ? {} : { presentation: structuredClone(surface.presentation) }),
+    renderer,
+  }
   return {
     success: true,
-    artifact: Object.freeze({ compilationKey, pageId: page.id, plan }),
+    artifact: Object.freeze(artifact),
     diagnostics,
   }
 }

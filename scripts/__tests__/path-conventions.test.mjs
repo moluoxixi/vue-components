@@ -36,6 +36,8 @@ const declarationFinalizerPackages = [
   '@moluoxixi/config-form-headless',
   '@moluoxixi/config-form-plugin-antd-vue',
   '@moluoxixi/config-form-plugin-element-plus',
+  '@moluoxixi/config-form-prototype-runtime',
+  '@moluoxixi/config-form-source',
   '@moluoxixi/config-form-vue-backend',
   '@moluoxixi/hooks',
   '@moluoxixi/i18n-tool',

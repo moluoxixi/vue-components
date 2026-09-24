@@ -1,7 +1,8 @@
 import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
+import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { expect, test } from '@playwright/test'
-import { createProject, setAppearance } from './helpers'
+import { createProject, readDownloadText, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -13,28 +14,33 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 
 async function exportJson(
   page: import('@playwright/test').Page,
-  scope: 'page' | 'project',
+  scope: 'project' | 'surface',
 ): Promise<string> {
   await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export config' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Config model' })
-  await dialog.getByRole('tab', { name: 'JSON' }).click()
-  if (scope === 'page')
-    await dialog.locator('.config-json-scope .el-segmented__item').filter({ hasText: 'Current page' }).click()
-  const source = await dialog.locator('.config-json-view').textContent()
-  await dialog.getByRole('button', { name: 'Close export' }).click()
-  return source ?? ''
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', {
+      name: scope === 'project' ? 'Export project JSON' : 'Export current Surface JSON',
+      exact: true,
+    }).click(),
+  ])
+  expect(download.suggestedFilename()).toMatch(
+    scope === 'project' ? /\.project\.json$/ : /\.surface\.json$/,
+  )
+  return readDownloadText(download)
 }
 
 async function openProjectCreation(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
-  await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  await page.getByRole('dialog', { name: 'Pages' }).getByRole('button', { name: 'New project' }).click()
+  // Project creation is a project-management action: page management only creates pages.
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Projects', exact: true })).toBeVisible()
+  // The command lives in the project-management topbar, not in the list region.
+  await page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).click()
   await expect(page.getByRole('main', { name: 'Create project' })).toBeVisible()
 }
 
-async function openPageCreation(page: import('@playwright/test').Page): Promise<void> {
-  await page.locator('[data-create-trigger="topbar-new-page"]').click()
+async function openSurfaceCreation(page: import('@playwright/test').Page): Promise<void> {
+  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
   await expect(page.getByRole('main', { name: 'Create page' })).toBeVisible()
 }
 
@@ -62,11 +68,18 @@ test.beforeEach(async ({ page }) => {
 
 test('round-trips an Element Plus Project JSON export through paste and isolated preview', async ({ page }) => {
   await createProject(page, 'element')
-  await setAppearance(page, 'dark', 'rose-pine')
+  await setAppearance(page, 'dark', 'ink')
   await expect(page.locator('.workbench-topbar .revision-state')).toContainText(/v0 · /)
   const source = await exportJson(page, 'project')
   const exportedProject = JSON.parse(source)
-  expect(exportedProject).toMatchObject({ version: 4, registryLock: { adapter: 'element-plus' } })
+  expect(exportedProject).toMatchObject({
+    kind: 'config-form-project',
+    version: 1,
+    document: {
+      version: PROJECT_DOCUMENT_VERSION,
+      registryLock: { adapter: 'element-plus' },
+    },
+  })
   expect(JSON.stringify(exportedProject)).not.toMatch(/"(?:appearance|paletteFamily|resolvedTheme|themePreference)"/)
   await openProjectCreation(page)
   const workspace = page.getByRole('main', { name: 'Create project' })
@@ -76,11 +89,11 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
 
   await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
   await expect(workspace.getByText('Project version', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('v4', { exact: true })).toBeVisible()
-  await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+  await expect(workspace.getByText(`v${PROJECT_DOCUMENT_VERSION}`, { exact: true })).toBeVisible()
+  await expect(workspace.locator('iframe[data-design-runtime-host]')).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const axe = await new AxeBuilder({ page })
-    .exclude('iframe[data-preview-runtime-host]')
+    .exclude('iframe[data-design-runtime-host]')
     .withTags(['wcag2a', 'wcag2aa'])
     .analyze()
   expect(axe.violations).toEqual([])
@@ -91,26 +104,33 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
   await expect(page.locator('[data-material-key="element.input"]')).toBeEnabled()
 })
 
-test('imports an Ant Design Vue Page JSON file as one undoable command', async ({ page }) => {
+test('imports an Ant Design Vue Surface JSON file as one undoable command', async ({ page }) => {
   await createProject(page, 'antd')
   const runtime = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
   const originalNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
-  const source = await exportJson(page, 'page')
-  expect(JSON.parse(source)).toMatchObject({
-    kind: 'config-form-page',
+  const source = await exportJson(page, 'surface')
+  const exportedSurface = JSON.parse(source)
+  expect(exportedSurface).toMatchObject({
+    kind: 'config-form-surface',
     version: 1,
-    page: { graph: { version: 2 } },
+    rootSurfaceId: expect.any(String),
+    surfaceOrder: [expect.any(String)],
   })
-  await openPageCreation(page)
+  expect(exportedSurface.surfacesById[exportedSurface.rootSurfaceId]).toMatchObject({
+    graph: { version: SURFACE_GRAPH_VERSION },
+  })
+  exportedSurface.surfacesById[exportedSurface.rootSurfaceId].route = '/imported-profile'
+  const importSource = JSON.stringify(exportedSurface)
+  await openSurfaceCreation(page)
   const workspace = page.getByRole('main', { name: 'Create page' })
   await chooseJsonImport(workspace)
   await workspace.locator('.json-import-source .el-segmented__item').filter({ hasText: 'JSON file' }).click()
   await workspace.locator('input[type="file"]').setInputFiles({
-    name: 'profile.page.json',
+    name: 'profile.surface.json',
     mimeType: 'application/json',
-    buffer: Buffer.from(source),
+    buffer: Buffer.from(importSource),
   })
-  await expect(workspace.getByText('profile.page.json', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('profile.surface.json', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Analyze JSON' }).click()
   await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create imported page' }).click()
@@ -127,7 +147,9 @@ for (const viewport of [
 ]) {
   test(`keeps invalid diagnostics localized and usable at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
+    await page.getByRole('button', { name: 'Import JSON', exact: true }).click()
     let workspace = page.getByRole('main', { name: 'Create project' })
+    await expect(workspace).toBeVisible()
     await chooseJsonImport(workspace)
     await workspace.getByRole('textbox', { name: 'Config Model JSON' }).fill('{')
     await workspace.getByRole('button', { name: 'Analyze JSON' }).click()

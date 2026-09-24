@@ -1,7 +1,21 @@
-import type { WorkspaceFile } from '../../types'
-import type { DownloadWorkspaceFileInput, WorkspaceArchiveInput } from '../types'
+import type {
+  ProjectTransferEnvelopeV1,
+  SurfaceTransferEnvelopeV1,
+} from '@moluoxixi/config-form-model'
+import type { SourceFile } from '@moluoxixi/config-form-source/generator'
+import type {
+  DownloadProjectTransferInput,
+  DownloadSourceFileInput,
+  DownloadSurfaceTransferInput,
+  SourceArchiveInput,
+} from '../types'
+import {
+  createProjectTransferDocument,
+  createSurfaceTransferDocument,
+} from '../../import'
 import { safeProjectSlug } from '../../utils'
-import { createWorkspaceArchive } from './archive'
+import { createSourceArchive } from './archive'
+import { sourceFileBytes } from './file-content'
 
 function downloadBlob(blob: Blob, filename: string): string {
   if (typeof document === 'undefined')
@@ -21,23 +35,51 @@ function downloadBlob(blob: Blob, filename: string): string {
   return filename
 }
 
-export function workspaceFileBlob(file: Readonly<WorkspaceFile>, mime?: string): Blob {
-  if (file.kind === 'text')
-    return new Blob([file.content], { type: mime ?? 'text/plain;charset=utf-8' })
-  const bytes = Uint8Array.from(file.content)
-  return new Blob([bytes.buffer], { type: mime ?? 'application/octet-stream' })
+export function sourceFileBlob(file: Readonly<SourceFile>, mime?: string): Blob {
+  const bytes = sourceFileBytes(file)
+  const type = mime ?? (file.kind === 'text' ? 'text/plain;charset=utf-8' : file.mediaType)
+  return new Blob([Uint8Array.from(bytes).buffer], { type })
 }
 
-export function downloadWorkspaceFile(input: DownloadWorkspaceFileInput): string {
-  return downloadBlob(workspaceFileBlob(input.file, input.mime), input.filename)
+export function downloadSourceFile(input: DownloadSourceFileInput): string {
+  return downloadBlob(sourceFileBlob(input.file, input.mime), input.filename)
 }
 
-async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): Promise<string> {
+export function transferDocumentBlob(
+  value: Readonly<ProjectTransferEnvelopeV1 | SurfaceTransferEnvelopeV1>,
+): Blob {
+  return new Blob([`${JSON.stringify(value, null, 2)}\n`], {
+    type: 'application/json;charset=utf-8',
+  })
+}
+
+export async function downloadProjectTransfer(
+  input: Readonly<DownloadProjectTransferInput>,
+): Promise<string> {
+  const transfer = await createProjectTransferDocument(input.document, input.readEmbedded)
+  const filename = `${safeProjectSlug(input.document.name)}.project.json`
+  return downloadBlob(transferDocumentBlob(transfer), filename)
+}
+
+export async function downloadSurfaceTransfer(
+  input: Readonly<DownloadSurfaceTransferInput>,
+): Promise<string> {
+  const transfer = await createSurfaceTransferDocument(
+    input.document,
+    input.surfaceId,
+    input.readEmbedded,
+  )
+  const surfaceName = input.document.surfacesById[input.surfaceId]?.name ?? input.surfaceId
+  const filename = `${safeProjectSlug(input.document.name)}-${safeProjectSlug(surfaceName)}.surface.json`
+  return downloadBlob(transferDocumentBlob(transfer), filename)
+}
+
+async function downloadArchive(input: SourceArchiveInput, data: Uint8Array): Promise<string> {
   const filename = `${safeProjectSlug(input.name)}.zip`
   const bytes = Uint8Array.from(data)
   return downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename)
 }
 
-export async function downloadWorkspaceArchive(input: WorkspaceArchiveInput): Promise<string> {
-  return downloadArchive(input, await createWorkspaceArchive(input))
+export async function downloadSourceArchive(input: SourceArchiveInput): Promise<string> {
+  return downloadArchive(input, await createSourceArchive(input))
 }

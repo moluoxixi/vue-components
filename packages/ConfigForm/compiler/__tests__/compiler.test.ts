@@ -1,772 +1,163 @@
-import type {
-  ConfigFormFlow,
-  ConfigFormFlowTrigger,
-} from '@moluoxixi/config-form-core'
-import type {
-  ComponentContract,
-  ProjectDocument,
-} from '@moluoxixi/config-form-model'
+import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import {
-  CONFIG_FORM_FLOW_VERSION,
-} from '@moluoxixi/config-form-core'
-import {
-  applyProjectTransaction,
-  createComponentContractRegistry,
   createProjectDraftSnapshot,
   createProjectSnapshot,
-  createRegistryContractSnapshot,
-  PROJECT_DOCUMENT_VERSION,
 } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
-  compileCanonicalPage,
+  CANONICAL_PROJECT_IR_VERSION,
   compileCanonicalProject,
+  compileCanonicalSurface,
+  CONFIG_FORM_COMPILER_VERSION,
   createCompileCoordinator,
 } from '../index'
+import { createCompilerFixture } from './fixtures'
 
-const contracts: ComponentContract[] = [
-  {
-    key: 'element.input',
-    version: '2',
-    kind: 'field',
-    props: [
-      { key: 'clearable', path: ['props', 'clearable'] },
-      { key: 'placeholder', path: ['props', 'placeholder'] },
-    ],
-    events: [{ name: 'change' }, { name: 'update:modelValue' }],
-    bindings: [{ name: 'model', valueProp: 'modelValue', trigger: 'update:modelValue' }],
-    slots: [],
-    allowedParents: [],
-    defaults: { clearable: true, placeholder: 'Default placeholder' },
-  },
-  {
-    key: 'layout.section',
-    version: '1',
-    kind: 'layout',
-    props: [],
-    events: [],
-    bindings: [],
-    slots: [{ name: 'default', accepts: ['field', 'layout'] }],
-    allowedParents: [],
-    defaults: { gap: 12 },
-  },
-]
-
-function fixture() {
-  const registry = createComponentContractRegistry(contracts, {
-    adapter: 'element-plus',
-    version: '2.9.1',
-  })
-  const project: ProjectDocument = {
-    version: PROJECT_DOCUMENT_VERSION,
-    id: 'project',
-    name: 'Project',
-    homePageId: 'home',
-    pageOrder: ['home'],
-    pagesById: {
-      home: {
-        id: 'home',
-        name: 'Home',
-        route: '/',
-        flows: [{
-          version: CONFIG_FORM_FLOW_VERSION,
-          id: 'mounted',
-          name: 'Mounted',
-          trigger: { kind: 'page.mount' },
-          nodes: [
-            { id: 'trigger', type: 'trigger', position: { x: 10, y: 20 } },
-            { id: 'success', type: 'success', position: { x: 200, y: 20 } },
-          ],
-          edges: [{ id: 'edge', source: 'trigger', target: 'success' }],
-        }],
-        graph: {
-          version: 2,
-          props: { title: 'Profile' },
-          form: { columns: 24 },
-          root: [{ nodeId: 'section', placement: {} }],
-          nodesById: {
-            section: {
-              id: 'section',
-              component: 'layout.section',
-              kind: 'layout',
-              props: {},
-              events: {},
-              bindings: {},
-              slots: { default: [{ nodeId: 'name', placement: { span: 12 } }] },
-            },
-            name: {
-              id: 'name',
-              component: 'element.input',
-              kind: 'field',
-              field: 'name',
-              label: 'Name',
-              props: { placeholder: 'Your name' },
-              events: { change: [{ action: 'track' }] },
-              bindings: { model: { source: 'profile.name' } },
-            },
-          },
-        },
-      },
-    },
-    registryLock: structuredClone(registry.lock),
-    settings: { locale: 'zh-CN' },
-    resources: {},
-  }
-  return {
-    snapshot: createProjectSnapshot(project, 4),
-    registry: createRegistryContractSnapshot(registry),
-  }
-}
-
-function updateSnapshot(
-  input: ReturnType<typeof fixture>,
-  update: (document: ProjectDocument) => void,
-): void {
-  const document = structuredClone(input.snapshot.document) as ProjectDocument
-  update(document)
-  input.snapshot = createProjectSnapshot(document, input.snapshot.editVersion)
-}
-
-function addPage(document: ProjectDocument, sourceId: string, pageId: string): void {
-  const source = document.pagesById[sourceId]!
-  document.pageOrder.push(pageId)
-  document.pagesById[pageId] = {
-    ...structuredClone(source),
-    id: pageId,
-    name: pageId,
-    route: `/${pageId}`,
-  }
-}
-
-function synchronousFlow(id: string, trigger: ConfigFormFlowTrigger): ConfigFormFlow {
-  return {
-    version: CONFIG_FORM_FLOW_VERSION,
-    id,
-    name: id,
-    trigger,
-    nodes: [
-      { id: 'trigger', type: 'trigger' },
-      {
-        id: 'reaction',
-        type: 'reaction',
-        config: {
-          reactions: [{
-            id: `${id}-reaction`,
-            when: { kind: 'literal', value: true },
-            then: [{ kind: 'setValue', target: 'name', value: { kind: 'literal', value: id } }],
-          }],
-        },
-      },
-      { id: 'end', type: 'end' },
-    ],
-    edges: [
-      { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
-      { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
-    ],
-  }
-}
-
-describe('canonical project compiler', () => {
-  it('compiles one deterministic immutable IR for runtime and source backends', () => {
-    const input = fixture()
+describe('surface canonical compiler', () => {
+  it('compiles a flat project with page, dialog, drawer, element nodes, and references', () => {
+    const input = createCompilerFixture()
     const result = compileCanonicalProject(input)
 
     expect(result.success).toBe(true)
     if (!result.success)
       return
     const { compilation } = result
-    const page = compilation.ir.pagesById.home!
-    expect(page.nodesById.section).toMatchObject({
-      component: 'layout.section',
-      props: { gap: 12 },
-      placement: { parentId: null, slot: null, props: {} },
-      subtreeHash: expect.any(String),
-      slots: { default: ['name'] },
+    expect(compilation.ir.version).toBe(CANONICAL_PROJECT_IR_VERSION)
+    expect(compilation.key.compilerVersion).toBe(CONFIG_FORM_COMPILER_VERSION)
+    expect(compilation.ir.homeSurfaceId).toBe('home')
+    expect(compilation.ir.surfaceOrder).toEqual(['home', 'editor', 'details'])
+    expect(Object.keys(compilation.ir.surfacesById)).toEqual(['home', 'editor', 'details'])
+    expect(compilation.ir.surfacesById.home?.kind).toBe('page')
+    expect(compilation.ir.surfacesById.editor?.kind).toBe('dialog')
+    expect(compilation.ir.surfacesById.details?.kind).toBe('drawer')
+    expect(compilation.ir.surfacesById.home?.nodesById['open-editor']?.kind).toBe('element')
+    expect(compilation.ir.surfacesById.home?.nodesById.name?.datasetBindings).toBeDefined()
+    expect(compilation.ir.surfacesById.home?.nodesById.name).toMatchObject({
+      required: true,
+      requiredMessage: 'Name is required',
+      validation: { version: 2 },
     })
-    expect(page.nodesById.name).toMatchObject({
-      component: 'element.input',
-      componentVersion: '2',
-      configuredProps: { placeholder: 'Your name' },
-      props: { clearable: true, placeholder: 'Your name' },
-      placement: { parentId: 'section', slot: 'default', props: { span: 12 } },
-      subtreeHash: expect.any(String),
+    expect(compilation.ir.surfacesById.editor?.interactions[0]).toMatchObject({
+      action: { targetSurfaceId: 'details' },
     })
-    expect(page.flows[0]?.plan).toMatchObject({
-      flowId: 'mounted',
-      trigger: { kind: 'page.mount' },
-      topologicalOrder: ['trigger', 'success'],
+    expect(compilation.ir.surfacesById.details?.interactions[0]).toMatchObject({
+      action: { targetSurfaceId: 'editor' },
     })
-    expect(page.flows[0]?.plan).not.toHaveProperty('revision')
-    expect(page.flows[0]?.plan.nodes[0]).not.toHaveProperty('position')
-    expect(compilation.key).toBe(compilation.ir.identity)
-    expect(compilation.key.contentHash).toBe(input.snapshot.contentHash)
-    expect(compilation.key.registryFingerprint).toBe(compilation.registry.fingerprint)
     expect(Object.isFrozen(compilation)).toBe(true)
     expect(Object.isFrozen(compilation.ir)).toBe(true)
-    expect(Object.isFrozen(page.nodesById.name?.props)).toBe(true)
-
-    const repeated = compileCanonicalProject(structuredClone(input))
-    expect(repeated).toEqual(result)
+    expect(CANONICAL_PROJECT_IR_VERSION).toBe(7)
+    expect(CONFIG_FORM_COMPILER_VERSION).toBe('8.0.0')
   })
 
-  it('compiles component event triggers against the same page Registry contract', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows![0]!.trigger = {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'change',
-      }
-    })
+  it('compiles one Surface without recursively inlining cyclic open targets', () => {
+    const input = createCompilerFixture()
+    const result = compileCanonicalSurface({ ...input, surfaceId: 'editor' })
 
-    const result = compileCanonicalProject(input)
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.compilation.ir.pagesById.home?.flows[0]?.plan.trigger).toEqual({
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'change',
-      })
-      expect(result.compilation.ir.pagesById.home?.nodesById.name?.flowEvents).toEqual(['change'])
-    }
-
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.flows![0]!.trigger = {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'hover',
-      }
-    })
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_TRIGGER_EVENT_UNKNOWN', nodeId: 'name' }],
-    })
-  })
-
-  it('rejects duplicated declarative and Flow reaction ownership', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.graph.nodesById.name!.reactions = [{
-        id: 'declarative-placeholder',
-        when: { kind: 'literal', value: true },
-        then: [{
-          kind: 'setProps',
-          target: 'name',
-          props: { placeholder: { kind: 'literal', value: 'Declarative' } },
-        }],
-      }]
-      document.pagesById.home!.flows = [{
-        version: CONFIG_FORM_FLOW_VERSION,
-        id: 'duplicate-placeholder',
-        name: 'Duplicate placeholder',
-        trigger: { kind: 'page.mount' },
-        nodes: [
-          { id: 'trigger', type: 'trigger' },
-          {
-            id: 'reaction',
-            type: 'reaction',
-            config: {
-              reactions: [{
-                id: 'flow-placeholder',
-                when: { kind: 'literal', value: true },
-                then: [{
-                  kind: 'setProps',
-                  target: 'name',
-                  props: { placeholder: { kind: 'literal', value: 'Flow' } },
-                }],
-              }],
-            },
-          },
-          { id: 'end', type: 'end' },
-        ],
-        edges: [
-          { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
-          { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
-        ],
-      }]
-    })
-
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_REACTION_CAPABILITY_CONFLICT' }],
-    })
-  })
-
-  it('diagnoses synchronous Flow updates that duplicate bindings', () => {
-    const bindingEvent = fixture()
-    updateSnapshot(bindingEvent, (document) => {
-      document.pagesById.home!.flows = [synchronousFlow('binding-sync', {
-        kind: 'component.event',
-        nodeId: 'name',
-        event: 'update:modelValue',
-      })]
-    })
-    expect(compileCanonicalProject(bindingEvent)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_BINDING_REACTION_REDUNDANT', nodeId: 'name' }],
-    })
-
-    updateSnapshot(bindingEvent, (document) => {
-      const flow = document.pagesById.home!.flows![0]!
-      flow.nodes.splice(1, 1, { id: 'action', type: 'action', ref: 'notify', config: {} })
-      flow.edges = [
-        { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
-        { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
-      ]
-    })
-    expect(compileCanonicalProject(bindingEvent).success).toBe(true)
-  })
-
-  it('keeps editor-only flow positions out of runtime IR identity', () => {
-    const first = fixture()
-    const second = fixture()
-    updateSnapshot(second, (document) => {
-      document.pagesById.home!.flows![0]!.nodes[0]!.position = { x: 999, y: 999 }
-    })
-
-    const left = compileCanonicalProject(first)
-    const right = compileCanonicalProject(second)
-    expect(left.success && right.success).toBe(true)
-    if (!left.success || !right.success)
+    if (!result.success)
       return
-    expect(left.compilation.ir.identity.contentHash).not.toBe(right.compilation.ir.identity.contentHash)
-    expect(left.compilation.ir.identity.irHash).toBe(right.compilation.ir.identity.irHash)
+    expect(result.compilation.surface.id).toBe('editor')
+    expect(Object.keys(result.compilation.surface.nodesById)).toEqual(['editor-action'])
+    expect(JSON.stringify(result.compilation)).not.toContain('details-action')
   })
 
-  it('compiles transient design drafts without publishing a committed edit version', () => {
-    const input = fixture()
-    const document = structuredClone(input.snapshot.document) as ProjectDocument
-    document.pagesById.home!.graph.nodesById.name!.props.placeholder = 'Draft placeholder'
-    const draft = createProjectDraftSnapshot(input.snapshot, document, 'drag-candidate')
+  it('rejects unknown Surface identity and old graph fields at the compiler boundary', () => {
+    const input = createCompilerFixture()
+    expect(compileCanonicalSurface({ ...input, surfaceId: 'missing' })).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'COMPILER_SURFACE_UNKNOWN', surfaceId: 'missing' }],
+    })
 
+    const stale = structuredClone(input.snapshot) as unknown as { document: Record<string, unknown> }
+    const document = stale.document as { surfacesById: Record<string, { graph: Record<string, unknown> }> }
+    document.surfacesById.home!.graph.bindings = {}
+    expect(compileCanonicalProject({ ...input, snapshot: stale }).success).toBe(false)
+  })
+
+  it('keeps semantic project identity independent of edit chronology', () => {
+    const first = compileCanonicalProject(createCompilerFixture(1))
+    const second = compileCanonicalProject(createCompilerFixture(99))
+    expect(first.success && second.success).toBe(true)
+    if (!first.success || !second.success)
+      return
+    expect(first.compilation.key).toEqual(second.compilation.key)
+    expect(first.compilation.ir).toEqual(second.compilation.ir)
+    expect(first.compilation.origin).toEqual({ kind: 'committed', editVersion: 1 })
+    expect(second.compilation.origin).toEqual({ kind: 'committed', editVersion: 99 })
+  })
+
+  it('compiles a draft without changing committed identity', () => {
+    const input = createCompilerFixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    document.surfacesById.home!.graph.props.title = 'Draft title'
+    const draft = createProjectDraftSnapshot(input.snapshot, document, 'candidate')
     const result = compileCanonicalProject({ ...input, snapshot: draft })
     expect(result.success).toBe(true)
     if (!result.success)
       return
-    expect(result.compilation.snapshot).toEqual(draft)
-    expect(result.compilation.key).toMatchObject({ contentHash: draft.draftHash })
     expect(result.compilation.origin).toEqual({
       kind: 'draft',
       baseEditVersion: input.snapshot.editVersion,
-      draftId: 'drag-candidate',
+      draftId: 'candidate',
     })
-    expect(result.compilation.ir.pagesById.home?.nodesById.name?.props).toMatchObject({
-      placeholder: 'Draft placeholder',
-    })
+    expect(result.compilation.key.contentHash).toBe(draft.draftHash)
   })
 
-  it('keeps semantic compilation identity independent from editor chronology', () => {
-    const first = fixture()
-    const second = fixture()
-    second.snapshot = createProjectSnapshot(second.snapshot.document, 99)
-
-    const left = compileCanonicalProject(first)
-    const right = compileCanonicalProject(second)
-    expect(left.success && right.success).toBe(true)
-    if (!left.success || !right.success)
+  it('invalidates only the changed Surface and dependent asset references', () => {
+    const input = createCompilerFixture()
+    const coordinator = createCompileCoordinator({ registry: input.registry, maxCachedSurfaces: 8 })
+    coordinator.acceptSnapshot(input.snapshot)
+    const home = coordinator.compileSurface('home')
+    const details = coordinator.compileSurface('details')
+    expect(home.success && details.success).toBe(true)
+    if (!home.success || !details.success)
       return
 
-    expect(left.compilation.key).toEqual(right.compilation.key)
-    expect(left.compilation.ir).toEqual(right.compilation.ir)
-    expect(left.compilation.origin).toEqual({ kind: 'committed', editVersion: 4 })
-    expect(right.compilation.origin).toEqual({ kind: 'committed', editVersion: 99 })
-  })
-
-  it('scopes page compilation identity to page semantics and used contracts', () => {
-    const first = fixture()
-    const second = fixture()
-    updateSnapshot(second, (document) => {
-      addPage(document, 'home', 'settings')
-      document.pagesById.settings!.name = 'Changed elsewhere'
-      document.pagesById.home!.flows![0]!.nodes[0]!.position = { x: 500, y: 500 }
-    })
-
-    const expandedRegistry = createComponentContractRegistry([
-      ...contracts,
-      {
-        key: 'element.unused',
-        version: '99',
-        kind: 'field',
-        props: [],
-        events: [],
-        bindings: [],
-        slots: [],
-        allowedParents: [],
-        defaults: { changed: true },
-      },
-    ], { adapter: 'element-plus', version: '2.9.1' })
-
-    const left = compileCanonicalPage({ ...first, pageId: 'home' })
-    const right = compileCanonicalPage({
-      snapshot: second.snapshot,
-      registry: createRegistryContractSnapshot(expandedRegistry),
-      pageId: 'home',
-    })
-    expect(left.success && right.success).toBe(true)
-    if (!left.success || !right.success)
-      return
-    expect(left.compilation.key).toEqual(right.compilation.key)
-    expect(left.compilation.snapshotIdentity.contentHash)
-      .not
-      .toBe(right.compilation.snapshotIdentity.contentHash)
-    expect(left.compilation.registryUsage.map(item => item.key)).toEqual([
-      'element.input',
-      'layout.section',
-    ])
-    expect(Object.isFrozen(left.compilation)).toBe(true)
-    expect(Object.isFrozen(left.compilation.page)).toBe(true)
-  })
-
-  it('invalidates page keys for page semantics, used contracts, and structural environment', () => {
-    const baseline = fixture()
-    const pageChange = fixture()
-    updateSnapshot(pageChange, (document) => {
-      document.pagesById.home!.graph.nodesById.name!.props.placeholder = 'Changed'
-    })
-    const changedContracts = structuredClone(contracts)
-    changedContracts[0]!.defaults.clearable = false
-    const changedRegistry = createComponentContractRegistry(changedContracts, {
-      adapter: 'element-plus',
-      version: '2.9.1',
-    })
-    const contractChange = fixture()
-    contractChange.snapshot = createProjectSnapshot({
-      ...structuredClone(contractChange.snapshot.document),
-      registryLock: structuredClone(changedRegistry.lock),
-    }, 5)
-
-    const base = compileCanonicalPage({ ...baseline, pageId: 'home' })
-    const page = compileCanonicalPage({ ...pageChange, pageId: 'home' })
-    const contract = compileCanonicalPage({
-      snapshot: contractChange.snapshot,
-      registry: createRegistryContractSnapshot(changedRegistry),
-      pageId: 'home',
-    })
-    const environment = compileCanonicalPage({
-      ...baseline,
-      environment: { version: '2', features: { nestedSlots: true } },
-      pageId: 'home',
-    })
-    expect(base.success && page.success && contract.success && environment.success).toBe(true)
-    if (!base.success || !page.success || !contract.success || !environment.success)
-      return
-    expect(page.compilation.key.semanticHash).not.toBe(base.compilation.key.semanticHash)
-    expect(contract.compilation.key.registryUsageHash).not.toBe(base.compilation.key.registryUsageHash)
-    expect(environment.compilation.key.environmentHash).not.toBe(base.compilation.key.environmentHash)
-  })
-
-  it('coordinates committed pages without recompiling unaffected page programs', () => {
-    const input = fixture()
-    const initialDocument = structuredClone(input.snapshot.document) as ProjectDocument
-    addPage(initialDocument, 'home', 'billing')
-    addPage(initialDocument, 'home', 'settings')
-    const initial = createProjectSnapshot(initialDocument, 1)
-    const coordinator = createCompileCoordinator({ registry: input.registry, maxCachedPages: 8 })
-    coordinator.acceptSnapshot(initial)
-
-    const home = coordinator.compilePage('home')
-    const settings = coordinator.compilePage('settings')
-    expect(home.success && settings.success).toBe(true)
-    if (!home.success || !settings.success)
-      return
-
-    const nextDocument = structuredClone(initial.document) as ProjectDocument
-    nextDocument.pagesById.billing!.graph.nodesById.name!.props.placeholder = 'Billing changed'
-    const next = createProjectSnapshot(nextDocument, 2)
-    coordinator.acceptSnapshot(next, {
+    const changedDocument = structuredClone(input.snapshot.document) as ProjectDocument
+    changedDocument.surfacesById.editor!.graph.props.title = 'Changed editor'
+    const changed = createProjectSnapshot(changedDocument, 2)
+    coordinator.acceptSnapshot(changed, {
       project: false,
-      pageIds: ['billing'],
-      nodeIds: ['name'],
-      nodeChanges: [{ kind: 'content', pageId: 'billing', nodeId: 'name' }],
+      surfaceIds: ['editor'],
+      datasetIds: [],
+      resourceIds: [],
+      nodeChanges: [],
     })
-
-    const reboundHome = coordinator.compilePage('home')
-    const reboundSettings = coordinator.compilePage('settings')
-    expect(reboundHome.success && reboundSettings.success).toBe(true)
-    if (!reboundHome.success || !reboundSettings.success)
+    const nextHome = coordinator.compileSurface('home')
+    const nextDetails = coordinator.compileSurface('details')
+    expect(nextHome.success && nextDetails.success).toBe(true)
+    if (!nextHome.success || !nextDetails.success)
       return
-    expect(reboundHome.compilation.page).toBe(home.compilation.page)
-    expect(reboundHome.compilation.key).toBe(home.compilation.key)
-    expect(reboundSettings.compilation.page).toBe(settings.compilation.page)
-    expect(reboundSettings.compilation.key).toBe(settings.compilation.key)
-    expect(reboundHome.compilation.snapshotIdentity).toMatchObject({
-      source: 'committed',
-      editVersion: 2,
-      contentHash: next.contentHash,
-    })
+    expect(nextHome.compilation.surface).toBe(home.compilation.surface)
+    expect(nextDetails.compilation.surface).toBe(details.compilation.surface)
   })
 
-  it('evicts the least recently used page program at the configured cache limit', () => {
-    const input = fixture()
-    const document = structuredClone(input.snapshot.document) as ProjectDocument
-    addPage(document, 'home', 'billing')
-    addPage(document, 'home', 'settings')
-    const snapshot = createProjectSnapshot(document, 1)
-    const coordinator = createCompileCoordinator({ registry: input.registry, maxCachedPages: 2 })
-    coordinator.acceptSnapshot(snapshot)
-
-    const firstHome = coordinator.compilePage('home')
-    const firstBilling = coordinator.compilePage('billing')
-    const touchedHome = coordinator.compilePage('home')
-    const settings = coordinator.compilePage('settings')
-    const retainedHome = coordinator.compilePage('home')
-    const secondBilling = coordinator.compilePage('billing')
-    expect(firstHome.success && firstBilling.success && touchedHome.success
-      && settings.success && retainedHome.success && secondBilling.success).toBe(true)
-    if (!firstHome.success || !firstBilling.success || !touchedHome.success
-      || !settings.success || !retainedHome.success || !secondBilling.success) {
-      return
-    }
-    expect(touchedHome.compilation.page).toBe(firstHome.compilation.page)
-    expect(retainedHome.compilation.page).toBe(firstHome.compilation.page)
-    expect(secondBilling.compilation.page).not.toBe(firstBilling.compilation.page)
-    expect(() => createCompileCoordinator({ registry: input.registry, maxCachedPages: 0 }))
-      .toThrow('CompileCoordinator maxCachedPages must be a positive integer.')
-  })
-
-  it('recompiles only the changed node and its semantic ancestors', () => {
-    const input = fixture()
-    const initialDocument = structuredClone(input.snapshot.document) as ProjectDocument
-    initialDocument.pagesById.home!.graph.nodesById.other = {
-      id: 'other',
-      component: 'element.input',
-      kind: 'field',
-      field: 'other',
-      props: { placeholder: 'Unchanged' },
-      events: {},
-      bindings: {},
-    }
-    const section = initialDocument.pagesById.home!.graph.nodesById.section!
-    if (section.kind !== 'layout')
-      throw new TypeError('Expected section layout fixture.')
-    section.slots.default!.push({ nodeId: 'other', placement: { span: 12 } })
-    const initial = createProjectSnapshot(initialDocument, 1)
-    const coordinator = createCompileCoordinator({ registry: input.registry })
-    coordinator.acceptSnapshot(initial)
-    const before = coordinator.compilePage('home')
-    expect(before.success).toBe(true)
-    if (!before.success)
-      return
-
-    const applied = applyProjectTransaction(initial.document as ProjectDocument, {
-      id: 'edit-name',
-      label: 'Edit name',
-      operations: [{
-        type: 'node.props',
-        pageId: 'home',
-        nodeId: 'name',
-        props: { placeholder: 'Changed' },
-      }],
-    })
-    expect(applied.success && applied.changed).toBe(true)
-    if (!applied.success || !applied.changed)
-      return
-    const next = createProjectSnapshot(applied.document, 2)
-    coordinator.acceptSnapshot(next, {
-      project: applied.changedProject,
-      pageIds: applied.changedPageIds,
-      nodeIds: applied.changedNodeIds,
-      nodeChanges: applied.changedNodeChanges,
-    })
-    const after = coordinator.compilePage('home')
-    expect(after.success).toBe(true)
-    if (!after.success)
-      return
-
-    expect(after.compilation.page.nodesById.name).not.toBe(before.compilation.page.nodesById.name)
-    expect(after.compilation.page.nodesById.section).not.toBe(before.compilation.page.nodesById.section)
-    expect(after.compilation.page.nodesById.other).toBe(before.compilation.page.nodesById.other)
-    expect(after.compilation.page.nodesById.name?.props.placeholder).toBe('Changed')
-    const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
-    expect(full.success).toBe(true)
-    if (full.success)
-      expect(after.compilation.page).toEqual(full.compilation.page)
-  })
-
-  it('updates only moved nodes and affected containers for structural changes', () => {
-    const input = fixture()
-    const coordinator = createCompileCoordinator({ registry: input.registry })
+  it('uses Dataset change attribution to invalidate referencing Surfaces', () => {
+    const input = createCompilerFixture()
+    const coordinator = createCompileCoordinator({ registry: input.registry, maxCachedSurfaces: 8 })
     coordinator.acceptSnapshot(input.snapshot)
-    const before = coordinator.compilePage('home')
-    expect(before.success).toBe(true)
-    if (!before.success)
+    const home = coordinator.compileSurface('home')
+    const editor = coordinator.compileSurface('editor')
+    expect(home.success && editor.success).toBe(true)
+    if (!home.success || !editor.success)
       return
 
-    const applied = applyProjectTransaction(input.snapshot.document as ProjectDocument, {
-      id: 'move-name-root',
-      label: 'Move name to root',
-      operations: [{
-        type: 'node.move',
-        pageId: 'home',
-        nodeId: 'name',
-        target: { parentId: null, index: 1 },
-      }],
-    })
-    expect(applied.success && applied.changed).toBe(true)
-    if (!applied.success || !applied.changed)
-      return
-    expect(applied.changedNodeChanges).toEqual(expect.arrayContaining([
-      {
-        kind: 'move',
-        pageId: 'home',
-        nodeId: 'name',
-        before: { parentId: 'section', slot: 'default' },
-        after: { parentId: null, slot: null },
-      },
-      { kind: 'content', pageId: 'home', nodeId: 'section' },
-    ]))
-
-    const next = createProjectSnapshot(applied.document, 2)
-    coordinator.acceptSnapshot(next, {
-      project: applied.changedProject,
-      pageIds: applied.changedPageIds,
-      nodeIds: applied.changedNodeIds,
-      nodeChanges: applied.changedNodeChanges,
-    })
-    const after = coordinator.compilePage('home')
-    expect(after.success).toBe(true)
-    if (!after.success)
-      return
-    expect(after.compilation.page.rootIds).toEqual(['section', 'name'])
-    expect(after.compilation.page.nodesById.name?.placement).toMatchObject({ parentId: null, slot: null })
-    expect(after.compilation.page.nodesById.section).toMatchObject({ slots: { default: [] } })
-  })
-
-  it('invalidates the exact Runtime node when a Flow component event target changes', () => {
-    const input = fixture()
-    const coordinator = createCompileCoordinator({ registry: input.registry })
-    coordinator.acceptSnapshot(input.snapshot)
-    const before = coordinator.compilePage('home')
-    expect(before.success).toBe(true)
-    if (!before.success)
-      return
-    const mutableDocument = structuredClone(input.snapshot.document) as ProjectDocument
-    const flow = mutableDocument.pagesById.home!.flows![0]!
-    flow.trigger = { kind: 'component.event', nodeId: 'name', event: 'change' }
-    const applied = applyProjectTransaction(input.snapshot.document as ProjectDocument, {
-      id: 'change-flow-trigger',
-      label: 'Change flow trigger',
-      operations: [{ type: 'flow.update', pageId: 'home', flowId: flow.id, flow }],
-    })
-    expect(applied.success && applied.changed).toBe(true)
-    if (!applied.success || !applied.changed)
-      return
-    expect(applied.changedNodeChanges).toContainEqual({
-      kind: 'content',
-      pageId: 'home',
-      nodeId: 'name',
-    })
-    const next = createProjectSnapshot(applied.document, 2)
-    coordinator.acceptSnapshot(next, {
-      project: applied.changedProject,
-      pageIds: applied.changedPageIds,
-      nodeIds: applied.changedNodeIds,
-      nodeChanges: applied.changedNodeChanges,
-    })
-    const after = coordinator.compilePage('home')
-    expect(after.success).toBe(true)
-    if (!after.success)
-      return
-    expect(after.compilation.page.nodesById.name?.flowEvents).toEqual(['change'])
-    expect(after.compilation.page.nodesById.name).not.toBe(before.compilation.page.nodesById.name)
-  })
-
-  it('keeps draft page programs isolated from the committed page cache', () => {
-    const input = fixture()
-    const coordinator = createCompileCoordinator({ registry: input.registry })
-    coordinator.acceptSnapshot(input.snapshot)
-    const committed = coordinator.compilePage('home')
-    expect(committed.success).toBe(true)
-    if (!committed.success)
-      return
-
-    const draftDocument = structuredClone(input.snapshot.document) as ProjectDocument
-    draftDocument.pagesById.home!.graph.nodesById.name!.props.placeholder = 'Draft only'
-    const draft = createProjectDraftSnapshot(input.snapshot, draftDocument, 'candidate')
-    const candidate = coordinator.compileDraftPage(draft, 'home')
-    const after = coordinator.compilePage('home')
-    expect(candidate.success && after.success).toBe(true)
-    if (!candidate.success || !after.success)
-      return
-    expect(candidate.compilation.page.nodesById.name?.props.placeholder).toBe('Draft only')
-    expect(after.compilation.page).toBe(committed.compilation.page)
-    expect(after.compilation.page.nodesById.name?.props.placeholder).toBe('Your name')
-  })
-
-  it('falls back to conservative invalidation for an unattributed change set', () => {
-    const input = fixture()
-    const coordinator = createCompileCoordinator({ registry: input.registry })
-    coordinator.acceptSnapshot(input.snapshot)
-    const initial = coordinator.compilePage('home')
-    expect(initial.success).toBe(true)
-
-    const document = structuredClone(input.snapshot.document) as ProjectDocument
-    document.pagesById.home!.graph.nodesById.name!.props.placeholder = 'Must recompile'
-    const next = createProjectSnapshot(document, input.snapshot.editVersion + 1)
-    coordinator.acceptSnapshot(next, {
+    const changedDocument = structuredClone(input.snapshot.document) as ProjectDocument
+    changedDocument.datasetsById.people!.rows = [{ id: 'grace', label: 'Grace' }]
+    const changed = createProjectSnapshot(changedDocument, 2)
+    coordinator.acceptSnapshot(changed, {
       project: false,
-      pageIds: [],
-      nodeIds: ['name'],
-      nodeChanges: [{ kind: 'content', pageId: 'home', nodeId: 'name' }],
+      surfaceIds: [],
+      datasetIds: ['people'],
+      resourceIds: [],
+      nodeChanges: [],
     })
-    const compiled = coordinator.compilePage('home')
-    expect(compiled.success).toBe(true)
-    if (!compiled.success)
+    const nextHome = coordinator.compileSurface('home')
+    const nextEditor = coordinator.compileSurface('editor')
+    expect(nextHome.success && nextEditor.success).toBe(true)
+    if (!nextHome.success || !nextEditor.success)
       return
-    expect(compiled.compilation.page.nodesById.name?.props.placeholder).toBe('Must recompile')
-  })
-
-  it('fails closed when a used component contract identity diverges', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.registryLock.components['element.input'] = {
-        ...document.registryLock.components['element.input']!,
-        fingerprint: 'fnv1a:00000000',
-      }
-    })
-
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_REGISTRY_COMPONENT_FINGERPRINT_MISMATCH' }],
-    })
-  })
-
-  it('ignores changes to unused registry components', () => {
-    const input = fixture()
-    const expanded = createComponentContractRegistry([
-      ...contracts,
-      {
-        key: 'element.unused',
-        version: '99',
-        kind: 'field',
-        props: [],
-        events: [],
-        bindings: [],
-        slots: [],
-        allowedParents: [],
-        defaults: { changed: true },
-      },
-    ], { adapter: 'element-plus', version: '3.0.0' })
-
-    expect(compileCanonicalProject({
-      snapshot: input.snapshot,
-      registry: createRegistryContractSnapshot(expanded),
-    }).success).toBe(true)
-  })
-
-  it('reports components missing from the frozen registry snapshot', () => {
-    const input = fixture()
-    updateSnapshot(input, (document) => {
-      document.pagesById.home!.graph.nodesById.name!.component = 'element.missing'
-      document.registryLock.components['element.missing'] = {
-        contractVersion: '1',
-        fingerprint: 'fnv1a:missing',
-      }
-    })
-
-    expect(compileCanonicalProject(input)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_COMPONENT_UNKNOWN', nodeId: 'name' }],
-    })
+    expect(nextHome.compilation.surface).not.toBe(home.compilation.surface)
+    expect(nextEditor.compilation.surface).toBe(editor.compilation.surface)
   })
 })

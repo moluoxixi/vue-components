@@ -1107,3 +1107,199 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 45: 收敛 ConfigForm Runtime-first 产品边界
+
+**Date**: 2026-09-18
+**Task**: 收敛 ConfigForm Runtime-first 产品边界
+**Package**: config-form
+**Branch**: `fix架构`
+
+### Summary
+
+移除事件编辑、事件转发与事件编排，明确复杂事件由工程师在代码态 config 中维护，并完成全链路验证。
+
+### Main Changes
+
+- 固化 Runtime-first 产品定位并收敛 Designer 能力边界
+- 删除事件编辑与设计器事件转发相关代码和兼容层
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6d493985` | (see git log) |
+
+### Testing
+
+- [OK] Workbench 59 files / 619 tests、Compiler 55 tests、Vue backend 10 tests 通过
+- [OK] 类型检查、构建、导出模板与发布合同检查通过
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 创建并实现独立的 @moluoxixi/config-form-source 包
+
+
+## Session 46: 定型 ConfigForm Demo Studio 产品与领域合同
+
+**Date**: 2026-09-18
+**Task**: 定型 ConfigForm Demo Studio 产品与领域合同
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+确认 Studio 只负责 UI、布局、校验、模拟 Dataset 与本地交互；固化 Surface、Dataset、Resource、Prototype Runtime、Source 的版本化跨包合同，规划后续六个实现子任务，并归档合同定型任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d69afcfa` | (see git log) |
+| `3e6d2c87` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 47: 完成 ConfigForm 原始源码与绑定导出
+
+**Date**: 2026-09-20
+**Task**: 完成 ConfigForm 原始源码与绑定导出
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成独立 Source 包及只读 Viewer；默认导出原始 Vue 工程，另提供不含运行核心的 ConfigForm bindings；补齐校验、资源、交互投影、嵌套初始值和 Workbench 集成，并保留用户 JSON 导入导出改动未提交。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `038271fa` | (see git log) |
+| `7a04139c` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 48: 收紧 ConfigForm 源码导出与响应合同
+
+**Date**: 2026-09-20
+**Task**: 收紧 ConfigForm 源码导出与响应合同
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成 Source 双产物边界收口，清理 Workbench 旧 generator/archive 合同，将 Core Data Source 上下文硬切为 response，并补齐规范、架构门禁与全套验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `06f06776` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 49: 完成 ConfigForm 校验与原生源码导出加固
+
+**Date**: 2026-09-20
+**Task**: 完成 ConfigForm 校验与原生源码导出加固
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成字段级 Required 与 RuleSet v2 硬切，修复属性编辑和 Runtime plain-data 边界，拆分 Raw Vue 与 ConfigForm binding 导出，并通过受影响包测试、双 Provider 浏览器回归、类型检查和生产构建。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea79574a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 50: 完成 Workbench Tailwind 样式基础设施
+
+**Date**: 2026-09-20
+**Task**: 完成 Workbench Tailwind 样式基础设施
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+为 ConfigForm Workbench 接入无 Preflight、精确扫描且复用 --wb-* token 的 Tailwind v4 基础设施，以 Export Dialog 完成首个迁移试点并补齐构建产物、移动端、主题和无障碍门禁；另建立 ConfigForm Source 可选 Tailwind v4 输出后端的独立规划任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `887f9f4c` | (see git log) |
+| `83d620a7` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 51: 完成 ConfigForm Demo Studio 与 Tailwind 源码导出
+
+**Date**: 2026-09-21
+**Task**: 完成 ConfigForm Demo Studio 与 Tailwind 源码导出
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+完成 Demo Studio 产品边界落地、声明式联动与独立校验配置、数据集和页面物料管理、Raw Vue 与 ConfigForm Binding 源码导出，以及 Tailwind v4 可选输出；完成全量测试、浏览器实测和任务归档。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9d21019e` | (see git log) |
+| `fb71bf83` | (see git log) |
+| `d95f4940` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 52: 闭合 Demo Studio 归档元数据
+
+**Date**: 2026-09-21
+**Task**: 闭合 Demo Studio 归档元数据
+**Package**: ai-doc-assistant
+**Branch**: `fix架构`
+
+### Summary
+
+补齐六个已归档 ConfigForm Demo Studio 任务的实施清单和 task.json 完成说明，完成 JSON、未完成项、提交链与工作树终态复核。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8ce7f4e1` | (see git log) |
+| `863e75d3` | (see git log) |
+
+### Status
+
+[OK] **Completed**

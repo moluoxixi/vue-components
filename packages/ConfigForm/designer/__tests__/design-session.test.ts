@@ -1,11 +1,12 @@
 import type { DesignerController } from '../src/composables'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { createDesignerDesignSession } from '../src/components/DesignerCanvas/services'
 
 function controller(): DesignerController {
   const graph = {
-    version: 2 as const,
+    version: SURFACE_GRAPH_VERSION,
     props: {},
     form: {},
     root: [],
@@ -16,6 +17,7 @@ function controller(): DesignerController {
     dispatch: vi.fn(() => true),
     graph: computed(() => graph),
     selectedId: ref(),
+    pasteAvailable: computed(() => false),
     selectedIds: ref([]),
     selectedMaterial: computed(() => undefined),
     selectedNode: computed(() => undefined),

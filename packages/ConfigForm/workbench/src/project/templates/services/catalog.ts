@@ -1,4 +1,4 @@
-import type { ProjectPage, RegistryContractSnapshot, RegistryLock } from '@moluoxixi/config-form-model'
+import type { ProjectSurface, RegistryContractSnapshot, RegistryLock } from '@moluoxixi/config-form-model'
 import type {
   ProjectTemplateCatalogEntry,
   ProjectTemplateCategory,
@@ -12,8 +12,8 @@ import type {
   TemplateEligibilityResult,
 } from '../types'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
-import { parseProjectDocument, PROJECT_DOCUMENT_VERSION } from '@moluoxixi/config-form-model'
-import { remapProjectPageIdentity } from '../../services'
+import { projectSurfaceSchema } from '@moluoxixi/config-form-model'
+import { remapProjectSurfaceIdentity } from '../../services'
 import { PROJECT_TEMPLATE_VERSION } from '../constants'
 
 const ID_PATTERN = /^[a-z][a-z0-9-]*$/
@@ -141,9 +141,9 @@ function parseManifest(input: unknown, providerId: string): ProjectTemplateManif
   }
   if (
     !isRecord(input.preview)
-    || !hasOnlyKeys(input.preview, ['pageId', 'preferredViewport'])
+    || !hasOnlyKeys(input.preview, ['surfaceId', 'preferredViewport'])
     || !VIEWPORTS.has(String(input.preview.preferredViewport))
-    || !requireString(input.preview, 'pageId')
+    || !requireString(input.preview, 'surfaceId')
   ) {
     return { code: 'TEMPLATE_INVALID', message: `Template "${id}" preview metadata is invalid.`, providerId, templateId: id, path: 'manifest.preview' }
   }
@@ -163,61 +163,54 @@ function parseManifest(input: unknown, providerId: string): ProjectTemplateManif
     registry: { adapter: adapter as ProjectTemplateManifest['adapter'], components: components as ProjectTemplateManifest['registry']['components'] },
     preview: {
       preferredViewport: input.preview.preferredViewport as ProjectTemplateManifest['preview']['preferredViewport'],
-      pageId: requireString(input.preview, 'pageId')!,
+      surfaceId: requireString(input.preview, 'surfaceId')!,
     },
   }
 }
 
-function parseSeedPage(page: unknown, manifest: ProjectTemplateManifest): ProjectPage | TemplateCatalogDiagnostic {
-  if (!isRecord(page))
-    return { code: 'TEMPLATE_SEED_INVALID', message: `Template "${manifest.id}" page seed must be an object.`, templateId: manifest.id, path: 'page' }
-  const pageId = typeof page.id === 'string' ? page.id : 'template-page'
-  const parsed = parseProjectDocument({
-    version: PROJECT_DOCUMENT_VERSION,
-    id: 'template-seed-validation',
-    name: 'Template seed validation',
-    homePageId: pageId,
-    pageOrder: [pageId],
-    pagesById: { [pageId]: page },
-    registryLock: { adapter: manifest.adapter, version: '1', fingerprint: 'template-seed', components: {} },
-    settings: {},
-    resources: {},
-  })
+function parseSeedSurface(surfaceInput: unknown, manifest: ProjectTemplateManifest): ProjectSurface | TemplateCatalogDiagnostic {
+  if (!isRecord(surfaceInput))
+    return { code: 'TEMPLATE_SEED_INVALID', message: `Template "${manifest.id}" Surface seed must be an object.`, templateId: manifest.id, path: 'surface' }
+  const parsed = projectSurfaceSchema.safeParse(surfaceInput)
   if (!parsed.success) {
-    const first = parsed.diagnostics[0]
+    const first = parsed.error.issues[0]
     return {
       code: 'TEMPLATE_SEED_INVALID',
-      message: `Template "${manifest.id}" page seed is invalid: ${first?.message ?? 'unknown schema error'}`,
-      path: first?.path?.join('.') ?? 'page',
+      message: `Template "${manifest.id}" Surface seed is invalid: ${first?.message ?? 'unknown schema error'}`,
+      path: first?.path?.join('.') || 'surface',
       templateId: manifest.id,
     }
   }
-  const parsedPage = parsed.data.pagesById[pageId]!
-  if (manifest.preview.pageId !== parsedPage.id) {
-    return { code: 'TEMPLATE_SEED_INVALID', message: `Template "${manifest.id}" preview pageId does not match its seed page.`, templateId: manifest.id, path: 'manifest.preview.pageId' }
+  const parsedSurface = parsed.data
+  if (manifest.preview.surfaceId !== parsedSurface.id) {
+    return { code: 'TEMPLATE_SEED_INVALID', message: `Template "${manifest.id}" preview surfaceId does not match its seed.`, templateId: manifest.id, path: 'manifest.preview.surfaceId' }
   }
   const required = new Set(manifest.registry.components.map(component => component.key))
-  const used = new Set(Object.values(parsedPage.graph.nodesById).map(node => node.component))
+  const used = new Set(Object.values(parsedSurface.graph.nodesById).map(node => node.component))
   for (const component of used) {
     if (!required.has(component)) {
       return { code: 'TEMPLATE_SEED_INVALID', message: `Template "${manifest.id}" does not declare Registry component "${component}".`, templateId: manifest.id, path: 'manifest.registry.components' }
     }
   }
-  return parsedPage
+  return parsedSurface
 }
 
-function validateIdentityReferences(page: ProjectPage, manifest: ProjectTemplateManifest): TemplateCatalogDiagnostic | undefined {
+function validateIdentityReferences(surface: ProjectSurface, manifest: ProjectTemplateManifest): TemplateCatalogDiagnostic | undefined {
   let sequence = 0
   try {
-    remapProjectPageIdentity(page, 'template-validation-page', {
+    remapProjectSurfaceIdentity(surface, 'template-validation-surface', {
       create: kind => `template-validation-${kind}-${++sequence}`,
+    }, {
+      datasets: new Map(),
+      resources: new Map(),
+      surfaces: new Map([[surface.id, 'template-validation-surface']]),
     })
   }
   catch (error) {
     return {
       code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
       message: `Template "${manifest.id}" contains an unsupported identity reference: ${error instanceof Error ? error.message : String(error)}`,
-      path: 'page',
+      path: 'surface',
       templateId: manifest.id,
     }
   }
@@ -238,23 +231,23 @@ export function parseProjectTemplateSeed(input: unknown, providerId: string): Pr
   if (unsafePath) {
     return { code: 'TEMPLATE_UNSAFE_KEY', message: `Template provider data is not JSON-safe at ${unsafePath}.`, providerId, path: unsafePath }
   }
-  if (!isRecord(input) || Object.keys(input).some(key => key !== 'manifest' && key !== 'page')) {
-    return { code: 'TEMPLATE_INVALID', message: 'Template seed must contain only manifest and page.', providerId }
+  if (!isRecord(input) || Object.keys(input).some(key => key !== 'manifest' && key !== 'surface')) {
+    return { code: 'TEMPLATE_INVALID', message: 'Template seed must contain only manifest and surface.', providerId }
   }
   const manifest = parseManifest(input.manifest, providerId)
   if ('code' in manifest)
     return manifest
-  const page = parseSeedPage(input.page, manifest)
-  if ('code' in page)
-    return { ...page, providerId }
-  const identityDiagnostic = validateIdentityReferences(page, manifest)
+  const surface = parseSeedSurface(input.surface, manifest)
+  if ('code' in surface)
+    return { ...surface, providerId }
+  const identityDiagnostic = validateIdentityReferences(surface, manifest)
   if (identityDiagnostic)
     return { ...identityDiagnostic, providerId }
-  return { manifest, page }
+  return { manifest, surface }
 }
 
 export function getProjectTemplateSeedFingerprint(seed: ProjectTemplateSeed): string {
-  return `fnv1a:${getConfigFormJsonSemanticHash({ manifest: seed.manifest, page: seed.page })}`
+  return `fnv1a:${getConfigFormJsonSemanticHash({ manifest: seed.manifest, surface: seed.surface })}`
 }
 
 function cloneEntry(entry: ProjectTemplateCatalogEntry): ProjectTemplateCatalogEntry {
@@ -348,6 +341,13 @@ export function analyzeTemplateEligibility(
   const diagnostics: TemplateCatalogDiagnostic[] = []
   const manifest = template.manifest
   const add = (diagnostic: Omit<TemplateCatalogDiagnostic, 'templateId'>) => diagnostics.push({ ...diagnostic, templateId: manifest.id })
+  if (input.target === 'project' && template.surface.kind !== 'page') {
+    add({
+      code: 'TEMPLATE_TARGET_KIND_INVALID',
+      message: `${template.surface.kind} templates can only create Surfaces.`,
+      path: 'surface.kind',
+    })
+  }
   if (manifest.adapter !== input.registry.adapter || manifest.registry.adapter !== input.registry.adapter) {
     add({ code: 'TEMPLATE_REGISTRY_ADAPTER_MISMATCH', message: `Template requires ${manifest.adapter}; selected Registry is ${input.registry.adapter}.` })
   }

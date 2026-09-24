@@ -1,15 +1,16 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { ProjectPage, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { ProjectSurface, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { WorkbenchLocaleId } from '../../locale'
 import type { WorkbenchPaletteFamily, WorkbenchThemePreference } from './appearance'
 
 export type WorkbenchExportMode = 'source' | 'config'
+export type WorkbenchExportCommand = WorkbenchExportMode | 'project-json' | 'surface-json'
 
 export interface WorkbenchTopbarProps {
   project?: ReadonlyProjectDocument
   busy?: boolean
   configError?: string
-  currentPage?: ProjectPage
+  currentSurface?: ProjectSurface
   dirty?: boolean
   locale?: DesignerLocaleOptions
   localeId: WorkbenchLocaleId
@@ -21,10 +22,11 @@ export interface WorkbenchTopbarProps {
 }
 
 export interface WorkbenchTopbarEmits {
-  export: [mode: WorkbenchExportMode]
-  newPage: [focusKey: string]
+  export: [command: WorkbenchExportCommand]
+  newSurface: [focusKey: string]
   openAppearance: []
-  openPages: []
+  openProjects: []
+  openSurfaces: []
   openVersions: []
   createCheckpoint: []
   save: []

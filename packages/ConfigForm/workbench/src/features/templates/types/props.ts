@@ -8,6 +8,7 @@ export interface JsonImportPaneProps {
 
 export interface TemplateCreationWorkspaceProps {
   canClose: boolean
+  initialMode?: 'json' | 'template'
   locale?: DesignerLocaleOptions
   target: TemplateCreationTarget
 }

@@ -63,6 +63,13 @@ export interface ConfigFormReaction {
   else?: ConfigFormReactionEffect[]
 }
 
+export interface ConfigFormReactionEvaluateOptions {
+  /** Callers may opt into strict errors; synchronous form reactions remain tolerant by default. */
+  strict?: boolean
+  /** Read-only expression roots that must not be copied into projected form values. */
+  scope?: Record<string, unknown>
+}
+
 export interface ConfigFormReactionProjection<TValues extends object = Record<string, unknown>> {
   values: TValues
   props: Record<string, Record<string, unknown>>

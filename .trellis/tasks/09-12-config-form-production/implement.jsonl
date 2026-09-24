@@ -1,0 +1,4 @@
+{"file":".trellis/spec/directory-structure.md","reason":"责任目录与公开入口合同"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"该任务的事件编排方向已被 Runtime-first 决策取代；读取当前产品边界。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"唯一值源、校验生命周期及事件顺序"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"弹窗、控件、导出、无障碍及浏览器门禁"}

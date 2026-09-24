@@ -1,8 +1,11 @@
+import type { Locator, Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { createProject, restoreAppearance, setAppearance } from './helpers'
 
-async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
+const TEMPLATE_PREVIEW_FRAME = '.template-runtime-preview iframe[data-design-runtime-host][data-design-runtime-variant="canvas"]'
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
@@ -10,14 +13,25 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
   expect(width.scroll).toBe(width.client)
 }
 
-async function openPageCreation(page: import('@playwright/test').Page): Promise<void> {
-  const direct = page.locator('[data-create-trigger="topbar-new-page"]')
+async function openProjectCreation(page: Page): Promise<Locator> {
+  const projects = page.getByRole('region', { name: 'Projects', exact: true })
+  await expect(projects).toBeVisible()
+  const trigger = projects.getByRole('button', { name: 'New project', exact: true })
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+  const workspace = page.getByRole('main', { name: 'Create project', exact: true })
+  await expect(workspace).toBeVisible()
+  return workspace
+}
+
+async function openPageCreation(page: Page): Promise<void> {
+  const direct = page.locator('[data-create-trigger="topbar-new-surface"]')
   if (await direct.isVisible()) {
     await direct.click()
   }
   else {
     await page.locator('[data-create-trigger="topbar-mobile-menu"]').click()
-    await page.getByRole('menuitem', { name: 'New page' }).click()
+    await page.getByRole('menuitem', { name: 'New page', exact: true }).click()
   }
   await expect(page.getByRole('main', { name: 'Create page' })).toBeVisible()
 }
@@ -27,27 +41,30 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('browses, filters, keyboard-selects, and previews the built-in catalog', async ({ page }) => {
-  const workspace = page.getByRole('main', { name: 'Create project' })
+  const workspace = await openProjectCreation(page)
   const search = workspace.getByRole('searchbox', { name: 'Search templates' })
-  await expect(workspace.getByRole('option')).toHaveCount(4)
+  await expect(workspace.getByRole('option')).toHaveCount(8)
   await search.fill('no-such-template')
   await expect(workspace.getByText('No templates match these filters', { exact: true })).toBeVisible()
   await expect(workspace.getByText('No template selected', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Browse templates', exact: true }).click()
   await expect(search).toBeFocused()
   await search.fill('Ant Design Vue')
-  await expect(workspace.getByRole('option')).toHaveCount(2)
+  await expect(workspace.getByRole('option')).toHaveCount(4)
   const first = workspace.getByRole('option').first()
   await first.focus()
   await first.press('End')
-  await expect(workspace.getByRole('option', { name: /Ant Design Vue profile/ })).toHaveAttribute('aria-selected', 'true')
-  await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
-  await expect(workspace.locator('iframe[data-preview-runtime-host]')).toHaveAttribute('title', /Runtime preview/)
+  await expect(workspace.getByRole('option', { name: /Ant Design Vue blank drawer/ })).toHaveAttribute('aria-selected', 'true')
+  const profile = workspace.getByRole('option', { name: /Ant Design Vue profile/ })
+  await profile.click()
+  await expect(profile).toHaveAttribute('aria-selected', 'true')
+  await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
+  await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toHaveAttribute('title', /Runtime preview/)
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
   const results = await new AxeBuilder({ page })
-    .exclude('iframe[data-preview-runtime-host]')
+    .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
     .analyze()
   expect(results.violations).toEqual([])
@@ -58,7 +75,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(workspace.locator('.template-catalog-filters .el-select__wrapper').first())
     .toHaveCSS('background-color', 'rgb(64, 59, 53)')
   const lightResults = await new AxeBuilder({ page })
-    .exclude('iframe[data-preview-runtime-host]')
+    .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
     .analyze()
   expect(lightResults.violations).toEqual([])
@@ -69,13 +86,14 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(localizedWorkspace.getByText('Registry 要求已满足', { exact: true })).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const localizedResults = await new AxeBuilder({ page })
-    .exclude('iframe[data-preview-runtime-host]')
+    .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
     .analyze()
   expect(localizedResults.violations).toEqual([])
 })
 
 test('creates unique pages through one explicit page workspace and blocks cross-adapter templates', async ({ page }) => {
+  await openProjectCreation(page)
   await createProject(page, 'element')
   const firstPageId = await page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id]')
@@ -100,6 +118,7 @@ test('creates unique pages through one explicit page workspace and blocks cross-
 })
 
 test('creates an Ant Design Vue page as one undoable Project Command', async ({ page }) => {
+  await openProjectCreation(page)
   await createProject(page, 'antd')
   const runtime = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
   const firstPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
@@ -109,6 +128,7 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const createdPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
   expect(createdPageNodeId).not.toBe(firstPageNodeId)
 
@@ -117,40 +137,98 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await expect(runtime.locator('[data-config-node-id]').first()).toHaveAttribute('data-config-node-id', firstPageNodeId!)
 
   await page.getByRole('button', { name: 'Redo', exact: true }).click()
-  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
   await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  const pages = page.getByRole('dialog', { name: 'Pages' })
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
   await expect(pages.locator('.page-manager__row')).toHaveCount(2)
 })
 
-test('restores Topbar and Pages triggers on cancel and closes Pages after success', async ({ page }) => {
+test('restores Topbar and Pages triggers on cancel and leaves page management after success', async ({ page }) => {
+  await openProjectCreation(page)
   await createProject(page, 'element')
-  const topbarNewPage = page.locator('[data-create-trigger="topbar-new-page"]')
-  await topbarNewPage.click()
+  const topbarNewSurface = page.locator('[data-create-trigger="topbar-new-surface"]')
+  await topbarNewSurface.click()
   let workspace = page.getByRole('main', { name: 'Create page' })
   await workspace.getByRole('button', { name: 'Back to Designer' }).click()
-  await expect(topbarNewPage).toBeFocused()
+  await expect(topbarNewSurface).toBeFocused()
 
-  await page.getByRole('tab', { name: 'Pages' }).click()
+  await page.getByRole('tab', { name: 'Surfaces' }).click()
   await page.getByRole('button', { name: 'Manage pages' }).click()
-  const pages = page.getByRole('dialog', { name: 'Pages' })
-  const newPage = pages.getByRole('button', { name: 'New page', exact: true })
-  await newPage.click()
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const newSurface = pages.getByRole('button', { name: 'New page', exact: true })
+  await newSurface.click()
 
   workspace = page.getByRole('main', { name: 'Create page' })
   await expect(workspace).toBeVisible()
   await workspace.getByRole('button', { name: 'Back to Designer' }).click()
   await expect(pages).toBeVisible()
-  await expect(newPage).toBeFocused()
+  await expect(newSurface).toBeFocused()
 
-  await newPage.click()
+  await newSurface.click()
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(pages).not.toBeVisible()
   await expect(page.locator('[data-designer-entry]')).toBeFocused()
 })
 
+test('walks the project, page, and design hierarchy through the URLs', async ({ page }) => {
+  await openProjectCreation(page)
+  await createProject(page, 'element')
+
+  // Creating a project opens the form designer of its home page.
+  await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages\/[^/]+\/design$/)
+  const projectId = page.url().match(/#\/projects\/([^/]+)\//)![1]
+
+  // The designer links up to page management (the desktop entry lives in the
+  // Surfaces panel; the topbar button is the mobile variant).
+  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+
+  // Rows browse first: the page name links to its designer, there is no route
+  // column, and no field is editable until the row's edit command is used.
+  await expect(pages.locator('[role="columnheader"]')).toHaveText(['Surface', 'Actions'])
+  await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
+  await expect(pages.locator('.page-manager__link').first()).toBeVisible()
+  await pages.getByRole('button', { name: /^Edit / }).first().click()
+  await expect(pages.locator('.page-manager__row input').first()).toBeVisible()
+  await expect(pages.locator('input[aria-label^="Surface name"]')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
+
+  // Both management consoles are one click apart, and the rail marks the active one.
+  const rail = page.getByRole('navigation', { name: 'Management' })
+  await expect(rail.getByRole('button', { name: 'Page management', exact: true })).toHaveAttribute('aria-current', 'page')
+  await rail.getByRole('button', { name: 'Projects', exact: true }).click()
+  const projects = page.getByRole('region', { name: 'Projects', exact: true })
+  await expect(projects).toBeVisible()
+  await expect(page).toHaveURL(/#\/projects$/)
+  await expect(rail.getByRole('button', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
+
+  // The rail reaches page management again without reopening the project by hand.
+  await rail.getByRole('button', { name: 'Page management', exact: true }).click()
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+
+  await pages.getByRole('button', { name: /^Open .* in the designer$/ }).first().click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages/[^/]+/design$`))
+
+  // The designer links back to project management as well.
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  await expect(projects).toBeVisible()
+  await expect(page).toHaveURL(/#\/projects$/)
+
+  // A project row enters that project's page management.
+  await projects.getByRole('button').first().click()
+  await expect(pages).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+})
+
 test('keeps long Registry diagnostics and the create action visible at 390px', async ({ page }) => {
+  await openProjectCreation(page)
   await createProject(page, 'element')
   await page.setViewportSize({ width: 390, height: 844 })
   await openPageCreation(page)
@@ -188,7 +266,7 @@ test('keeps long Registry diagnostics and the create action visible at 390px', a
 
 test('keeps the Runtime preview dominant and restores focus after the 900px catalog Drawer closes', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
-  const workspace = page.getByRole('main', { name: 'Create project' })
+  const workspace = await openProjectCreation(page)
   const rail = workspace.locator('.template-category-rail')
   const detail = workspace.locator('.template-detail-pane')
   const opener = workspace.locator('[data-template-catalog-open]')
@@ -208,7 +286,7 @@ test('keeps the Runtime preview dominant and restores focus after the 900px cata
   expect(geometry.railWidth).toBeGreaterThanOrEqual(52)
   expect(geometry.railWidth).toBeLessThanOrEqual(56)
   expect(geometry.detailWidth).toBeGreaterThan(800)
-  await expect(detail.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+  await expect(detail.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
 
   await workspace.getByRole('button', { name: 'Open appearance settings', exact: true }).click()
   await expect(page.locator('.appearance-panel:visible')).toBeVisible()
@@ -251,7 +329,7 @@ test('keeps the Runtime preview dominant and restores focus after the 900px cata
 
 test('uses one Element Plus segmented window at 390px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  const workspace = page.getByRole('main', { name: 'Create project' })
+  const workspace = await openProjectCreation(page)
   const segmented = workspace.locator('.template-mobile-panes')
   const details = segmented.locator('.el-segmented__item').filter({ hasText: 'Details' })
 
@@ -281,7 +359,7 @@ for (const visualCase of templateVisualCases) {
     await page.setViewportSize({ height, width })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await restoreAppearance(page, theme, palette)
-    let workspace = page.getByRole('main', { name: 'Create project' })
+    let workspace = await openProjectCreation(page)
 
     if (locale === 'zh') {
       if (width > 640) {
@@ -319,8 +397,7 @@ for (const viewport of [
 ]) {
   test(`keeps the creation workspace usable at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    const workspace = page.getByRole('main', { name: 'Create project' })
-    await expect(workspace).toBeVisible()
+    const workspace = await openProjectCreation(page)
     if (viewport.width === 390) {
       await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
       await expect(workspace.getByRole('button', { name: 'Catalog', exact: true })).toBeVisible()
@@ -328,11 +405,11 @@ for (const viewport of [
     }
     else if (viewport.width === 900) {
       await expect(workspace.locator('.template-category-rail')).toBeVisible()
-      await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+      await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
     }
     else {
-      await expect(workspace.getByRole('option')).toHaveCount(4)
-      await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+      await expect(workspace.getByRole('option')).toHaveCount(8)
+      await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
       const catalogWidth = await workspace.locator('.template-catalog-pane').evaluate(element => element.getBoundingClientRect().width)
       expect(catalogWidth).toBeGreaterThanOrEqual(280)
       expect(catalogWidth).toBeLessThanOrEqual(340)

@@ -1,5 +1,4 @@
 export type * from './cache'
 export type * from './preview'
-export type * from './projection'
 export type * from './workbench-design'
 export type * from './workbench-export'

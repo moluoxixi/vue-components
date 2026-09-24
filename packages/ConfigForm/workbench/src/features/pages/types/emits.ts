@@ -1,10 +1,12 @@
-import type { ProjectPageAction } from '../../../project'
+import type { ProjectSurfaceAction } from '../../../project'
 
-export interface PageManagerDialogEmits {
+export interface SurfaceManagerPageEmits {
+  action: [action: ProjectSurfaceAction]
   close: []
-  createPage: []
-  createProject: []
+  createSurface: []
+  /** Open one page's form designer. */
+  openPage: [id: string]
   openProject: [id: string]
-  action: [action: ProjectPageAction]
-  returnFocusRestored: []
+  /** Leave page management for the projects list. */
+  openProjects: []
 }

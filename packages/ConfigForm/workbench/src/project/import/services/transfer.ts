@@ -1,32 +1,37 @@
-import type { ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
-import type { PageTransferDocument } from '../types'
-import { projectPageSchema, registryLockFingerprint } from '@moluoxixi/config-form-model'
-import { PAGE_TRANSFER_VERSION } from '../constants'
+import type {
+  ProjectTransferEnvelopeV1,
+  ReadonlyProjectDocument,
+  SurfaceTransferEnvelopeV1,
+} from '@moluoxixi/config-form-model'
+import { writeProjectTransfer, writeSurfaceTransfer } from '@moluoxixi/config-form-model'
 
-export function createPageTransferDocument(
+type EmbeddedResourceReader = (
+  input: { projectId: string, resourceId: string, contentHash: string },
+) => Promise<Uint8Array | undefined>
+
+/** Create the strict Project transfer envelope used by Workbench JSON export. */
+export async function createProjectTransferDocument(
   document: ReadonlyProjectDocument,
-  pageId: string,
-): PageTransferDocument | undefined {
-  const sourcePage = document.pagesById[pageId]
-  if (!sourcePage)
-    return undefined
-  const page = projectPageSchema.parse(structuredClone(sourcePage))
-  const componentKeys = new Set(Object.values(page.graph.nodesById).map(node => node.component))
-  const components = Object.fromEntries([...componentKeys].map((component) => {
-    const contract = document.registryLock.components[component]
-    if (!contract)
-      throw new Error(`Project Registry lock is missing component "${component}".`)
-    return [component, structuredClone(contract)]
-  }))
-  return {
-    kind: 'config-form-page',
-    version: PAGE_TRANSFER_VERSION,
-    registryLock: {
-      adapter: document.registryLock.adapter,
-      version: document.registryLock.version,
-      fingerprint: registryLockFingerprint(components),
-      components,
-    },
-    page,
-  }
+  readEmbedded: EmbeddedResourceReader,
+): Promise<ProjectTransferEnvelopeV1> {
+  const result = await writeProjectTransfer({ document, readEmbedded })
+  if (!result.success)
+    throw new TypeError(result.diagnostics[0]?.message ?? 'Project transfer could not be written.')
+  return result.data
+}
+
+/** Create the strict Surface transfer envelope used by Workbench JSON export. */
+export async function createSurfaceTransferDocument(
+  document: ReadonlyProjectDocument,
+  surfaceId: string,
+  readEmbedded: EmbeddedResourceReader,
+): Promise<SurfaceTransferEnvelopeV1> {
+  const result = await writeSurfaceTransfer({
+    document,
+    rootSurfaceId: surfaceId,
+    readEmbedded,
+  })
+  if (!result.success)
+    throw new TypeError(result.diagnostics[0]?.message ?? 'Surface transfer could not be written.')
+  return result.data
 }

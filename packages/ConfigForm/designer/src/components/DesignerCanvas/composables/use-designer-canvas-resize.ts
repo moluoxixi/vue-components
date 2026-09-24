@@ -1,4 +1,4 @@
-import type { PageGraph } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { ConfigFormBreakpoint, DesignerRuntimePointerHandlers, DesignerRuntimeRect } from '../types'
 
 import type { DesignerCanvasEmits } from '../types/emits'
@@ -9,7 +9,7 @@ import { captureDesignerPointer } from '../services'
 
 interface UseDesignerCanvasResizeOptions {
   breakpoint: () => ConfigFormBreakpoint | undefined
-  graph: () => PageGraph
+  graph: () => SurfaceGraph
   onResize: (...args: DesignerCanvasEmits['resize']) => void
   readonly: () => boolean
   runtimeLayoutRect: () => DesignerRuntimeRect | undefined

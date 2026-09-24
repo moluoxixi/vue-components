@@ -15,7 +15,7 @@ export default defineDesignerMaterialModule({
       icon: s.Square,
       runtime: { component: s.Card },
       setters: [s.propSetter('title', 'Title', 'text'), s.propSetter('bordered', 'Bordered', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({
         id,
         kind: 'layout',

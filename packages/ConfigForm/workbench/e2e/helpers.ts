@@ -1,9 +1,17 @@
-import type { Page } from '@playwright/test'
+import type { Download, Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { expect } from '@playwright/test'
 
 export type WorkbenchAdapter = 'antd' | 'element'
 export type WorkbenchPalette = 'cyber' | 'glass' | 'ink' | 'morandi'
 export type WorkbenchThemeMode = 'dark' | 'light' | 'system'
+
+export async function readDownloadText(download: Download): Promise<string> {
+  const path = await download.path()
+  if (!path)
+    throw new Error('The browser download did not produce a local file.')
+  return readFile(path, 'utf8')
+}
 
 const templateNames: Record<WorkbenchAdapter, RegExp> = {
   antd: /Ant Design Vue profile/,
@@ -12,6 +20,13 @@ const templateNames: Record<WorkbenchAdapter, RegExp> = {
 
 export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
   const workspace = page.getByRole('main', { name: 'Create project' })
+  const newProject = page.getByRole('button', { name: 'New project', exact: true }).first()
+  // The creation workspace is a lazy route, so a caller may still be on the
+  // projects list when this runs. Wait for either entry point instead of
+  // sampling visibility once.
+  await expect(workspace.or(newProject)).toBeVisible({ timeout: 15_000 })
+  if (!await workspace.isVisible())
+    await newProject.click()
   await expect(workspace).toBeVisible({ timeout: 15_000 })
   const catalogOpener = workspace.locator('[data-template-catalog-open]')
   if (await catalogOpener.isVisible()) {

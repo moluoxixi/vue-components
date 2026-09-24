@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parse as parseTypeScript } from '@babel/parser'
 import { describe, expect, it } from 'vitest'
 
 const configFormRoot = fileURLToPath(new URL('../../../../', import.meta.url))
@@ -43,27 +44,20 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'playground': ['App.vue', 'main.ts'],
   'plugin-antd-vue': ['index.ts'],
   'plugin-element-plus': ['index.ts'],
+  'prototype-runtime': [],
   'runtime': ['index.vue'],
+  'source': [],
   'vue-backend': ['index.ts'],
   'workbench': [
     'adapter-styles.d.ts',
     'App.vue',
     'components.d.ts',
     'main.ts',
-    'monaco-internal.d.ts',
   ],
 }
 const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
-const generatedTypeTemplateFiles = new Set([
-  'workbench/src/project/export/services/source-flow.ts',
-  'workbench/src/project/export/services/source-validation.ts',
-])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
-  'workbench/src/features/export/components/WorkspaceCodeEditor/services/typescript-language-features.ts': [
-    ['depre', 'cated'].join(''),
-    ['Depre', 'cated'].join(''),
-  ],
 }
 
 function collectProductTextFiles(directory: string): string[] {
@@ -96,12 +90,38 @@ function collectProductDirectories(directory: string): string[] {
     if (!entry.isDirectory() || ignoredDirectories.has(entry.name) || entry.name.startsWith('__'))
       return []
     const path = join(directory, entry.name)
-    return [path, ...collectProductDirectories(path)]
+    const entries = readdirSync(path, { withFileTypes: true })
+    const descendants = collectProductDirectories(path)
+    return entries.some(child => child.isFile()) || descendants.length > 0
+      ? [path, ...descendants]
+      : []
   })
 }
 
 function hasLocalEntry(directory: string): boolean {
   return ['index.ts', 'index.css', 'index.scss'].some(entry => existsSync(join(directory, entry)))
+}
+
+/**
+ * Reports whether a module declares an exported `interface`/`type` at its top level.
+ *
+ * The check parses TypeScript instead of matching text so that type declarations
+ * embedded in generated-source template literals (for example
+ * `source/src/generator/services/emitter.ts`) are not mistaken for real contracts of the module
+ * that happens to contain the template.
+ */
+function declaresExportedType(source: string): boolean {
+  const file = parseTypeScript(source, {
+    sourceType: 'module',
+    errorRecovery: true,
+    plugins: ['typescript', 'decorators-legacy'],
+  })
+  return file.program.body.some((statement) => {
+    if (statement.type !== 'ExportNamedDeclaration' && statement.type !== 'ExportDefaultDeclaration')
+      return false
+    const declaration = statement.declaration
+    return declaration?.type === 'TSTypeAliasDeclaration' || declaration?.type === 'TSInterfaceDeclaration'
+  })
 }
 
 function configFormPackageSourceRoots(): Array<{ name: string, sourceRoot: string }> {
@@ -131,10 +151,6 @@ describe('workbench production architecture boundary', () => {
       })
 
     expect(violations).toEqual([])
-
-    const flowWorkspace = readFileSync(new URL('../../features/flow/components/FlowWorkspace/index.vue', import.meta.url), 'utf8')
-    expect(flowWorkspace).not.toContain('.flow-inspector input')
-    expect(flowWorkspace).not.toContain('.flow-inspector textarea')
   })
 
   it('keeps ProjectEditorSession as the only production editing owner', () => {
@@ -146,7 +162,7 @@ describe('workbench production architecture boundary', () => {
       ['apply', 'Workspace', 'Application', 'Operation'].join(''),
       ['Project', 'Store'].join(''),
       ['create', 'Project', 'Store'].join(''),
-      'setCurrentPage(',
+      'setCurrentSurface(',
       `type: '${['update', 'page', 'model'].join('-')}'`,
     ]
     forbidden.forEach(token => expect(source).not.toContain(token))
@@ -172,12 +188,11 @@ describe('workbench production architecture boundary', () => {
       ['create', 'Project', 'Template', 'Registry'].join(''),
       ['BUILT_IN', 'PROJECT', 'TEMPLATES'].join('_'),
       ['create', 'Built', 'In', 'Project'].join(''),
-      ['create', 'Built', 'In', 'Project', 'Page'].join(''),
+      ['create', 'Built', 'In', 'Project', 'Surface'].join(''),
       ['Template', 'Identity', 'Factory'].join(''),
-      ['remap', 'Template', 'Page', 'Identity'].join(''),
+      ['remap', 'Template', 'Surface', 'Identity'].join(''),
       ['Runtime', 'Surface'].join(''),
       ['IMPORT', 'COMPONENT', 'MIGRATION', 'FAILED'].join('_'),
-      ['IMPORT', 'FLOW', 'OWNERSHIP', 'AMBIGUOUS'].join('_'),
       ['antd', 'Config', 'Form'].join(''),
       ['schema', 'Version'].join(''),
       ['protocol', 'Version'].join(''),
@@ -192,6 +207,16 @@ describe('workbench production architecture boundary', () => {
       ['create', 'Project', 'Registry', 'Lock'].join(''),
       ['create', 'Registry', 'Lock', 'For', 'Components'].join(''),
       ['select', 'Registry', 'Lock', 'Components'].join(''),
+      ['Workspace', 'Archive', 'Input'].join(''),
+      ['create', 'Workspace', 'Archive'].join(''),
+      ['download', 'Workspace', 'Archive'].join(''),
+      ['CONFIG', 'FORM', 'EXPORT', 'GENERATOR', 'VERSION'].join('_'),
+      ['generator', 'Version'].join(''),
+      ['current', 'Generator', 'Version'].join(''),
+      ['Workspace', 'File'].join(''),
+      ['Export', 'File', 'Set'].join(''),
+      ['Workspace', 'Code', 'Editor'].join(''),
+      ['Project', 'File', 'Tree'].join(''),
     ]
     const productionFiles = collectProductTextFiles(configFormRoot).filter((path) => {
       const normalized = relative(configFormRoot, path).replaceAll('\\', '/')
@@ -200,25 +225,58 @@ describe('workbench production architecture boundary', () => {
         && !normalized.endsWith('.test.ts')
         && !normalized.endsWith('.md')
     }).concat(join(repositoryRoot, 'scripts', 'verify-config-form-adapter-packages.mjs'))
+    const removedDomainTokens = [
+      ['Config', 'Form', 'Flow'].join(''),
+      ['Config', 'Form', 'Runtime', 'Event'].join(''),
+      ['Registered', 'Event', 'Action'].join(''),
+      ['Flow', 'Value', 'Editor'].join(''),
+      ['Surface', 'Flow', 'Engine'].join(''),
+      ['create', 'Config', 'Form', 'Event', 'Runtime'].join(''),
+      ['runtime', 'Event'].join(''),
+      ['component', 'Event'].join(''),
+      ['forward', 'Events'].join(''),
+      ['on', 'Runtime', 'Event'].join(''),
+      ['intercept', 'Event'].join(''),
+      ['event', 'Names'].join(''),
+      ['flow', 'Events'].join(''),
+      ['flow', 'Actions'].join(''),
+      ['flow', 'Result'].join(''),
+      ['flow', 'Error'].join(''),
+      ['flow', 'Trace'].join(''),
+      ['load', 'From', 'Action'].join(''),
+      ['@vue', 'flow/core'].join('-'),
+    ]
+    const removedDomainFiles = [
+      ...productionFiles,
+      join(repositoryRoot, 'pnpm-workspace.yaml'),
+      join(repositoryRoot, 'pnpm-lock.yaml'),
+    ]
     const symbolHits = productionFiles.flatMap((path) => {
       const source = readFileSync(path, 'utf8')
       return forbiddenSymbols
         .filter(symbol => new RegExp(`\\b${symbol}\\b`).test(source))
         .map(symbol => `${relative(configFormRoot, path)}: ${symbol}`)
     })
+    const removedDomainHits = removedDomainFiles.flatMap((path) => {
+      const source = readFileSync(path, 'utf8')
+      return removedDomainTokens
+        .filter(token => source.includes(token))
+        .map(token => `${relative(repositoryRoot, path)}: ${token}`)
+    })
     const removedPaths = [
       'antd/src/bindings.ts',
       'antd/src/components.ts',
       'antd/src/styles.scss',
-      'core/src/flow/hash.ts',
-      'core/src/flow/interpreter.ts',
-      'core/src/flow/plan.ts',
-      'core/src/flow/types.ts',
       'core/src/json.ts',
       'core/src/module-registry.ts',
       'core/src/reaction-config.ts',
       'core/src/reaction.ts',
       'core/src/types.ts',
+      'core/src/flow',
+      'core/src/flow-authoring',
+      'compiler/src/services/compile/services/flows.ts',
+      'compiler/src/runtime-source',
+      'compiler/src/utils/flow.ts',
       'element/src/components.ts',
       'element/src/styles.scss',
       'runtime/src/renderer/ConfigFormRenderer.vue',
@@ -227,10 +285,48 @@ describe('workbench production architecture boundary', () => {
       'runtime/src/renderer/layout.ts',
       'runtime/src/renderer/responsive.ts',
       'runtime/src/renderer/types.ts',
+      'runtime/src/renderer/composables/use-renderer-events.ts',
+      'runtime/src/renderer/services/flow-value-context.ts',
+      'runtime/src/renderer/services/runtime-actions.ts',
+      'runtime/src/renderer/services/runtime-flow-events.ts',
+      'runtime/src/renderer/services/scoped-flow-transaction.ts',
       'runtime/src/renderer-entry.ts',
       'runtime/src/composables/useForm.ts',
+      'workbench/src/components/ProjectFileTree.vue',
+      'workbench/src/components/ProjectFileTree',
+      'workbench/src/components/ProjectFileTreeNode.vue',
+      'workbench/src/components/WorkspaceCodeEditor.vue',
+      'workbench/src/components/WorkspaceCodeEditor',
+      'workbench/src/features/export/ExportDialog.vue',
+      'workbench/src/features/export/components',
+      'workbench/src/features/export/__tests__/project-file-tree.test.ts',
+      'workbench/src/features/export/__tests__/workspace-editor-language.test.ts',
       'workbench/src/project/export/archive.ts',
+      'workbench/src/project/export/canonical-bindings.ts',
+      'workbench/src/project/export/config.ts',
+      'workbench/src/project/export/download.ts',
+      'workbench/src/project/export/serialization.ts',
+      'workbench/src/project/export/snapshot.ts',
       'workbench/src/project/export/source.ts',
+      'workbench/src/project/export/services/config-page.ts',
+      'workbench/src/project/export/services/config.ts',
+      'workbench/src/project/export/services/source-canonical.ts',
+      'workbench/src/project/export/services/source-data.ts',
+      'workbench/src/project/export/services/source-layout.ts',
+      'workbench/src/project/export/services/source-libraries.ts',
+      'workbench/src/project/export/services/source-page.ts',
+      'workbench/src/project/export/services/source-portability.ts',
+      'workbench/src/project/export/services/source-project-files.ts',
+      'workbench/src/project/export/services/source-registry.ts',
+      'workbench/src/project/export/services/source-serialization.ts',
+      'workbench/src/project/export/services/source-validation.ts',
+      'workbench/src/project/export/services/source.ts',
+      'workbench/src/project/export/types/actions.ts',
+      'workbench/src/project/export/types/bindings.ts',
+      'workbench/src/project/export/types/config.ts',
+      'workbench/src/project/export/types/source.ts',
+      'workbench/src/project/export/utils',
+      'workbench/src/project/__tests__/source-page-services.test.ts',
       'workbench/src/project/import/migrations.ts',
       'workbench/src/project/import/service.ts',
       'workbench/src/project/import/types.ts',
@@ -240,9 +336,17 @@ describe('workbench production architecture boundary', () => {
       'workbench/src/project/templates/create-template.ts',
       'workbench/src/project/templates/service.ts',
       'workbench/src/project/templates/types.ts',
+      'workbench/e2e/flow-helpers.ts',
+      'workbench/src/features/flow',
+      'workbench/src/flow',
+      'workbench/src/project/export/services/source-action-bindings.ts',
+      'workbench/src/project/export/services/source-flow.ts',
+      'workbench/src/runtime-host/services/action-rpc.ts',
+      'workbench/src/runtime-host/types/action-rpc.ts',
     ]
 
     expect(symbolHits).toEqual([])
+    expect(removedDomainHits).toEqual([])
     expect(removedPaths.filter(path => existsSync(join(configFormRoot, path)))).toEqual([])
   })
 
@@ -257,6 +361,7 @@ describe('workbench production architecture boundary', () => {
         .map(entry => `${name}/src/${entry.name}`)
     })
     const allSourceDirectories = packageSourceRoots.flatMap(({ sourceRoot }) => collectProductDirectories(sourceRoot))
+    const productDirectorySet = new Set(allSourceDirectories)
     const responsibilityDirectories = allSourceDirectories
       .filter(directory => responsibilityDirectoryNames.has(basename(directory)))
     const featureRoots = allSourceDirectories.filter((directory) => {
@@ -273,11 +378,13 @@ describe('workbench production architecture boundary', () => {
     const missingLocalEntries = [...new Set([
       ...packageSourceRoots.flatMap(({ sourceRoot }) => readdirSync(sourceRoot, { withFileTypes: true })
         .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(sourceRoot, entry.name))),
+        .map(entry => join(sourceRoot, entry.name))
+        .filter(directory => productDirectorySet.has(directory))),
       ...responsibilityDirectories,
       ...featureRoots.flatMap(directory => readdirSync(directory, { withFileTypes: true })
         .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(directory, entry.name))),
+        .map(entry => join(directory, entry.name))
+        .filter(child => productDirectorySet.has(child))),
     ])]
       .filter(directory => !sourceRootDirectoryEntryExceptions.has(normalizedRelative(configFormRoot, directory)))
       .filter(directory => !hasLocalEntry(directory))
@@ -288,12 +395,11 @@ describe('workbench production architecture boundary', () => {
       if (!normalized.endsWith('.ts')
         || normalized.endsWith('.d.ts')
         || normalized.includes('/types/')
-        || normalized.endsWith('/index.ts')
-        || generatedTypeTemplateFiles.has(normalized)) {
+        || normalized.endsWith('/index.ts')) {
         return []
       }
       const source = readFileSync(path, 'utf8')
-      return /^export\s+(?:interface|type)\b/m.test(source) ? [normalized] : []
+      return declaresExportedType(source) ? [normalized] : []
     })
     const executableTypeFiles = sourceFiles.flatMap((path) => {
       const normalized = normalizedRelative(configFormRoot, path)
@@ -421,7 +527,7 @@ describe('workbench production architecture boundary', () => {
   it('keeps legacy contracts out of every ConfigForm source, test, script, template, and public declaration', () => {
     const forbiddenTokens = [
       ['Workspace', 'Application'].join(''),
-      ['LowCode', 'PageModel'].join(''),
+      ['LowCode', 'SurfaceModel'].join(''),
       ['Designer', 'Document'].join(''),
       ['Workspace', 'Session'].join(''),
       ['Workspace', 'Repository'].join(''),
@@ -478,14 +584,14 @@ describe('workbench production architecture boundary', () => {
     const designSession = readFileSync(new URL('../../session/services/workbench-design.ts', import.meta.url), 'utf8')
     const exportService = readFileSync(new URL('../../session/services/workbench-export.ts', import.meta.url), 'utf8')
     expect(designSession).toContain('createCompileCoordinator')
-    expect(designSession).toContain('coordinator.compilePage(pageId)')
-    expect(designSession).toContain('coordinator.compileDraftPage(snapshot, pageId, changeSet)')
+    expect(designSession).toContain('coordinator.compileSurface(surfaceId)')
+    expect(designSession).toContain('coordinator.compileDraftSurface(snapshot, surfaceId, changeSet)')
     expect(designSession).toContain('createProjectDraftSnapshotFromTransaction')
-    expect(designSession).toContain('compileCanonicalPageRuntime')
+    expect(designSession).toContain('compileCanonicalSurfaceRuntime')
     expect(designSession).not.toContain('compileCanonicalProject')
     expect(exportService).toContain('compileCanonicalProject')
     expect(controller).not.toContain('compileCanonicalProject')
-    expect(controller).not.toContain('compileCanonicalPageRuntime')
+    expect(controller).not.toContain('compileCanonicalSurfaceRuntime')
     expect(controller).not.toContain('createCompileCoordinator')
     expect(controller).not.toContain(['configModel', 'ToDesigner', 'Document'].join(''))
     expect(controller).not.toContain(['compile', 'Designer', 'Document(document'].join(''))
@@ -500,11 +606,11 @@ describe('workbench production architecture boundary', () => {
     expect(drawer).toContain('PreviewRuntimeHostFrame')
     expect(drawer).not.toContain('RuntimeSurface')
     expect(drawer).not.toContain('VueRuntimeCompileSuccess')
-    expect(host).not.toContain('compileCanonicalPageRuntime')
+    expect(host).not.toContain('compileCanonicalSurfaceRuntime')
     expect(host).not.toContain('loadWorkbenchRuntimeAdapter')
-    expect(hostProtocol).toContain('compileCanonicalPageRuntime')
+    expect(hostProtocol).toContain('compileCanonicalSurfaceRuntime')
     expect(hostProtocol).toContain('loadWorkbenchRuntimeAdapter')
-    expect(protocol).toContain('compilation: PageCompilation')
+    expect(protocol).toContain('compilation: SurfaceCompilation')
     expect(protocol).not.toContain(`from '${['@moluoxixi/config-form', 'renderer'].join('/')}'`)
   })
 
@@ -529,7 +635,7 @@ describe('workbench production architecture boundary', () => {
       expect(shell).toContain(`${name}()`)
     }
     expect(shell).not.toContain('compileCanonicalProject')
-    expect(shell).not.toContain('compileCanonicalPageRuntime')
+    expect(shell).not.toContain('compileCanonicalSurfaceRuntime')
   })
 
   it('passes app services into lazy features without a reverse app import', () => {
@@ -567,18 +673,18 @@ describe('workbench production architecture boundary', () => {
     expect(controller).toContain('createWorkbenchPreviewSession')
     expect(projectBinding).toContain('previewSession.accept')
     expect(controller).toContain('previewSession.dispose')
-    expect(controllerOrchestration).not.toContain('createPageProjectionCoordinator')
+    expect(controllerOrchestration).not.toContain('createSurfaceProjectionCoordinator')
     expect(controllerOrchestration).not.toContain('lastRuntimePreview')
     expect(controllerOrchestration).not.toContain('reconcilePreviewModel')
     expect(controllerOrchestration).not.toContain('projectionCoordinator')
-    expect(controllerOrchestration).not.toContain('pageFlowEngine')
-    expect(previewSession).toContain('createPageProjectionCoordinator')
-    expect(previewSession).toContain('lastReadyPreview')
+    expect(previewSession).toContain('readPrototypeSession')
+    expect(previewSession).toContain('instanceStates')
     expect(previewSession).toContain('handleRuntimeMounted')
-    expect(previewSession).toContain('handleRuntimeState')
-    expect(previewSession).toContain('const touched = shallowRef')
-    expect(previewSession).toContain('const validation = shallowRef')
-    expect(previewSession).toContain('const trace = shallowRef')
+    expect(previewSession).toContain('handleRuntimeReady')
+    expect(previewSession).toContain('handleInstanceState')
+    expect(previewSession).toContain('handleSession')
+    expect(previewSession).not.toContain('createSurfaceProjectionCoordinator')
+    expect(previewSession).not.toContain('handleRuntimeState')
   })
 
   it('keeps transient chrome state inside the UI Store', () => {
@@ -591,19 +697,22 @@ describe('workbench production architecture boundary', () => {
       'previewOpen',
       'previewExpanded',
       'previewViewport',
-      'pageManagerOpen',
       'exportPreviewMode',
-      'flowWorkspaceOpen',
       'appearanceDrawerOpen',
       'themePreference',
       'paletteFamily',
       'localeId',
       'message',
     ]
+    const uiShallowRefs = ['creationOrigin']
 
     uiRefs.forEach((name) => {
       expect(controller).not.toContain(`const ${name} = ref`)
       expect(uiStore).toContain(`const ${name} = ref`)
+    })
+    uiShallowRefs.forEach((name) => {
+      expect(controller).not.toContain(`const ${name} =`)
+      expect(uiStore).toContain(`const ${name} = shallowRef`)
     })
     expect(uiStore).toContain('const resolvedTheme = computed')
     expect(shell).toContain('useWorkbenchUiStore()')
@@ -612,44 +721,49 @@ describe('workbench production architecture boundary', () => {
     expect(uiStore).not.toContain('ExportSnapshot')
   })
 
-  it('keeps template browsing in the App-level creation workspace', () => {
+  it('keeps the URL as the only owner of the open project and Surface', () => {
     const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
-    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+    const routeSync = readFileSync(new URL('../composables/use-workbench-route-sync.ts', import.meta.url), 'utf8')
+    const featureRouterImports = collectProductionTextFiles(join(configFormRoot, 'workbench/src/features'))
+      .filter(path => /from 'vue-router'/.test(readFileSync(path, 'utf8')))
+      .map(path => normalizedRelative(configFormRoot, path))
 
-    expect(app).toContain('TemplateCreationWorkspace')
-    expect(app).toContain('ref<\'create\' | \'designer\'>')
+    expect(app).toContain('<RouterView')
+    expect(app).toContain('useWorkbenchRouteSync')
+    expect(app).not.toContain('ref<\'projects\' | \'create\' | \'designer\'>')
+    expect(routerSource).toContain('createWebHashHistory')
+    expect(routerSource).toContain('ProjectsView.vue')
+    expect(routerSource).toContain('DesignView.vue')
+    expect(routerSource).toContain('PagesView.vue')
+    expect(routeSync).toContain('shouldBlockProjectSwitch')
+    // Navigation stays a shell concern: lazy features receive commands and
+    // events, they never reach for the router themselves.
+    expect(featureRouterImports).toEqual([])
+    for (const removed of ['pageManagerOpen', 'pageManagerLoaded', 'openSurfaceManager', 'closeSurfaceManager']) {
+      expect(uiStore).not.toContain(removed)
+      expect(shell).not.toContain(removed)
+    }
+  })
+
+  it('keeps template browsing in the App-level creation workspace', () => {
+    const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
+    const creationView = readFileSync(new URL('../components/CreationView.vue', import.meta.url), 'utf8')
+    const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
+    const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
+    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+
+    expect(app).toContain('<RouterView')
+    expect(creationView).toContain('TemplateCreationWorkspace')
+    expect(routerSource).toContain('import(\'../components/CreationView.vue\')')
     expect(workspace).toContain('createTemplateCatalogService')
-    expect(workspace).toContain('PreviewRuntimeHostFrame')
+    expect(workspace).toContain('DesignRuntimeHostFrame')
     expect(shell).not.toContain('TemplateDialog')
     expect(shell).not.toContain('templatePickerOpen')
     expect(shell).not.toContain('builtInTemplateCatalogProvider')
     expect(uiStore).not.toContain('templatePickerOpen')
-  })
-
-  it('delegates event-flow execution to the page Flow Engine', () => {
-    const previewSession = readFileSync(new URL('../../session/services/preview.ts', import.meta.url), 'utf8')
-    const engine = readFileSync(new URL('../../flow/services/page-flow-engine.ts', import.meta.url), 'utf8')
-
-    expect(previewSession).toContain('createWorkbenchPageFlowEngine')
-    expect(previewSession).toContain('flowEngine.dispatch')
-    expect(previewSession).not.toContain('new ConfigFormFlowInterpreter')
-    expect(previewSession).not.toContain('new PreviewFlowCoordinator')
-    expect(engine).toContain('new ConfigFormFlowInterpreter')
-    expect(engine).toContain('new PreviewFlowCoordinator')
-    expect(engine).toContain('createWorkbenchFlowActionRegistry')
-  })
-
-  it('uses Flow as the only normal Workbench editor for registered component events', () => {
-    const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
-    const dialog = readFileSync(new URL('../../features/flow/index.vue', import.meta.url), 'utf8')
-
-    expect(shell).not.toContain('event-editor')
-    expect(shell).toContain('@configure-event="showComponentEventFlow"')
-    expect(shell).toContain('@configure-flow="showFlowDialog"')
-    expect(shell).not.toContain('@open-flow="showFlowDialog()"')
-    expect(shell).not.toContain('@model-operation')
-    expect(dialog).toContain(':initial-trigger="initialTrigger"')
   })
 })

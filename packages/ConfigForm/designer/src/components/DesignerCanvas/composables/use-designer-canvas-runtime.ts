@@ -1,3 +1,4 @@
+import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
 import type {
   DesignerRuntimeGeometrySnapshot,
@@ -17,7 +18,7 @@ interface UseDesignerCanvasRuntimeOptions {
   finishNodeDragFromRuntime: (point: { x: number, y: number }, pointerId: number) => void
   focusNode: (nodeId: string) => void | Promise<void>
   interactive: () => boolean
-  model: () => Record<string, unknown> | undefined
+  model: () => ModelJsonObject | undefined
   moveNodeDragFromRuntime: (point: { x: number, y: number }, pointerId: number) => void
   onContextMenu: (payload: DesignerRuntimePointerPayload) => void
   onGeometryChange: () => void
@@ -40,7 +41,7 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
   const externalGeometryAnchor = ref<{ left: number, scale: number, top: number }>()
   const pointerHandlers: DesignerRuntimePointerHandlers = {}
 
-  const surfaceModel = computed<Record<string, unknown>>({
+  const surfaceModel = computed<ModelJsonObject>({
     get: () => options.model() ?? {},
     set: (next) => {
       if (!options.interactive())

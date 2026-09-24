@@ -21,7 +21,12 @@ describe('designer component Sass entries', () => {
     expect(css).not.toMatch(/\.mx-config-form-designer textarea:focus-visible/)
     expect(css).not.toMatch(/\.mx-config-form-designer select:focus-visible/)
     expect(css).not.toContain('.mx-config-form-designer__setter input:not([type=checkbox])')
-    expect(css).toContain('.mx-config-form-designer__setter > input:not([type=checkbox])')
+    // 面板与复合编辑器已全部使用 Element Plus 控件，原生 input 兜底样式整体移除，
+    // 避免命中 EP 内部输入框与其 focus box-shadow 叠加成双焦点环。
+    expect(css).not.toContain('.mx-config-form-designer__setter > input:not([type=checkbox])')
+    expect(css).not.toContain('.mx-config-form-designer__condition-editor input')
+    expect(css).not.toContain('.mx-config-form-designer__reaction-editor input')
+    expect(css).not.toContain('.mx-config-form-designer__validation-editor input')
     expect(css).toContain('.mx-config-form-designer__setter:focus-within > .mx-config-form-designer__setter-label-row')
     expect(css).toContain('.mx-config-form-designer__search input:focus-visible')
   })
@@ -79,10 +84,9 @@ describe('designer component Sass entries', () => {
       'src/components/DesignerPropertyPanel/components/DesignerResponsiveSettings/style',
       'src/components/DesignerPropertyPanel/components/DesignerBreakpointLayoutSettings/style',
       'src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter/style',
-      'src/components/DesignerPropertyPanel/components/DesignerConditionSetter/style',
-      'src/components/DesignerPropertyPanel/components/DesignerReactionSetter/style',
       'src/components/DesignerPropertyPanel/components/DesignerOptionsSetter/style',
       'src/components/DesignerPropertyPanel/components/DesignerValidationSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerValidateOnSetter/style',
     ]
 
     for (const directory of styleDirectories) {

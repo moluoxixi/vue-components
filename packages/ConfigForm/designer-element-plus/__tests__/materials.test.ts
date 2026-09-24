@@ -1,14 +1,17 @@
-import type { PageGraph } from '@moluoxixi/config-form-model'
-import { defineDesignerFieldMaterial } from '@moluoxixi/config-form-designer'
-import { pageGraphSchema } from '@moluoxixi/config-form-model'
+import type { DatasetViewQuery, ProjectDataset, SurfaceGraph } from '@moluoxixi/config-form-model'
+import { defineDesignerFieldMaterial, isDesignerSetterPathAllowed } from '@moluoxixi/config-form-designer'
+import { queryDatasetView, SURFACE_GRAPH_VERSION, surfaceGraphSchema } from '@moluoxixi/config-form-model'
+import { flushPromises, mount } from '@vue/test-utils'
+import { ElTable } from 'element-plus'
 import { describe, expect, it } from 'vitest'
-import { defineComponent } from 'vue'
+import { defineComponent, reactive, toRaw } from 'vue'
 import {
   createElementPlusDesignerRegistry,
   ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY,
   ELEMENT_PLUS_DESIGNER_MATERIALS,
   ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
+import { ElementDatasetList, ElementDatasetTable } from '../src/materials/runtime'
 
 const expectedKeys = [
   'element.input',
@@ -28,11 +31,27 @@ const expectedKeys = [
   'element.collapse-item',
   'element.flex',
   'element.grid',
+  'element.object-group',
+  'element.array-subform',
+  'element.detail-table',
+  'element.text',
+  'element.title',
+  'element.icon',
+  'element.image',
+  'element.divider',
+  'element.button',
+  'element.link',
+  'element.tag',
+  'element.alert',
+  'element.table',
+  'element.list',
+  'element.empty',
+  'element.pagination',
 ]
 
-function graphForRootMaterials(): PageGraph {
+function graphForRootMaterials(): SurfaceGraph {
   const registry = createElementPlusDesignerRegistry()
-  const graph: PageGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  const graph: SurfaceGraph = { version: SURFACE_GRAPH_VERSION, props: {}, form: {}, root: [], nodesById: {} }
   registry.listMaterials().forEach((material, index) => {
     const subgraph = registry.createSubgraph(material.key, {
       id: `matrix-${index}`,
@@ -50,6 +69,41 @@ function graphForRootMaterials(): PageGraph {
     Object.assign(graph.nodesById, subgraph.nodesById)
   })
   return graph
+}
+
+function projectedDatasetViews() {
+  const dataset: ProjectDataset = {
+    id: 'people',
+    name: 'People',
+    rows: [
+      { id: 'ada', name: 'Ada', active: true, rank: 2, detail: 'Second', meta: { team: 'Core' } },
+      { id: 'grace', name: 'Grace', active: false, rank: 4, detail: 'Hidden', meta: { team: 'Compiler' } },
+      { id: 'linus', name: 'Linus', active: true, rank: 1, detail: 'Third', meta: { team: 'Runtime' } },
+      { id: 'alan', name: 'Alan', active: true, rank: 3, detail: 'First', meta: { team: 'Studio' } },
+    ],
+  }
+  const query: DatasetViewQuery = {
+    filter: { version: 1, ast: { kind: 'reference', scope: 'item', path: ['active'] } },
+    sort: [{ path: ['rank'], direction: 'desc' }],
+    page: { index: 0, size: 2 },
+  }
+  const table = queryDatasetView(dataset, {
+    kind: 'table',
+    rowKeyPath: ['id'],
+    columns: [
+      { key: 'name', valuePath: ['name'] },
+      { key: 'meta', valuePath: ['meta'] },
+    ],
+  }, query)
+  const list = queryDatasetView(dataset, {
+    kind: 'list',
+    itemKeyPath: ['id'],
+    titlePath: ['name'],
+    descriptionPath: ['detail'],
+  }, query)
+  if (!table.success || !list.success)
+    throw new TypeError('Expected shared Dataset queries to succeed.')
+  return { table: table.data, list: list.data }
 }
 
 describe('element plus designer materials', () => {
@@ -84,7 +138,7 @@ describe('element plus designer materials', () => {
 
   it('creates a normalized JSON-safe subgraph for every material', () => {
     const graph = graphForRootMaterials()
-    expect(() => pageGraphSchema.parse(graph)).not.toThrow()
+    expect(() => surfaceGraphSchema.parse(graph)).not.toThrow()
     expect(Object.keys(graph.nodesById)).toHaveLength(expectedKeys.length)
   })
 
@@ -113,7 +167,7 @@ describe('element plus designer materials', () => {
     })
   })
 
-  it('publishes complete source, binding, event, and property-control metadata', () => {
+  it('publishes source and binding metadata without event authoring capabilities', () => {
     const registry = createElementPlusDesignerRegistry()
     expect(registry.listMaterials().every(material => !!material.source)).toBe(true)
     expect(registry.getMaterial('element.date')?.source?.tag).toBe('el-date-picker')
@@ -124,13 +178,12 @@ describe('element plus designer materials', () => {
     const inputRuntime = registry.getMaterial('element.input')?.runtime
     expect(inputRuntime?.valueProp ?? 'modelValue').toBe('modelValue')
     expect(inputRuntime?.trigger ?? `update:${inputRuntime?.valueProp ?? 'modelValue'}`).toBe('update:modelValue')
-    expect(registry.getMaterial('element.tabs')?.events).toEqual([
-      { name: 'tab-change', title: 'Active tab change' },
-    ])
-    expect(registry.getMaterial('element.collapse')?.events).toEqual([
-      { name: 'change', title: 'Expanded items change' },
-    ])
-    expect(Object.keys(registry.propertyControls)).toEqual(['defaultValue', 'text', 'textarea', 'number', 'boolean', 'select'])
+    expect(registry.listMaterials().every(material => !Object.hasOwn(material, 'events'))).toBe(true)
+    expect(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.contracts.every(contract => !Object.hasOwn(contract, 'events'))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).every(setter => isDesignerSetterPathAllowed(setter.path))).toBe(true)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path.join('.') === 'props.optionSource')).toBe(false)
+    expect(registry.listMaterials().flatMap(material => material.setters).some(setter => setter.path[0] === 'valueScope')).toBe(false)
+    expect(Object.keys(registry.propertyControls)).toEqual(['defaultValue'])
   })
 
   it('creates independent defaults for every field material', () => {
@@ -145,6 +198,100 @@ describe('element plus designer materials', () => {
       expect(firstNode.props).not.toBe(secondNode.props)
       expect(material.setters.some(setter => setter.path.join('.') === 'defaultValue')).toBe(true)
       expect(typeof material.runtime.readonlyRender).toBe('function')
+    }
+  })
+
+  it('keeps Dataset and semantic capabilities on their exact element materials', () => {
+    const registry = createElementPlusDesignerRegistry()
+    for (const name of ['text', 'title', 'icon', 'image', 'divider', 'button', 'link', 'tag', 'alert', 'table', 'list', 'empty', 'pagination'])
+      expect(registry.getMaterial(`element.${name}`)?.kind).toBe('element')
+    expect(registry.getMaterial('element.select')?.datasetBindings).toEqual([
+      { key: 'options', projectionKinds: ['options'] },
+    ])
+    expect(registry.getMaterial('element.table')).toMatchObject({
+      kind: 'element',
+      semanticTriggers: ['rowActivate'],
+      datasetBindings: [{ key: 'rows', projectionKinds: ['table'] }],
+    })
+    expect(registry.getMaterial('element.list')).toMatchObject({
+      kind: 'element',
+      semanticTriggers: ['itemActivate'],
+      datasetBindings: [{ key: 'items', projectionKinds: ['list'] }],
+    })
+    expect(registry.getMaterial('element.button')?.semanticTriggers).toEqual(['activate'])
+    expect(registry.getMaterial('element.link')?.semanticTriggers).toEqual(['activate'])
+    expect(registry.getMaterial('element.image')?.resourceBindings).toEqual([{ key: 'src', mediaTypes: ['image/*'] }])
+    const grid = registry.getMaterial('element.grid')
+    const flex = registry.getMaterial('element.flex')
+    expect(grid?.kind).toBe('layout')
+    expect(flex?.kind).toBe('layout')
+    if (grid?.kind === 'layout')
+      expect(grid.slots[0]?.accepts).toContain('element')
+    if (flex?.kind === 'layout')
+      expect(flex.slots[0]?.accepts).toContain('element')
+  })
+
+  it('renders the shared queried Dataset page with local Table/List activation state', async () => {
+    const views = projectedDatasetViews()
+    expect(views.table).toMatchObject({
+      total: 3,
+      items: [
+        { rowKey: 'alan', name: 'Alan' },
+        { rowKey: 'ada', name: 'Ada' },
+      ],
+    })
+    expect(views.list).toMatchObject({
+      total: 3,
+      items: [
+        { itemKey: 'alan', title: 'Alan', description: 'First' },
+        { itemKey: 'ada', title: 'Ada', description: 'Second' },
+      ],
+    })
+
+    const rows = reactive([...views.table.items])
+    const table = mount(ElementDatasetTable, { props: { rows, rowsTotal: views.table.total } })
+    const elTable = table.getComponent(ElTable)
+    const rowClassName = elTable.props('rowClassName') as (input: {
+      row: Record<string, unknown>
+      rowIndex: number
+    }) => string
+    expect(table.get('.el-business-table__summary').text()).toBe('2 / 3')
+    elTable.vm.$emit('row-click', rows[0])
+    await flushPromises()
+    expect(rowClassName({ row: rows[0]!, rowIndex: 0 })).toBe('is-selected')
+    const activatedRow = table.emitted('row-click')?.[0]?.[0] as typeof rows[number]
+    expect(activatedRow).toEqual(toRaw(rows[0]))
+    expect(activatedRow).not.toBe(toRaw(rows[0]))
+    expect(activatedRow.meta).not.toBe(toRaw(rows[0]!).meta)
+
+    const items = reactive([...views.list.items])
+    const list = mount(ElementDatasetList, { props: { items, itemsTotal: views.list.total } })
+    const first = list.get('.el-business-list__item')
+    expect(list.get('.el-business-list__summary').text()).toBe('2 / 3')
+    await first.trigger('click')
+    expect(first.attributes('aria-pressed')).toBe('true')
+    expect(first.classes()).toContain('is-selected')
+    const activatedItem = list.emitted('item-click')?.[0]?.[0] as typeof items[number]
+    expect(activatedItem).toEqual(toRaw(items[0]))
+    expect(activatedItem).not.toBe(toRaw(items[0]))
+  })
+
+  it('shares one option value capability across options and default setters', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const expected = {
+      'element.select': ['string', 'number', 'boolean'],
+      'element.radio': ['string', 'number', 'boolean'],
+      'element.checkbox': ['string', 'number'],
+    } as const
+
+    for (const [key, optionValueTypes] of Object.entries(expected)) {
+      const material = registry.getMaterial(key)
+      expect(material?.kind).toBe('field')
+      const defaultSetter = material?.setters.find(setter => setter.path.join('.') === 'defaultValue')
+      const optionsSetter = material?.setters.find(setter => setter.path.join('.') === 'props.options')
+      expect(defaultSetter?.optionValueTypes).toEqual(optionValueTypes)
+      expect(defaultSetter?.componentProps).toMatchObject({ optionValueTypes })
+      expect(optionsSetter?.optionValueTypes).toEqual(optionValueTypes)
     }
   })
 

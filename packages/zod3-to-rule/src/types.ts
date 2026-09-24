@@ -16,8 +16,7 @@ export type RuleBase
     | { type: 'literal', value: RulePrimitive }
 
 export type RuleDescriptor
-  = | { kind: 'required', message?: string }
-    | { kind: 'minLength', value: number, message?: string }
+  = | { kind: 'minLength', value: number, message?: string }
     | { kind: 'maxLength', value: number, message?: string }
     | { kind: 'length', value: number, message?: string }
     | { kind: 'regex', source: string, flags?: string, message?: string }
@@ -76,8 +75,6 @@ export interface RuleCompileContext {
 
 export interface CompiledRuleSet {
   schema: import('zod').ZodTypeAny
-  required?: boolean
-  requiredMessage?: string
   validator?: RuleValidator
   diagnostics: RuleDiagnostic[]
 }

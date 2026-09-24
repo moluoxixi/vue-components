@@ -1,4 +1,4 @@
-import type { ModelDiagnostic, NodeId, PageId, ProjectDocument, ProjectTransactionResult } from '../../../types'
+import type { ModelDiagnostic, NodeId, ProjectDocument, ProjectTransactionResult, SurfaceId } from '../../../types'
 
 export class TransactionError extends Error {
   readonly diagnostic: ModelDiagnostic
@@ -15,6 +15,18 @@ export function failure(document: ProjectDocument, code: string, message: string
   return { success: false, document, diagnostics: [{ code, message }] }
 }
 
-export function invalid(code: string, message: string, pageId?: PageId, nodeId?: NodeId): never {
-  throw new TransactionError({ code, message, ...(pageId ? { pageId } : {}), ...(nodeId ? { nodeId } : {}) })
+export function invalid(
+  code: string,
+  message: string,
+  surfaceId?: SurfaceId,
+  nodeId?: NodeId,
+  context?: Record<string, unknown>,
+): never {
+  throw new TransactionError({
+    code,
+    message,
+    ...(surfaceId ? { surfaceId } : {}),
+    ...(nodeId ? { nodeId } : {}),
+    ...(context ? { context } : {}),
+  })
 }

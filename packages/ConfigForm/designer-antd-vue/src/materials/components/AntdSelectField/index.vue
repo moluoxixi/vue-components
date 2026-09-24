@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import type { AntdSelectFieldEmits, AntdSelectFieldProps, AntdSelectValue, AntdVueDesignerOption } from '../../../types'
+import { DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES } from '@moluoxixi/config-form-designer'
 import { Select } from 'ant-design-vue'
 import { computed } from 'vue'
-import { useAntdVueResolvedOptions } from '../../../options'
-import AntdOptionState from '../AntdOptionState/index.vue'
+import { normalizeAntdVueOptions } from '../../../options'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<AntdSelectFieldProps>()
 
-const state = useAntdVueResolvedOptions(
-  computed(() => props.optionSource),
-  computed(() => props.options),
-)
-const selectOptions = computed(() => state.value.options.filter(
+const selectOptions = computed(() => normalizeAntdVueOptions(
+  props.options,
+  DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
+).filter(
   (option): option is AntdVueDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
 
@@ -27,9 +26,7 @@ const emit = defineEmits<AntdSelectFieldEmits>()
       data-designer-selection-target
       :value="value"
       :options="selectOptions"
-      :loading="state.status === 'loading'"
       @update:value="emit('update:value', $event as AntdSelectValue)"
     />
-    <AntdOptionState :state="state" />
   </span>
 </template>

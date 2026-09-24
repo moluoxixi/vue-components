@@ -2,11 +2,12 @@ import type {
   ConfigFormReaction,
   ConfigFormReactionCondition,
   ConfigFormReactionEffect,
+  ConfigFormReactionEvaluateOptions,
   ConfigFormReactionOperand,
   ConfigFormReactionProjection,
   ConfigFormReactionStateKey,
 } from '../types'
-import { tryEvaluateConfigFormExpression } from '../../expression'
+import { evaluateConfigFormExpression, tryEvaluateConfigFormExpression } from '../../expression'
 
 export const CONFIG_FORM_REACTION_MAX_DEPTH = 64
 
@@ -26,13 +27,16 @@ export class ConfigFormReactionError<Context extends Record<string, unknown> = R
 export function evaluateConfigFormReactionCondition(
   condition: ConfigFormReactionCondition,
   values: Record<string, unknown>,
+  options: ConfigFormReactionEvaluateOptions = {},
 ): boolean {
-  return evaluateReactionCondition(condition, values, 0)
+  const scope = options.scope ? { ...values, ...options.scope } : values
+  return evaluateReactionCondition(condition, scope, options, 0)
 }
 
 function evaluateReactionCondition(
   condition: ConfigFormReactionCondition,
   values: Record<string, unknown>,
+  options: ConfigFormReactionEvaluateOptions,
   depth: number,
 ): boolean {
   assertReactionDepth(depth)
@@ -40,16 +44,16 @@ function evaluateReactionCondition(
     case 'literal': return condition.value
     case 'compare':
       return compareValues(
-        resolveOperand(condition.left, values),
-        resolveOperand(condition.right, values),
+        resolveOperand(condition.left, values, options),
+        resolveOperand(condition.right, values, options),
         condition.operator,
       )
-    case 'and': return condition.expressions.every(item => evaluateReactionCondition(item, values, depth + 1))
-    case 'or': return condition.expressions.some(item => evaluateReactionCondition(item, values, depth + 1))
-    case 'not': return !evaluateReactionCondition(condition.expression, values, depth + 1)
-    // A failed expression must not satisfy the condition: broken formulas
-    // keep dependent reactions on their else branch instead of throwing.
+    case 'and': return condition.expressions.every(item => evaluateReactionCondition(item, values, options, depth + 1))
+    case 'or': return condition.expressions.some(item => evaluateReactionCondition(item, values, options, depth + 1))
+    case 'not': return !evaluateReactionCondition(condition.expression, values, options, depth + 1)
     case 'expression': {
+      if (options.strict)
+        return Boolean(evaluateConfigFormExpression(condition.expression, values))
       const result = tryEvaluateConfigFormExpression(condition.expression, values)
       return result.success && Boolean(result.value)
     }
@@ -60,6 +64,7 @@ function evaluateReactionCondition(
 export function applyConfigFormReactionList<TValues extends object>(
   reactions: ConfigFormReaction[],
   inputValues: TValues,
+  options: ConfigFormReactionEvaluateOptions = {},
 ): ConfigFormReactionProjection<TValues> {
   const values = { ...inputValues } as TValues & Record<string, unknown>
   const seen: Array<Record<string, unknown>> = [{ ...values }]
@@ -70,12 +75,12 @@ export function applyConfigFormReactionList<TValues extends object>(
     reactions.forEach((reaction) => {
       if (reaction.enabled === false)
         return
-      const effects = evaluateConfigFormReactionCondition(reaction.when, values)
+      const effects = evaluateConfigFormReactionCondition(reaction.when, values, options)
         ? reaction.then
         : (reaction.else ?? [])
       effects.forEach((effect) => {
         if (effect.kind === 'setValue') {
-          const nextValue = cloneReactionValue(resolveOperand(effect.value, values))
+          const nextValue = cloneReactionValue(resolveOperand(effect.value, values, options))
           if (!equalReactionValues(values[effect.target], nextValue) || !Object.hasOwn(values, effect.target)) {
             defineValue(values, effect.target, nextValue)
           }
@@ -87,7 +92,7 @@ export function applyConfigFormReactionList<TValues extends object>(
     })
 
     if (equalReactionValues(passStart, values))
-      return projectReactions(reactions, values as TValues & Record<string, unknown>)
+      return projectReactions(reactions, values as TValues & Record<string, unknown>, options)
 
     if (seen.some(snapshot => equalReactionValues(snapshot, values))) {
       throw new ConfigFormReactionError(
@@ -109,6 +114,7 @@ export function applyConfigFormReactionList<TValues extends object>(
 function projectReactions<TValues extends object>(
   reactions: ConfigFormReaction[],
   values: TValues & Record<string, unknown>,
+  options: ConfigFormReactionEvaluateOptions,
 ): ConfigFormReactionProjection<TValues> {
   const props: Record<string, Record<string, unknown>> = Object.create(null)
   const states: Record<string, Partial<Record<ConfigFormReactionStateKey, boolean>>> = Object.create(null)
@@ -117,10 +123,10 @@ function projectReactions<TValues extends object>(
   reactions.forEach((reaction) => {
     if (reaction.enabled === false)
       return
-    const effects = evaluateConfigFormReactionCondition(reaction.when, values)
+    const effects = evaluateConfigFormReactionCondition(reaction.when, values, options)
       ? reaction.then
       : (reaction.else ?? [])
-    effects.forEach(effect => projectEffect(effect, values, props, states, validate))
+    effects.forEach(effect => projectEffect(effect, values, props, states, validate, options))
   })
 
   return { values: { ...values } as TValues, props, states, validate: [...validate] }
@@ -132,6 +138,7 @@ function projectEffect(
   props: Record<string, Record<string, unknown>>,
   states: Record<string, Partial<Record<ConfigFormReactionStateKey, boolean>>>,
   validate: Set<string>,
+  options: ConfigFormReactionEvaluateOptions,
 ): void {
   if (effect.kind === 'setState') {
     defineValue(states, effect.target, { ...states[effect.target], ...effect.state })
@@ -139,7 +146,7 @@ function projectEffect(
   else if (effect.kind === 'setProps') {
     const nextProps = { ...props[effect.target] }
     Object.entries(effect.props).forEach(([key, operand]) => {
-      defineValue(nextProps, key, cloneReactionValue(resolveOperand(operand, values)))
+      defineValue(nextProps, key, cloneReactionValue(resolveOperand(operand, values, options)))
     })
     defineValue(props, effect.target, nextProps)
   }
@@ -148,14 +155,19 @@ function projectEffect(
   }
 }
 
-function resolveOperand(operand: ConfigFormReactionOperand, values: Record<string, unknown>): unknown {
+function resolveOperand(
+  operand: ConfigFormReactionOperand,
+  values: Record<string, unknown>,
+  options: ConfigFormReactionEvaluateOptions,
+): unknown {
   if (operand.kind === 'field')
     return values[operand.field]
   if (operand.kind === 'literal')
     return operand.value
-  // Broken formulas resolve to undefined so a single bad operand cannot
-  // abort the whole reaction pass.
-  const result = tryEvaluateConfigFormExpression(operand.expression, values)
+  const scope = options.scope ? { ...values, ...options.scope } : values
+  if (options.strict)
+    return evaluateConfigFormExpression(operand.expression, scope)
+  const result = tryEvaluateConfigFormExpression(operand.expression, scope)
   return result.success ? result.value : undefined
 }
 

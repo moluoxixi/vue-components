@@ -23,6 +23,9 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    alias: {
+      '@designer': resolve(__dirname, 'src'),
+    },
     conditions: ['source'],
   },
   test: {

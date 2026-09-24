@@ -1,10 +1,12 @@
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import Vue from '@vitejs/plugin-vue'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
+import { configFormSourceAliases } from './scripts/workspace-source-aliases'
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url))
 const elementPlusTheme = resolve(currentDirectory, 'src/styles/element-plus/theme.scss').replaceAll('\\', '/')
@@ -20,6 +22,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   plugins: [
+    tailwindcss(),
     Vue(),
     Components({
       dirs: [],
@@ -35,8 +38,9 @@ export default defineConfig(({ command }) => ({
     },
   },
   resolve: {
-    alias: {
-      '@': resolve(currentDirectory, 'src'),
-    },
+    alias: [
+      ...configFormSourceAliases,
+      { find: '@', replacement: resolve(currentDirectory, 'src') },
+    ],
   },
 }))

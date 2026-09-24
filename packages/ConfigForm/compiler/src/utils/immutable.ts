@@ -1,7 +1,8 @@
 import type { ModelJsonObject } from '@moluoxixi/config-form-model'
+import type { MutableClone } from '../types'
 
-export function clone<T>(value: T): T {
-  return structuredClone(value)
+export function clone<T>(value: T): MutableClone<T> {
+  return structuredClone(value) as MutableClone<T>
 }
 
 export function cloneJsonObject(value: Readonly<Record<string, unknown>>): ModelJsonObject {

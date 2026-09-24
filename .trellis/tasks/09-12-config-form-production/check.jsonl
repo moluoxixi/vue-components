@@ -1,0 +1,3 @@
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查旧事件编排方向未被误当作当前或已交付合同。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"状态所有权和真实提交校验行为"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"设计器操作、焦点、无障碍及导出质量"}

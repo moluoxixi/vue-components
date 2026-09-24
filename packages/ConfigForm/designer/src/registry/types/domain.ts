@@ -1,18 +1,22 @@
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type {
   ComponentContract,
+  ElementNode,
   FieldNode,
   LayoutNode,
+  MaterialDatasetBindingCapability,
+  MaterialResourceBindingCapability,
+  MaterialSemanticTrigger,
   ModelJsonObject,
   ModelJsonValue,
   NodeSubgraph,
-  PageNode,
+  SurfaceNode,
 } from '@moluoxixi/config-form-model'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 import type { DesignerDiagnostic } from '../../graph'
 
-export type DesignerNodeKind = PageNode['kind']
+export type DesignerNodeKind = SurfaceNode['kind']
 
 export type DesignerSetterControl
   = | 'text'
@@ -22,9 +26,8 @@ export type DesignerSetterControl
     | 'select'
     | 'defaultValue'
     | 'options'
-    | 'condition'
-    | 'reaction'
     | 'validation'
+    | 'validateOn'
     | 'custom'
 
 export type DesignerSimpleSetterControl = Extract<
@@ -43,6 +46,8 @@ export type DesignerDefaultValueKind
     | 'date'
     | 'time'
 
+export type DesignerOptionValueType = 'string' | 'number' | 'boolean'
+
 export interface DesignerSetterOption {
   label: string
   value: ModelJsonValue
@@ -55,7 +60,7 @@ export interface DesignerPropertySetterDefinition {
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
   optionsPath?: string[]
-  optionSourcePath?: string[]
+  optionValueTypes?: readonly DesignerOptionValueType[]
   valueKind?: DesignerDefaultValueKind
   integer?: boolean
   min?: number
@@ -93,12 +98,6 @@ export interface DesignerMaterialParentDefinition {
   slot: string
 }
 
-/** Component event that may be selected as a Flow trigger. */
-export interface DesignerMaterialEventDefinition {
-  name: string
-  title: string
-}
-
 export interface DesignerRuntimeMaterialBinding {
   component: Component | string
   valueProp?: string
@@ -124,6 +123,8 @@ export interface DesignerSourceOptionsBinding {
 
 export type DesignerSourceRenderKind
   = | 'component'
+    | 'dataset-list'
+    | 'dataset-table'
     | 'layout-flex'
     | 'layout-grid'
     | 'section'
@@ -177,14 +178,16 @@ export interface DesignerCreateNodeContext {
   field?: string
 }
 
-type DesignerOptionalNodeMaps = 'props' | 'events' | 'bindings'
+type DesignerOptionalNodeMaps = 'props' | 'datasetBindings' | 'resourceBindings'
 export type DesignerFieldNodeTemplate = Omit<FieldNode, DesignerOptionalNodeMaps>
   & Partial<Pick<FieldNode, DesignerOptionalNodeMaps>>
 export type DesignerLayoutNodeTemplate = Omit<LayoutNode, DesignerOptionalNodeMaps>
   & Partial<Pick<LayoutNode, DesignerOptionalNodeMaps>>
+export type DesignerElementNodeTemplate = Omit<ElementNode, DesignerOptionalNodeMaps>
+  & Partial<Pick<ElementNode, DesignerOptionalNodeMaps>>
 export interface DesignerNodeSubgraphTemplate {
   root: NodeSubgraph['root']
-  nodesById: Record<string, DesignerFieldNodeTemplate | DesignerLayoutNodeTemplate>
+  nodesById: Record<string, DesignerFieldNodeTemplate | DesignerLayoutNodeTemplate | DesignerElementNodeTemplate>
 }
 
 export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> {
@@ -195,14 +198,17 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   category: string
   icon?: Component
   runtime: DesignerRuntimeMaterialBinding
+  /** Semantic triggers are declarative preview affordances, never callbacks. */
+  semanticTriggers?: MaterialSemanticTrigger[]
+  stateProjectionProperties?: string[][]
+  datasetBindings?: MaterialDatasetBindingCapability[]
+  resourceBindings?: MaterialResourceBindingCapability[]
   source?: DesignerSourceMaterialBinding
   designPolicy?: DesignerDesignPolicy
-  /** Explicit non-binding events exposed to Flow orchestration. */
-  events?: DesignerMaterialEventDefinition[]
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]
-  analyze?: (node: Extract<PageNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
+  analyze?: (node: Extract<SurfaceNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
 }
 
 export interface DesignerFieldMaterialDefinition extends DesignerMaterialDefinitionBase<'field'> {
@@ -214,7 +220,11 @@ export interface DesignerLayoutMaterialDefinition extends DesignerMaterialDefini
   slots: DesignerMaterialSlotDefinition[]
 }
 
-export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition
+export interface DesignerElementMaterialDefinition extends DesignerMaterialDefinitionBase<'element'> {
+  createNode: (context: DesignerCreateNodeContext) => DesignerElementNodeTemplate
+}
+
+export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition | DesignerElementMaterialDefinition
 
 /** Runtime resolver entry. Vue components and functions never enter the contract snapshot. */
 export interface DesignerMaterialRuntimeBinding {
@@ -233,7 +243,6 @@ export interface DesignerMaterialDesignMetadata {
   category: string
   icon?: Component
   setters: DesignerPropertySetterDefinition[]
-  events: DesignerMaterialEventDefinition[]
   slots: DesignerMaterialSlotDefinition[]
   policy?: DesignerDesignPolicy
 }

@@ -1,0 +1,199 @@
+.mx-prototype-host,
+.mx-prototype-host__overlays {
+  --mx-prototype-surface: #ffffff;
+  --mx-prototype-text: #20242a;
+  --mx-prototype-border: #d9dde3;
+  --mx-prototype-backdrop: rgb(22 24 29 / 52%);
+  --mx-prototype-shadow: 0 20px 56px rgb(22 24 29 / 22%);
+  --mx-prototype-focus: #2563eb;
+
+  position: relative;
+  min-width: 0;
+  min-height: 100%;
+  color: var(--mx-prototype-text);
+  font: inherit;
+}
+
+.mx-prototype-host__page {
+  min-width: 0;
+  min-height: 100%;
+}
+
+.mx-prototype-host__overlays {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mx-prototype-host__overlay-layer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.mx-prototype-host__overlay-layer--masked {
+  background: var(--mx-prototype-backdrop);
+  pointer-events: auto;
+}
+
+.mx-prototype-host__overlay {
+  --mx-prototype-overlay-size: var(--prototype-overlay-size-desktop);
+
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  color: var(--mx-prototype-text);
+  background: var(--mx-prototype-surface);
+  border: 1px solid var(--mx-prototype-border);
+  box-shadow: var(--mx-prototype-shadow);
+  pointer-events: auto;
+}
+
+.mx-prototype-host__overlay:focus-visible {
+  outline: 2px solid var(--mx-prototype-focus);
+  outline-offset: 2px;
+}
+
+.mx-prototype-host__overlay--dialog {
+  width: var(--mx-prototype-overlay-size);
+  border-radius: 6px;
+}
+
+.mx-prototype-host__overlay--drawer {
+  position: absolute;
+  border-radius: 0;
+}
+
+.mx-prototype-host__overlay--left,
+.mx-prototype-host__overlay--right {
+  top: 0;
+  bottom: 0;
+  width: var(--mx-prototype-overlay-size);
+  max-width: 100vw;
+  max-height: none;
+}
+
+.mx-prototype-host__overlay--left {
+  left: 0;
+  border-left: 0;
+}
+
+.mx-prototype-host__overlay--right {
+  right: 0;
+  border-right: 0;
+}
+
+.mx-prototype-host__overlay--top,
+.mx-prototype-host__overlay--bottom {
+  right: 0;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  height: var(--mx-prototype-overlay-size);
+}
+
+.mx-prototype-host__overlay--top {
+  top: 0;
+  border-top: 0;
+}
+
+.mx-prototype-host__overlay--bottom {
+  bottom: 0;
+  border-bottom: 0;
+}
+
+.mx-prototype-host__overlay-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 52px;
+  padding: 10px 12px 10px 18px;
+  border-bottom: 1px solid var(--mx-prototype-border);
+}
+
+.mx-prototype-host__overlay-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.mx-prototype-host__overlay-close {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
+  place-items: center;
+  color: inherit;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-prototype-host__overlay-close:hover {
+  background: rgb(32 36 42 / 7%);
+}
+
+.mx-prototype-host__overlay-close:focus-visible {
+  outline: 2px solid var(--mx-prototype-focus);
+  outline-offset: 1px;
+}
+
+.mx-prototype-host__overlay-content {
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  overflow: auto;
+}
+
+@media (max-width: 1024px) {
+  .mx-prototype-host__overlay {
+    --mx-prototype-overlay-size: var(--prototype-overlay-size-tablet);
+  }
+}
+
+@media (max-width: 640px) {
+  .mx-prototype-host__overlay-layer {
+    padding: 12px;
+  }
+
+  .mx-prototype-host__overlay {
+    --mx-prototype-overlay-size: var(--prototype-overlay-size-mobile);
+
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  .mx-prototype-host__overlay--left,
+  .mx-prototype-host__overlay--right {
+    max-width: 100vw;
+  }
+
+  .mx-prototype-host__overlay--top,
+  .mx-prototype-host__overlay--bottom {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-prototype-host__overlay,
+  .mx-prototype-host__overlay-layer {
+    scroll-behavior: auto;
+  }
+}

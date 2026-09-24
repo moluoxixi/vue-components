@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
-import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
+import { createComponentContractRegistry, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
@@ -26,14 +26,17 @@ const componentRegistry = createComponentContractRegistry([{
   version: '1',
   kind: 'field',
   props: [],
-  events: [],
   bindings: [],
+  semanticTriggers: ['activate'],
+  stateProjectionProperties: [],
+  datasetBindings: [],
+  resourceBindings: [],
   slots: [],
   allowedParents: [],
   defaults: {},
 }], { adapter: 'test', version: '1' })
-const graph: PageGraph = {
-  version: 2,
+const graph: SurfaceGraph = {
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {},
   root: [
@@ -47,8 +50,7 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'first',
       props: {},
-      events: {},
-      bindings: {},
+      datasetBindings: {},
     },
     second: {
       id: 'second',
@@ -56,8 +58,7 @@ const graph: PageGraph = {
       kind: 'field',
       field: 'second',
       props: {},
-      events: {},
-      bindings: {},
+      datasetBindings: {},
     },
   },
 }
@@ -79,7 +80,7 @@ function mountSurface() {
         redo,
         undo,
       },
-      pageId: 'home',
+      surfaceId: 'home',
       registry,
     },
     slots: {

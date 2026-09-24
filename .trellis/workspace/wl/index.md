@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 44
-- **Last Active**: 2026-09-07
+- **Total Sessions**: 52
+- **Last Active**: 2026-09-21
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1109 | Active |
+| `journal-1.md` | ~1305 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,14 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 52 | 2026-09-21 | 闭合 Demo Studio 归档元数据 | `8ce7f4e1`, `863e75d3` | `fix架构` |
+| 51 | 2026-09-21 | 完成 ConfigForm Demo Studio 与 Tailwind 源码导出 | `9d21019e`, `fb71bf83`, `d95f4940` | `fix架构` |
+| 50 | 2026-09-20 | 完成 Workbench Tailwind 样式基础设施 | `887f9f4c`, `83d620a7` | `fix架构` |
+| 49 | 2026-09-20 | 完成 ConfigForm 校验与原生源码导出加固 | `ea79574a` | `fix架构` |
+| 48 | 2026-09-20 | 收紧 ConfigForm 源码导出与响应合同 | `06f06776` | `fix架构` |
+| 47 | 2026-09-20 | 完成 ConfigForm 原始源码与绑定导出 | `038271fa`, `7a04139c` | `fix架构` |
+| 46 | 2026-09-18 | 定型 ConfigForm Demo Studio 产品与领域合同 | `d69afcfa`, `3e6d2c87` | `fix架构` |
+| 45 | 2026-09-18 | 收敛 ConfigForm Runtime-first 产品边界 | `6d493985` | `fix架构` |
 | 44 | 2026-09-07 | 完成 ConfigForm worktree 清理与任务归档 | `0c4b5f8b` | `main` |
 | 43 | 2026-09-07 | 配置化表单与设计器重构收尾 | `0c4b5f8b` | `main` |
 | 42 | 2026-09-07 | 完成富文本编辑器 P1/P2 生产契约 | `a5e876f5`, `e3f4fcee` | `main` |

@@ -1,24 +1,30 @@
 import type {
+  DeepReadonly,
   LayoutNode,
   NodeId,
-  PageGraph,
-  PageId,
-  PageNode,
   ProjectNodeRelation,
   RegistryContractComponentSnapshot,
   SlotName,
+  SurfaceGraph,
+  SurfaceId,
+  SurfaceNode,
 } from '@moluoxixi/config-form-model'
-import type { CanonicalFieldNodeIR, CanonicalNodeIR, CanonicalNodePlacement, SemanticCompilerDiagnostic } from '../../../types'
-import type { CompilePageContext } from '../types'
+import type {
+  CanonicalFieldNodeIR,
+  CanonicalNodeIR,
+  CanonicalNodePlacement,
+  SemanticCompilerDiagnostic,
+} from '../../../types'
+import type { CompileSurfaceContext } from '../types'
 import { normalizeConfigFormValidateOn } from '@moluoxixi/config-form-core'
-import { clone, mergeComponentProps, semanticHash } from '../../../utils'
+import { clone, cloneJsonObject, mergeComponentProps, semanticHash } from '../../../utils'
 
 export function resolveCanonicalPlacement(
-  graph: PageGraph,
+  graph: DeepReadonly<SurfaceGraph>,
   nodeId: NodeId,
   relation: ProjectNodeRelation,
   diagnostics: SemanticCompilerDiagnostic[],
-  pageId: PageId,
+  surfaceId: SurfaceId,
 ): CanonicalNodePlacement | undefined {
   const parent = relation.parentId === null ? undefined : graph.nodesById[relation.parentId]
   const sequence = relation.parentId === null
@@ -30,8 +36,8 @@ export function resolveCanonicalPlacement(
   if (!item) {
     diagnostics.push({
       code: 'COMPILER_NODE_RELATION_MISMATCH',
-      message: `Incremental node relation does not match the page graph: ${nodeId}`,
-      pageId,
+      message: `Incremental node relation does not match the Surface graph: ${nodeId}`,
+      surfaceId,
       nodeId,
     })
     return undefined
@@ -44,7 +50,7 @@ export function resolveCanonicalPlacement(
 }
 
 export function compileNodeShallow(
-  context: CompilePageContext,
+  context: CompileSurfaceContext,
   nodeId: NodeId,
   placement: CanonicalNodePlacement,
 ): CanonicalNodeIR | undefined {
@@ -58,49 +64,20 @@ export function compileNodeShallow(
             ? 'COMPILER_COMPONENT_UNKNOWN'
             : 'COMPILER_COMPONENT_KIND_MISMATCH',
       message: !node
-        ? `Page graph references an unknown node: ${nodeId}`
+        ? `Surface graph references an unknown node: ${nodeId}`
         : !component
             ? `Component is not present in the registry snapshot: ${node.component}`
             : `Component ${node.component} does not support node kind ${node.kind}.`,
-      pageId: context.pageId,
+      surfaceId: context.surfaceId,
       nodeId,
     })
     return undefined
   }
-  const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
-  if (node.kind === 'field') {
-    const semanticNode = compileFieldSemanticNode(node, common)
-    return { ...semanticNode, subtreeHash: semanticHash(semanticNode) } as CanonicalNodeIR
-  }
-
-  const slots: Record<SlotName, NodeId[]> = Object.create(null)
-  const childHashes: Record<SlotName, string[]> = Object.create(null)
-  for (const [slotName, children] of Object.entries(node.slots)) {
-    if (!validateSlot(component.contract, node, slotName, context))
-      continue
-    slots[slotName] = children.map(item => item.nodeId)
-    childHashes[slotName] = children.flatMap((item) => {
-      const child = context.nodesById[item.nodeId]
-      if (child)
-        return [child.subtreeHash]
-      context.diagnostics.push({
-        code: 'COMPILER_NODE_UNKNOWN',
-        message: `Page graph references an unknown node: ${item.nodeId}`,
-        pageId: context.pageId,
-        nodeId: item.nodeId,
-      })
-      return []
-    })
-  }
-  const semanticNode = { ...common, kind: 'layout', slots }
-  return {
-    ...semanticNode,
-    subtreeHash: semanticHash({ node: semanticNode, children: childHashes }),
-  } as CanonicalNodeIR
+  return compileKnownNodeShallow(context, node, component, placement)
 }
 
 export function compileNode(
-  context: CompilePageContext,
+  context: CompileSurfaceContext,
   nodeId: NodeId,
   placement: CanonicalNodePlacement,
 ): CanonicalNodeIR | undefined {
@@ -108,8 +85,8 @@ export function compileNode(
   if (!node) {
     context.diagnostics.push({
       code: 'COMPILER_NODE_UNKNOWN',
-      message: `Page graph references an unknown node: ${nodeId}`,
-      pageId: context.pageId,
+      message: `Surface graph references an unknown node: ${nodeId}`,
+      surfaceId: context.surfaceId,
       nodeId,
     })
     return undefined
@@ -119,7 +96,7 @@ export function compileNode(
     context.diagnostics.push({
       code: 'COMPILER_COMPONENT_UNKNOWN',
       message: `Component is not present in the registry snapshot: ${node.component}`,
-      pageId: context.pageId,
+      surfaceId: context.surfaceId,
       nodeId,
     })
     return undefined
@@ -128,19 +105,14 @@ export function compileNode(
     context.diagnostics.push({
       code: 'COMPILER_COMPONENT_KIND_MISMATCH',
       message: `Component ${node.component} does not support node kind ${node.kind}.`,
-      pageId: context.pageId,
+      surfaceId: context.surfaceId,
       nodeId,
     })
     return undefined
   }
 
-  const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
-  if (node.kind === 'field') {
-    const semanticNode = compileFieldSemanticNode(node, common)
-    const compiled = {
-      ...semanticNode,
-      subtreeHash: semanticHash(semanticNode),
-    } as CanonicalNodeIR
+  if (node.kind !== 'layout') {
+    const compiled = compileLeafNode(node, component, placement)
     context.nodesById[node.id] = compiled
     return compiled
   }
@@ -160,17 +132,78 @@ export function compileNode(
       return child ? [child.subtreeHash] : []
     })
   })
-  const semanticNode = { ...common, kind: 'layout', slots }
-  const compiled = {
+  const semanticNode = {
+    ...compileNodeBase(node, component, placement),
+    kind: 'layout' as const,
+    slots,
+    ...(node.valueScope === undefined ? {} : { valueScope: clone(node.valueScope) }),
+  }
+  const compiled: CanonicalNodeIR = {
     ...semanticNode,
     subtreeHash: semanticHash({ node: semanticNode, children: childHashes }),
-  } as CanonicalNodeIR
+  }
   context.nodesById[node.id] = compiled
   return compiled
 }
 
+function compileKnownNodeShallow(
+  context: CompileSurfaceContext,
+  node: DeepReadonly<SurfaceNode>,
+  component: RegistryContractComponentSnapshot,
+  placement: CanonicalNodePlacement,
+): CanonicalNodeIR {
+  if (node.kind !== 'layout')
+    return compileLeafNode(node, component, placement)
+
+  const slots: Record<SlotName, NodeId[]> = Object.create(null)
+  const childHashes: Record<SlotName, string[]> = Object.create(null)
+  for (const [slotName, children] of Object.entries(node.slots)) {
+    if (!validateSlot(component.contract, node, slotName, context))
+      continue
+    slots[slotName] = children.map(item => item.nodeId)
+    childHashes[slotName] = children.flatMap((item) => {
+      const child = context.nodesById[item.nodeId]
+      if (child)
+        return [child.subtreeHash]
+      context.diagnostics.push({
+        code: 'COMPILER_NODE_UNKNOWN',
+        message: `Surface graph references an unknown node: ${item.nodeId}`,
+        surfaceId: context.surfaceId,
+        nodeId: item.nodeId,
+      })
+      return []
+    })
+  }
+  const semanticNode = {
+    ...compileNodeBase(node, component, placement),
+    kind: 'layout' as const,
+    slots,
+    ...(node.valueScope === undefined ? {} : { valueScope: clone(node.valueScope) }),
+  }
+  return {
+    ...semanticNode,
+    subtreeHash: semanticHash({ node: semanticNode, children: childHashes }),
+  }
+}
+
+function compileLeafNode(
+  node: DeepReadonly<Exclude<SurfaceNode, { kind: 'layout' }>>,
+  component: RegistryContractComponentSnapshot,
+  placement: CanonicalNodePlacement,
+): CanonicalNodeIR {
+  if (node.kind === 'field') {
+    const semanticNode = compileFieldSemanticNode(node, compileNodeBase(node, component, placement))
+    return { ...semanticNode, subtreeHash: semanticHash(semanticNode) }
+  }
+  const semanticNode = {
+    ...compileNodeBase(node, component, placement),
+    kind: 'element' as const,
+  }
+  return { ...semanticNode, subtreeHash: semanticHash(semanticNode) }
+}
+
 function compileFieldSemanticNode(
-  node: Extract<PageNode, { kind: 'field' }>,
+  node: DeepReadonly<Extract<SurfaceNode, { kind: 'field' }>>,
   common: ReturnType<typeof compileNodeBase>,
 ): Omit<CanonicalFieldNodeIR, 'subtreeHash'> {
   return {
@@ -179,16 +212,19 @@ function compileFieldSemanticNode(
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
-    ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
+    ...(node.required === undefined ? {} : { required: node.required }),
+    ...(node.requiredMessage === undefined ? {} : { requiredMessage: node.requiredMessage }),
+    ...(node.validation === undefined
+      ? {}
+      : { validation: clone(node.validation) as unknown as CanonicalFieldNodeIR['validation'] }),
     validateOn: normalizeConfigFormValidateOn(node.validateOn),
   }
 }
 
 function compileNodeBase(
-  node: PageNode,
+  node: DeepReadonly<SurfaceNode>,
   component: RegistryContractComponentSnapshot,
   placement: CanonicalNodePlacement,
-  flowEvents?: readonly string[],
 ) {
   return {
     id: node.id,
@@ -197,28 +233,25 @@ function compileNodeBase(
     componentFingerprint: component.fingerprint,
     placement,
     configuredProps: clone(node.props),
-    props: mergeComponentProps(component.contract.defaults, node.props),
-    events: clone(node.events),
-    bindings: clone(node.bindings),
-    ...(flowEvents?.length ? { flowEvents: [...flowEvents] } : {}),
+    props: mergeComponentProps(component.contract.defaults, cloneJsonObject(node.props)),
+    ...(node.datasetBindings === undefined ? {} : { datasetBindings: clone(node.datasetBindings) }),
+    ...(node.resourceBindings === undefined ? {} : { resourceBindings: clone(node.resourceBindings) }),
     ...(node.extensions === undefined ? {} : { extensions: clone(node.extensions) }),
-    ...(node.conditions === undefined ? {} : { conditions: clone(node.conditions) }),
-    ...(node.reactions === undefined ? {} : { reactions: clone(node.reactions) }),
   }
 }
 
 function validateSlot(
   contract: RegistryContractComponentSnapshot['contract'],
-  node: LayoutNode,
+  node: DeepReadonly<LayoutNode>,
   slotName: string,
-  context: CompilePageContext,
+  context: CompileSurfaceContext,
 ): boolean {
   if (contract.slots.some(slot => slot.name === slotName))
     return true
   context.diagnostics.push({
     code: 'COMPILER_SLOT_UNKNOWN',
     message: `Component ${node.component} does not declare slot ${slotName}.`,
-    pageId: context.pageId,
+    surfaceId: context.surfaceId,
     nodeId: node.id,
   })
   return false

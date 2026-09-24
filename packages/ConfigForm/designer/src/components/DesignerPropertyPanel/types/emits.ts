@@ -1,10 +1,12 @@
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
+import type { DatasetReference, PrototypeInteraction } from '@moluoxixi/config-form-model'
 
 export interface DesignerPropertyPanelEmits {
-  configureEvent: [payload: { nodeId: string, eventName: string }]
-  configureFlow: [trigger: ConfigFormFlowTrigger]
-  removeStoredConfig: [nodeId: string, path: string[]]
   updatePath: [nodeId: string, path: string[], value: unknown]
   updatePaths: [nodeIds: string[], path: string[], value: unknown]
   updateForm: [changes: Record<string, unknown>]
+  updateInteractions: [interactions: PrototypeInteraction[]]
+  updateDatasetBinding: [nodeId: string, bindingKey: string, reference: DatasetReference | undefined]
+  updateResourceBinding: [nodeId: string, bindingKey: string, resourceId: string | undefined]
+  saveOptionsAsDataset: [nodeId: string, bindingKey: string, name: string]
+  materializeOptionsSnapshot: [nodeId: string, bindingKey: string]
 }

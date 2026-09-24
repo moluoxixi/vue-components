@@ -1,0 +1,9 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"Dataset 对象数组、嵌套 JSON、options/Table/List 和运行期只读决策"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"Dataset 实体、引用、持久化、编译和双端执行触点"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"Dataset v1、raw ingestion、versioned Reader、projection/query 和 Resource 合同"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"Dataset 与 Runtime Data Source 不复用的产品和序列化边界"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"Studio 数据编辑、JSON 边界、持久化和可访问性门禁"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"确保 Dataset query 只有一个共享实现且消费者不重复解析"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查导入、存储、编译、Experience 和 Source 数据流"}
+{"file": ".trellis/spec/config-form-model/frontend/index.md", "reason": "Model 数据集/资源合同与版本化传输规范"}
+{"file": ".trellis/spec/config-form-workbench/frontend/index.md", "reason": "Workbench 资产编辑、持久化与导入导出规范"}

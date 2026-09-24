@@ -1,0 +1,9 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"业务物料、Grid/Flex、Design Token、受控视觉和双 adapter 决策"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"Materials 对 Dataset 的前置依赖和可并行范围"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"Material、Dataset projection、语义触发器和 visual property 目标合同"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"受控视觉、禁止任意 CSS/事件和 adapter 责任边界"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"共同 Material Registry 身份、能力和 adapter 注册合同"}
+{"file":".trellis/spec/config-form-core/frontend/form-layout-settings.md","reason":"Grid/Flex、表单设置和响应式布局现有规范"}
+{"file":".trellis/spec/directory-structure.md","reason":"两套 adapter 新物料、样式和组件所有权规则"}
+{"file": ".trellis/spec/config-form-designer/frontend/index.md", "reason": "Designer Inspector/Registry 物料能力规范"}
+{"file": ".trellis/spec/config-form-designer-element-plus/frontend/index.md", "reason": "Element Plus 物料与 capability 对称规范"}

@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
+    "incremental": false,
     "lib": ["DOM", "ESNext"],
     "declaration": true,
     "outDir": "dist"

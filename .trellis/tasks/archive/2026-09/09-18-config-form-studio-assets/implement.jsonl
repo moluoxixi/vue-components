@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"项目管理、资产树、独立 Surface 设计和本地优先边界"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"资产通用命令与交互创建绑定事务的职责拆分"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"Surface 资产、presentation、实例身份和 Studio/Designer 所有权"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"当前 Workbench 与目标 Studio 状态、作者能力和依赖边界"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"Studio 组合根、持久化、响应式 UI、焦点和可访问性质量合同"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"Designer 受控状态、命令和宿主组合约束"}
+{"file":".trellis/spec/directory-structure.md","reason":"Workbench/Studio feature、组件和公共责任目录规则"}

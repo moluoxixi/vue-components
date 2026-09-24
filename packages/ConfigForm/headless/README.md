@@ -1,6 +1,6 @@
 # ConfigForm Headless
 
-`@moluoxixi/config-form-headless` 是轻量 ConfigForm 的 Vue headless 字段协议和表单内核。它不渲染 DOM，也不依赖 Element Plus 或 Ant Design Vue 的 Form/FormItem，但公共组件、slot 和 readonly render 契约使用 Vue 类型。
+`@moluoxixi/config-form-headless` 是 ConfigForm 生产 Runtime 的 Vue headless 字段协议和表单内核。它不渲染 DOM，也不依赖 Element Plus 或 Ant Design Vue 的 Form/FormItem，但公共组件、slot 和 readonly render 契约使用 Vue 类型。Studio 是上层 Demo 创作产品，不改变 Headless 的生产职责；产品边界见 [`../PRODUCT.md`](../PRODUCT.md)。
 
 本版 Headless 负责：
 
@@ -17,6 +17,10 @@
 - 可序列化 `reactions` 的稳定值事务，以及字段 state、组件 props 和校验目标投影。
 
 `@moluoxixi/config-form` 根入口导出的 Vue renderer 负责原生 `<form>`、Grid/Flex、字段壳、错误 DOM、ARIA 和递归节点渲染。UI 包只保留真实输入组件的值/事件绑定预设与视觉样式。
+
+Headless 不定义组件事件编排或转发合同。复杂事件函数由宿主写在运行时 config 的 `props.onX`；`trigger`、`blurTrigger` 与 `getValueFromEvent` 只负责字段值绑定和校验时机。
+
+规划中的 Prototype Interaction 不进入 Headless 的组件事件合同。其页面历史、Surface 实例、参数/结果和主要 UI 动作由独立 Prototype Runtime 执行；Headless 继续只提供字段值、状态、校验和提交能力。
 
 ```ts
 import { createConfigFormController, defineFields } from '@moluoxixi/config-form-headless'

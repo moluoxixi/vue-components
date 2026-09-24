@@ -1,6 +1,6 @@
-import type { ProjectPath, WorkspaceFile } from '../../types'
+import type { SourceFile } from '@moluoxixi/config-form-source/generator'
 
-export interface WorkspaceArchiveInput {
-  files: Readonly<Record<ProjectPath, Readonly<WorkspaceFile>>>
+export interface SourceArchiveInput {
+  files: readonly SourceFile[]
   name: string
 }

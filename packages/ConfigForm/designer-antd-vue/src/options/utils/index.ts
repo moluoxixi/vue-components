@@ -1,1 +1,1 @@
-export * from './option-source'
+export * from './options'

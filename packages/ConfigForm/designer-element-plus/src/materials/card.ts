@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
         shared.propSetter('header', 'Header', 'text'),
         shared.propSetter('shadow', 'Shadow', 'select', [{ label: 'Always', value: 'always' }, { label: 'Hover', value: 'hover' }, { label: 'Never', value: 'never' }]),
       ],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.card', props: { header: 'Card', shadow: 'never' }, slots: { default: [] } }),
     },
     locale: { title: '卡片', category: '布局', setters: { header: '头部', shadow: '阴影' }, options: { shadow: { always: '总是', hover: '悬停', never: '从不' } }, slots: { default: '内容' } },

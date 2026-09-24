@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
 import { clearDesignerClipboard, useDesignerController } from '../src/composables/use-designer-controller'
 import { extractDesignSubgraph, remapDesignSubgraph } from '../src/graph'
@@ -37,13 +38,12 @@ function field(id: string) {
     kind: 'field' as const,
     field: id,
     props: {},
-    events: {},
-    bindings: {},
+    datasetBindings: {},
   }
 }
 
-const graph: PageGraph = {
-  version: 2,
+const graph: SurfaceGraph = {
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {},
   root: [
@@ -58,8 +58,7 @@ const graph: PageGraph = {
       component: 'test.section',
       kind: 'layout',
       props: {},
-      events: {},
-      bindings: {},
+      datasetBindings: {},
       slots: { default: [{ nodeId: 'nested', placement: {} }] },
     },
     nested: field('nested'),
@@ -75,7 +74,7 @@ function controllerFixture() {
     graph: () => graph,
     onDiagnostics: vi.fn(),
     onSelectionChange: vi.fn(),
-    pageId: () => 'home',
+    surfaceId: () => 'home',
     readonly: () => false,
     registry: () => registry,
   })

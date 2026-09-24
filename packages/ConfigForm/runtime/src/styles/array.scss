@@ -1,0 +1,121 @@
+[data-config-form-value-scope] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+[data-config-form-responsive-layout]:has([data-config-form-array]) {
+  gap: min(16px, 4cqi) !important;
+}
+
+[data-config-form-array] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+[data-config-form-array][data-array-display='list'] > [data-config-form-row] {
+  min-width: 0;
+  margin-block-end: 12px;
+}
+
+[data-config-form-array-scroll] {
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+}
+
+[data-config-form-array-scroll]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+[data-config-form-array-table] {
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 100%;
+  width: max-content;
+  color: inherit;
+  font-size: 14px;
+  letter-spacing: 0;
+
+  > thead > tr > th,
+  > tbody > tr > td {
+    box-sizing: border-box;
+    min-width: 200px;
+    width: 240px;
+    padding: 10px 12px;
+    border: 1px solid #dcdfe6;
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  > thead > tr > th {
+    background: #f5f7fa;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  [data-field] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+[data-config-form-row-actions],
+[data-config-form-array-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-config-form-array-actions] {
+  margin-block-start: 8px;
+}
+
+[data-config-form-row-action] {
+  display: inline-flex;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #c0c4cc;
+  border-radius: 4px;
+  background: #fff;
+  color: #303133;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: #2563eb;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    color: #909399;
+    background: #f5f7fa;
+    border-color: #e4e7ed;
+    cursor: not-allowed;
+  }
+}
+
+@media (max-width: 720px) {
+  [data-config-form-row-action] {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
+}

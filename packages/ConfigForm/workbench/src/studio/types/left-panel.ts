@@ -10,7 +10,7 @@ import type {
   ReadonlyProjectDocument,
 } from '@moluoxixi/config-form-model'
 
-export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages'
+export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages' | 'theme'
 export type StudioLayerAction = 'indent' | 'moveAfter' | 'moveBefore' | 'outdent'
 
 export interface StudioLayerEntry {
@@ -26,7 +26,7 @@ export interface StudioLayerEntry {
 
 export interface StudioLeftPanelProps {
   activeView?: StudioLeftView
-  currentPageId: string
+  currentSurfaceId: string
   form: FormSettings
   history?: ProjectHistorySummary
   layers: StudioLayerEntry[]
@@ -42,9 +42,10 @@ export interface StudioLeftPanelEmits {
   'addMaterial': [materialKey: string]
   'arrangeLayer': [action: StudioLayerAction, nodeId: string]
   'jumpHistory': [position: number]
-  'managePages': []
+  'manageAssets': [kind?: 'dataset' | 'resource', id?: string]
+  'manageSurfaces': []
   'moveLayer': [nodeId: string, referenceId: string, position: 'after' | 'before']
   'selectLayer': [nodeId: string, mode: DesignerSelectionMode]
-  'selectPage': [pageId: string]
+  'selectSurface': [surfaceId: string]
   'update:activeView': [view: StudioLeftView]
 }

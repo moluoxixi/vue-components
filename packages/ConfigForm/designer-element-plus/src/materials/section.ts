@@ -15,7 +15,7 @@ export default defineDesignerMaterialModule({
       icon: shared.LayoutPanelTop,
       runtime: { component: shared.ElementSection },
       setters: [shared.propSetter('title', 'Title', 'text'), shared.propSetter('description', 'Description', 'textarea')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout', 'element'] }],
       createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.section', props: { title: 'Section' }, slots: { default: [] } }),
     },
     locale: { title: '分区', category: '布局', setters: { title: '标题', description: '描述' }, slots: { default: '内容' } },

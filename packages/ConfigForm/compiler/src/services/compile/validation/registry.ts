@@ -1,11 +1,16 @@
-import type { ProjectDocument, ProjectPage, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
+import type {
+  DeepReadonly,
+  ProjectSurface,
+  ReadonlyProjectDocument,
+  RegistryContractSnapshot,
+} from '@moluoxixi/config-form-model'
 import type { SemanticCompilerDiagnostic } from '../../../types'
 
 export function validateRegistryLock(
-  project: ProjectDocument,
+  project: ReadonlyProjectDocument,
   registry: RegistryContractSnapshot,
   diagnostics: SemanticCompilerDiagnostic[],
-  pages: readonly ProjectPage[] = Object.values(project.pagesById),
+  surfaces: readonly DeepReadonly<ProjectSurface>[] = Object.values(project.surfacesById),
 ): void {
   if (project.registryLock.adapter !== registry.adapter) {
     diagnostics.push({
@@ -17,11 +22,11 @@ export function validateRegistryLock(
   }
 
   const contracts = new Map(registry.components.map(component => [component.key, component]))
-  const usedComponents = new Map<string, { nodeId: string, pageId: string }>()
-  pages.forEach((page) => {
-    Object.values(page.graph.nodesById).forEach((node) => {
+  const usedComponents = new Map<string, { nodeId: string, surfaceId: string }>()
+  surfaces.forEach((surface) => {
+    Object.values(surface.graph.nodesById).forEach((node) => {
       if (!usedComponents.has(node.component))
-        usedComponents.set(node.component, { nodeId: node.id, pageId: page.id })
+        usedComponents.set(node.component, { nodeId: node.id, surfaceId: surface.id })
     })
   })
   for (const [component, location] of [...usedComponents].sort(([left], [right]) => left.localeCompare(right))) {

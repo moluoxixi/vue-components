@@ -1,11 +1,14 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormAttrs,
   ConfigFormController,
   ConfigFormErrors,
+  ConfigFormFieldAddress,
   ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component, ComputedRef, Ref, ShallowRef, VNodeChild } from 'vue'
+import type { ConfigFormSurfaceRuntimeOptionState } from '../../runtime'
 import type {
   ConfigFormComponentRegistration,
   ConfigFormControlBinding,
@@ -32,6 +35,14 @@ export interface RendererControllerState<TValues extends ConfigFormValues>
   resolveReactionState: (
     field: string,
   ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
+  resolveInstanceReactionProps: (
+    address: Parameters<ConfigFormController<TValues>['getInstanceReactionProps']>[0],
+    field: string,
+  ) => ConfigFormAttrs
+  resolveInstanceReactionState: (
+    address: Parameters<ConfigFormController<TValues>['getInstanceReactionState']>[0],
+    field: string,
+  ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
 }
 
 export interface RendererLayoutState {
@@ -44,15 +55,11 @@ export interface RuntimeEditorBridgeState<TValues extends ConfigFormValues> {
   createNodeMetadata: (
     node: ConfigFormRendererNode<TValues>,
     path: string,
+    scope: ConfigFormScopePath,
     slot?: string,
   ) => ConfigFormRuntimeNodeMetadata<TValues>
   nodeMetadataAttrs: (metadata: ConfigFormRuntimeNodeMetadata<TValues>) => Record<string, unknown>
   registerNodeElement: (metadata: ConfigFormRuntimeNodeMetadata<TValues>, element: unknown) => void
-  shouldInterceptEditorEvent: (
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    event: string,
-    args: unknown[],
-  ) => boolean
 }
 
 export interface RendererBindingService<TValues extends ConfigFormValues> {
@@ -64,38 +71,29 @@ export interface RendererBindingService<TValues extends ConfigFormValues> {
   resolveRegistration: (component: Component | string) => ConfigFormComponentRegistration | undefined
 }
 
-export interface RuntimeFlowEventService<TValues extends ConfigFormValues> {
+export interface ComponentListenerService {
   addListener: (
     target: Record<string, unknown>,
     event: string,
-    listener: (...args: unknown[]) => void,
-    metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
-    runtimeEvent?: string,
+    listener: (...args: unknown[]) => unknown,
   ) => void
-  addRuntimeFlowEventListeners: (
-    target: Record<string, unknown>,
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
-    runtimeEvents: ReadonlyMap<string, string>,
-    managedListenerKeys: Set<string>,
-  ) => void
-  runtimeFlowEventMap: (node: ConfigFormRendererNode<TValues>) => ReadonlyMap<string, string>
   wrapComponentListeners: (
     target: Record<string, unknown>,
-    metadata: ConfigFormRuntimeNodeMetadata<TValues>,
     skipKeys?: ReadonlySet<string>,
-    runtimeEvents?: ReadonlyMap<string, string>,
   ) => void
 }
 
 export interface RendererPipelineContext<TValues extends ConfigFormValues> {
   activePresentationLayout: ComputedRef<ConfigFormResolvedLayout | undefined>
   bem: (element: string, modifier?: string) => string
+  cancelScope: (scope: ConfigFormScopePath) => void
   binding: RendererBindingService<TValues>
+  componentListeners: ComponentListenerService
   controller: RendererControllerState<TValues>
   designGuard: DesignInteractionGuard
   editorBridge: RuntimeEditorBridgeState<TValues>
-  flowEvents: RuntimeFlowEventService<TValues>
   formId: string
+  getOptionState: (address: ConfigFormFieldAddress) => ConfigFormSurfaceRuntimeOptionState | undefined
   props: Readonly<ConfigFormRendererProps<TValues>>
   responsiveLabelWidths: ComputedRef<Record<ConfigFormBreakpoint, string>>
   responsiveLayouts: ComputedRef<Record<ConfigFormBreakpoint, ConfigFormResolvedLayout>>
@@ -106,7 +104,7 @@ export type RenderNode<TValues extends ConfigFormValues> = (
   wrapCell: boolean,
   path: string,
   ancestors: ReadonlySet<object>,
+  scope: ConfigFormScopePath,
   slot?: string,
 ) => VNodeChild
-
 export type RendererSlots = Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined

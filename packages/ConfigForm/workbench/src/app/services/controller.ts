@@ -1,9 +1,11 @@
 import type {
-  PageGraph,
   ProjectDocument,
+  ProjectEmbeddedResourceRead,
   ProjectRepository,
   ProjectSummary,
+  SurfaceGraph,
 } from '@moluoxixi/config-form-model'
+import type { ComputedRef } from 'vue'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
 import type {
   ProjectEditorSession,
@@ -12,6 +14,7 @@ import type {
 } from '../../project'
 import type { StudioLayerEntry } from '../../studio'
 import type {
+  WorkbenchController,
   WorkbenchControllerProps,
   WorkbenchRecoveryDraftSummary,
   WorkbenchRecoveryNotice,
@@ -23,7 +26,6 @@ import {
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef } from 'vue'
-import { collectFlowEventTargets } from '../../flow'
 import {
   createWorkbenchLocaleOptions,
 } from '../../locale'
@@ -34,15 +36,18 @@ import {
   createWorkbenchPreviewSession,
 } from '../../session'
 import { useWorkbenchControllerLifecycle } from '../composables/use-workbench-controller-lifecycle'
+import { createWorkbenchAssetCommands } from './controller-assets'
 import { createWorkbenchCreationCommands } from './controller-creation'
-import { createWorkbenchPageCommands } from './controller-page-commands'
+import { createWorkbenchSurfaceCommands } from './controller-page-commands'
 import { createWorkbenchPersistenceCommands } from './controller-persistence'
 import { createWorkbenchProjectBinding } from './controller-project-binding'
+import { createWorkbenchProjectCommands } from './controller-project-commands'
+import { createWorkbenchThemeCommands } from './controller-theme-commands'
 
 export function createWorkbenchController(
   props: Readonly<WorkbenchControllerProps>,
   ui: WorkbenchUiStore,
-) {
+): WorkbenchController {
   const repository = shallowRef<ProjectRepository>()
   const currentAdapter = shallowRef<WorkbenchAdapter>()
   const projects = ref<ProjectSummary[]>([])
@@ -50,19 +55,15 @@ export function createWorkbenchController(
   const projectSessionSnapshot = shallowRef<ProjectEditorSessionSnapshot>()
   const persistenceSnapshot = shallowRef<ProjectPersistenceSnapshot>()
   const recoveryDrafts = shallowRef<WorkbenchRecoveryDraftSummary[]>([])
-  const currentPageId = ref('')
+  const currentSurfaceId = ref('')
   const configError = ref('')
   const busy = ref(false)
   const initialized = ref(false)
   let disposed = false
-  const previewSession = createWorkbenchPreviewSession({
-    onNotify: ui.notify,
-    onDiagnostic: diagnostic => ui.notify(diagnostic.message),
-  })
-  const previewProjection = previewSession.projection
+  const previewSession = createWorkbenchPreviewSession()
   const designSession = createWorkbenchDesignSession({
     getAdapter: () => currentAdapter.value,
-    getPageId: () => currentPageId.value,
+    getSurfaceId: () => currentSurfaceId.value,
     getProjectSession: () => projectSession.value,
     getSnapshot: () => projectSessionSnapshot.value,
     setDiagnostic: message => configError.value = message,
@@ -70,6 +71,7 @@ export function createWorkbenchController(
   const exportService = createWorkbenchExportService({
     getAdapter: () => currentAdapter.value,
     getSnapshot: () => projectSessionSnapshot.value,
+    readEmbedded: input => repository.value?.readEmbedded(input) ?? Promise.resolve(undefined),
   })
   const localeOptions = computed(() => createWorkbenchLocaleOptions(
     ui.localeId.value,
@@ -77,14 +79,14 @@ export function createWorkbenchController(
     props.locale,
   ))
   const workbenchLocale = computed(() => createDesignerLocale(localeOptions.value))
-  const currentProject = computed(() => projectSessionSnapshot.value?.document)
+  const currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined> = computed(() => projectSessionSnapshot.value?.document)
   // The session document is an immutable (deep-frozen) Immer snapshot and
   // every consumer is read-only, so the page is exposed without the previous
   // defensive structuredClone; the cast only relaxes the DeepReadonly view.
-  const currentPage = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value] as ProjectDocument['pagesById'][string] | undefined)
-  const currentGraph = computed<PageGraph | undefined>(() => currentPage.value?.graph)
-  const componentRegistry = computed(() => currentAdapter.value!.componentRegistry)
-  const registry = computed(() => currentAdapter.value!.designerRegistry)
+  const currentSurface: ComputedRef<ProjectDocument['surfacesById'][string] | undefined> = computed(() => projectSessionSnapshot.value?.document.surfacesById[currentSurfaceId.value] as ProjectDocument['surfacesById'][string] | undefined)
+  const currentGraph = computed<SurfaceGraph | undefined>(() => currentSurface.value?.graph)
+  const componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']> = computed(() => currentAdapter.value!.componentRegistry)
+  const registry: ComputedRef<WorkbenchAdapter['designerRegistry']> = computed(() => currentAdapter.value!.designerRegistry)
   const modelRevision = computed(() => projectSessionSnapshot.value?.editVersion ?? 0)
   const repositoryRevision = computed(() => projectSessionSnapshot.value?.repositoryRevision ?? 0)
   const dirty = computed(() => projectSessionSnapshot.value?.dirty ?? false)
@@ -150,12 +152,6 @@ export function createWorkbenchController(
     }
     return [...new Set(fields)]
   })
-  const flowEventTargets = computed(() => collectFlowEventTargets(
-    currentGraph.value,
-    currentAdapter.value?.componentRegistry,
-    currentAdapter.value?.designerRegistry,
-    { valueChange: workbenchLocale.value.t('flow.trigger.valueChange', 'Value change') },
-  ))
 
   function getCurrentAdapterId(): WorkbenchAdapterId {
     const adapter = currentAdapter.value?.registrySnapshot.adapter
@@ -163,22 +159,30 @@ export function createWorkbenchController(
       return adapter
     throw new TypeError('Workbench adapter is unavailable.')
   }
+
+  async function readEmbeddedResource(
+    input: ProjectEmbeddedResourceRead,
+  ): Promise<Uint8Array | undefined> {
+    return projectSession.value?.readEmbedded(input)
+      ?? await repository.value?.readEmbedded(input)
+  }
   const previewState = computed(() => {
-    const projection = previewProjection.value
-    if (configError.value || projection?.status === 'stale') {
+    if (configError.value || previewSession.error.value) {
       return {
-        label: workbenchLocale.value.t('preview.staleAt', 'Stale at r{revision}', {
-          revision: projection?.display?.snapshot.editVersion ?? modelRevision.value,
-        }),
+        label: configError.value
+          || previewSession.error.value?.message
+          || workbenchLocale.value.t('preview.blocked', 'Blocked'),
         tone: 'error' as const,
       }
     }
-    if (!projection || projection.status === 'blocked')
+    if (!previewSession.compilation.value || !previewSession.session.value)
       return { label: workbenchLocale.value.t('preview.blocked', 'Blocked'), tone: 'error' as const }
     return {
-      label: dirty.value
-        ? workbenchLocale.value.t('preview.liveDraft', 'Live draft')
-        : workbenchLocale.value.t('preview.live', 'Live'),
+      label: previewSession.ready.value
+        ? dirty.value
+          ? workbenchLocale.value.t('preview.liveDraft', 'Live draft')
+          : workbenchLocale.value.t('preview.live', 'Live')
+        : workbenchLocale.value.t('preview.starting', 'Starting preview'),
       tone: 'live' as const,
     }
   })
@@ -230,7 +234,7 @@ export function createWorkbenchController(
   const projectBinding = createWorkbenchProjectBinding({
     configError,
     currentAdapter,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     designSession,
     exportService,
@@ -247,15 +251,15 @@ export function createWorkbenchController(
     ui,
     workbenchLocale,
   })
-  const pageCommands = createWorkbenchPageCommands({
+  const pageCommands = createWorkbenchSurfaceCommands({
     busy,
     currentProject,
     executeProjectActions: projectBinding.executeProjectActions,
-    selectCurrentPage: projectBinding.selectCurrentPage,
+    selectCurrentSurface: projectBinding.selectCurrentSurface,
     ui,
   })
   const creationCommands = createWorkbenchCreationCommands({
-    addPreparedPage: pageCommands.addPreparedPage,
+    addPreparedSurface: pageCommands.addPreparedSurface,
     busy,
     currentProject,
     hasUnsavedChanges,
@@ -270,7 +274,7 @@ export function createWorkbenchController(
   const persistenceCommands = createWorkbenchPersistenceCommands({
     busy,
     configError,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     disposeProjectPersistence: projectBinding.disposeProjectPersistence,
     getPersistenceSession: projectBinding.getPersistenceSession,
@@ -282,6 +286,28 @@ export function createWorkbenchController(
     repositoryRevision,
     ui,
     workbenchLocale,
+  })
+  const projectCommands = createWorkbenchProjectCommands({
+    busy,
+    closeProject: projectBinding.closeProject,
+    currentProject,
+    executeProjectActions: projectBinding.executeProjectActions,
+    getPersistenceSession: projectBinding.getPersistenceSession,
+    hasUnsavedChanges,
+    openProject: projectBinding.openProject,
+    refreshProjects: projectBinding.refreshProjects,
+    repository,
+    ui,
+    workbenchLocale,
+  })
+  const assetCommands = createWorkbenchAssetCommands({
+    busy,
+    currentProject,
+    executeProjectActions: projectBinding.executeProjectActions,
+    readEmbedded: readEmbeddedResource,
+  })
+  const themeCommands = createWorkbenchThemeCommands({
+    executeProjectActions: projectBinding.executeProjectActions,
   })
   listRecoveryDraftsPort = persistenceCommands.listRecoveryDrafts
 
@@ -308,41 +334,48 @@ export function createWorkbenchController(
   return {
     projects,
     busy,
+    closeProject: projectBinding.closeProject,
     componentRegistry,
     configError,
+    ...assetCommands,
+    ...themeCommands,
     createFromJsonImport: creationCommands.createFromJsonImport,
     createNamedCheckpoint: persistenceCommands.createNamedCheckpoint,
-    createPageFromTemplate: creationCommands.createPageFromTemplate,
+    createSurfaceFromTemplate: creationCommands.createSurfaceFromTemplate,
     createProjectFromTemplate: creationCommands.createProjectFromTemplate,
+    deleteProject: projectCommands.deleteProject,
+    duplicateProject: creationCommands.duplicateProject,
     currentProject,
     currentGraph,
-    currentPage,
-    currentPageId,
+    currentSurface,
+    currentSurfaceId,
+    modelRevision,
     discardRecoveryDraft: persistenceCommands.discardRecoveryDraft,
     designerFieldNames,
-    flowEventTargets,
     designerLayers,
     dirty,
-    executeFlowCommand: projectBinding.executeProjectCommand,
     getCurrentAdapterId,
-    handlePageAction: pageCommands.handlePageAction,
+    handleSurfaceAction: pageCommands.handleSurfaceAction,
     inspectProjectVersion: persistenceCommands.inspectProjectVersion,
     initialized,
     listProjectVersions: persistenceCommands.listProjectVersions,
     listRecoveryDrafts: persistenceCommands.listRecoveryDrafts,
     localeOptions,
     previewState,
+    readEmbeddedResource,
     prepareJsonImport: creationCommands.prepareJsonImport,
+    exportProject: creationCommands.exportProject,
     registry,
     repositoryRevision,
     recoveryDrafts,
     requestOpenProject: projectBinding.requestOpenProject,
+    renameProject: projectCommands.renameProject,
     restoreProjectVersion: persistenceCommands.restoreProjectVersion,
     restoreRecoveryDraft: persistenceCommands.restoreRecoveryDraft,
     reloadCurrentProject: persistenceCommands.reloadCurrentProject,
     saveProject: persistenceCommands.saveProject,
     saveCurrentDraftAsProject: persistenceCommands.saveCurrentDraftAsProject,
-    selectPageFromDesigner: pageCommands.selectPageFromDesigner,
+    selectSurfaceFromDesigner: pageCommands.selectSurfaceFromDesigner,
     setProjectVersionLabel: persistenceCommands.setProjectVersionLabel,
     statusLabel,
     workbenchLocale,

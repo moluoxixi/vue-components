@@ -1,10 +1,11 @@
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
-import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { ComponentContract, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
+import { ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
@@ -58,73 +59,53 @@ const DefaultValueControl = defineComponent({
 function field(
   id: string,
   component: string,
-  values: Partial<Extract<PageNode, { kind: 'field' }>> = {},
-): Extract<PageNode, { kind: 'field' }> {
+  values: Partial<Extract<SurfaceNode, { kind: 'field' }>> = {},
+): Extract<SurfaceNode, { kind: 'field' }> {
   return {
     id,
     component,
     kind: 'field',
     field: id,
     props: {},
-    events: {},
-    bindings: {},
+    datasetBindings: {},
     ...values,
-  } as Extract<PageNode, { kind: 'field' }>
+  }
 }
 
-function layout(
-  id: string,
-  component: string,
-  values: Partial<Extract<PageNode, { kind: 'layout' }>> = {},
-): Extract<PageNode, { kind: 'layout' }> {
+function graph(nodes: SurfaceNode[], spans: Record<string, number> = {}, form: SurfaceGraph['form'] = {}): SurfaceGraph {
   return {
-    id,
-    component,
-    kind: 'layout',
-    props: {},
-    events: {},
-    bindings: {},
-    slots: { default: [] },
-    ...values,
-  } as Extract<PageNode, { kind: 'layout' }>
-}
-
-function graph(nodes: PageNode[], spans: Record<string, number> = {}, form: PageGraph['form'] = {}): PageGraph {
-  return {
-    version: 2,
+    version: SURFACE_GRAPH_VERSION,
     props: {},
     form,
     root: nodes.map(node => ({
       nodeId: node.id,
-      placement: (spans[node.id] === undefined ? {} : { span: spans[node.id]! }) as PageGraph['root'][number]['placement'],
+      placement: (spans[node.id] === undefined ? {} : { span: spans[node.id]! }) as SurfaceGraph['root'][number]['placement'],
     })),
     nodesById: Object.fromEntries(nodes.map(node => [node.id, node])),
   }
 }
 
-function contract(
-  key: string,
-  kind: PageNode['kind'],
-  values: Partial<ComponentContract> = {},
-): ComponentContract {
+function contract(key: string, overrides: Partial<ComponentContract> = {}): ComponentContract {
   return {
     key,
     version: '1',
-    kind,
+    kind: 'field',
     props: [],
-    events: [],
     bindings: [],
-    slots: kind === 'layout' ? [{ name: 'default' }] : [],
+    semanticTriggers: ['activate'],
+    stateProjectionProperties: [],
+    datasetBindings: [],
+    resourceBindings: [],
+    slots: [],
     allowedParents: [],
     defaults: {},
-    ...values,
+    ...overrides,
   }
 }
 
 function fieldMaterial(
   key: string,
   setters: DesignerPropertySetterDefinition[] = [],
-  events: Array<{ name: string, title: string }> = [],
 ): DesignerMaterialDefinition {
   return {
     key,
@@ -133,23 +114,8 @@ function fieldMaterial(
     title: key,
     category: 'Fields',
     runtime: { component: 'input' },
-    events,
     setters,
     createNode: ({ id }) => ({ id, field: id, kind: 'field', component: key }),
-  }
-}
-
-function layoutMaterial(key: string): DesignerMaterialDefinition {
-  return {
-    key,
-    version: 1,
-    kind: 'layout',
-    title: key,
-    category: 'Layout',
-    runtime: { component: 'section' },
-    setters: [],
-    slots: [{ name: 'default', title: 'Content' }],
-    createNode: ({ id }) => ({ id, kind: 'layout', component: key, slots: { default: [] } }),
   }
 }
 
@@ -161,7 +127,7 @@ afterEach(() => {
   })
 })
 
-describe('designer property panel adaptive Inspector', () => {
+describe('designer property panel lite Inspector', () => {
   it('renders default values through the adapter control when registered', async () => {
     const node = field('name', 'test.input', { defaultValue: 'before' })
     const setter: DesignerPropertySetterDefinition = {
@@ -177,7 +143,7 @@ describe('designer property panel adaptive Inspector', () => {
         graph: graph([node]),
         node,
         material: fieldMaterial('test.input', [setter]),
-        componentDefinition: contract('test.input', 'field'),
+        componentDefinition: contract('test.input'),
         diagnostics: [],
         propertyControls: {
           defaultValue: {
@@ -191,11 +157,8 @@ describe('designer property panel adaptive Inspector', () => {
     const control = wrapper.get('[data-adapter-default]')
     expect(control.attributes('data-control-source')).toBe('adapter')
     expect((control.element as HTMLInputElement).value).toBe('before')
-    expect(control.element.closest('.mx-config-form-designer-property-form__field')?.classList).toContain('is-simple')
-    expect(control.element.closest('.mx-config-form-designer-property-form__field')?.classList).toContain('is-control-default-value')
-    expect(control.element.closest('.mx-config-form-designer-property-form__field')
-      ?.querySelector('.mx-config-form-designer__setter')).toBeNull()
-    expect(wrapper.get('label').attributes('for')).toBe(control.attributes('id'))
+    expect(control.element.closest('.mx-config-form-designer-property-form__field')?.classList)
+      .toContain('is-control-default-value')
     await control.setValue('after')
     expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['defaultValue'], 'after'])
   })
@@ -215,140 +178,104 @@ describe('designer property panel adaptive Inspector', () => {
         graph: graph([node]),
         node,
         material: fieldMaterial('test.input', [setter]),
-        componentDefinition: contract('test.input', 'field'),
+        componentDefinition: contract('test.input'),
         diagnostics: [],
       },
     })
 
-    expect(wrapper.get('.mx-config-form-designer__default-value > input').attributes('aria-label')).toBe('Default value')
+    expect(wrapper.get('.mx-config-form-designer__default-value input').attributes('aria-label'))
+      .toBe('Default value')
   })
 
-  it('renders sections from capabilities and restores focus only when the active tab disappears', async () => {
+  it('commits Required and its message as independent field settings', async () => {
+    const node = field('name', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input'),
+        componentDefinition: contract('test.input'),
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    await wrapper.get('input[aria-label="Required"]').setValue(true)
+    const message = wrapper.get('input[aria-label="Required message"]')
+    await message.setValue('Name is required')
+    await message.trigger('blur')
+
+    expect(wrapper.emitted('updatePath')).toEqual([
+      ['name', ['required'], true],
+      ['name', ['requiredMessage'], 'Name is required'],
+    ])
+  })
+
+  it('keeps Required and validate-on for time fields without exposing generic validation', async () => {
+    const node = field('startTime', 'test.time', {
+      validation: { version: 2, base: { type: 'date' }, rules: [{ kind: 'dateMin', value: '2026-01-01T00:00:00.000Z' }] },
+      validateOn: 'change',
+    })
+    const setter: DesignerPropertySetterDefinition = {
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'time',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.time', [setter]),
+        componentDefinition: contract('test.time'),
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    expect(wrapper.find('input[aria-label="Required"]').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__validate-on').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__validation-editor').exists()).toBe(false)
+  })
+
+  it('renders properties, validation, and interactions tabs with keyboard navigation', async () => {
     const scrollIntoView = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
       value: scrollIntoView,
     })
-    const input = field('name', 'test.input')
-    const section = layout('section', 'test.section')
-    const inputMaterial = fieldMaterial('test.input', [placeholderSetter], [{ name: 'change', title: 'Change' }])
-    const sectionMaterial = layoutMaterial('test.section')
-    const inputContract = contract('test.input', 'field', {
-      events: [{ name: 'change' }],
-      bindings: [{ name: 'value', valueProp: 'modelValue', trigger: 'update:modelValue' }],
-    })
-    const sectionContract = contract('test.section', 'layout')
-    const materials = new Map([
-      ['test.input', inputMaterial],
-      ['test.section', sectionMaterial],
-    ])
-    const contracts = new Map([
-      ['test.input', inputContract],
-      ['test.section', sectionContract],
-    ])
+    const node = field('name', 'test.input')
     const wrapper = mount(DesignerPropertyPanel, {
       attachTo: document.body,
       props: {
         renderer: ConfigFormRenderer,
-        graph: graph([input, section]),
-        node: input,
-        nodes: [input],
-        material: inputMaterial,
-        componentDefinition: inputContract,
-        getMaterial: component => materials.get(component),
-        getComponentDefinition: component => contracts.get(component),
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input', [placeholderSetter]),
+        componentDefinition: contract('test.input'),
         diagnostics: [],
       },
     })
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab'))).toEqual([
-      'properties',
-      'validation',
-      'events',
-      'bindings',
-      'conditions',
-      'reactions',
-    ])
-    const propertiesTab = wrapper.get('[data-property-tab="properties"]')
-    ;(propertiesTab.element as HTMLElement).focus()
-    await propertiesTab.trigger('keydown', { key: 'End' })
-    expect(wrapper.get('[data-property-tab="reactions"]').attributes('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(wrapper.get('[data-property-tab="reactions"]').element)
-    await wrapper.get('[data-property-tab="reactions"]').trigger('keydown', { key: 'Home' })
-    expect(document.activeElement).toBe(propertiesTab.element)
-    await propertiesTab.trigger('keydown', { key: 'ArrowLeft' })
-    expect(wrapper.get('[data-property-tab="reactions"]').attributes('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(wrapper.get('[data-property-tab="reactions"]').element)
-    await wrapper.get('[data-property-tab="reactions"]').trigger('keydown', { key: 'ArrowRight' })
-    expect(propertiesTab.attributes('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(propertiesTab.element)
-    expect(scrollIntoView).toHaveBeenCalled()
-
-    const events = wrapper.get('[data-property-tab="events"]')
-    await events.trigger('click')
-    ;(events.element as HTMLElement).focus()
-    expect(document.activeElement).toBe(events.element)
-
-    await wrapper.setProps({
-      node: section,
-      nodes: [section],
-      material: sectionMaterial,
-      componentDefinition: sectionContract,
-    })
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab'))).toEqual([
-      'properties',
-      'conditions',
-      'reactions',
-    ])
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+      .toEqual(['properties', 'validation', 'interactions'])
     const properties = wrapper.get('[data-property-tab="properties"]')
+    ;(properties.element as HTMLElement).focus()
+    await properties.trigger('keydown', { key: 'End' })
+    const interactions = wrapper.get('[data-property-tab="interactions"]')
+    expect(interactions.attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(interactions.element)
+    await interactions.trigger('keydown', { key: 'ArrowRight' })
     expect(properties.attributes('aria-selected')).toBe('true')
     expect(document.activeElement).toBe(properties.element)
-
-    await wrapper.setProps({
-      node: input,
-      nodes: [input],
-      material: inputMaterial,
-      componentDefinition: inputContract,
-    })
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const eventButton = wrapper.get('[role="tabpanel"]:not([hidden]) button')
-    ;(eventButton.element as HTMLElement).focus()
-    await wrapper.setProps({
-      node: section,
-      nodes: [section],
-      material: sectionMaterial,
-      componentDefinition: sectionContract,
-    })
-    await wrapper.vm.$nextTick()
-    expect(document.activeElement).toBe(wrapper.get('[data-property-tab="properties"]').element)
-
-    await wrapper.setProps({
-      node: input,
-      nodes: [input],
-      material: inputMaterial,
-      componentDefinition: inputContract,
-    })
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const outside = document.createElement('button')
-    document.body.append(outside)
-    outside.focus()
-    await wrapper.setProps({
-      node: section,
-      nodes: [section],
-      material: sectionMaterial,
-      componentDefinition: sectionContract,
-    })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(outside)
+    expect(scrollIntoView).toHaveBeenCalled()
   })
 
-  it('uses common setters for heterogeneous selection and shows non-common stored data in full', async () => {
-    const first = field('first', 'test.first', {
-      events: { blur: [{ action: 'audit', args: { source: 'keyboard', attempts: [1, 2] } }] },
-    })
+  it('uses only compatible common setters for heterogeneous selections', async () => {
+    const first = field('first', 'test.first')
     const second = field('second', 'test.second')
     const firstMaterial = fieldMaterial('test.first', [
       placeholderSetter,
@@ -358,133 +285,8 @@ describe('designer property panel adaptive Inspector', () => {
       { ...placeholderSetter, label: 'Hint' },
       { key: 'clearable', label: 'Clear mode', path: ['props', 'clearable'], control: 'select', options: [] },
     ])
-    const firstContract = contract('test.first', 'field', { events: [{ name: 'change' }, { name: 'blur' }] })
-    const secondContract = contract('test.second', 'field', { events: [{ name: 'change' }] })
-    const materials = new Map([
-      ['test.first', firstMaterial],
-      ['test.second', secondMaterial],
-    ])
-    const contracts = new Map([
-      ['test.first', firstContract],
-      ['test.second', secondContract],
-    ])
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        renderer: ConfigFormRenderer,
-        graph: graph([first, second]),
-        node: first,
-        nodes: [first, second],
-        material: firstMaterial,
-        componentDefinition: firstContract,
-        getMaterial: component => materials.get(component),
-        getComponentDefinition: component => contracts.get(component),
-        diagnostics: [],
-      },
-    })
-
-    expect(wrapper.text()).toContain('Placeholder')
-    expect(wrapper.text()).not.toContain('Clearable')
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const stale = wrapper.get('[data-stale-kind="selection-incompatible"]')
-    expect(stale.text()).toContain('blur')
-    expect(stale.get('pre').text()).toBe(JSON.stringify(first.events.blur, null, 2))
-    expect(stale.get('pre').text()).toContain('"attempts": [')
-  })
-
-  it('keeps missing metadata visible but disables declared editors', async () => {
-    const node = field('enabled', 'test.switch', {
-      events: { change: [{ action: 'toggle' }] },
-    })
-    const definition = contract('test.switch', 'field', { events: [{ name: 'change' }] })
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        renderer: ConfigFormRenderer,
-        graph: graph([node]),
-        node,
-        nodes: [node],
-        componentDefinition: definition,
-        diagnostics: [],
-      },
-    })
-
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    expect(wrapper.get('[role="tabpanel"]:not([hidden]) button').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('false')
-  })
-
-  it('preserves unknown stored configuration as a read-only structured projection', async () => {
-    const node = field('legacy', 'test.removed', {
-      events: { removed: [{ action: 'legacy', args: { nested: { keep: true } } }] },
-      bindings: { removedValue: { source: 'legacy.path' } },
-    })
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        renderer: ConfigFormRenderer,
-        graph: graph([node]),
-        node,
-        nodes: [node],
-        diagnostics: [],
-      },
-    })
-
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab'))).toContain('events')
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const eventWarning = wrapper.get('[data-stale-kind="event-unknown"]')
-    expect(eventWarning.get('pre').text()).toBe(JSON.stringify(node.events.removed, null, 2))
-    expect(eventWarning.find('button').exists()).toBe(false)
-
-    await wrapper.get('[data-property-tab="bindings"]').trigger('click')
-    expect(wrapper.get('[data-stale-kind="binding-unknown"] pre').text())
-      .toBe(JSON.stringify(node.bindings.removedValue, null, 2))
-  })
-
-  it('emits an exact stored-config removal only when matching metadata makes cleanup available', async () => {
-    const node = field('legacy', 'test.input', {
-      events: {
-        keep: [{ action: 'keep' }],
-        removed: [{ action: 'legacy', args: { exact: true } }],
-      },
-    })
-    const material = fieldMaterial('test.input')
-    const definition = contract('test.input', 'field', { events: [{ name: 'keep' }] })
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        renderer: ConfigFormRenderer,
-        graph: graph([node]),
-        node,
-        nodes: [node],
-        material,
-        componentDefinition: definition,
-        diagnostics: [],
-      },
-    })
-
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const remove = wrapper.get('[data-stale-kind="event-unknown"] [data-stale-remove]')
-    expect(remove.attributes('aria-label')).toContain('removed')
-    await remove.trigger('click')
-    expect(wrapper.emitted('removeStoredConfig')).toEqual([['legacy', ['events', 'removed']]])
-
-    await wrapper.setProps({ readonly: true })
-    expect(wrapper.get('[data-stale-remove]').attributes('disabled')).toBeDefined()
-    await wrapper.get('[data-stale-remove]').trigger('click')
-    expect(wrapper.emitted('removeStoredConfig')).toHaveLength(1)
-  })
-
-  it('identifies the owning node in same-key stale removal names', async () => {
-    const staleKey = 'legacy.configuration.key.that.must.remain.fully.readable'
-    const first = field('first', 'test.first', {
-      label: 'First field',
-      events: { [staleKey]: [{ action: 'first' }] },
-    })
-    const second = field('second', 'test.second', {
-      label: 'Second field',
-      events: { [staleKey]: [{ action: 'second' }] },
-    })
-    const firstMaterial = fieldMaterial('test.first')
-    const secondMaterial = fieldMaterial('test.second')
-    const firstContract = contract('test.first', 'field')
-    const secondContract = contract('test.second', 'field')
+    const firstContract = contract('test.first')
+    const secondContract = contract('test.second')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
         renderer: ConfigFormRenderer,
@@ -499,28 +301,48 @@ describe('designer property panel adaptive Inspector', () => {
       },
     })
 
-    await wrapper.get('[data-property-tab="events"]').trigger('click')
-    expect(wrapper.findAll('.mx-config-form-designer__stale-heading code').map(code => code.text())).toEqual([
-      staleKey,
-      staleKey,
-    ])
-    expect(wrapper.findAll('[data-stale-remove]').map(button => button.attributes('aria-label'))).toEqual([
-      `Delete stored configuration ${staleKey} from First field`,
-      `Delete stored configuration ${staleKey} from Second field`,
+    expect(wrapper.text()).toContain('Placeholder')
+    expect(wrapper.text()).not.toContain('Clearable')
+    const placeholder = wrapper.get('input[aria-label="Placeholder"]')
+    await placeholder.setValue('Shared hint')
+    await placeholder.trigger('blur')
+    expect(wrapper.emitted('updatePaths')?.at(-1)).toEqual([
+      ['first', 'second'],
+      ['props', 'placeholder'],
+      'Shared hint',
     ])
   })
 
-  it('renders each mixed validation value without enabling a destructive shared editor', async () => {
+  it('keeps both sections read-only when material metadata is missing', async () => {
+    const node = field('enabled', 'test.switch')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        componentDefinition: contract('test.switch'),
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+      .toEqual(['properties', 'validation', 'interactions'])
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    expect(wrapper.get('input[aria-label="Required"]').attributes('disabled'))
+      .toBeDefined()
+  })
+
+  it('edits shared Required without exposing different RuleSets as one editor', async () => {
     const first = field('first', 'test.first', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'minLength', value: 2 }] },
     })
     const second = field('second', 'test.second', {
-      validation: { version: 1, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
+      validation: { version: 2, base: { type: 'string' }, rules: [{ kind: 'maxLength', value: 20 }] },
     })
     const firstMaterial = fieldMaterial('test.first')
     const secondMaterial = fieldMaterial('test.second')
-    const firstContract = contract('test.first', 'field')
-    const secondContract = contract('test.second', 'field')
+    const firstContract = contract('test.first')
+    const secondContract = contract('test.second')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
         renderer: ConfigFormRenderer,
@@ -536,23 +358,128 @@ describe('designer property panel adaptive Inspector', () => {
     })
 
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
-    const warnings = wrapper.findAll('[data-stale-kind="validation-incompatible"]')
-    expect(warnings).toHaveLength(2)
-    expect(warnings[0]!.get('pre').text()).toBe(JSON.stringify(first.validation, null, 2))
-    expect(warnings[1]!.get('pre').text()).toBe(JSON.stringify(second.validation, null, 2))
-    expect(wrapper.get('.mx-config-form-designer__validation-editor [role="switch"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.mx-config-form-designer__validation-editor').exists()).toBe(false)
+    const required = wrapper.get('input[aria-label="Required"]')
+    expect(required.attributes('disabled')).toBeUndefined()
+    await required.setValue(true)
+    expect(wrapper.emitted('updatePaths')?.at(-1)).toEqual([
+      ['first', 'second'],
+      ['required'],
+      true,
+    ])
+  })
+
+  it('has no event, Flow, binding, condition, or reaction authoring surface', () => {
+    const node = field('name', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input'),
+        componentDefinition: contract('test.input'),
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.find('[data-property-tab="events"]').exists()).toBe(false)
+    expect(wrapper.find('[data-property-tab="bindings"]').exists()).toBe(false)
+    expect(wrapper.find('[data-property-tab="conditions"]').exists()).toBe(false)
+    expect(wrapper.find('[data-property-tab="reactions"]').exists()).toBe(false)
+    expect(wrapper.find('[data-form-event]').exists()).toBe(false)
+    expect(wrapper.find('.mx-config-form-designer__form-events').exists()).toBe(false)
+    expect(wrapper.emitted()).not.toHaveProperty('configureEvent')
+    expect(wrapper.emitted()).not.toHaveProperty('configureFlow')
+  })
+
+  it('authors Dataset bindings, preserves query fields, and materializes options explicitly', async () => {
+    const node = field('role', 'test.select', {
+      props: { options: [{ label: 'Inline', value: 'inline' }] },
+      datasetBindings: {
+        options: {
+          datasetId: 'roles',
+          projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
+          query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
+        },
+      },
+    })
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.select'),
+        componentDefinition: contract('test.select', {
+          datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
+        }),
+        datasets: [{
+          id: 'roles',
+          name: 'Roles',
+          rows: [{ id: 1, rank: 1, meta: { label: 'Designer' } }],
+        }],
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    await wrapper.get('[data-apply-dataset-binding]').trigger('click')
+    expect(wrapper.emitted('updateDatasetBinding')?.at(-1)).toEqual([
+      'role',
+      'options',
+      {
+        datasetId: 'roles',
+        projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
+        query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
+      },
+    ])
+    await wrapper.get('[data-materialize-options]').trigger('click')
+    expect(wrapper.emitted('materializeOptionsSnapshot')?.at(-1)).toEqual(['role', 'options'])
+  })
+
+  it('saves inline options as a Dataset and filters Resource choices by media capability', async () => {
+    const node = field('role', 'test.select', {
+      props: { options: [{ label: 'Inline', value: 'inline' }] },
+    })
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.select'),
+        componentDefinition: contract('test.select', {
+          datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
+          resourceBindings: [{ key: 'image', mediaTypes: ['image/*'] }],
+        }),
+        resources: [
+          { id: 'logo', name: 'Logo', kind: 'url', url: '/logo.png', mediaType: 'image/png' },
+          { id: 'manual', name: 'Manual', kind: 'url', url: '/manual.pdf', mediaType: 'application/pdf' },
+        ],
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-save-options-dataset]').trigger('click')
+    expect(wrapper.emitted('saveOptionsAsDataset')?.at(-1)).toEqual(['role', 'options', 'role options'])
+
+    const resourceSelect = wrapper.findAllComponents(ElSelect)
+      .find(component => component.attributes('data-resource-select') !== undefined)
+    expect(resourceSelect).toBeDefined()
+    expect(resourceSelect!.findAllComponents({ name: 'ElOption' }).map(option => option.props('value')))
+      .toEqual(['logo'])
+    resourceSelect!.vm.$emit('update:modelValue', 'logo')
+    await nextTick()
+    expect(wrapper.emitted('updateResourceBinding')?.at(-1)).toEqual(['role', 'image', 'logo'])
   })
 
   it('refreshes the active root span fraction without persisting derived state', async () => {
     const node = field('name', 'test.input')
     const material = fieldMaterial('test.input')
-    const definition = contract('test.input', 'field')
+    const definition = contract('test.input')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
         renderer: ConfigFormRenderer,
         graph: graph([node], { name: 8 }, { columns: 24, fieldSpan: 12 }),
         node,
-        nodes: [node],
         material,
         componentDefinition: definition,
         components: {
@@ -567,9 +494,6 @@ describe('designer property panel adaptive Inspector', () => {
 
     const hintField = () => wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]')
     expect(hintField().attributes('data-hint-label')).toBe('8 / 24 · 1/3')
-    expect(wrapper.get('[data-adapter-number][aria-label="Span"]').attributes('aria-description')).toBe('8 / 24 · 1/3')
-    expect(wrapper.find('.mx-config-form-designer__stepper').exists()).toBe(false)
-
     await wrapper.setProps({ graph: graph([node], { name: 12 }, { columns: 24, fieldSpan: 12 }) })
     expect(hintField().attributes('data-hint-label')).toBe('12 / 24 · 1/2')
     expect(JSON.stringify(wrapper.props('graph'))).not.toContain('fraction')
@@ -584,38 +508,28 @@ describe('designer property panel adaptive Inspector', () => {
       },
     })
 
-    expect(wrapper.get('.mx-config-form-designer__setter-hint.is-value').text()).toBe('12 / 24 · 1/2')
+    expect(wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]')
+      .attributes('data-hint-label')).toBe('12 / 24 · 1/2')
   })
 
-  it('exposes locked form load and submit flow entry points with status', async () => {
-    const flow: ConfigFormFlow = {
-      version: 1,
-      id: 'form-submit',
-      name: 'Submit flow',
-      trigger: { kind: 'form.submit' },
-      nodes: [
-        { id: 'trigger', type: 'trigger' },
-        { id: 'end', type: 'end' },
-      ],
-      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' }],
-    }
+  it('keeps the Surface interaction overview discoverable without a selected node', async () => {
+    const node = field('name', 'test.input')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
         renderer: ConfigFormRenderer,
-        graph: graph([], {}),
-        flows: [flow],
+        graph: graph([node]),
+        getComponentDefinition: () => contract('test.input'),
         diagnostics: [],
       },
     })
 
-    const events = wrapper.findAll('.mx-config-form-designer__form-events > button')
-    expect(events).toHaveLength(2)
-    expect(events[0]!.text()).toContain('Not orchestrated')
-    expect(events[1]!.text()).toContain('Configured')
-    expect(events[1]!.text()).toContain('2 nodes')
-
-    await events[1]!.trigger('click')
-    expect(wrapper.emitted('configureFlow')).toEqual([[{ kind: 'form.submit' }]])
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+      .toEqual(['properties', 'interactions'])
+    await wrapper.get('[data-property-tab="interactions"]').trigger('click')
+    expect(wrapper.find('[data-interaction-editor]').exists()).toBe(true)
+    expect(wrapper.find('[data-property-tab="validation"]').exists()).toBe(false)
+    expect(wrapper.get('button[aria-label="Add state rule"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button[aria-label="Add value rule"]').attributes('disabled')).toBeUndefined()
   })
 
   it('edits canonical pixel gap and label width through numeric controls', async () => {
@@ -640,10 +554,6 @@ describe('designer property panel adaptive Inspector', () => {
     expect((gap.element as HTMLInputElement).value).toBe('16')
     expect((labelWidth.element as HTMLInputElement).value).toBe('120')
     expect((fieldSpan.element as HTMLInputElement).value).toBe('8')
-    expect(fieldSpan.attributes('max')).toBe('8')
-    expect(gap.attributes()).toMatchObject({ min: '0', max: '64', precision: '0', step: '1' })
-    expect(labelWidth.attributes()).toMatchObject({ min: '0', max: '480', precision: '0', step: '1' })
-
     ;(gap.element as HTMLInputElement).value = '20'
     await gap.trigger('change')
     ;(labelWidth.element as HTMLInputElement).value = '144'

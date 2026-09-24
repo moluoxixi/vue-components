@@ -6,7 +6,6 @@ import type { ExportMode } from './domain'
 export interface ExportDialogProps {
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation?: ProjectCompilation
-  currentPageId?: string
   locale?: DesignerLocaleOptions
   mode?: ExportMode
   theme: 'dark' | 'light'

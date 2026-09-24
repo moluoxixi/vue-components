@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"父任务已确认的产品定位、交互、数据、Surface 与交付边界"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"Page-only 到 Surface/Dataset/Prototype Interaction 的跨包影响、版本基线与原子切换范围"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"七个子任务的依赖顺序、所有权缺口与 Source 抽离前置条件"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"父任务跨 Model、Compiler、Runtime、Studio 与 Source 的数据流和版本门禁"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"实施前需要替换的现有 Runtime-first 产品与序列化边界"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"跨包合同变化必须同步架构 README 和 current-contract-only 规则"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"Studio、持久化、Preview、Source、Monaco 与 E2E 现有质量合同"}

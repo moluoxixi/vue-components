@@ -1,7 +1,6 @@
 import type { DesignerMaterialDefinition } from '../types'
-import { DesignerRegistryError } from '../../graph'
+import { DesignerRegistryError, isDesignerSetterPathAllowed } from '../../graph'
 
-const UNSAFE_EVENT_NAMES = new Set(['__proto__', 'constructor', 'prototype'])
 const SOURCE_TAG_RE = /^[a-z][a-z0-9-]*$/
 
 function isControlledAdapter(value: unknown): boolean {
@@ -72,7 +71,7 @@ function assertSourceBinding(definition: DesignerMaterialDefinition, layerName: 
 
   if (!source.configComponent.trim()
     || !SOURCE_TAG_RE.test(source.tag)
-    || !['component', 'layout-flex', 'layout-grid', 'section'].includes(source.render)
+    || !['component', 'dataset-list', 'dataset-table', 'layout-flex', 'layout-grid', 'section'].includes(source.render)
     || !libraryValid
     || !optionsValid) {
     throw new DesignerRegistryError(
@@ -104,27 +103,14 @@ export function assertDesignerMaterialDefinition(
   assertDesignPolicy(definition, layerName)
   assertSourceBinding(definition, layerName)
 
-  const seenEvents = new Set<string>()
-  for (const event of definition.events ?? []) {
-    const name = event && typeof event === 'object' && typeof event.name === 'string'
-      ? event.name
-      : ''
-    const title = event && typeof event === 'object' && typeof event.title === 'string'
-      ? event.title
-      : ''
-    if (!name
-      || name.trim() !== name
-      || /\s/.test(name)
-      || !title.trim()
-      || UNSAFE_EVENT_NAMES.has(name)
-      || seenEvents.has(name)) {
+  for (const setter of definition.setters) {
+    if (!isDesignerSetterPathAllowed(setter.path)) {
       throw new DesignerRegistryError(
-        'DESIGNER_MATERIAL_EVENT_INVALID',
-        `Designer material ${definition.key} has an invalid component event`,
-        { event, key: definition.key, layerName },
+        'DESIGNER_SETTER_PATH_FORBIDDEN',
+        `Designer material ${definition.key} declares a setter outside the default Designer boundary`,
+        { key: definition.key, layerName, path: setter.path, setterKey: setter.key },
       )
     }
-    seenEvents.add(name)
   }
 
   const seenParents = new Set<string>()

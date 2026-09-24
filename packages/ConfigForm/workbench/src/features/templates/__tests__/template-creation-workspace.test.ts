@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   actualCatalogLoad: undefined as undefined | (() => Promise<unknown>),
   analyzeEligibility: vi.fn(),
   catalogLoad: vi.fn(),
-  createPage: vi.fn(),
+  createSurface: vi.fn(),
   createProject: vi.fn(),
   loadAdapter: vi.fn(),
   preparePreview: vi.fn(),
@@ -108,7 +108,7 @@ const SelectStub = defineComponent({
 })
 
 const RuntimeStub = defineComponent({
-  name: 'PreviewRuntimeHostFrameStub',
+  name: 'DesignRuntimeHostFrameStub',
   inheritAttrs: false,
   props: { adapter: String },
   setup(props) {
@@ -147,16 +147,14 @@ function previewFor(template: { manifest: { adapter: string, id: string } }) {
   const projectId = `preview-${template.manifest.id}`
   return {
     adapter: template.manifest.adapter,
-    compilation: { snapshotIdentity: { pageId: 'page', projectId } },
+    compilation: { snapshotIdentity: { surfaceId: 'page', projectId } },
     namespace: 'mx-template-preview',
-    reactionProjection: { props: {}, states: {}, validate: [], values: {} },
     revision: projectId,
-    runtimeSessionKey: `${projectId}:page`,
-    runtimeState: { touched: [], validation: {}, values: {} },
+    values: {},
   }
 }
 
-function mountWorkspace(target: 'page' | 'project' = 'project') {
+function mountWorkspace(target: 'surface' | 'project' = 'project') {
   return mount(TemplateCreationWorkspace as Component, {
     attachTo: document.body,
     props: {
@@ -169,7 +167,7 @@ function mountWorkspace(target: 'page' | 'project' = 'project') {
         ElInput: InputStub,
         ElOption: OptionStub,
         ElSelect: SelectStub,
-        PreviewRuntimeHostFrame: RuntimeStub,
+        DesignRuntimeHostFrame: RuntimeStub,
       },
     },
   })
@@ -182,7 +180,7 @@ describe('template creation workspace', () => {
     stubMatchMedia(() => false)
     mocks.analyzeEligibility.mockImplementation(eligible)
     mocks.catalogLoad.mockImplementation(() => mocks.actualCatalogLoad!())
-    mocks.createPage.mockResolvedValue(true)
+    mocks.createSurface.mockResolvedValue(true)
     mocks.createProject.mockResolvedValue(true)
     mocks.loadAdapter.mockImplementation(async (adapter: string) => ({
       designerRegistry: { rendererNamespace: `mx-${adapter}` },
@@ -200,7 +198,7 @@ describe('template creation workspace', () => {
     appearanceDrawerOpen.value = false
     mocks.useController.mockReturnValue({
       busy: ref(false),
-      createPageFromTemplate: mocks.createPage,
+      createSurfaceFromTemplate: mocks.createSurface,
       createProjectFromTemplate: mocks.createProject,
       currentProject,
     })
@@ -228,7 +226,16 @@ describe('template creation workspace', () => {
     const wrapper = mountWorkspace()
     await flushPromises()
 
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="option"]').map(option => option.attributes('data-template-id'))).toEqual([
+      'element-blank',
+      'element-profile',
+      'element-dialog',
+      'element-drawer',
+      'antd-blank',
+      'antd-profile',
+      'antd-dialog',
+      'antd-drawer',
+    ])
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
 
     await wrapper.get('select[aria-label="Template category"]').setValue('starter')
@@ -243,7 +250,7 @@ describe('template creation workspace', () => {
     await flushPromises()
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
     await wrapper.get('.template-empty-state button').trigger('click')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
@@ -259,11 +266,11 @@ describe('template creation workspace', () => {
     await flushPromises()
 
     expect(wrapper.get('.template-provider-error').text()).toContain('Built-in provider failed.')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     await wrapper.get('.template-provider-error button').trigger('click')
     await flushPromises()
     expect(mocks.catalogLoad).toHaveBeenCalledTimes(2)
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
@@ -283,12 +290,12 @@ describe('template creation workspace', () => {
     expect(wrapper.find('.template-empty-state').exists()).toBe(false)
     await wrapper.get('.template-catalog-fatal button').trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
   it('keys eligibility display status by the current Registry fingerprint', async () => {
-    const wrapper = mountWorkspace('page')
+    const wrapper = mountWorkspace('surface')
     await flushPromises()
 
     const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
@@ -331,7 +338,7 @@ describe('template creation workspace', () => {
     await first.trigger('keydown', { key: 'End' })
     await flushPromises()
     const selected = wrapper.get('[role="option"][aria-selected="true"]')
-    expect(selected.attributes('data-template-id')).toBe('antd-profile')
+    expect(selected.attributes('data-template-id')).toBe('antd-drawer')
     expect(document.activeElement).toBe(selected.element)
 
     await selected.trigger('keydown', { key: 'Enter' })
@@ -362,7 +369,19 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
-  it('shows actionable diagnostics and disables creation when page requirements are unmet', async () => {
+  it('lets an active overlay own Escape without closing the creation workspace', async () => {
+    const wrapper = mountWorkspace()
+    await flushPromises()
+    const overlayButton = document.createElement('button')
+    document.querySelector('#workbench-overlays')!.append(overlayButton)
+
+    overlayButton.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+
+    expect(wrapper.emitted('close')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('shows actionable diagnostics and disables creation when Surface requirements are unmet', async () => {
     mocks.analyzeEligibility.mockImplementation((template: { manifest: { adapter: string } }) =>
       template.manifest.adapter === 'antd-vue'
         ? {
@@ -373,7 +392,7 @@ describe('template creation workspace', () => {
             }],
           }
         : eligible())
-    const wrapper = mountWorkspace('page')
+    const wrapper = mountWorkspace('surface')
     await flushPromises()
 
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
@@ -384,6 +403,31 @@ describe('template creation workspace', () => {
     await wrapper.get('.template-eligibility button').trigger('click')
     await flushPromises()
     expect(document.activeElement?.getAttribute('data-template-id')).toBe('antd-profile')
+    wrapper.unmount()
+  })
+
+  it('prepares and creates Dialog templates against the Surface target', async () => {
+    const wrapper = mountWorkspace('surface')
+    await flushPromises()
+
+    await wrapper.get('[data-template-id="element-dialog"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.preparePreview).toHaveBeenLastCalledWith(
+      expect.objectContaining({ manifest: expect.objectContaining({ id: 'element-dialog' }) }),
+      expect.any(Object),
+      'surface',
+    )
+    expect(wrapper.find('.template-preview-error').exists()).toBe(false)
+    const createButton = wrapper.get('.template-create-footer button')
+    expect(createButton.attributes('disabled')).toBeUndefined()
+    await createButton.trigger('click')
+    await flushPromises()
+    expect(mocks.createSurface).toHaveBeenCalledWith(
+      expect.objectContaining({ manifest: expect.objectContaining({ id: 'element-dialog' }) }),
+      'Element Plus blank dialog',
+    )
+    expect(wrapper.emitted('created')).toHaveLength(1)
     wrapper.unmount()
   })
 

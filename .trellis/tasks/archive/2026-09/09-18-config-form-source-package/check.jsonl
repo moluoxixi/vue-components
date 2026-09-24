@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对旧 generator/viewer 消费者与 Surface/Resource 触点均完成迁移"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"检查 Source 不反向依赖 Designer、Workbench、adapter UI 或 Repository"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查异步资源读取、文件集、版本、错误矩阵与双端行为一致"}
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"检查根/generator/viewer/style 入口与 DOM/Monaco 隔离"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查 Studio 只组合 Viewer 与应用命令且旧 wrapper 已删除"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查 package graph、发布和 current-contract-only 门禁"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 Prototype session、Dataset query 和文件树模型未重复实现"}

@@ -1,9 +1,10 @@
 import type {
   ProjectDocument,
-  ProjectPage,
+  ProjectPageSurface,
+  ProjectSurface,
   RegistryLock,
 } from '@moluoxixi/config-form-model'
-import { assertProjectDocument } from '@moluoxixi/config-form-model'
+import { assertProjectDocument, registryLockFingerprint } from '@moluoxixi/config-form-model'
 import {
   getBuiltInTemplateSeed,
   instantiateTemplateProject,
@@ -14,14 +15,15 @@ export const FIXED_TIME = '2026-08-27T08:00:00.000Z'
 
 export function createRegistryLockFixture(adapter: 'antd-vue' | 'element-plus' = 'element-plus'): RegistryLock {
   const prefix = adapter === 'element-plus' ? 'element' : 'antd'
+  const components = Object.fromEntries(['input', 'select', 'switch'].map((name, index) => [
+    `${prefix}.${name}`,
+    { contractVersion: '1', fingerprint: `fnv1a:${(index + 1).toString(16).padStart(8, '0')}` },
+  ]))
   return {
     adapter,
     version: '1.0.0',
-    fingerprint: `fnv1a:${adapter}`,
-    components: Object.fromEntries(['input', 'select', 'switch'].map(name => [
-      `${prefix}.${name}`,
-      { contractVersion: '1', fingerprint: `fnv1a:${prefix}-${name}` },
-    ])),
+    fingerprint: registryLockFingerprint(components),
+    components,
   }
 }
 
@@ -38,7 +40,7 @@ export function createBuiltInProjectFixture(
   return instantiateTemplateProject({ providerId: 'built-in', ...parsed }, {
     id: input.id,
     identityFactory: {
-      create: (kind, source) => kind === 'page' ? 'home' : `${source}-${kind}-${++sequence}`,
+      create: (kind, source) => kind === 'surface' ? 'home' : `${source}-${kind}-${++sequence}`,
     },
     name: input.name,
     registryLock,
@@ -57,7 +59,9 @@ export function createProjectDocumentFixture(
   return assertProjectDocument({ ...base, ...structuredClone(overrides) })
 }
 
-export function duplicateProjectPage(page: ProjectPage, id: string, name: string, route: string): ProjectPage {
+export function duplicateProjectSurface(page: ProjectSurface, id: string, name: string, route: string): ProjectPageSurface {
+  if (page.kind !== 'page')
+    throw new Error('Only page Surfaces have routes.')
   return {
     ...structuredClone(page),
     id,

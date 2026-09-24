@@ -22,6 +22,9 @@ export default defineConfig({
   resolve: {
     conditions: ['source'],
   },
+  ssr: {
+    resolve: { conditions: ['source'] },
+  },
   build: {
     lib: {
       entry: resolve(__dirname, 'index.ts'),

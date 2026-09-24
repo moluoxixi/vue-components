@@ -1,46 +1,36 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { PrototypeSessionV1 } from '@moluoxixi/config-form-prototype-runtime/session'
 import type { WorkbenchAdapterId } from '../../adapters'
-import type { RuntimeHostRuntimeStatePayload } from '../../runtime-host'
 import type {
-  PagePreviewProjection,
-  PreviewRuntimeIdentity,
-  PreviewRuntimeStateEvent,
-  PreviewRuntimeSubmitResultEvent,
-  PreviewSubmission,
-} from '../../session'
+  ExperienceRuntimeHostIdentityEvent,
+  ExperienceRuntimeInstanceStateEvent,
+  ExperienceRuntimeSessionEvent,
+} from '../../runtime-host'
 
 export type PreviewViewport = 'desktop' | 'mobile' | 'tablet'
 
 export interface PreviewDrawerProps {
   adapter?: WorkbenchAdapterId
-  compilation?: PageCompilation
-  configError?: string
+  compilation?: ProjectCompilation
   expanded?: boolean
-  lastSubmission?: PreviewSubmission
   locale?: DesignerLocaleOptions
   namespace?: string
   open: boolean
-  projection?: PagePreviewProjection
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
-  runtimeState: RuntimeHostRuntimeStatePayload
+  revision: string
+  session?: PrototypeSessionV1
+  sessionId: string
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
 }
 
 export interface PreviewDrawerEmits {
-  'clearSubmission': []
   'close': []
-  'error': [error: unknown]
-  'fieldChange': [payload: { field: string, values: Record<string, unknown> }]
-  'message': [message: string]
-  'ready': [event: PreviewRuntimeIdentity]
-  'runtimeEvent': [payload: { event: string, nodeId: string }]
-  'runtimeMounted': [event: PreviewRuntimeIdentity]
-  'runtimeState': [event: PreviewRuntimeStateEvent]
-  'submit': [values: Record<string, unknown>]
-  'submitResult': [event: PreviewRuntimeSubmitResultEvent]
+  'error': [error: Error]
+  'instanceState': [event: ExperienceRuntimeInstanceStateEvent]
+  'mounted': [event: ExperienceRuntimeHostIdentityEvent]
+  'ready': [event: ExperienceRuntimeHostIdentityEvent]
+  'session': [event: ExperienceRuntimeSessionEvent]
   'update:expanded': [expanded: boolean]
   'update:viewport': [viewport: PreviewViewport]
 }

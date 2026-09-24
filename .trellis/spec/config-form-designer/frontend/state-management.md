@@ -3,8 +3,8 @@
 ## 1. Scope / Trigger
 
 Apply this contract when changing the ConfigForm Model package, Workbench state,
-Designer commands, project persistence, history, Preview projection, Flow
-editing, or Source/Config export.
+Designer commands, project persistence, history, Preview projection, or
+Source/Config export.
 
 `ProjectDocument` is the only persisted business content model in the Workbench.
 `ProjectSnapshot` is its immutable editor envelope. `PersistedProjectEnvelope`
@@ -88,6 +88,14 @@ interface ProjectNodePatch {
   unset?: ProjectNodePatchKey[]
 }
 
+createNodePathCommand(
+  graph: SurfaceGraph,
+  surfaceId: SurfaceId,
+  nodeIds: readonly NodeId[],
+  path: readonly string[],
+  value: ModelJsonValue | undefined,
+): ProjectCommand
+
 interface ProjectTransaction {
   id: string
   label: string
@@ -99,7 +107,7 @@ type ProjectStoredConfigRemovalOperation = {
   type: 'node.config.remove'
   pageId: PageId
   nodeId: NodeId
-  property: 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn'
+  property: 'bindings' | 'conditions' | 'optionSource' | 'validation' | 'validateOn' | 'valueScope'
   key?: string
 }
 
@@ -112,7 +120,7 @@ interface AppliedProjectTransaction {
 }
 
 interface PageGraph {
-  version: 2
+  version: 3
   props: ModelJsonObject
   form: FormSettings
   root: SlotItem[]
@@ -124,7 +132,6 @@ interface ProjectPage {
   name: string
   route: string
   graph: PageGraph
-  flows?: ConfigFormFlow[]
 }
 
 interface SlotItem {
@@ -152,21 +159,36 @@ interface SlotItem {
   inverse, never an unresolved Command or a full project deep copy.
 - A multi-action Command may temporarily violate cross-entity references while
   its actions are being expanded. The complete Operation batch must pass final
-  PageGraph, Registry, Flow, and schema validation before publication. Failure
+  PageGraph, Registry, and schema validation before publication. Failure
   preserves the original snapshot, history, and revision.
 - One accepted Command produces at most one editVersion and one history
   entry. Merge keys may combine adjacent history entries without changing
   transaction atomicity.
+- A static Select options edit (`path = ['props', 'options']`) is one semantic
+  Command. For every affected field, command expansion derives the next typed
+  option values before publication, clears a default that no longer refers to
+  those values, and reconciles an existing `enum` or `literal` validation base
+  in the same Transaction. A non-empty unique all-string option list becomes
+  the exact ordered `enum`; one non-string primitive becomes `literal`. If the
+  next list cannot be represented by either base, the complete `validation`
+  value is unset. Re-derived bases preserve the existing `rules`, `optional`,
+  and `nullable` members. The options, default, and validation changes publish
+  as one editVersion/history entry, and one Undo restores all prior values.
+- `time` is a Designer value kind but is not a RuleSet base. A time Material's
+  Validation section exposes field-level `required` / `requiredMessage` and
+  `validateOn`; it does not project `time` to the `date` base or mount a general
+  `validation` editor. Date Materials alone map to the RuleSet `date` base.
 - Command IDs are idempotent inside ProjectDomainEngine. Reusing an ID with a
   different payload returns `PROJECT_COMMAND_ID_REUSED`.
 - Semantic commands are JSON-safe. Node property removal uses explicit
   `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
   postMessage, Worker, and persisted command logs discard it.
 - Registry-stale stored configuration uses the narrower
-  `node.config.remove` repair operation. `events`, `bindings`, and `conditions`
-  require one safe non-empty `key`; `validation` and `validateOn` reject a key
-  and require a field node. The operation carries no replacement value and an
-  absent target is a semantic no-op.
+  `node.config.remove` repair operation. `bindings` and `conditions` require one
+  safe non-empty `key`; `validation`, `validateOn`, `optionSource`, and
+  `valueScope` reject a key and require the matching field/layout node kind. The
+  operation carries no replacement value and an absent target is a semantic
+  no-op. This low-level repair contract is not a default Designer authoring UI.
 - A transaction containing `node.config.remove` contains only that operation
   type and has no `mergeKey`. Forward application still validates the current
   Registry lock and the changed Page schema, while deliberately allowing
@@ -278,7 +300,7 @@ interface SlotItem {
   Export capture/refresh. Ordinary Design edits invalidate the pinned Export
   identity but do not compile other pages or rebuild generated files.
 - Persistence scheduling is owned by one `ProjectPersistenceSession`, not by
-  Inspector, Designer, Flow, or Pages. It coalesces edits with an 800ms idle /
+  Inspector, Designer, Preview, or Pages. It coalesces edits with an 800ms idle /
   5s maximum autosave policy and a 250ms idle / 1s maximum durable recovery
   draft policy. A save captures one edit identity; edits arriving while it is
   in flight remain pending for the next save. Draft coverage is tracked
@@ -299,11 +321,21 @@ interface SlotItem {
   command execution, and Undo/Redo. Export owns lazy full-project compilation
   and pinned identity invalidation. The controller wires project/navigation
   publication only; the Shell consumes contexts and routes view/dialog events.
-- A committed Design publication failure clears the unusable Runtime artifact
-  and forwards its first compiler diagnostic to Workbench UI. Rendering an
-  unexplained empty `provider-surface` is forbidden. Transient invalid drag
+- A committed Design publication failure keeps the current graph and the last
+  successful `SurfaceCompilation` / Vue Runtime artifact, and publishes the
+  first compile diagnostic. It does not replace those refs with a failed
+  artifact or `undefined`. If no successful artifact exists yet, Canvas renders
+  a stable error state while the Designer shell, Layers, Inspector, Properties,
+  Validation, and Interactions remain mounted so the author can repair the graph. Rendering
+  an unexplained empty `provider-surface` is forbidden. Transient invalid drag
   candidates may still remain silent because the committed Runtime stays
   visible and final command execution owns the user-facing diagnostic.
+- Workbench Design diagnostics have separate command and compile slots. Command
+  execution, Undo, Redo, and History jump may update only the command slot;
+  compilation may update only the compile slot. Display combines them with the
+  command diagnostic taking precedence. A successful command with no diagnostic
+  must not erase a compile failure emitted synchronously by the resulting
+  publication; the compile slot clears only after a successful publication.
 - Design and Preview each run in a dedicated same-origin iframe RuntimeHost.
   The parent sends only structured-cloneable `PageCompilation`, adapter
   identity, presentation, values, reaction projection, and design-session
@@ -315,26 +347,19 @@ interface SlotItem {
   origin, protocol version, session, and payload shape before accepting a
   message. Replayed, stale-revision, or out-of-order messages are ignored.
 - Structural RuntimeHost sync and transient state sync are separate. Model or
-  Flow projection changes send only values/reaction state; they must not clone
+  reaction projection changes send only values/reaction state; they must not clone
   or recompile the complete `PageCompilation`. A same-page revision keeps one
-  runtime session and does not emit `page.mount` again.
+  runtime session.
 - Each RuntimeHost realm loads provider CSS and owns its Teleport targets.
-  Workbench theme CSS must not enter the iframe. Component events crossing the
-  bridge are reduced to registered `{ nodeId, event }`; Runtime component
-  instances and event args remain inside the realm.
-- In the Workbench, the selected node's Registry events are authored through a
-  single Inspector-to-Flow path. The Inspector emits the exact stable
-  `{ nodeId, event }` target, the Flow dialog selects an existing matching Flow
-  or creates one from that event source, and all edits still commit through
-  Project Transactions. Workbench does not expose a second action-string event
-  model beside Flow.
-- Form-level Flow events are authored from the no-selection Form property panel.
-  It exposes exactly `page.mount` (shown as Form load) and `form.submit` (shown
-  as Form submit); each row opens a Flow dialog locked to that trigger. A Flow
-  dialog never offers a trigger switch or a page-wide Flow list.
-- The current Flow trigger union is `page.mount | form.submit | component.event`;
-  `field.change` is rejected as an unsupported historical shape at current
-  schema/compiler boundaries. Do not migrate, delete, or execute it.
+  Workbench theme CSS must not enter the iframe. Component listener functions,
+  listener names, and argument snapshots never cross the bridge. Preview may
+  transport form values, field-change state, validation, submit results, Data
+  requests, and design geometry through their explicit protocols; none is an
+  event-authoring or action-dispatch channel.
+- Workbench has no component-event authoring path, action registry, handler
+  registry, or event forwarding RPC. Host-only `props.onX` functions
+  are composed in the consuming Vue/TypeScript application and are outside
+  ProjectDocument, Preview, and Source.
 - Design Runtime nodes register geometry by stable `nodeId`; ancestry path and
   slot are mutable traversal metadata, not registration identity. Candidate
   moves between nested slots must update the registration without allowing an
@@ -358,8 +383,8 @@ interface SlotItem {
 - Design, Pages, RuntimeHost, and Export consume `ProjectDocument`,
   `ProjectSnapshot`, `PageGraph`, or fixed compiler artifacts directly. There
   is no page-tree projection or project wrapper between those boundaries.
-- Runtime form values, touched state, validation, Flow queues, outputs, traces,
-  abort signals, panel state, selection, drag candidates, and Monaco models are
+- Runtime form values, touched state, validation, Data requests/cancellation,
+  panel state, selection, drag candidates, and Monaco models are
   transient session/UI state.
 - Source and Config are read-only. They pin one immutable export revision;
   later design edits mark the session stale rather than partially replacing
@@ -400,7 +425,7 @@ interface SlotItem {
   their coordinate space while iframe geometry is sampled. Runtime content and
   parent stage rectangles must be comparable without timing waits.
 - Canvas camera, selection, resize, drag candidate/visual, Registry specimens,
-  schema-driven setters, Flow canvas, RuntimeHost bridges, and Monaco models
+  schema-driven setters, RuntimeHost bridges, and Monaco models
   remain domain-owned. Replacing them with a general UI component is allowed
   only when Project Command ownership, Runtime geometry, and provider isolation
   remain unchanged; generic `BaseButton` / `BaseTabs` abstraction layers are
@@ -408,11 +433,10 @@ interface SlotItem {
 
 ## 5. Repository Boundary
 
-- Repository storage may split Manifest, Page, and Resource entities. A
-  `ConfigFormFlow` is owned by one `ProjectPage` as a sibling of its visual
-  `PageGraph`, and both persist inside the same Page entity; project-wide
-  automation requires a different future contract.
-  The manifest references exact revisioned keys and checksums.
+- Repository storage may split Manifest, Page, and Resource entities. A Page
+  entity stores the current `ProjectPage` and its `PageGraph`; it does not store
+  action graphs or event metadata. The manifest references exact revisioned keys
+  and checksums.
 - `load` publishes only a complete validated `PersistedProjectEnvelope`. Missing entities,
   checksum drift, or mismatched project IDs return
   `PROJECT_REPOSITORY_CORRUPT`.
@@ -420,7 +444,7 @@ interface SlotItem {
   atomic storage transaction.
 - Repository open/load validates the current schema version and Registry lock.
   Unknown versions, records from other namespaces, incomplete entities, and
-  ambiguous Flow ownership fail closed with `PROJECT_REPOSITORY_CORRUPT`.
+  ambiguous entity ownership fail closed with `PROJECT_REPOSITORY_CORRUPT`.
   Load never scans, rewrites, or deletes the rejected source record.
 
 ## 6. Error Matrix
@@ -435,6 +459,10 @@ interface SlotItem {
 | Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
 | Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
 | Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
+| Time Material opens Validation | Show Required and `validateOn`; omit the general RuleSet editor and never synthesize a `date` base |
+| Select options remove a referenced default and change an existing enum/literal base | Commit options, default removal, and the re-derived base atomically in one history entry |
+| Select options cannot form a unique string enum or one primitive literal | Commit the options and unset the complete existing enum/literal `validation` in that same history entry |
+| Any operation in the Select options reconciliation fails | Roll back options, default, and validation together; publish no revision/history entry |
 | Stored record removal omits or uses an unsafe key | `PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED` / `PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID`; atomic rollback |
 | `validation` / `validateOn` removal supplies a key or targets a layout | `PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED` / `PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID`; atomic rollback |
 | Stored configuration removal is mixed with another operation | `PROJECT_NODE_CONFIG_REMOVE_MIXED`; atomic rollback |
@@ -450,7 +478,7 @@ interface SlotItem {
   inverse, command expansion, multi-action final validation, merge, undo/redo,
   no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
 - Model repair tests start from a schema-valid document with multiple unrelated
-  Registry-stale event/binding keys, prove an ordinary record rewrite fails,
+  Registry-stale binding/condition keys, prove an ordinary record rewrite fails,
   remove only the named target, preserve every sibling key, and prove one
   Undo/Redo round trip restores and removes the exact structured value.
 - Designer and Workbench tests prove removal intent is absent when matching
@@ -475,9 +503,10 @@ interface SlotItem {
 - Workbench service tests prove Design publishes one `PageCompilation`, draft
   candidates do not mutate the committed snapshot, Undo/Redo delegate to
   `ProjectEditorSession`, Export `sync()` never compiles, and only `capture()`
-  assembles a full `ProjectCompilation`. They also assert committed compile
-  failures reach the UI diagnostic boundary instead of producing a blank
-  canvas.
+  assembles a full `ProjectCompilation`. They also assert a committed compile
+  failure keeps the last successful compilation/runtime artifact, keeps the
+  author shell mounted, and reaches the UI diagnostic boundary; a later empty
+  command diagnostic cannot clear it, while a successful recompile does.
 - Browser tests prove one visual design action advances one project revision,
   Undo/Redo use ProjectDomainEngine through ProjectEditorSession, page
   switching does not create history, and
@@ -486,14 +515,21 @@ interface SlotItem {
   contract. Repeated pointer moves within the
   same normalized drop target call that projection once, while a target change
   creates a new projection.
+- Designer validation tests prove `time` resolves no RuleSet base and renders
+  only Required/Required message plus `validateOn`, while `date` retains its
+  date rules. Select command tests cover reordered/replaced/removed options,
+  unique string enum and one-value literal re-derivation, invalid defaults,
+  duplicate/empty/multi-non-string unrepresentable lists, multi-selection, and
+  command rejection. Every case asserts at most one revision/history entry and
+  that one Undo restores the exact options, default, and validation snapshot.
 - Browser tests click the geometry of real Design controls and prove that focus
   stays on the editor overlay, keyboard input cannot mutate Design values,
   nested nodes select the deepest registered Runtime rectangle, and the same
   component remains interactive in Preview. These checks must run for every
   supported UI adapter.
 - RuntimeHost tests structured-clone a real `PageCompilation`, reject invalid
-  source/origin/session/version/payloads, exercise model/submit/field/component
-  events through the iframe, and prove provider Teleports plus Runtime computed
+  source/origin/session/version/payloads, exercise model/submit/field state and
+  Data request protocols through the iframe, and prove provider Teleports plus Runtime computed
   styles stay inside the iframe across Workbench Light/Dark changes. Design
   tests additionally cover geometry sync, nested hit testing, pointer
   down/move/up/cancel, stable registration across slot moves, and candidate /
@@ -501,12 +537,19 @@ interface SlotItem {
 
 ### 7.1 Good / Base / Bad Cases
 
-- Good: delete `events.legacy.remove` while `events.legacy.keep` and an unknown
-  binding remain, then Undo restores the exact nested action payload.
+- Good: delete `bindings.legacy.remove` while `bindings.legacy.keep` and an
+  unknown condition remain, then Undo restores the exact nested value.
+- Good: replace a Select's static options, derive its enum base from the new
+  string values, clear its now-invalid default, and restore all three values
+  with one Undo.
 - Base: delete an already absent supported path; publish no revision or history
   entry.
-- Bad: rewrite the full `events` record, mix repair with `page.rename`, attach a
+- Base: edit only Select option labels while values stay unchanged; keep the
+  valid default and semantically equivalent enum/literal validation.
+- Bad: rewrite the full `bindings` record, mix repair with `page.rename`, attach a
   merge key, or expose Registry-validation bypass as a UI option.
+- Bad: publish new options first and repair default or validation in later
+  commands, or treat a time string as a date solely to enable date rules.
 
 ## 8. Wrong vs Correct
 
@@ -532,6 +575,12 @@ projectEditorSession.execute({
 })
 ```
 
+Wrong: dispatch an options patch, then dispatch separate default and validation
+repairs from watchers.
+
+Correct: derive the complete options/default/enum-or-literal candidate in
+`createNodePathCommand(...)` and execute its single atomic command.
+
 Wrong: watch generated Config or Source and parse it back into the project.
 
 Correct: derive Design, Preview, Config, Source, and file-tree projections from
@@ -549,146 +598,42 @@ projectEditorSession.execute({
       type: 'node.config.remove',
       pageId,
       nodeId,
-      property: 'events',
-      key: 'legacy.change',
+      property: 'bindings',
+      key: 'legacy.value',
     }],
   }],
 })
 ```
 
-Wrong: copy the remaining stale record into `node.events`, mix the repair with
+Wrong: copy the remaining stale record into `node.bindings`, mix the repair with
 ordinary edits, or add a replacement value to `node.config.remove`.
 
-## 9. Readonly Export Snapshot Contract
+## 9. Source Export Ownership
 
-### 9.1 Scope / Trigger
+Designer owns neither source generation nor export-session state. It exposes a
+current `ProjectCompilation` through the Studio composition root and otherwise
+has no dependency on Source or Workbench.
 
-Apply this contract when changing Source/Config generation, the export dialog,
-single-file download, ZIP assembly, generator versions, or `WorkspaceFile`.
-Export is a reproducible-build boundary: every visible or downloaded artifact
-must belong to one exact editor snapshot and generator implementation.
+`@moluoxixi/config-form-source` owns `SourceFileSetV1`, deterministic raw Vue
+and ConfigForm binding generation, and the readonly Viewer. Workbench owns the
+pinned `ExportSnapshot`, stale detection, refresh, copy, file download, and ZIP
+commands. The authoritative snapshot and archive contract is maintained in
+`config-form-workbench/frontend/quality-guidelines.md`; do not duplicate it in
+Designer or add a generator version, Workspace file abstraction, editable
+source view, wrapper, alias, or compatibility path here.
 
-### 9.2 Signatures
-
-```ts
-interface ExportSnapshot {
-  readonly compilation: ProjectCompilation
-  readonly generatorVersion: string
-  readonly source: ExportFileSet
-  readonly config: ExportFileSet
-}
-
-interface CreateExportSessionOptions {
-  capture: () => BuildExportSnapshotInput | undefined
-  currentCompilation: () => ProjectCompilation | undefined
-  currentGeneratorVersion?: () => string
-}
-
-function isExportSnapshotStale(
-  snapshot: ExportSnapshot | undefined,
-  current: ProjectCompilation | undefined,
-  currentGeneratorVersion?: string,
-): boolean
-```
-
-### 9.3 Contracts
-
-- Snapshot identity includes `ProjectCompilation.key`, the complete committed
-  or draft `ProjectCompilation.origin`, and `generatorVersion`. A semantic key
-  match alone does not mean the authoring export is current.
-- `sync()` may compare identities but must not call `capture()` or compile the
-  whole project. Only opening or explicitly refreshing Export may generate
-  files.
-- Text and binary files are retained immutably. A binary `content` read returns
-  a defensive `Uint8Array` copy; mutating it cannot change later reads or ZIP
-  bytes.
-- File preview, copy, single-file download, and ZIP use the same pinned
-  `ExportFileSet`. Binary files are never coerced through a text getter.
-- Config source preserves `ProjectDocument.version`, `registryLock`, page
-  graph version/props, complete `SlotItem.placement`, node authoring metadata,
-  and Flow editor positions. Runtime-compatible numeric `span` may also be
-  promoted, but it does not replace relation metadata.
-- `__proto__`, `constructor`, and `prototype` are rejected by one shared Config
-  object-key guard in both generation and current Model parsing.
-- Object URLs are revoked on a later task after the anchor click. Synchronous
-  revocation is forbidden because browsers may not have consumed the URL yet.
-
-### 9.8 Feature Files and Barrel Rule
-
-Workbench and Designer follow the shared responsibility-based directory spec.
-A feature root contains its `index.ts`, optional `index.vue`, and named concern
-directories such as `types/`, `components/`, `composables/`, `state/`,
-`services/`, `schemas/`, `adapters/`, and `utils/`. Vue props/emits/expose/slots
-live under `types/`; they are not spread across the feature root or declared
-inline. Each present concern directory has one `index.ts`; unused concern
-directories are not created. Package roots re-export feature barrels and do not
-keep old subpath aliases. Architecture scans reject flat concern files,
+Workbench and Designer still follow the shared responsibility-based directory
+spec. Feature roots use named concern directories and one barrel per present
+concern; Vue props/emits/expose/slots live under `types/`. Package roots do not
+retain old subpath aliases, and architecture scans reject flat concern files,
 duplicate public names, and legacy/deprecated/migration/compat entry points.
-
-### 9.4 Validation & Error Matrix
-
-| Condition | Required result |
-| --- | --- |
-| Current compilation is missing | Existing snapshot is stale; retain its files |
-| Committed editVersion changes | Snapshot is stale even if semantic key is unchanged |
-| Draft base version or draftId changes | Snapshot is stale |
-| Generator version changes | Snapshot is stale |
-| Refresh generation fails | Preserve the previous complete snapshot and report the error |
-| Binary file is selected | Download exact bytes; text copy is disabled |
-| Unsafe Config object key appears at any depth | Fail generation with key and nested path |
-| Export entry path is absent | Reject the file set before publishing the snapshot |
-
-### 9.5 Good / Base / Bad Cases
-
-- Good: editing the model marks the open export stale, refresh atomically swaps
-  Source, Config, Tree, and ZIP to the new origin and generator version.
-- Base: switching files or Config Source/JSON/Tree views reads the existing
-  pinned snapshot without recompilation.
-- Bad: rebuilding only the selected file, pairing an old Config projection with
-  a new Source project, returning a retained `Uint8Array`, or serializing binary
-  content as an empty string.
-
-### 9.6 Tests Required
-
-- Unit: committed/draft origin and generator drift independently mark stale.
-- Unit: mutating the source buffer or a returned binary buffer cannot change a
-  subsequent read or archived bytes, including `0` and `255`.
-- Unit: text/binary Blob MIME and bytes, requested filename, and deferred URL
-  revocation are exact.
-- Unit: Config source preserves graph props, nested placement, Registry lock,
-  node metadata, and Flow positions; Babel parses every generated file.
-- Unit: all three unsafe keys fail in nested objects, `defineField`, and value
-  model generation.
-- Integration: Element Plus and Ant Design Vue standalone projects install,
-  type-check, and build from the pinned export.
-- Browser: Source/Config dialogs show a real tree and read-only Monaco, download
-  feedback succeeds, and the clean page has no warning/error logs.
-
-### 9.7 Wrong vs Correct
-
-Wrong:
-
-```ts
-const blob = new Blob([selectedFile.kind === 'text' ? selectedFile.content : ''])
-URL.revokeObjectURL(url)
-```
-
-Correct:
-
-```ts
-downloadWorkspaceFile({
-  file: snapshot.source.files[selectedPath]!,
-  filename: selectedPath.split('/').at(-1)!,
-})
-// The shared helper copies binary bytes and revokes the URL asynchronously.
-```
 
 ## 10. RuntimeHost Preview State Synchronization
 
 ### 10.1 Scope / Trigger
 
 Apply this contract when changing RuntimeHost messages, Preview lifecycle,
-Renderer error/meta events, Preview Flow dispatch, or state restoration across
+Renderer error/meta notifications, Data request transport, or state restoration across
 an iframe reload, adapter load, project/page switch, or Design revision.
 
 ### 10.2 Signatures
@@ -696,7 +641,7 @@ an iframe reload, adapter load, project/page switch, or Design revision.
 ```ts
 interface RuntimeHostMessageBase {
   channel: 'mx-config-form-runtime-host'
-  version: 3
+  version: 7
   hostId: string
   projectId: string
   pageId: string
@@ -730,8 +675,8 @@ interface PreviewRuntimeIdentity {
   one atomic runtime snapshot; values, touched, and validation cannot be sent
   or restored independently.
 - Runtime submit emits one atomic `submitResult` payload with `success` or
-  `invalid` status. Only a successful result is followed by the semantic
-  `submit` event used by Flow; validation failure never dispatches `form.submit`.
+  `invalid` status. A successful form-level submit notification is separate from
+  the result snapshot; neither message dispatches an action or component event.
 - Adapter loading and Runtime compilation are asynchronous. The iframe retains
   the state payload with the highest accepted sequence and, after the Renderer
   mounts, restores that payload rather than the older payload captured by the
@@ -742,13 +687,13 @@ interface PreviewRuntimeIdentity {
 - Restoring values, touched, or validation that are already equal is a no-op.
   In particular, do not call `setValues` or `setErrors` for an echoed snapshot,
   because both invalidate in-flight validation generations.
-- `PreviewSession` owns values, touched, validation, Flow projection, Abort
-  lifecycle, and a bounded 200-event trace. `field.change` writes the event's
-  values before dispatch so Flow input resolution observes the new field value.
+- `PreviewSession` owns values, touched, validation, submission state, and
+  compatible field-contract reconciliation. Field changes install their latest
+  values before publishing the explicit form-state notification.
 - On a same-scope revision, Preview keeps state only for fields whose
   `nodeId + component + contractVersion + fingerprint` contract is unchanged.
   Project, page, adapter, removed field, or changed contract resets the affected
-  state. Runtime events from a stale host or revision are ignored.
+  state. Runtime messages from a stale host or revision are ignored.
 - `PreviewSession.lastSubmission` is transient, carries the accepted revision
   key, and is cleared on scope changes, revision changes, compile failures, or
   explicit user clearing. Clearing the result never resets Preview values.
@@ -763,8 +708,8 @@ interface PreviewRuntimeIdentity {
 | Older restore finishes after newer restore starts | Older restore is a no-op; callback suppression remains active |
 | Parent echoes an identical snapshot | No Renderer value/error/meta mutation |
 | Field contract changes at the same page | Reset that field to its new default and remove touched/errors |
-| Preview page/project/adapter changes | Reset scope state, trace, mount identity, Flow projection, and async work |
-| `field.change` and Flow run in the same turn | Flow reads the event payload's latest values |
+| Preview page/project/adapter changes | Reset scope state, submission, mount identity, and async work |
+| Field change publishes from the iframe | Parent observes the already-updated values; no component-event payload is forwarded |
 
 ### 10.5 Good / Base / Bad Cases
 
@@ -778,7 +723,7 @@ interface PreviewRuntimeIdentity {
 
 ### 10.6 Tests Required
 
-- Protocol unit tests validate the complete v3 identity, runtime-state and
+- Protocol unit tests validate the complete v7 identity, runtime-state and
   submit-result payloads,
   stale revision, replay, source, and origin.
 - RuntimeHost component tests control adapter resolution and assert a state that
@@ -786,12 +731,12 @@ interface PreviewRuntimeIdentity {
 - RuntimeHost tests send the same state again and assert `setTouched` and
   `setErrors` are not called a second time.
 - PreviewSession tests cover compatible reconciliation, contract changes,
-  project/page/adapter reset, stale hosts, bounded trace, and field-change value
-  ordering before Flow input resolution.
+  project/page/adapter reset, stale hosts, submission cleanup, and field-change
+  value ordering.
 - Headless tests prove `setErrors` invalidates older async validation; Renderer
   tests prove the restored snapshot emits `errorsChange`.
-- Browser tests cover interactive Preview input, close/reopen, component events,
-  validation, submit, page switch, and a clean warning/error console.
+- Browser tests cover interactive Preview input, close/reopen, field state,
+  validation, submit, Data requests, page switch, and a clean warning/error console.
 
 ### 10.7 Wrong vs Correct
 
@@ -1046,10 +991,9 @@ createPageFromTemplate(
   not delete or roll back the active project.
 - Template instantiation uses one shared pure identity-remap function. Default
   identities retain a readable source prefix and add a UUID. Node, edge, and
-  embedded reaction mappings are keyed by their owning Flow and flow-node
-  scope, so two Flows may legally reuse local ids without collisions. Only
-  formally typed identity references are rewritten; opaque action config is
-  never searched or replaced heuristically.
+  reaction identities are remapped from their formal owning scopes. Only
+  typed identity references are rewritten; opaque business metadata is never
+  searched or replaced heuristically.
 - Provider seeds and instantiated projects/pages are defensively cloned. No
   mutable object may be shared between the provider, preview candidate,
   created instance, or another instantiation.
@@ -1085,8 +1029,8 @@ createPageFromTemplate(
   provider failure, stable sorting, eligibility diagnostics, and seed
   immutability. Boundary tests accept exactly 256 Provider entries and 4096
   seed array items, then reject 257/4097 before deep traversal.
-- Identity tests cover two instances plus two Flows that reuse node, edge, and
-  embedded reaction ids, and verify every typed reference after remapping.
+- Identity tests cover two instances that reuse node and reaction ids, and
+  verify every typed reference after remapping.
 - Component tests cover search/filter/empty recovery, roving selection,
   mobile Details-to-Catalog Escape, focus restoration, ineligibility, and
   stale preview completion order.
@@ -1128,156 +1072,140 @@ surface compensating-delete failure instead of replacing the original error.
 
 ### 13.1 Scope / Trigger
 
-Apply this contract when changing Workbench Project/Page JSON import, strict
+Apply this contract when changing Workbench Project/Surface JSON import, strict
 version gates, creation-workspace diagnostics, isolated import preview, or the
-Project/Page JSON export scope. Import is an explicit Workbench ingress; it is
-not Repository compatibility.
+Project/Surface JSON export scope. Import is an explicit Workbench ingress; it
+is not Repository compatibility.
 
 ### 13.2 Signatures
 
 ```ts
 prepareConfigImport(options: {
   source: string
-  target: 'page' | 'project'
-  currentProject?: ProjectDocument
+  target: 'surface' | 'project'
+  currentProject?: ProjectDocumentV8
 }): Promise<PrepareConfigImportResult>
 
-preflightProjectDocument(
-  document: ProjectDocument,
-  registry: RegistryContractSnapshot,
-): void
+guardConfigImportSourceBytes(bytes: number): ConfigImportDiagnostic[]
+guardCanonicalConfigImportBudgets(payload: {
+  target: 'surface' | 'project'
+  envelope: unknown
+}): ConfigImportDiagnostic[]
 
-createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean>
-
-const PAGE_TRANSFER_VERSION = 1 as const
-
-interface PageTransferDocument {
-  kind: 'config-form-page'
-  version: typeof PAGE_TRANSFER_VERSION
-  registryLock: RegistryLock
-  page: ProjectPage
-}
+const PROJECT_TRANSFER_VERSION = 1 as const
+const SURFACE_TRANSFER_VERSION = 1 as const
+const MAX_IMPORT_SOURCE_BYTES = 96 * 1024 * 1024
 ```
 
 `PreparedConfigImport` is the only value allowed to cross from import analysis
-into creation. A prepared page carries the captured host project id and content
-hash; a prepared project carries only a current, validated `ProjectDocument`.
+into creation. A prepared Surface captures the host project identity/content
+hash and carries its complete remapped dependency closure plus copied embedded
+bytes. A prepared Project carries the validated remapped document and copied
+embedded bytes.
 
 ### 13.3 Contracts
 
-- Project creation accepts Project JSON only; page creation accepts one strict
-  `PageTransferDocument` only. Source, bare ProjectPage/PageGraph, Vue, ZIP,
-  HTML, JavaScript, Workspace Application,
-  old, missing, future, and unknown versions fail closed without shape guessing.
-- Project import accepts exactly Project v4. Page import requires
-  `kind: 'config-form-page'`, current Page transfer `version`, a current
-  Registry subset lock, and a `ProjectPage` whose graph is PageGraph v2. Project v3,
-  Page Model v1, and every other non-current shape are rejected; no import
-  migration record, migration UI, migration parser, or migration callback exists.
-- Processing order is source bytes → `JSON.parse` → iterative structure/key
-  guard → exact version gate → current schema → exact adapter/Registry validation →
-  fresh identity → current schema → Compiler preview. Raw strings and guarded
-  `unknown` values never enter Runtime, Repository, or Project Command.
-- Budgets are 2 MiB UTF-8 source, depth 64, array length 4096, 100000 total
-  structural entries, 128 pages, and 4096 nodes. All depths reject
-  `__proto__`, `prototype`, and `constructor` with a stable code and JSON path.
-- Depth, array, and total-entry budgets apply to the guarded parsed JSON. Page
-  and node budgets apply after the current schema has parsed the canonical
-  payload. Do not count arbitrary `pagesById` / `nodesById` keys in opaque
-  metadata.
-- Project import requires an exact current Registry lock. Adapter version,
-  aggregate fingerprint, component key set, and every component
-  `contractVersion`/fingerprint must match the active Registry before identity
-  remapping. Do not migrate components or rebuild an incompatible source lock.
-  Page transfer `registryLock.components` contains exactly the distinct
-  components used by `page`; its aggregate fingerprint is computed over that
-  subset. Adapter/version and each component contract/fingerprint must exactly
-  match both the active Registry and corresponding entries in the target
-  project lock. Extra or missing subset keys are invalid.
-- Imported project/page/node/field/reaction/Flow/Flow-node/Flow-edge identities
-  are fresh. Only typed references are rewritten. Project resources keep ids,
-  URIs, integrity, and opaque metadata inside the new project namespace.
-- Fresh identities remain within the Model identifier length limit even when a
-  valid source id already occupies the full limit. Production identity
-  generation keeps a bounded readable prefix plus UUID and monotonic sequence;
-  truncation must not make two generated identities equal.
-- Project creation uses Repository create/open/delete compensation. Page
-  preparation captures the host project id and content hash; both async result
-  publication and final `page.add` reject stale identity. One successful page
-  import is one Project Command and one Undo.
-- Final creation preflight compiles the complete candidate project through the
-  project-layer helper. A non-home-page compile failure blocks Repository
-  `create` and `page.add`; Controller must not import the Compiler directly.
-- JSON and Tree export scopes read either the whole Project or current Page
-  from one pinned `ProjectCompilation.snapshot.document`; copy, tree, and
-  download must not select different revisions. If the selected current Page
-  is absent from that pinned snapshot, show an unavailable state and disable
-  copy/download rather than exporting an empty file.
-- Current-page JSON export emits `PageTransferDocument` with `version: 1`, never a bare
-  `ProjectPage`. It derives the Registry subset lock from the same pinned
-  project snapshot and selected page used for JSON, Tree, copy, and download.
+- Project creation accepts only `ProjectTransferEnvelopeV1`; Surface creation
+  accepts only `SurfaceTransferEnvelopeV1`. Bare ProjectDocument, Surface,
+  SurfaceGraph, old Page transfer, Vue, ZIP, HTML, JavaScript, old, missing,
+  future, and mixed versions fail closed without shape guessing or migration.
+- Processing order is raw UTF-8 byte gate -> `JSON.parse` -> iterative
+  structure/key guard -> exact Project/Surface transfer discriminator ->
+  canonical Surface/node budget -> Model strict async Reader -> exact
+  adapter/Registry validation -> complete identity remap -> current Project
+  validation -> complete Project compilation preview.
+- The raw JSON safety ceiling is 96 MiB, leaving bounded envelope headroom above
+  the canonical base64 expansion of the Model's 50 MiB decoded Resource total.
+  Model remains the owner of Resource limits: 10 MiB per embedded Resource,
+  256 embedded Resources, and 50 MiB decoded total. Workbench must not impose a
+  smaller content limit that makes a Model-valid transfer impossible to import.
+- Structural budgets remain depth 64, array length 4096, and 100000 total
+  entries. Canonical budgets remain 128 Surfaces and 4096 nodes across the
+  transferred Surface set. Count nodes only at
+  `document.surfacesById[*].graph.nodesById` or
+  `surfacesById[*].graph.nodesById`; metadata keys with the same spelling are
+  opaque and excluded.
+- Project import requires the full exact active Registry lock. Surface transfer
+  carries exactly the closure component subset; adapter/version and every
+  component contract/fingerprint must match the target Registry. Neither path
+  rebuilds, widens, or repairs a source lock.
+- Fresh maps cover Surface, node, field, Dataset, Resource, and interaction/rule
+  identity before any reference is rewritten. The complete candidate is then
+  validated and compiled; failure publishes no metadata, bytes, history, or
+  selection.
+- Project creation uses Repository create/open/delete compensation. Surface
+  preparation captures the host project identity/content hash; stale analysis
+  cannot publish. One successful Surface import enters the current editor
+  session as one Model command and one Undo step.
+- Surface embedded bytes are copied into editor-session staging before control
+  returns to the caller. Recovery Draft reads staged bytes first. Autosave
+  commits the imported metadata and staged bytes atomically, and Undo restores
+  both the editor snapshot and persisted Repository state without reopening a
+  new session or clearing history.
+- JSON and source export scopes read the whole Project or current Surface from
+  one pinned `ProjectCompilation`; copy, tree, download, and ZIP must not select
+  different revisions. A missing selected Surface renders unavailable state
+  rather than exporting an empty file.
 
 ### 13.4 Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| Source exceeds a byte/structure budget or contains an unsafe key | Stable import diagnostic with an escaped JSON path; no adapter load or preview |
-| Project v3 or Page Model v1 is supplied | Reject with `IMPORT_VERSION_UNSUPPORTED` at the version field; no preview or create action |
-| Bare ProjectPage/PageGraph or old/future Page transfer schema is supplied | Reject with format/version diagnostic; do not infer or wrap it |
-| Current PageGraph contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
-| Opaque metadata contains a property named `nodesById` | Preserve it without adding to the canonical node count |
-| Generated identity source is already 128 characters | Produce a unique, schema-valid bounded identity |
-| Any candidate page, including a non-home page, fails compilation | Reject before Repository create or Project Command |
-| Dynamic page/node/component/slot key contains punctuation | Escape the key in diagnostic JSON paths |
-| Project Registry lock differs from the active Registry in any identity field | Reject as Registry-incompatible; never repair and continue |
-| Page transfer Registry subset contains extra/missing keys or mismatched aggregate fingerprint | Reject as Registry-incompatible before identity remap |
-| Current Page is absent from the pinned export snapshot | Render unavailable status; disable JSON copy/download |
+| Raw JSON is 96 MiB / first byte above | Accept the source byte gate / `IMPORT_SOURCE_TOO_LARGE` before file read or parse |
+| Structure exceeds depth/array/entry budget or contains an unsafe key | Stable import diagnostic with escaped JSON path; no adapter load or preview |
+| Project/Surface transfer is old, future, missing, mixed, or Page-era | Reject at discriminator/version; no inference, migration, or wrapper |
+| Canonical closure has 128/129 Surfaces | Accept / `IMPORT_SURFACE_LIMIT_EXCEEDED` before Model Reader |
+| Canonical closure has 4096/4097 nodes | Accept / `IMPORT_NODE_LIMIT_EXCEEDED` before Model Reader |
+| Opaque metadata contains `surfacesById` or `nodesById` | Preserve it without adding to canonical counts |
+| Embedded Resource is 10 MiB / first byte above, or total is 50 MiB / first byte above | Accept / Model `resource_content_invalid`; publish no partial bytes |
+| Project Registry or Surface subset differs from active contracts | Reject before identity remap; never repair and continue |
+| Surface analysis becomes stale before create | Reject with unchanged document, bytes, history, and selection |
+| Surface import succeeds, then Undo runs once | Restore the pre-import editor and Repository state in the same session |
 
 ### 13.5 Good / Base / Bad Cases
 
-- Good: analyze a current Page transfer envelope, exact-match its Registry
-  subset, validate the PageGraph v2 4096-node budget, remap bounded identities,
-  compile the full host candidate, then submit one `page.add` Command.
-- Base: opaque resource metadata contains strings and keys that resemble Model
-  identities; preserve it unchanged and exclude it from page/node budgets.
-- Bad: migrate Project v3/Page v1, rebuild a stale Registry lock, count every
-  property named `nodesById`, append a UUID to an already maximum-length id,
-  compile only `homePageId`, or let a missing pinned Page download as empty JSON.
+- Good: read a current Surface closure, enforce exact canonical budgets, copy
+  bytes, remap every typed identity, compile the full candidate, then submit one
+  undoable command whose autosave atomically publishes metadata and bytes.
+- Base: a no-Resource Project transfer carries `embeddedContents: []` and
+  imports without invoking an embedded-byte reader.
+- Bad: retain a 2 MiB Workbench gate, count arbitrary metadata keys, import a
+  Page envelope, direct-commit and reopen after Surface import, or publish
+  metadata before bytes are available.
 
 ### 13.6 Tests Required
 
-- Exact and first-over-limit security boundaries, all unsafe keys, syntax,
-  current/old/future Project and Page transfer versions, bare-page rejection,
-  exact Registry subset identity failures, identity
-  references, canonical 4096/4097 node budgets, opaque metadata lookalikes,
-  escaped dynamic paths, and a maximum-length source identity.
-- Property-based Project/Page stringify→prepare→identity-normalized semantic
-  round trips over the complete document, plus arbitrary JSON proving no
+- Exact and first-over-limit raw/structure/Surface/node/Resource boundaries,
+  all unsafe keys, syntax, current/old/future/mixed transfer versions, and
+  canonical metadata lookalikes.
+- Project/Surface stringify -> prepare -> identity-normalized semantic round
+  trips, plus arbitrary JSON and hostile getter/Proxy inputs proving no
   non-diagnostic exception escapes.
-- Controller tests cover imported-project activation compensation and stale
-  page analyze→edit/switch→create with unchanged document/history/selection.
-  Final preflight must also reject a non-home-page compiler failure before any
-  Repository create or Project Command.
-- Component and browser tests cover paste/file, current-version diagnostics,
-  isolated preview, both adapters/locales/themes, 1440/900/390 overflow,
-  keyboard focus, and accessible names/live regions. Export tests cover a Page
-  disappearing from the pinned snapshot with copy/download disabled.
+- Controller tests assert stale analysis is inert; successful Surface import
+  increments history once; one Undo restores selection/document/Repository;
+  caller byte mutation cannot alter staging; recovery/autosave publish the
+  captured bytes atomically.
+- Component/browser tests cover paste/file, current-version diagnostics,
+  isolated preview, both adapters/locales/themes, responsive overflow,
+  keyboard focus, accessible names/live regions, and missing pinned Surface
+  export behavior.
 
 ### 13.7 Wrong vs Correct
 
 Wrong:
 
 ```ts
+if (sourceBytes > 2 * 1024 * 1024) reject()
 const nodes = countPropertiesNamed(parsed, 'nodesById')
-compileCanonicalPage({ snapshot, pageId: document.homePageId, registry })
-repository.create({ document })
+await repository.commit(imported)
+await openProject(imported.id)
 ```
 
 Correct:
 
 ```ts
-const canonical = validateCurrentContract(parsed)
-assertCanonicalImportBudget(canonical)
-preflightProjectDocument(canonical.document, adapter.registrySnapshot)
-repository.create({ document: canonical.document })
+guardConfigImportSourceBytes(sourceBytes)
+guardCanonicalConfigImportBudgets({ target, envelope })
+const prepared = await readCurrentTransfer(envelope)
+await editorSession.dispatch(createSurfaceImportCommand(prepared))
 ```

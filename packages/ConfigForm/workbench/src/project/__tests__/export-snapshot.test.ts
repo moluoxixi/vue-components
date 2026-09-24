@@ -1,12 +1,19 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
-import type { BuildExportSnapshotInput } from '../index'
+import type { SourceBinaryFile } from '@moluoxixi/config-form-source/generator'
+import type { BuildExportSnapshotInput, ExportArtifact } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { buildExportSnapshot, createExportFileSet, createExportSession, createWorkspaceArchive, isExportSnapshotStale, resolveExportSnapshotPath } from '../export'
+import {
+  buildExportSnapshot,
+  createExportSession,
+  createSourceArchive,
+  isExportSnapshotStale,
+  resolveExportSnapshotPath,
+  sourceFileBytes,
+} from '../export'
 import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
@@ -21,26 +28,114 @@ async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput>
   })
   if (!result.success)
     throw new Error(result.diagnostics[0]?.message ?? 'Compilation failed.')
-  return { compilation: result.compilation, resolver: adapter.sourceResolver }
+  return {
+    bindingResolver: adapter.sourceBindingResolver,
+    compilation: result.compilation,
+    componentResolver: adapter.sourceComponentResolver,
+    resourceReader: {
+      async readEmbedded() {
+        return { success: true, data: new Uint8Array(), diagnostics: [] }
+      },
+    },
+  }
+}
+
+function expectReady<T>(artifact: ExportArtifact<T>): T {
+  expect(artifact.status).toBe('ready')
+  if (artifact.status !== 'ready')
+    throw new Error(artifact.diagnostics.map(item => item.message).join('; '))
+  return artifact.fileSet
 }
 
 describe('export snapshot', () => {
-  it('builds frozen Source and Config file sets from one compilation', async () => {
+  it('builds frozen raw Vue and ConfigForm binding file sets from one compilation', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
-    expect(snapshot.generatorVersion).toBe('1.0.0')
-    expect(snapshot.source.entry).toBe(normalizeProjectPath('src/main.ts'))
-    expect(snapshot.config.entry).toBe(normalizeProjectPath('project.config.ts'))
+    expect(snapshot.styleTarget).toBe('css')
+    expect(input.componentResolver).not.toHaveProperty('resolveConfigFormBinding')
+    expect(input.bindingResolver).not.toHaveProperty('resolveComponent')
+    const rawSource = expectReady(snapshot.rawSource)
+    const configBindings = expectReady(snapshot.configBindings)
+    expect(rawSource).toMatchObject({ version: 1, kind: 'raw-source', entry: 'src/main.ts' })
+    expect(configBindings).toMatchObject({ version: 1, kind: 'config-bindings', entry: 'src/bindings.ts' })
     expect(Object.isFrozen(snapshot)).toBe(true)
-    expect(Object.isFrozen(snapshot.source.files)).toBe(true)
-    expect(Object.isFrozen(snapshot.config.files)).toBe(true)
+    expect(Object.isFrozen(snapshot.rawSource)).toBe(true)
+    expect(Object.isFrozen(snapshot.configBindings)).toBe(true)
+    expect(Object.isFrozen(rawSource.files)).toBe(true)
+    expect(Object.isFrozen(configBindings.files)).toBe(true)
+    expect(rawSource.files.every(Object.isFrozen)).toBe(true)
+    expect(configBindings.files.every(Object.isFrozen)).toBe(true)
+  })
+
+  it('passes one normalized Tailwind target to both independent generators', async () => {
+    const input = await fixture()
+    const snapshot = await buildExportSnapshot({ ...input, styleTarget: 'tailwind-v4' })
+    const rawSource = expectReady(snapshot.rawSource)
+    const configBindings = expectReady(snapshot.configBindings)
+
+    expect(snapshot.styleTarget).toBe('tailwind-v4')
+    for (const fileSet of [rawSource, configBindings]) {
+      const manifestFile = fileSet.files.find(file => file.path === 'package.json')
+      expect(manifestFile?.kind).toBe('text')
+      if (manifestFile?.kind !== 'text')
+        continue
+      const manifest = JSON.parse(manifestFile.content) as { devDependencies?: Record<string, string> }
+      expect(manifest.devDependencies).toMatchObject({
+        '@tailwindcss/vite': '^4.1.13',
+        'tailwindcss': '^4.1.13',
+      })
+      const styles = fileSet.files.find(file => file.path === 'src/styles.css')
+      expect(styles?.kind === 'text' ? styles.content : '').toContain('@import \'tailwindcss\'')
+    }
+    expect('styleTarget' in input.compilation.snapshot.document).toBe(false)
+  })
+
+  it('keeps raw Vue ready when ConfigForm binding generation fails', async () => {
+    const input = await fixture()
+    const snapshot = await buildExportSnapshot({
+      ...input,
+      bindingResolver: {
+        resolveConfigFormBinding: () => ({ success: false, reason: 'binding unavailable' }),
+      },
+    })
+
+    expect(snapshot.rawSource.status).toBe('ready')
+    expect(snapshot.configBindings).toMatchObject({ status: 'failed' })
+    if (snapshot.configBindings.status === 'failed') {
+      expect(snapshot.configBindings.diagnostics[0]?.message).toContain('binding unavailable')
+      expect(Object.isFrozen(snapshot.configBindings.diagnostics)).toBe(true)
+    }
+  })
+
+  it('keeps ConfigForm bindings ready when Raw Vue generation fails', async () => {
+    const input = await fixture()
+    const resolveComponent = input.componentResolver.resolveComponent
+    let rejectNextResolution = true
+    const snapshot = await buildExportSnapshot({
+      ...input,
+      componentResolver: {
+        ...input.componentResolver,
+        resolveComponent(request) {
+          if (rejectNextResolution) {
+            rejectNextResolution = false
+            return { success: false, reason: 'raw component unavailable' }
+          }
+          return resolveComponent(request)
+        },
+      },
+    })
+
+    expect(snapshot.rawSource).toMatchObject({ status: 'failed' })
+    if (snapshot.rawSource.status === 'failed')
+      expect(snapshot.rawSource.diagnostics[0]?.message).toContain('raw component unavailable')
+    expect(snapshot.configBindings.status).toBe('ready')
   })
 
   it('detects compilation drift without replacing pinned content', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
     const next = await fixture('Changed customer app')
 
     expect(isExportSnapshotStale(snapshot, input.compilation)).toBe(false)
@@ -48,9 +143,9 @@ describe('export snapshot', () => {
     expect(isExportSnapshotStale(snapshot, undefined)).toBe(true)
   })
 
-  it('treats compilation origin and generator version as snapshot identity', async () => {
+  it('treats committed and draft compilation origins as snapshot identity', async () => {
     const input = await fixture()
-    const snapshot = buildExportSnapshot(input)
+    const snapshot = await buildExportSnapshot(input)
     const revised = {
       ...input.compilation,
       origin: { editVersion: 9, kind: 'committed' as const },
@@ -63,61 +158,52 @@ describe('export snapshot', () => {
       ...draft,
       origin: { baseEditVersion: 8, draftId: 'draft-b', kind: 'draft' as const },
     } as ProjectCompilation
-    const draftSnapshot = buildExportSnapshot({ ...input, compilation: draft })
-    const nextGeneratorSnapshot = buildExportSnapshot({ ...input, generatorVersion: '2.0.0' })
+    const draftSnapshot = await buildExportSnapshot({ ...input, compilation: draft })
 
     expect(isExportSnapshotStale(snapshot, revised)).toBe(true)
     expect(isExportSnapshotStale(draftSnapshot, draft)).toBe(false)
     expect(isExportSnapshotStale(draftSnapshot, otherDraft)).toBe(true)
-    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation)).toBe(true)
-    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '2.0.0')).toBe(false)
   })
 
-  it('does not expose mutable retained binary bytes', async () => {
-    const path = normalizeProjectPath('assets/payload.bin')
-    const source = new Uint8Array([0, 127, 255])
-    const fileSet = createExportFileSet(path, {
-      [path]: { content: source, kind: 'binary' },
+  it('decodes canonical binary files into fresh archive bytes', async () => {
+    const file: SourceBinaryFile = Object.freeze({
+      kind: 'binary',
+      path: 'assets/payload.bin',
+      mediaType: 'application/octet-stream',
+      encoding: 'base64',
+      contentBase64: 'AH//',
     })
-    source[0] = 42
-
-    const file = fileSet.files[path]
-    expect(file?.kind).toBe('binary')
-    if (file?.kind !== 'binary')
-      return
-    expect([...file.content]).toEqual([0, 127, 255])
-    const exposed = file.content
+    const exposed = sourceFileBytes(file)
     exposed[1] = 1
-    expect([...file.content]).toEqual([0, 127, 255])
-    expect(Object.isFrozen(file)).toBe(true)
 
-    const archive = unzipSync(await createWorkspaceArchive({
-      files: fileSet.files,
+    expect([...sourceFileBytes(file)]).toEqual([0, 127, 255])
+    const archive = unzipSync(await createSourceArchive({
+      files: [file],
       name: 'Binary snapshot',
     }))
     expect([...archive['binary-snapshot/assets/payload.bin']!]).toEqual([0, 127, 255])
   })
 
-  it('feeds frozen Source bytes to the archive', async () => {
-    const snapshot = buildExportSnapshot(await fixture())
-    const pagePath = normalizeProjectPath('src/pages/home/Page.vue')
-    const page = snapshot.source.files[pagePath]
+  it('feeds frozen raw-source bytes to the archive', async () => {
+    const snapshot = await buildExportSnapshot(await fixture())
+    const rawSource = expectReady(snapshot.rawSource)
+    const page = rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')
     expect(page?.kind).toBe('text')
     if (page?.kind !== 'text')
       return
 
-    const archive = unzipSync(await createWorkspaceArchive({
-      files: snapshot.source.files,
+    const archive = unzipSync(await createSourceArchive({
+      files: rawSource.files,
       name: snapshot.compilation.ir.name,
     }))
-    expect(strFromU8(archive['customer-app/src/pages/home/Page.vue']!)).toBe(page.content)
+    expect(strFromU8(archive['customer-app/src/surfaces/home/Surface.vue']!)).toBe(page.content)
   })
 
   it('uses preferred, entry, first text, then first file fallback order', async () => {
-    const snapshot = buildExportSnapshot(await fixture())
-    const preferred = normalizeProjectPath('package.json')
-    expect(resolveExportSnapshotPath(snapshot.source, preferred)).toBe(preferred)
-    expect(resolveExportSnapshotPath(snapshot.source, normalizeProjectPath('missing.txt'))).toBe(snapshot.source.entry)
+    const snapshot = await buildExportSnapshot(await fixture())
+    const rawSource = expectReady(snapshot.rawSource)
+    expect(resolveExportSnapshotPath(rawSource, 'package.json')).toBe('package.json')
+    expect(resolveExportSnapshotPath(rawSource, 'missing.txt')).toBe(rawSource.entry)
   })
 
   it('keeps the last complete snapshot when refresh fails', async () => {
@@ -129,10 +215,10 @@ describe('export snapshot', () => {
     const session = createExportSession({
       capture: () => capture,
       currentCompilation: () => current,
-      build(input) {
+      async build(input) {
         if (fail)
           throw new Error('generator failed')
-        return buildExportSnapshot(input)
+        return await buildExportSnapshot(input)
       },
     })
 
@@ -149,20 +235,5 @@ describe('export snapshot', () => {
     expect(failed).toMatchObject({ success: false, error: 'generator failed' })
     expect(session.state.snapshot).toBe(pinned)
     expect(session.state.stale).toBe(true)
-  })
-
-  it('marks a pinned session stale when its generator changes', async () => {
-    const input = await fixture()
-    let generatorVersion = '1.0.0'
-    const session = createExportSession({
-      capture: () => input,
-      currentCompilation: () => input.compilation,
-      currentGeneratorVersion: () => generatorVersion,
-    })
-
-    expect((await session.refresh()).success).toBe(true)
-    expect(session.state.stale).toBe(false)
-    generatorVersion = '1.1.0'
-    expect(session.sync().stale).toBe(true)
   })
 })

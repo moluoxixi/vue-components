@@ -1,97 +1,164 @@
 import type {
+  ConfigFormFieldInstance,
   ConfigFormFieldMeta,
   ConfigFormMeta,
   ConfigFormValues,
 } from '../types'
-import type {
-  ControllerMetaService,
-  ControllerNode,
-} from '../types/controller-internal'
-import { collectAllConfigFormFields } from '../utils'
-import { normalizeControllerFieldNames } from './controller-values'
+import type { ControllerMetaService } from '../types/controller-internal'
+import { cloneControllerValue, equalControllerValues } from './controller-values'
 
 interface CreateControllerMetaServiceOptions<TValues extends ConfigFormValues> {
+  listInstances: () => readonly ConfigFormFieldInstance[]
   onMetaChange?: (meta: ConfigFormMeta) => void
-  readFields: () => ControllerNode<TValues>[]
   readResetValues: () => TValues
   readValues: () => TValues
+  scoped: boolean
+}
+
+interface BaselineEntry {
+  hasValue: boolean
+  value: unknown
 }
 
 export function createControllerMetaService<TValues extends ConfigFormValues>(
   options: CreateControllerMetaServiceOptions<TValues>,
 ): ControllerMetaService {
   const touchedFields = new Set<string>()
+  const baselineByInstance = new Map<string, BaselineEntry>()
+  recaptureBaseline()
   let lastMeta = createMeta()
 
   function getMeta(): ConfigFormMeta {
     return cloneMeta(createMeta())
   }
 
-  function getFieldMeta(field: string): ConfigFormFieldMeta {
-    const values = options.readValues()
-    const resetValues = options.readResetValues()
-    return {
-      dirty: isFieldDirty(field, values, resetValues),
-      touched: touchedFields.has(field),
-    }
+  function getFieldMeta(instanceKey: string): ConfigFormFieldMeta {
+    return cloneFieldMeta(createMeta().fields[instanceKey] ?? {
+      dirty: false,
+      touched: touchedFields.has(instanceKey),
+    })
   }
 
   function refreshMeta(): ConfigFormMeta {
     return commitMeta()
   }
 
-  function setTouched(): void
-  function setTouched(touched: boolean): void
-  function setTouched(fields: string | string[], touched?: boolean): void
-  function setTouched(
-    fieldsOrTouched?: string | string[] | boolean,
-    touched = true,
-  ): void {
-    const allFields = fieldsOrTouched === undefined || typeof fieldsOrTouched === 'boolean'
-    const nextTouched = typeof fieldsOrTouched === 'boolean' ? fieldsOrTouched : touched
-    const fieldNames = allFields
-      ? Object.keys(createMeta().fields)
-      : normalizeControllerFieldNames(fieldsOrTouched)
-
-    if (allFields && !nextTouched) {
-      touchedFields.clear()
-    }
-    else {
-      fieldNames?.forEach(field => nextTouched ? touchedFields.add(field) : touchedFields.delete(field))
-    }
-
+  function setTouched(instanceKeys: readonly string[], touched = true): void {
+    instanceKeys.forEach(instanceKey => touched
+      ? touchedFields.add(instanceKey)
+      : touchedFields.delete(instanceKey))
     commitMeta()
   }
 
-  function clearTouched(fields?: string[]): void {
-    if (fields === undefined) {
+  function clearTouched(instanceKeys?: readonly string[]): void {
+    if (instanceKeys === undefined) {
       touchedFields.clear()
       return
     }
-    fields.forEach(field => touchedFields.delete(field))
+    instanceKeys.forEach(instanceKey => touchedFields.delete(instanceKey))
+  }
+
+  function reconcileInstances(instances: readonly ConfigFormFieldInstance[]): void {
+    const active = new Set(instances.map(instance => instance.instanceKey))
+    for (const instanceKey of touchedFields) {
+      if (!active.has(instanceKey))
+        touchedFields.delete(instanceKey)
+    }
+  }
+
+  function refreshSchema(
+    instances: readonly ConfigFormFieldInstance[],
+    previousKeys: ReadonlyMap<string, string>,
+    defaults: ReadonlyMap<string, unknown>,
+    previousInstanceKeys: ReadonlySet<string>,
+  ): void {
+    const previousTouched = new Set(touchedFields)
+    const previousBaseline = new Map(baselineByInstance)
+    const resetValues = options.readResetValues()
+    touchedFields.clear()
+    baselineByInstance.clear()
+    if (!options.scoped) {
+      const currentKeys = new Set(instances.map(instance => instance.instanceKey))
+      previousTouched.forEach((key) => {
+        if (!previousInstanceKeys.has(key) && !currentKeys.has(key))
+          touchedFields.add(key)
+      })
+    }
+    instances.forEach((instance) => {
+      const previousKey = previousKeys.get(instance.instanceKey)
+      if (previousKey !== undefined) {
+        if (previousTouched.has(previousKey))
+          touchedFields.add(instance.instanceKey)
+        const baseline = previousBaseline.get(previousKey)
+        if (baseline) {
+          baselineByInstance.set(instance.instanceKey,
+            !baseline.hasValue && defaults.has(instance.address.nodeId)
+              ? { hasValue: true, value: cloneControllerValue(defaults.get(instance.address.nodeId)) }
+              : baseline)
+        }
+        return
+      }
+      const baseline = readPath(resetValues, instance.valuePath)
+      baselineByInstance.set(instance.instanceKey, baseline.hasValue ? baseline : {
+        hasValue: defaults.has(instance.address.nodeId),
+        value: cloneControllerValue(defaults.get(instance.address.nodeId)),
+      })
+    })
+  }
+
+  function recaptureBaseline(): void {
+    baselineByInstance.clear()
+    const values = options.readValues()
+    options.listInstances().forEach((instance) => {
+      baselineByInstance.set(instance.instanceKey, readPath(values, instance.valuePath))
+    })
   }
 
   function createMeta(): ConfigFormMeta {
     const values = options.readValues()
     const resetValues = options.readResetValues()
-    const fieldNames = new Set([
-      ...Object.keys(values),
-      ...Object.keys(resetValues),
-      ...collectAllConfigFormFields(options.readFields()).map(field => field.field),
-      ...touchedFields,
-    ])
+    const instanceByKey = new Map(options.listInstances().map(instance => [instance.instanceKey, instance]))
+    const fieldKeys = new Set(instanceByKey.keys())
+    if (!options.scoped) {
+      for (const field of [...Object.keys(values), ...Object.keys(resetValues), ...touchedFields])
+        fieldKeys.add(field)
+    }
     const fields: ConfigFormMeta['fields'] = Object.fromEntries(
-      [...fieldNames].map(field => [field, {
-        dirty: isFieldDirty(field, values, resetValues),
-        touched: touchedFields.has(field),
+      [...fieldKeys].map(instanceKey => [instanceKey, {
+        dirty: isInstanceDirty(
+          instanceByKey.get(instanceKey) ?? { instanceKey, valuePath: [instanceKey] },
+          values,
+          resetValues,
+        ),
+        touched: touchedFields.has(instanceKey),
       }]),
     )
 
     return {
-      dirty: Object.values(fields).some(field => field.dirty),
+      dirty: !equalControllerValues(values, resetValues),
       fields,
       touched: Object.values(fields).some(field => field.touched),
     }
+  }
+
+  function isInstanceDirty(
+    instance: Pick<ConfigFormFieldInstance, 'instanceKey' | 'valuePath'>,
+    values: TValues,
+    resetValues: TValues,
+  ): boolean {
+    const current = readPath(values, instance.valuePath)
+    const baseline = baselineByInstance.get(instance.instanceKey)
+      ?? (options.scoped ? undefined : readPath(resetValues, instance.valuePath))
+    if (!baseline)
+      return current.hasValue
+    if (current.hasValue !== baseline.hasValue)
+      return true
+    if (!current.hasValue)
+      return false
+    return !equalControllerValues(
+      { value: current.value },
+      { value: baseline.value },
+    )
   }
 
   function commitMeta(): ConfigFormMeta {
@@ -108,9 +175,26 @@ export function createControllerMetaService<TValues extends ConfigFormValues>(
     commitMeta,
     getFieldMeta,
     getMeta,
+    recaptureBaseline,
+    reconcileInstances,
     refreshMeta,
+    refreshSchema,
     setTouched,
   }
+}
+
+function readPath(values: ConfigFormValues, path: readonly (number | string)[]): BaselineEntry {
+  let current: unknown = values
+  for (const segment of path) {
+    if (current === null || typeof current !== 'object' || !Object.hasOwn(current, segment))
+      return { hasValue: false, value: undefined }
+    current = (current as Record<number | string, unknown>)[segment]
+  }
+  return { hasValue: true, value: cloneControllerValue(current) }
+}
+
+function cloneFieldMeta(meta: ConfigFormFieldMeta): ConfigFormFieldMeta {
+  return { dirty: meta.dirty, touched: meta.touched }
 }
 
 function cloneMeta(meta: ConfigFormMeta): ConfigFormMeta {
@@ -119,7 +203,7 @@ function cloneMeta(meta: ConfigFormMeta): ConfigFormMeta {
     fields: Object.fromEntries(
       Object.entries(meta.fields).map(([field, fieldMeta]) => [
         field,
-        { ...fieldMeta },
+        cloneFieldMeta(fieldMeta),
       ]),
     ),
     touched: meta.touched,
@@ -138,15 +222,4 @@ function equalMeta(left: ConfigFormMeta, right: ConfigFormMeta): boolean {
       return leftMeta?.dirty === rightMeta?.dirty
         && leftMeta?.touched === rightMeta?.touched
     })
-}
-
-function isFieldDirty(
-  field: string,
-  values: ConfigFormValues,
-  resetValues: ConfigFormValues,
-): boolean {
-  const hasValue = Object.hasOwn(values, field)
-  const hasResetValue = Object.hasOwn(resetValues, field)
-  return hasValue !== hasResetValue
-    || (hasValue && !Object.is(values[field], resetValues[field]))
 }

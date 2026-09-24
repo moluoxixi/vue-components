@@ -1,4 +1,4 @@
-import type { ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, PrototypeInteraction } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref } from 'vue'
 import type { DesignerController } from '../../../composables'
 import type { DesignerDropTarget } from '../../../graph'
@@ -7,11 +7,12 @@ import type { DesignerNodeAction, DesignSurfaceProps } from '../types'
 import { computed, nextTick } from 'vue'
 import {
   collectDesignSubtreeIds,
+  countDesignerOptionDefaultClears,
   createFormCommand,
   createMoveCommand,
   createNodePathCommand,
   createResizeCommand,
-  createStoredConfigRemovalCommand,
+  createSurfaceInteractionsCommand,
   findDesignNode,
 } from '../../../graph'
 
@@ -28,14 +29,15 @@ interface UseDesignSurfaceCommandsOptions {
   lastAcceptedCommandId: () => string | undefined
   mediumPanel: Ref<'palette' | 'properties' | undefined>
   onNotice: (message: string, action: () => boolean) => void
-  pageId: () => string
+  optionDefaultsClearedNotice: (count: number) => string
+  surfaceId: () => string
   readonly: () => boolean
   rootRef: Ref<HTMLElement | undefined>
   selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
   workspaceMode: ComputedRef<WorkspaceMode>
 }
 
-interface DeletionUndoTarget {
+interface MutationUndoTarget {
   entryId?: string
   position?: number
   transitionSequence: number
@@ -77,7 +79,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
 
   function handleMove(nodeId: string, target: DesignerDropTarget): void {
     options.controller.select(nodeId)
-    dispatch(createMoveCommand(options.pageId(), nodeId, target))
+    dispatch(createMoveCommand(options.surfaceId(), nodeId, target))
   }
 
   /**
@@ -102,7 +104,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
       ? { parentId: null, index }
       : { parentId: reference.parentId, slot: reference.slot!, index }
     options.controller.select(nodeId)
-    return dispatch(createMoveCommand(options.pageId(), nodeId, target))
+    return dispatch(createMoveCommand(options.surfaceId(), nodeId, target))
   }
 
   function showCanvasOrProperties(): void {
@@ -132,26 +134,35 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
 
   function handleResize(nodeId: string, span: number): void {
     options.controller.select(nodeId)
-    dispatch(createResizeCommand(options.pageId(), nodeId, span))
+    dispatch(createResizeCommand(options.surfaceId(), nodeId, span))
   }
 
   function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.pageId(), [nodeId], path, value))
+    handleUpdatePaths([nodeId], path, value)
   }
 
   function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
-    dispatch(createNodePathCommand(options.controller.graph.value, options.pageId(), nodeIds, path, value))
-  }
-
-  function handleRemoveStoredConfig(nodeId: string, path: string[]): void {
-    dispatch(createStoredConfigRemovalCommand(options.pageId(), nodeId, path))
+    const graph = options.controller.graph.value
+    const clearedDefaults = countDesignerOptionDefaultClears(graph, nodeIds, path, value)
+    const positionBefore = options.historyControl().history?.position
+    const changed = dispatch(createNodePathCommand(graph, options.surfaceId(), nodeIds, path, value))
+    if (changed && clearedDefaults > 0) {
+      announceMutationUndo(
+        options.optionDefaultsClearedNotice(clearedDefaults),
+        mutationUndoTarget(positionBefore),
+      )
+    }
   }
 
   function handleUpdateForm(changes: Record<string, unknown>): void {
-    dispatch(createFormCommand(options.controller.graph.value, options.pageId(), changes))
+    dispatch(createFormCommand(options.controller.graph.value, options.surfaceId(), changes))
   }
 
-  function deletionUndoTarget(positionBefore?: number): DeletionUndoTarget {
+  function handleUpdateInteractions(interactions: PrototypeInteraction[]): void {
+    dispatch(createSurfaceInteractionsCommand(options.surfaceId(), interactions))
+  }
+
+  function mutationUndoTarget(positionBefore?: number): MutationUndoTarget {
     const history = options.historyControl().history
     const position = positionBefore === undefined
       ? undefined
@@ -164,7 +175,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     }
   }
 
-  function announceDeletionUndo(target: DeletionUndoTarget): void {
+  function announceMutationUndo(message: string, target: MutationUndoTarget): void {
     void nextTick(() => {
       const history = options.historyControl().history
       const acceptedEntry = history && history.position > 0
@@ -173,7 +184,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
       const acceptedTarget = acceptedEntry
         ? { ...target, entryId: acceptedEntry.id, position: history?.position }
         : target
-      options.onNotice(options.deletedNotice(), () => {
+      options.onNotice(message, () => {
         if (acceptedTarget.transitionSequence !== historyTransitionSequence)
           return false
         const currentHistory = options.historyControl().history
@@ -198,7 +209,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     const positionBefore = options.historyControl().history?.position
     const changed = options.controller.performNodeAction(action, nodeId)
     if (changed && action === 'remove')
-      announceDeletionUndo(deletionUndoTarget(positionBefore))
+      announceMutationUndo(options.deletedNotice(), mutationUndoTarget(positionBefore))
     void focusNode(options.controller.selectedId.value)
   }
 
@@ -209,7 +220,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     const positionBefore = options.historyControl().history?.position
     const changed = options.controller.performNodeAction(action, nodeId ?? '')
     if (changed && (action === 'remove' || action === 'cut'))
-      announceDeletionUndo(deletionUndoTarget(positionBefore))
+      announceMutationUndo(options.deletedNotice(), mutationUndoTarget(positionBefore))
     void focusNode(options.controller.selectedId.value)
     return changed
   }
@@ -288,11 +299,11 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     handleCanvasSelect,
     handleMove,
     handleRedo,
-    handleRemoveStoredConfig,
     handleResize,
     handleRootKeydown,
     handleUndo,
     handleUpdateForm,
+    handleUpdateInteractions,
     handleUpdatePath,
     handleUpdatePaths,
     moveNodeRelative,

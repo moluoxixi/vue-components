@@ -1,3 +1,4 @@
+import type { ConfigFormDataSourceHost } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormCondition,
   ConfigFormModelAdapter,
@@ -6,6 +7,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
+import type { ConfigFormSurfaceRuntimePlan } from '../../runtime'
 import type {
   ConfigFormComponentRegistry,
   ConfigFormControlBindingResolver,
@@ -14,6 +16,7 @@ import type {
   ConfigFormRendererFormAttrs,
   ConfigFormRendererLayoutAttrs,
   ConfigFormRendererNode,
+  ConfigFormRendererSemanticActivation,
   ConfigFormRenderMode,
   ConfigFormRuntimeEditorBridge,
 } from './contracts'
@@ -23,6 +26,9 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   /** read() must access Vue reactive state; write() must commit synchronously. */
   model: ConfigFormModelAdapter<TValues>
   fields: ConfigFormRendererNode<TValues>[]
+  /** Complete compiled Surface data/value execution input. */
+  plan?: ConfigFormSurfaceRuntimePlan
+  dataSourceHost?: ConfigFormDataSourceHost
   components?: ConfigFormComponentRegistry
   defaultValues?: Partial<TValues>
   readonly?: ConfigFormCondition<TValues>
@@ -50,4 +56,6 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   breakpoint?: ConfigFormBreakpoint
   editor?: ConfigFormRuntimeEditorBridge<TValues>
   reactionProjection?: ConfigFormReactionProjection<TValues>
+  /** Receives only declared semantic activations from compiled provider nodes. */
+  onSemanticActivate?: (activation: ConfigFormRendererSemanticActivation) => unknown
 }

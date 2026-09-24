@@ -1,10 +1,13 @@
 import type {
+  ProjectDataset,
   ProjectDocument,
-  ProjectPage,
-  ProjectResourceReference,
+  ProjectResource,
+  ProjectSurface,
   ProjectVersionSummary,
   RegistryLock,
 } from '@moluoxixi/config-form-model'
+
+export type StoredProjectEntityKind = 'surface' | 'dataset' | 'resource'
 
 export interface StoredEntityReference {
   checksum: string
@@ -17,19 +20,23 @@ export interface StoredProjectMetadata {
   id: string
   name: string
   repositoryRevision: number
+  manifestRevision: number
   createdAt: string
   updatedAt: string
-  homePageId: string
-  pageOrder: string[]
+  homeSurfaceId: string
+  surfaceOrder: string[]
+  datasetOrder: string[]
+  theme: ProjectDocument['theme']
   registryLock: RegistryLock
   settings: ProjectDocument['settings']
 }
 
 export interface StoredProjectSnapshotManifest {
   checksum: string
-  pages: Record<string, StoredEntityReference>
+  datasets: Record<string, StoredEntityReference>
   project: StoredProjectMetadata
   resources: Record<string, StoredEntityReference>
+  surfaces: Record<string, StoredEntityReference>
 }
 
 export interface StoredCommitReceipt {
@@ -46,19 +53,34 @@ export interface StoredProjectManifest {
   checksum: string
   receipts: StoredCommitReceipt[]
   snapshot: StoredProjectSnapshotManifest
-  version: 3
+  version: 4
   versions: StoredProjectVersion[]
 }
 
 export interface StoredProjectEntity {
   checksum: string
+  id: string
+  kind: StoredProjectEntityKind
   projectId: string
   revision: number
-  version: 2
-  value: ProjectPage | ProjectResourceReference
+  version: 4
+  value: ProjectSurface | ProjectDataset | ProjectResource
 }
 
-export type StoredProjectValue = StoredProjectEntity | StoredProjectManifest
+export interface StoredProjectResourceBytes {
+  byteLength: number
+  bytes: Uint8Array
+  contentHash: string
+  kind: 'resource-bytes'
+  projectId: string
+  resourceId: string
+  version: 4
+}
+
+export type StoredProjectValue
+  = | StoredProjectEntity
+    | StoredProjectManifest
+    | StoredProjectResourceBytes
 
 export interface SnapshotBuildResult {
   entities: StoredProjectEntity[]

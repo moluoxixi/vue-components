@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormBreakpoint } from '../DesignerCanvas/types'
+import type { DatasetReference } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type {
@@ -9,19 +9,15 @@ import type {
   DesignSurfaceSlots,
 } from './types'
 import {
-  Monitor,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
-  Smartphone,
-  Tablet,
   X,
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
 import {
-  applyDesignGraphReactions,
   createDesignPreviewModel,
   findDesignNode,
 } from '../../graph'
@@ -34,7 +30,9 @@ import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_
 import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
+  datasets: () => [],
   readonly: false,
+  resources: () => [],
   workspaceNavigation: 'internal',
 })
 const emit = defineEmits<DesignSurfaceEmits>()
@@ -53,8 +51,6 @@ const {
   isSidePanelOpen,
   isWorkspacePanelHidden,
   mediumPanel,
-  paletteOpen,
-  propertiesOpen,
   rootRef,
   selectBreakpoint,
   selectWorkspaceView,
@@ -66,17 +62,7 @@ const {
   navigation: () => props.workspaceNavigation,
 })
 
-const breakpoints: Array<{ key: ConfigFormBreakpoint, icon: typeof Monitor }> = [
-  { key: 'desktop', icon: Monitor },
-  { key: 'tablet', icon: Tablet },
-  { key: 'mobile', icon: Smartphone },
-]
-
-function breakpointTitle(breakpoint: ConfigFormBreakpoint): string {
-  return locale.t(`breakpoint.${breakpoint}`, breakpoint[0]!.toUpperCase() + breakpoint.slice(1))
-}
 let lastAcceptedCommandId: string | undefined
-let historyTransitionSequence = 0
 const controller = useDesignerController({
   execute: (command) => {
     const result = props.commandControl.execute(command)
@@ -85,7 +71,7 @@ const controller = useDesignerController({
     return result
   },
   graph: () => props.graph,
-  pageId: () => props.pageId,
+  surfaceId: () => props.surfaceId,
   registry: () => props.registry,
   readonly: () => props.readonly,
   onDiagnostics: diagnostics => emit('diagnostics', diagnostics),
@@ -105,7 +91,7 @@ const designSession = createDesignerDesignSession(controller, {
         type: 'operation.apply',
         operations: [{
           type: 'node.insert',
-          pageId: props.pageId,
+          surfaceId: props.surfaceId,
           subgraph: candidate.subgraph,
           target,
         }],
@@ -184,10 +170,25 @@ const dragAnnouncement = computed(() => {
   const announcement = dragController.announcement.value
   return announcement ? formatDragAnnouncement(announcement) : ''
 })
-const runtimeProjection = computed(() => applyDesignGraphReactions(
-  controller.graph.value,
-  createDesignPreviewModel(controller.graph.value),
-))
+const runtimeProjection = computed(() => ({
+  values: createDesignPreviewModel(controller.graph.value),
+}))
+
+function emitDatasetBinding(nodeId: string, bindingKey: string, reference: DatasetReference | undefined): void {
+  emit('updateDatasetBinding', nodeId, bindingKey, reference)
+}
+
+function emitResourceBinding(nodeId: string, bindingKey: string, resourceId: string | undefined): void {
+  emit('updateResourceBinding', nodeId, bindingKey, resourceId)
+}
+
+function emitSaveOptionsAsDataset(nodeId: string, bindingKey: string, name: string): void {
+  emit('saveOptionsAsDataset', nodeId, bindingKey, name)
+}
+
+function emitMaterializeOptionsSnapshot(nodeId: string, bindingKey: string): void {
+  emit('materializeOptionsSnapshot', nodeId, bindingKey)
+}
 const selectedComponentDefinition = computed(() => {
   const component = controller.selectedNode.value?.component
   return component ? props.componentRegistry.get(component) : undefined
@@ -199,11 +200,11 @@ const {
   handleCanvasSelect,
   handleMove,
   handleRedo,
-  handleRemoveStoredConfig,
   handleResize,
   handleRootKeydown,
   handleUndo,
   handleUpdateForm,
+  handleUpdateInteractions,
   handleUpdatePath,
   handleUpdatePaths,
   moveNodeRelative,
@@ -218,7 +219,12 @@ const {
   lastAcceptedCommandId: () => lastAcceptedCommandId,
   mediumPanel,
   onNotice: (message, action) => emit('notice', message, action),
-  pageId: () => props.pageId,
+  optionDefaultsClearedNotice: count => locale.t(
+    'options.defaultCleared',
+    'Options updated. {count} invalid default values were cleared. Undo to restore.',
+    { count },
+  ),
+  surfaceId: () => props.surfaceId,
   readonly: () => props.readonly,
   rootRef,
   selectBreakpoint,
@@ -289,7 +295,7 @@ defineExpose<DesignSurfaceExpose>({
         <DesignerCanvas
           :command-hint="commandHint"
           :graph="controller.graph.value"
-          :page-id="pageId"
+          :surface-id="surfaceId"
           :registry="registry"
           :selected-id="controller.selectedId.value"
           :selected-ids="controller.selectedIds.value"
@@ -299,8 +305,6 @@ defineExpose<DesignSurfaceExpose>({
           :interactive="false"
           :paste-available="controller.pasteAvailable.value"
           :model="runtimeProjection.values"
-          :reaction-props="runtimeProjection.props"
-          :reaction-states="runtimeProjection.states"
           @select="handleCanvasSelect"
           @inspect="handleCanvasInspect"
           @move="handleMove"
@@ -324,29 +328,34 @@ defineExpose<DesignSurfaceExpose>({
             <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
           </DesignerCommandHint>
         </div>
-        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition" :flows="flows ?? []">
+        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">
           <DesignerPropertyPanel
             :graph="controller.graph.value"
-            :flows="flows ?? []"
             :node="controller.selectedNode.value"
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
+            :datasets="datasets"
             :component-definition="selectedComponentDefinition"
             :get-material="registry.getMaterial"
             :get-component-definition="componentRegistry.get"
             :breakpoint="activeBreakpoint"
             :components="registry.components"
-            :validator-options="registry.listValidators()"
             :property-controls="registry.propertyControls"
             :readonly="readonly"
             :renderer="renderer"
-            @configure-event="emit('configureEvent', $event.nodeId, $event.eventName)"
-            @configure-flow="emit('configureFlow', $event)"
-            @remove-stored-config="handleRemoveStoredConfig"
+            :resources="resources"
+            :interactions="surface?.interactions"
+            :surface-id="surfaceId"
+            :surfaces="surfaces"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"
+            @update-interactions="handleUpdateInteractions"
+            @update-dataset-binding="emitDatasetBinding"
+            @update-resource-binding="emitResourceBinding"
+            @save-options-as-dataset="emitSaveOptionsAsDataset"
+            @materialize-options-snapshot="emitMaterializeOptionsSnapshot"
           />
         </slot>
       </section>

@@ -1,6 +1,6 @@
 # @moluoxixi/config-form-designer-element-plus
 
-ConfigForm Designer 的 Element Plus 物料适配包。它提供内置字段/布局物料、运行时组件映射、Element Plus 属性控件和选项来源诊断，并组合成可直接使用的 Designer registry。
+ConfigForm Designer 的 Element Plus 物料适配包。它提供内置字段/布局物料、运行时组件映射和 Element Plus 属性控件，并组合成输出 Registry v3 capability 的 Designer registry。
 
 ## 安装
 
@@ -25,7 +25,7 @@ const registry = createElementPlusDesignerRegistry({
 })
 ```
 
-Select、Radio、Checkbox 等动态选项物料可以通过 `optionResolver` 接入业务数据源；更高级的组件、属性控件或 validator 组合使用 `layers`。
+Select、Radio、Checkbox 等选项物料只消费 JSON-safe 的静态 `props.options`。项目级模拟数据通过稳定的 `datasetId + projection` 合同由 Studio 组合根提供；adapter 不提供动态选项 resolver。更高级的组件、属性控件或 validator 组合使用 `layers`。
 
 ## 公开入口
 

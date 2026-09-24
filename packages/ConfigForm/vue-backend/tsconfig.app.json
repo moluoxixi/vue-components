@@ -3,7 +3,7 @@
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
-    "lib": ["DOM", "ESNext"],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "types": ["vite/client", "vitest"]
   },
   "include": ["src", "index.ts", "__tests__"],

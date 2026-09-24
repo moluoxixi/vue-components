@@ -55,16 +55,8 @@ export function compileRules(
 ): CompiledRuleSet {
   const diagnostics = [] as CompiledRuleSet['diagnostics']
   const validators: RuleValidator[] = []
-  let required: boolean | undefined
-  let requiredMessage: string | undefined
 
   for (const [ruleIndex, rule] of ruleSet.rules.entries()) {
-    if (rule.kind === 'required') {
-      required = true
-      requiredMessage = rule.message
-      continue
-    }
-
     if (rule.kind === 'compare') {
       validators.push((value, values) => compareValues(value, values[rule.field], rule.operator, ruleSet.base.type)
         ? undefined
@@ -88,14 +80,6 @@ export function compileRules(
     }
   }
 
-  if (ruleSet.optional && required) {
-    diagnostics.push(ruleDiagnostic(
-      'RULE_OPTIONAL_REQUIRED_CONFLICT',
-      'A rule set cannot be both optional and required',
-      ['optional'],
-    ))
-  }
-
   const schema = rulesToZod(ruleSet)
   const validator = validators.length === 0
     ? undefined
@@ -106,5 +90,5 @@ export function compileRules(
       return errors
     }
 
-  return { schema, required, requiredMessage, validator, diagnostics }
+  return { schema, validator, diagnostics }
 }

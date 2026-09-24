@@ -1,6 +1,6 @@
 # @moluoxixi/config-form
 
-Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigFormRenderer 执行；ConfigForm 是带字段预处理的薄组件。
+Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigFormRenderer 执行；ConfigForm 是带字段预处理的薄组件。长期产品边界见 [`../PRODUCT.md`](../PRODUCT.md)。
 
 ## 使用
 
@@ -39,7 +39,27 @@ const runtime = { plugins: [createElementPlusPlugin()] }
 
 所有节点必须有稳定 `id`。组件与 slot 函数使用 Vue/Headless 当前合同；slot 上下文包含 `model`、`meta`、`slotProps`，字段 slot 另有 `field`、`value`、`setValue`。不再提供旧 FormLayout、RecursiveField、FormContext 或 useForm 模板链路。
 
-## 插件
+## 代码态组件事件
+
+复杂组件事件直接使用普通 Vue listener，写在宿主运行时 config 的 `props.onX` 中：
+
+```ts
+const fields = [
+  defineField({
+    id: 'save',
+    component: 'ElButton',
+    props: {
+      onClick: () => saveDraft(),
+    },
+  }),
+]
+```
+
+字段值事件会先完成 Runtime 写值与 blur 校验记账，再调用同一事件上的宿主 listener。listener 的同步异常和 Promise rejection 交给 Vue 的正常错误处理。Design mode 在 Renderer 内部直接阻断组件交互，不向 Designer 传递事件名或参数。
+
+不存在组件事件总线、事件转发、动作注册器或 handler registry。Designer JSON、ProjectDocument、Preview transport 和 Source generator 都不承载函数；工程师在宿主 Vue/TypeScript 中把 handler 与静态配置组合后交给 Runtime。
+
+## 插件配置
 
 `runtime` 接受 `FormRuntimeOptions`，可配置 `components`、`plugins` 与 `readonlyAdapters`。`getDefaultField`、`transformField` 只处理字段配置，不拥有表单值、校验队列或提交行为。字段显式配置优先于注册默认值；未知组件 key、重复插件名及冲突注册会抛出带 code/context 的 `ConfigFormError`。
 

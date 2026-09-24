@@ -1,23 +1,31 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
-import type { ProjectPath, WorkspaceFile } from '../../types'
-import type { CanonicalSourceBindingResolver } from './bindings'
+import type { ModelDiagnostic } from '@moluoxixi/config-form-model'
+import type {
+  ConfigBindingFileSetV1,
+  RawSourceFileSetV1,
+  SourceComponentResolver,
+  SourceConfigFormBindingResolver,
+  SourceResourceReader,
+  SourceStyleTarget,
+} from '@moluoxixi/config-form-source/generator'
 
-export interface ExportFileSet {
-  readonly entry: ProjectPath
-  readonly files: Readonly<Record<ProjectPath, Readonly<WorkspaceFile>>>
-}
+export type ExportArtifact<T>
+  = | { readonly status: 'ready', readonly fileSet: T }
+    | { readonly status: 'failed', readonly diagnostics: readonly ModelDiagnostic[] }
 
 export interface ExportSnapshot {
   readonly compilation: ProjectCompilation
-  readonly config: ExportFileSet
-  readonly generatorVersion: string
-  readonly source: ExportFileSet
+  readonly configBindings: ExportArtifact<ConfigBindingFileSetV1>
+  readonly rawSource: ExportArtifact<RawSourceFileSetV1>
+  readonly styleTarget: SourceStyleTarget
 }
 
 export interface BuildExportSnapshotInput {
   compilation: ProjectCompilation
-  resolver: CanonicalSourceBindingResolver
-  generatorVersion?: string
+  bindingResolver: SourceConfigFormBindingResolver
+  componentResolver: SourceComponentResolver
+  resourceReader: SourceResourceReader
+  styleTarget?: SourceStyleTarget
 }
 
 export interface ExportSessionState {
@@ -38,8 +46,7 @@ export interface ExportSession {
 }
 
 export interface CreateExportSessionOptions {
-  build?: (input: BuildExportSnapshotInput) => ExportSnapshot
+  build?: (input: BuildExportSnapshotInput) => Promise<ExportSnapshot>
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation: () => ProjectCompilation | undefined
-  currentGeneratorVersion?: () => string
 }

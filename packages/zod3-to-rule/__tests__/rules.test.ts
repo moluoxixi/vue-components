@@ -11,7 +11,7 @@ import {
 describe('zod3-to-rule', () => {
   it('parses JSON-safe rule sets and rejects unknown keys', () => {
     const result = parseRuleSet({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'minLength', value: 2 }],
     })
@@ -19,15 +19,35 @@ describe('zod3-to-rule', () => {
     expect(result).toEqual({
       success: true,
       data: {
-        version: 1,
+        version: 2,
         base: { type: 'string' },
         rules: [{ kind: 'minLength', value: 2 }],
       },
       diagnostics: [],
     })
 
+    for (const version of [1, 3, undefined]) {
+      expect(parseRuleSet({
+        ...(version === undefined ? {} : { version }),
+        base: { type: 'string' },
+        rules: [],
+      })).toMatchObject({
+        success: false,
+        diagnostics: [{ code: 'RULE_DOCUMENT_INVALID' }],
+      })
+    }
+
     expect(parseRuleSet({
-      version: 1,
+      version: 2,
+      base: { type: 'string' },
+      rules: [{ kind: 'required', message: 'Removed field-level concern' }],
+    })).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'RULE_DOCUMENT_INVALID', path: ['rules', 0, 'kind'] }],
+    })
+
+    expect(parseRuleSet({
+      version: 2,
       base: { type: 'string' },
       rules: [],
       runtime: () => undefined,
@@ -37,25 +57,25 @@ describe('zod3-to-rule', () => {
     })
 
     expect(parseRuleSet({
-      version: 1,
+      version: 2,
       base: { type: 'string', runtime: 'forbidden' },
       rules: [],
     }).success).toBe(false)
 
     expect(parseRuleSet({
-      version: 1,
+      version: 2,
       base: { type: 'number' },
       rules: [{ kind: 'min', value: Number.POSITIVE_INFINITY }],
     }).success).toBe(false)
 
     expect(parseRuleSet({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'email', runtime: 'forbidden' }],
     }).success).toBe(false)
 
     expect(parseRuleSet({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'regex', source: '[', flags: 'gg' }],
     }).success).toBe(false)
@@ -63,7 +83,7 @@ describe('zod3-to-rule', () => {
 
   it('round-trips parsed rules through JSON without changing the contract', () => {
     const input = {
-      version: 1,
+      version: 2,
       base: { type: 'number' },
       rules: [
         { kind: 'min', value: 1, inclusive: false, message: '必须大于 1' },
@@ -76,21 +96,20 @@ describe('zod3-to-rule', () => {
     expect(parsed).toMatchObject({ success: true, data: input })
   })
 
-  it('compiles local rules to Zod and keeps required metadata', () => {
+  it('compiles local rules to Zod without field-level required metadata', () => {
     const ruleSet = {
-      version: 1 as const,
+      version: 2 as const,
       base: { type: 'string' as const },
       rules: [
-        { kind: 'required' as const, message: '请输入名称' },
         { kind: 'minLength' as const, value: 2 },
         { kind: 'email' as const },
       ],
     }
     const compiled = compileRules(ruleSet)
 
-    expect(compiled.required).toBe(true)
-    expect(compiled.requiredMessage).toBe('请输入名称')
     expect(compiled.diagnostics).toEqual([])
+    expect(compiled).not.toHaveProperty('required')
+    expect(compiled).not.toHaveProperty('requiredMessage')
     expect(compiled.schema.safeParse('a').success).toBe(false)
     expect(compiled.schema.safeParse('  ').success).toBe(false)
     expect(compiled.schema.safeParse('person@example.com').success).toBe(true)
@@ -99,7 +118,7 @@ describe('zod3-to-rule', () => {
 
   it('preserves exclusive number bounds in both conversion directions', () => {
     const schema = rulesToZod({
-      version: 1,
+      version: 2,
       base: { type: 'number' },
       rules: [
         { kind: 'min', value: 1, inclusive: false },
@@ -118,13 +137,13 @@ describe('zod3-to-rule', () => {
 
   it('wraps invalid regular expressions in RuleCompileError', () => {
     expect(() => rulesToZod({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'regex', source: '[', flags: 'gg' }],
     })).toThrowError(RuleCompileError)
 
     expect(() => rulesToZod({
-      version: 1,
+      version: 2,
       base: { type: 'date' },
       rules: [{ kind: 'dateMin', value: 'not-a-date' }],
     })).toThrowError(RuleCompileError)
@@ -132,7 +151,7 @@ describe('zod3-to-rule', () => {
 
   it('compiles cross-field comparisons through the runtime validator boundary', async () => {
     const compiled = compileRules({
-      version: 1,
+      version: 2,
       base: { type: 'number' },
       rules: [{ kind: 'compare', field: 'start', operator: 'gte', message: '结束时间不合法' }],
     })
@@ -143,7 +162,7 @@ describe('zod3-to-rule', () => {
 
   it('resolves named custom validators and reports missing registrations', async () => {
     const ruleSet = {
-      version: 1 as const,
+      version: 2 as const,
       base: { type: 'string' as const },
       rules: [{ kind: 'custom' as const, key: 'reserved', params: { names: ['root'] } }],
     }
@@ -167,38 +186,24 @@ describe('zod3-to-rule', () => {
     await expect(compiled.validator?.('user', {})).resolves.toEqual([])
   })
 
-  it('reports an optional and required conflict', () => {
-    const compiled = compileRules({
-      version: 1,
-      base: { type: 'string' },
-      rules: [{ kind: 'required' }],
-      optional: true,
-    })
-
-    expect(compiled.diagnostics).toEqual([
-      expect.objectContaining({ code: 'RULE_OPTIONAL_REQUIRED_CONFLICT' }),
-    ])
-    expect(compiled.schema.safeParse(undefined).success).toBe(false)
-  })
-
-  it('keeps required semantics after nullable and optional wrappers', () => {
+  it('keeps nullable and optional wrappers independent from field required state', () => {
     const schema = rulesToZod({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
-      rules: [{ kind: 'required', message: 'Required' }],
+      rules: [],
       nullable: true,
       optional: true,
     })
 
-    expect(schema.safeParse(null).success).toBe(false)
-    expect(schema.safeParse(undefined).success).toBe(false)
-    expect(schema.safeParse('  ').success).toBe(false)
+    expect(schema.safeParse(null).success).toBe(true)
+    expect(schema.safeParse(undefined).success).toBe(true)
+    expect(schema.safeParse('  ').success).toBe(true)
     expect(schema.safeParse('value').success).toBe(true)
   })
 
   it('compares strings and date values consistently', async () => {
     const strings = compileRules({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [{ kind: 'compare', field: 'start', operator: 'gte' }],
     })
@@ -206,7 +211,7 @@ describe('zod3-to-rule', () => {
     await expect(strings.validator?.('a', { start: 'b' })).resolves.toHaveLength(1)
 
     const dates = compileRules({
-      version: 1,
+      version: 2,
       base: { type: 'date' },
       rules: [{ kind: 'compare', field: 'start', operator: 'eq' }],
     })
@@ -219,7 +224,7 @@ describe('zod3-to-rule', () => {
       { start: '2026-01-01T00:00:00.000Z' },
     )).resolves.toEqual([])
     const orderedDates = compileRules({
-      version: 1,
+      version: 2,
       base: { type: 'date' },
       rules: [{ kind: 'compare', field: 'start', operator: 'gte' }],
     })
@@ -229,13 +234,13 @@ describe('zod3-to-rule', () => {
     )).resolves.toEqual([])
     await expect(strings.validator?.(2, { start: '10' })).resolves.toHaveLength(1)
     const mismatchedEquality = compileRules({
-      version: 1,
+      version: 2,
       base: { type: 'number' },
       rules: [{ kind: 'compare', field: 'start', operator: 'neq' }],
     })
     await expect(mismatchedEquality.validator?.(2, { start: '2' })).resolves.toHaveLength(1)
     const dateSchema = rulesToZod({
-      version: 1,
+      version: 2,
       base: { type: 'date' },
       rules: [],
     })
@@ -249,7 +254,7 @@ describe('zod3-to-rule', () => {
 
     expect(exported.diagnostics).toEqual([])
     expect(exported.ruleSet).toEqual({
-      version: 1,
+      version: 2,
       base: { type: 'string' },
       rules: [
         { kind: 'minLength', value: 2, message: '太短' },
@@ -282,7 +287,7 @@ describe('zod3-to-rule', () => {
 
     expect(zodToRules(z.date().min(min).max(max))).toEqual({
       ruleSet: {
-        version: 1,
+        version: 2,
         base: { type: 'date' },
         rules: [
           { kind: 'dateMin', value: min.toISOString() },

@@ -9,6 +9,13 @@ export type {
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
+  ConfigFormSurfaceRuntimeConfiguration,
+  ConfigFormSurfaceRuntimeDataSourceStateChange,
+  ConfigFormSurfaceRuntimeLoadOptions,
+  ConfigFormSurfaceRuntimeOptionBinding,
+  ConfigFormSurfaceRuntimeOptionState,
+  ConfigFormSurfaceRuntimePlan,
+  ConfigFormSurfaceRuntimeValueSchema,
   FormRuntimeOptions,
   ReadonlyAdapter,
   ReadonlyAdapterRegistry,
@@ -40,3 +47,5 @@ export type {
 } from './src/types'
 export type { AdaptedVueFunctionalComponent } from './src/types'
 export { asVueFunctionalComponent, defineField, defineFields } from './src/utils'
+export type { ConfigFormDataSourceHost, ConfigFormDataSourceState } from '@moluoxixi/config-form-core'
+export type { ConfigFormFieldAddress } from '@moluoxixi/config-form-headless'

@@ -1,3 +1,12 @@
+import type {
+  ConfigFormDataSourceDefinition,
+  ConfigFormDataSourceState,
+  ConfigFormScopedFieldDefinition,
+  ConfigFormScopePath,
+  ConfigFormValueInput,
+  ConfigFormValueScopeDefinition,
+  ConfigFormVariableDefinition,
+} from '@moluoxixi/config-form-core'
 import type { ConfigFormComponentRegistration as HeadlessComponentRegistration, ConfigFormComponentRegistry as HeadlessComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { VNodeChild } from 'vue'
 import type {
@@ -10,6 +19,57 @@ import type {
   ResolvedBoundNode,
   ResolvedFormNode,
 } from '../../types'
+
+/** Compiler-owned natural value topology consumed by the Headless controller. */
+export interface ConfigFormSurfaceRuntimeValueSchema {
+  readonly valueScopes: readonly ConfigFormValueScopeDefinition[]
+  readonly scopedFields: readonly ConfigFormScopedFieldDefinition[]
+}
+
+/** A field whose options are supplied by one Surface data source. */
+export interface ConfigFormSurfaceRuntimeOptionBinding {
+  readonly nodeId: string
+  readonly source: {
+    readonly kind: 'dataSource'
+    readonly dataSourceId: string
+    readonly params?: Readonly<Record<string, ConfigFormValueInput>>
+  }
+}
+
+export interface ConfigFormSurfaceRuntimeConfiguration {
+  readonly variables: readonly ConfigFormVariableDefinition[]
+  readonly dataSources: readonly ConfigFormDataSourceDefinition[]
+}
+
+/**
+ * Complete framework-neutral execution input for one compiled Surface.
+ * Host capabilities such as action/source implementations stay outside this data plan.
+ */
+export interface ConfigFormSurfaceRuntimePlan {
+  readonly valueSchema: ConfigFormSurfaceRuntimeValueSchema
+  readonly runtime: ConfigFormSurfaceRuntimeConfiguration
+  readonly optionBindings: readonly ConfigFormSurfaceRuntimeOptionBinding[]
+}
+
+export interface ConfigFormSurfaceRuntimeLoadOptions {
+  readonly force?: boolean
+  readonly params?: Readonly<Record<string, ConfigFormValueInput>>
+  readonly scope?: ConfigFormScopePath
+  readonly signal?: AbortSignal
+}
+
+/** State projected onto an option-bound field instance. */
+export interface ConfigFormSurfaceRuntimeOptionState extends ConfigFormDataSourceState {
+  readonly options: readonly unknown[]
+}
+
+/** Consumer identity is separate from the stable business row scope. */
+export interface ConfigFormSurfaceRuntimeDataSourceStateChange {
+  readonly state: ConfigFormDataSourceState
+  readonly scope: ConfigFormScopePath
+  readonly consumerKey: string
+  readonly address?: { readonly nodeId: string, readonly scope: ConfigFormScopePath }
+}
 
 /**
  * 字符串组件 key 的注册项。

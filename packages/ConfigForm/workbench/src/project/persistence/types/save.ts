@@ -1,6 +1,7 @@
 import type {
   ModelDiagnostic,
   ProjectCommitMetadata,
+  ProjectEmbeddedResourceWrite,
   ProjectRepository,
   ProjectRepositoryPersistence,
   ReadonlyProjectDocument,
@@ -10,6 +11,7 @@ export interface ProjectSaveCapture {
   cursor: string
   contentHash: string
   document: ReadonlyProjectDocument
+  embeddedWrites: readonly ProjectEmbeddedResourceWrite[]
   editVersion: number
 }
 

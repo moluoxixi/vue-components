@@ -1,0 +1,85 @@
+{
+  "name": "@moluoxixi/config-form-source",
+  "type": "module",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/source"
+  },
+  "sideEffects": [
+    "**/*.scss",
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./generator": {
+      "source": "./src/generator/index.ts",
+      "types": "./dist/src/generator/index.d.ts",
+      "import": "./dist/generator.js"
+    },
+    "./viewer": {
+      "source": "./src/viewer/index.ts",
+      "types": "./dist/src/viewer/index.d.ts",
+      "import": "./dist/viewer.js"
+    },
+    "./viewer/style": {
+      "sass": "./src/viewer/style/index.scss",
+      "style": "./src/viewer/style/index.scss",
+      "default": "./src/viewer/style/index.scss"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
+    "dev": "vite build --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@lucide/vue": "catalog:ui",
+    "@moluoxixi/config-form-compiler": "workspace:*",
+    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*",
+    "@moluoxixi/zod3-to-rule": "workspace:*",
+    "monaco-editor": "catalog:"
+  },
+  "devDependencies": {
+    "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-element": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vue/compiler-sfc": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "ant-design-vue": "catalog:ui",
+    "element-plus": "catalog:ui",
+    "happy-dom": "catalog:dev",
+    "sass": "catalog:dev",
+    "typescript": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-router": "catalog:build",
+    "vue-tsc": "catalog:dev",
+    "zod": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

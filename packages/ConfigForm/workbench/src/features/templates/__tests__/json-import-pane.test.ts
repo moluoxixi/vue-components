@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { Component } from 'vue'
+import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
@@ -89,25 +90,23 @@ function prepared(name = 'Imported project') {
     adapter: 'element-plus',
     diagnostics: [],
     document: { id: 'imported' },
+    embeddedContents: [],
     preview: {
       adapter: 'element-plus',
-      compilation: { page: { id: 'page' } },
+      compilation: {},
       namespace: 'mx-preview',
-      reactionProjection: { props: {}, states: {}, validate: [], values: {} },
       revision: 'import:1',
-      runtimeSessionKey: 'imported:page',
-      runtimeState: { touched: [], validation: {}, values: {} },
+      values: {},
     },
-    previewCompilation: { page: { id: 'page' } },
+    previewCompilation: {},
     summary: {
       adapter: 'element-plus',
-      flowCount: 0,
       name,
       nodeCount: 3,
-      pageCount: 1,
-      pageGraphVersion: 2,
+      surfaceCount: 1,
+      surfaceGraphVersion: SURFACE_GRAPH_VERSION,
       resourceCount: 0,
-      version: 4,
+      version: PROJECT_DOCUMENT_VERSION,
       target: 'project',
     },
     target: 'project',
@@ -127,7 +126,7 @@ function mountPane(locale: 'en-US' | 'zh-CN' = 'en-US') {
         ElInput: InputStub,
         ElSegmented: SegmentedStub,
         ElUpload: UploadStub,
-        PreviewRuntimeHostFrame: RuntimeStub,
+        DesignRuntimeHostFrame: RuntimeStub,
       },
     },
   })

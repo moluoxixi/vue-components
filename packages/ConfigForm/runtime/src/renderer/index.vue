@@ -5,17 +5,19 @@ import type {
   ConfigFormRendererExpose,
   ConfigFormRendererProps,
 } from './types'
+import type { RendererControllerState } from './types/internal'
 import { computed, defineComponent, useAttrs, useId, useTemplateRef } from 'vue'
 import {
   useDesignInteractionGuard,
   useRendererController,
+  useRendererDataLifecycle,
   useRendererLayout,
   useRuntimeEditorBridge,
 } from './composables'
 import { createRendererBindingService } from './services/binding'
+import { createComponentListenerService } from './services/component-listeners'
 import { createBem } from './services/rendering'
 import { createRendererPipeline } from './services/renderer-pipeline'
-import { createRuntimeFlowEventService } from './services/runtime-flow-events'
 
 defineOptions({
   name: 'ConfigFormRenderer',
@@ -41,17 +43,23 @@ const attrs = useAttrs()
 const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 
-const controller = useRendererController({ emit, props })
+let controller: RendererControllerState<TValues>
+const dataLifecycle = useRendererDataLifecycle({ props, emit, controller: () => controller })
+controller = useRendererController({
+  emit,
+  props,
+  onScopeInvalidated: dataLifecycle.cancelScope,
+  onLifecycle: dataLifecycle.lifecycle,
+  shouldRunLifecycle: dataLifecycle.hasLifecycle,
+})
 const { meta, model, resetFields, submit } = controller
 const editorBridge = useRuntimeEditorBridge({ props })
 const designGuard = useDesignInteractionGuard({
   formRef,
   mode: () => props.mode,
 })
-const flowEvents = createRuntimeFlowEventService({
-  emitRuntimeEvent: payload => emit('runtimeEvent', payload),
+const componentListeners = createComponentListenerService({
   mode: () => props.mode,
-  shouldIntercept: editorBridge.shouldInterceptEditorEvent,
 })
 const binding = createRendererBindingService(props)
 const {
@@ -64,11 +72,13 @@ const renderLayout = createRendererPipeline({
   activePresentationLayout,
   bem,
   binding,
+  cancelScope: dataLifecycle.cancelScope,
+  componentListeners,
   controller,
   designGuard,
   editorBridge,
-  flowEvents,
   formId,
+  getOptionState: dataLifecycle.data.getOptionState,
   props,
   responsiveLabelWidths,
   responsiveLayouts,
@@ -91,22 +101,44 @@ function scrollToField(field: keyof TValues & string | string): void {
 }
 
 defineExpose<ConfigFormRendererExpose<TValues>>({
+  appendRow: controller.appendRow,
+  applyFieldInstanceChange: controller.applyFieldInstanceChange,
+  clearInstanceValidate: controller.clearInstanceValidate,
   clearValidate: controller.clearValidate,
-  getFieldMeta: controller.getFieldMeta,
+  duplicateRow: controller.duplicateRow,
+  getDataSourceState: dataLifecycle.data.getDataSourceState,
   getErrors: controller.getErrors,
+  getFieldMeta: controller.getFieldMeta,
+  getInstanceErrors: controller.getInstanceErrors,
+  getInstanceKey: controller.getInstanceKey,
+  getInstanceMeta: controller.getInstanceMeta,
+  getInstanceValue: controller.getInstanceValue,
+  getIssues: controller.getIssues,
   getMeta: controller.getMeta,
+  getOptionState: dataLifecycle.data.getOptionState,
   getValidating: controller.getValidating,
   getValue: controller.getValue,
   getValues: controller.getValues,
+  getVariables: dataLifecycle.data.getVariables,
+  insertRow: controller.insertRow,
+  isInstanceValidating: controller.isInstanceValidating,
+  listFieldInstances: controller.listFieldInstances,
+  listRows: controller.listRows,
+  loadDataSource: (sourceId, options) => dataLifecycle.data.loadDataSource(sourceId, options),
+  moveRow: controller.moveRow,
+  removeRow: controller.removeRow,
   resetFields: controller.resetFields,
   scrollToField,
   setErrors: controller.setErrors,
+  setInstanceTouched: controller.setInstanceTouched,
+  setInstanceValue: controller.setInstanceValue,
+  setTouched: controller.setTouched,
   setValue: controller.setValue,
   setValues: controller.setValues,
-  setTouched: controller.setTouched,
   submit: controller.submit,
   validate: controller.validate,
   validateField: controller.validateField,
+  validateInstance: controller.validateInstance,
 })
 </script>
 

@@ -1,0 +1,33 @@
+{
+  "id": "config-form-product-research",
+  "name": "config-form-product-research",
+  "title": "实测成熟表单产品并建立差距证据",
+  "description": "完成批准合同 AC1，并为其他验收条目提供实际产品操作依据",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "ai-doc-assistant",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-09-12",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "09-12-config-form-production",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "研究材料继续作为历史输入保留，但基于低代码事件编排的产品结论已被 Runtime-first 决策取代，不代表事件编排已交付。"
+    }
+  }
+}

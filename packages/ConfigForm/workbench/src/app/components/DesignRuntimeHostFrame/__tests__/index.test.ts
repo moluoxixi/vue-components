@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { VueWrapper } from '@vue/test-utils'
+import { compileCanonicalSurface } from '@moluoxixi/config-form-compiler'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
@@ -9,6 +9,7 @@ import {
   RUNTIME_HOST_CHANNEL,
   RUNTIME_HOST_PROTOCOL_VERSION,
 } from '../../../../runtime-host'
+import { createCompilerFixture } from '../../../../runtime-host/__tests__/compiler-fixture'
 import DesignRuntimeHostFrame from '../index.vue'
 
 const hostId = '11111111-1111-4111-8111-111111111111'
@@ -23,10 +24,10 @@ afterEach(() => {
 describe('design RuntimeHost frame', () => {
   it('maps geometry and pointer coordinates while rejecting stale or replayed messages', async () => {
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(hostId)
-    const compilation = {
-      key: { pageId: 'home', semanticHash: 'page-hash' },
-      snapshotIdentity: { pageId: 'home', projectId: 'project' },
-    } as PageCompilation
+    const compiled = compileCanonicalSurface({ ...createCompilerFixture(3), surfaceId: 'home' })
+    if (!compiled.success)
+      throw new Error('fixture compilation failed')
+    const compilation = compiled.compilation
     const revision = `project:home:${JSON.stringify(compilation.key)}`
     const wrapper = mount(DesignRuntimeHostFrame, {
       props: {
@@ -45,6 +46,7 @@ describe('design RuntimeHost frame', () => {
     mountedWrapper = wrapper
     const frame = wrapper.get('iframe').element
     const source = frame.contentWindow
+    await wrapper.get('iframe').trigger('load')
     Object.defineProperties(frame, {
       clientHeight: { configurable: true, value: 100 },
       clientWidth: { configurable: true, value: 200 },
@@ -65,11 +67,11 @@ describe('design RuntimeHost frame', () => {
       channel: RUNTIME_HOST_CHANNEL,
       version: RUNTIME_HOST_PROTOCOL_VERSION,
       hostId,
-      pageId: 'home',
+      surfaceId: 'home',
       projectId: 'project',
       revision,
       sequence: 1,
-      type: 'geometry',
+      type: 'design.geometry',
       payload: {
         layoutRect: { bottom: 45, height: 40, left: 20, right: 100, top: 5, width: 80 },
         nodes: [{
@@ -88,10 +90,7 @@ describe('design RuntimeHost frame', () => {
       origin: window.location.origin,
       source,
     }))
-    await nextTick()
-    await nextTick()
-
-    expect(wrapper.get('iframe').attributes('style')).toContain('height: 201px')
+    await vi.waitFor(() => expect(wrapper.get('iframe').attributes('style')).toContain('height: 201px'))
     expect(wrapper.emitted('geometry')).toEqual([[
       {
         layoutRect: { bottom: 140, height: 80, left: 140, right: 300, top: 60, width: 160 },
@@ -112,11 +111,11 @@ describe('design RuntimeHost frame', () => {
       channel: RUNTIME_HOST_CHANNEL,
       version: RUNTIME_HOST_PROTOCOL_VERSION,
       hostId,
-      pageId: 'home',
+      surfaceId: 'home',
       projectId: 'project',
       revision,
       sequence: 2,
-      type: 'designPointerMove',
+      type: 'design.pointerMove',
       payload: {
         button: 0,
         clientX: 15,

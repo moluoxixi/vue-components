@@ -10,6 +10,7 @@ contract and the package-specific contracts that contain real project rules.
 | Guide | Description | Status |
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
+| [ConfigForm Product Boundaries](../../config-form/frontend/product-boundaries.md) | Runtime-first host listener and plugin dependency contracts | Ready |
 
 ## Pre-Development Checklist
 

@@ -1,4 +1,4 @@
-import type { ProjectPage } from '@moluoxixi/config-form-model'
+import type { ProjectSurface } from '@moluoxixi/config-form-model'
 import type {
   BuiltInSeedDefinition,
   ProjectTemplateSeed,
@@ -14,13 +14,48 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
-  const page: ProjectPage = {
+  const base = {
     id: 'template-page',
     name: definition.category === 'blank' ? 'Blank form' : 'Profile form',
-    route: '/',
     graph: definition.category === 'blank' ? createBlankGraph() : createProfileGraph(definition.adapter),
-    flows: [],
+    parameters: [],
+    outputs: [],
+    interactions: [],
   }
+  const surface: ProjectSurface = definition.kind === 'dialog'
+    ? {
+        ...base,
+        id: 'template-dialog',
+        kind: 'dialog',
+        name: 'Blank dialog',
+        presentation: {
+          kind: 'dialog',
+          title: 'Dialog title',
+          width: { desktop: { value: 560, unit: 'px' }, mobile: { value: 92, unit: 'vw' } },
+          mask: true,
+          close: { escape: true, mask: true, button: true },
+        },
+      }
+    : definition.kind === 'drawer'
+      ? {
+          ...base,
+          id: 'template-drawer',
+          kind: 'drawer',
+          name: 'Blank drawer',
+          presentation: {
+            kind: 'drawer',
+            title: 'Drawer title',
+            placement: 'right',
+            size: { desktop: { value: 480, unit: 'px' }, mobile: { value: 92, unit: 'vw' } },
+            mask: true,
+            close: { escape: true, mask: true, button: true },
+          },
+        }
+      : {
+          ...base,
+          kind: 'page',
+          route: '/',
+        }
   return {
     manifest: {
       id: definition.id,
@@ -33,11 +68,11 @@ function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
       tags: [...definition.tags],
       registry: {
         adapter: definition.adapter,
-        components: Object.values(page.graph.nodesById).map(node => ({ key: node.component })),
+        components: Object.values(surface.graph.nodesById).map(node => ({ key: node.component })),
       },
-      preview: { preferredViewport: 'desktop', pageId: page.id },
+      preview: { preferredViewport: 'desktop', surfaceId: surface.id },
     },
-    page,
+    surface,
   }
 }
 
@@ -50,6 +85,26 @@ const BUILT_IN_TEMPLATE_SEEDS = deepFreeze([
     id: 'element-blank',
     order: 10,
     tags: ['Element Plus', 'blank', 'empty'],
+  }),
+  createSeed({
+    adapter: 'element-plus',
+    category: 'blank',
+    description: 'An empty reusable Element Plus dialog Surface.',
+    displayName: 'Element Plus blank dialog',
+    id: 'element-dialog',
+    kind: 'dialog',
+    order: 25,
+    tags: ['Element Plus', 'dialog', 'overlay'],
+  }),
+  createSeed({
+    adapter: 'element-plus',
+    category: 'blank',
+    description: 'An empty reusable Element Plus drawer Surface.',
+    displayName: 'Element Plus blank drawer',
+    id: 'element-drawer',
+    kind: 'drawer',
+    order: 26,
+    tags: ['Element Plus', 'drawer', 'overlay'],
   }),
   createSeed({
     adapter: 'element-plus',
@@ -77,6 +132,26 @@ const BUILT_IN_TEMPLATE_SEEDS = deepFreeze([
     id: 'antd-profile',
     order: 40,
     tags: ['Ant Design Vue', 'profile', 'starter'],
+  }),
+  createSeed({
+    adapter: 'antd-vue',
+    category: 'blank',
+    description: 'An empty reusable Ant Design Vue dialog Surface.',
+    displayName: 'Ant Design Vue blank dialog',
+    id: 'antd-dialog',
+    kind: 'dialog',
+    order: 45,
+    tags: ['Ant Design Vue', 'dialog', 'overlay'],
+  }),
+  createSeed({
+    adapter: 'antd-vue',
+    category: 'blank',
+    description: 'An empty reusable Ant Design Vue drawer Surface.',
+    displayName: 'Ant Design Vue blank drawer',
+    id: 'antd-drawer',
+    kind: 'drawer',
+    order: 46,
+    tags: ['Ant Design Vue', 'drawer', 'overlay'],
   }),
 ] satisfies ProjectTemplateSeed[])
 

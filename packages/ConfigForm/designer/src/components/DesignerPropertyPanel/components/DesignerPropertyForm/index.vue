@@ -1,0 +1,262 @@
+<script setup lang="ts">
+import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload, ConfigFormField } from '@moluoxixi/config-form-headless'
+import type { SurfaceNode } from '@moluoxixi/config-form-model'
+import type {
+  DesignerPropertyControlDefinition,
+  DesignerPropertyControlRegistry,
+  DesignerPropertySetterDefinition,
+  DesignerSetterControl,
+  DesignerSimpleSetterControl,
+} from '@designer/registry'
+import type { DesignerPropertyFormEntry } from '../../types'
+import type { Component } from 'vue'
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
+import { computed, markRaw, nextTick, shallowRef, toRaw, watch } from 'vue'
+import { useDesignerLocale } from '@designer/locale'
+import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
+import DesignerSetter from '../DesignerSetter/index.vue'
+
+const props = defineProps<{
+  entries: DesignerPropertyFormEntry[]
+  components?: ConfigFormComponentRegistry
+  controls?: DesignerPropertyControlRegistry
+  readonly?: boolean
+  node?: SurfaceNode
+  renderer: Component
+}>()
+
+const emit = defineEmits<{
+  commit: [value: unknown, setter: DesignerPropertySetterDefinition]
+}>()
+
+const locale = useDesignerLocale()
+const model = shallowRef<Record<string, unknown>>({})
+const modelPort = createConfigFormModel(model)
+const formRenderer = computed(() => rawComponent(props.renderer))
+const simpleControls = new Set<DesignerSetterControl>(['text', 'textarea', 'number', 'boolean', 'select'])
+const propertySetterComponent = markRaw(DesignerSetter)
+
+/** Designer chrome is Element Plus; host-provided entries still win. */
+const controls = computed<DesignerPropertyControlRegistry>(() => ({
+  ...DEFAULT_DESIGNER_PROPERTY_CONTROLS,
+  ...props.controls,
+}))
+
+function rawComponent<T extends DesignerPropertyControlDefinition['component']>(component: T): T {
+  return typeof component === 'object' && component !== null
+    ? markRaw(toRaw(component)) as T
+    : component
+}
+
+function isSimpleControl(control: DesignerSetterControl): control is DesignerSimpleSetterControl {
+  return simpleControls.has(control)
+}
+
+function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
+  return `setter:${index}:${entry.setter.key}`
+}
+
+function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
+  if (isSimpleControl(entry.setter.control))
+    return controls.value[entry.setter.control]
+  return entry.setter.control === 'defaultValue' && entry.setter.valueKind
+    ? controls.value.defaultValue
+    : undefined
+}
+
+function fieldValue(entry: DesignerPropertyFormEntry): unknown {
+  const value = controlFor(entry) && entry.value === undefined && entry.inheritedValue !== undefined
+    ? entry.inheritedValue
+    : entry.value
+  if (entry.setter.control !== 'number' || entry.setter.unit !== 'px' || typeof value !== 'string')
+    return value
+  const match = /^(\d+)px$/.exec(value)
+  return match ? Number(match[1]) : value
+}
+
+const projectedModel = computed<Record<string, unknown>>(() => Object.fromEntries(
+  props.entries.map((entry, index) => [fieldKey(entry, index), fieldValue(entry)]),
+))
+
+function syncProjectedModel(): void {
+  model.value = { ...projectedModel.value }
+}
+
+watch(projectedModel, syncProjectedModel, { deep: true, immediate: true })
+
+function commit(value: unknown, setter: DesignerPropertySetterDefinition): void {
+  emit('commit', value, setter)
+  // A rejected command does not change the projected props, so the normal
+  // watcher cannot fire. Reassign the authoritative projection after the
+  // parent command has settled to keep local controls honest.
+  void nextTick(syncProjectedModel)
+}
+
+function handleTextKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter')
+    return
+  event.preventDefault()
+  ;(event.currentTarget as HTMLElement).blur()
+}
+
+function commitTextDraft(entry: DesignerPropertyFormEntry, index: number): void {
+  const value = normalizeValue(entry.setter, model.value[fieldKey(entry, index)])
+  const current = normalizeValue(entry.setter, entry.value)
+  if (value !== invalidNumber && !Object.is(value, current))
+    commit(value, entry.setter)
+}
+
+function simpleField(
+  entry: DesignerPropertyFormEntry,
+  index: number,
+  control: DesignerPropertyControlDefinition,
+): ConfigFormField {
+  const { setter } = entry
+  const key = fieldKey(entry, index)
+  const controlClass = setter.control === 'defaultValue' ? 'default-value' : setter.control
+  const inheritedLabel = entry.value === undefined && entry.inheritedValue !== undefined
+    ? locale.t('setter.inherited', 'Inherited')
+    : undefined
+  const description = [inheritedLabel, entry.hint].filter(Boolean).join(' · ') || undefined
+  const visualHint = entry.hint
+    ? [inheritedLabel, entry.hint].filter(Boolean).join(' · ')
+    : undefined
+  const componentProps: Record<string, unknown> = {
+    ...control.props,
+    'aria-description': description,
+    'aria-label': setter.label,
+    'class': [
+      control.props?.class,
+      'mx-config-form-designer__property-control',
+      `is-${controlClass}`,
+    ],
+    'disabled': props.readonly,
+    ...(setter.control === 'textarea' ? { rows: 3 } : {}),
+    ...(setter.control === 'number'
+      ? {
+          min: setter.min,
+          max: setter.max,
+          step: setter.step,
+          ...(setter.integer ? { precision: 0 } : {}),
+        }
+      : {}),
+    ...(setter.control === 'select' ? { options: setter.options ?? [] } : {}),
+    ...(setter.control === 'defaultValue'
+      ? { kind: setter.valueKind, options: setter.options ?? [] }
+      : {}),
+    ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
+    ...(['text', 'textarea'].includes(setter.control)
+      ? { onBlur: () => commitTextDraft(entry, index) }
+      : {}),
+  }
+
+  return {
+    id: key,
+    field: key,
+    label: setter.label,
+    component: rawComponent(control.component),
+    valueProp: control.valueProp,
+    trigger: control.trigger,
+    blurTrigger: control.blurTrigger,
+    getValueFromEvent: control.getValueFromEvent,
+    props: componentProps,
+    fieldAttrs: {
+      class: [
+        'mx-config-form-designer-property-form__field',
+        'is-simple',
+        `is-control-${controlClass}`,
+      ],
+      title: setter.label,
+      ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
+      ...(visualHint ? { 'data-hint-label': visualHint } : {}),
+    } as Record<string, unknown>,
+  }
+}
+
+function customField(
+  entry: DesignerPropertyFormEntry,
+  index: number,
+): ConfigFormField {
+  const key = fieldKey(entry, index)
+  const setter = entry.setter.component
+    ? { ...entry.setter, component: rawComponent(entry.setter.component) }
+    : entry.setter
+  return {
+    id: key,
+    field: key,
+    component: propertySetterComponent,
+    valueProp: 'value',
+    trigger: 'commit',
+    props: {
+      setter,
+      hint: entry.hint,
+      inheritedValue: entry.inheritedValue,
+      readonly: props.readonly,
+      node: props.node,
+    },
+    fieldAttrs: {
+      class: 'mx-config-form-designer-property-form__field is-custom',
+    },
+  }
+}
+
+const fields = computed<ConfigFormField[]>(() => props.entries.map((entry, index) => {
+  const control = controlFor(entry)
+  return control ? simpleField(entry, index, control) : customField(entry, index)
+}))
+
+const entriesByField = computed(() => new Map(
+  props.entries.map((entry, index) => [fieldKey(entry, index), entry]),
+))
+
+const invalidNumber = Symbol('invalid-number')
+
+function normalizeValue(setter: DesignerPropertySetterDefinition, value: unknown): unknown | typeof invalidNumber {
+  if (setter.control === 'text' || setter.control === 'textarea')
+    return value === '' || value === null ? undefined : value
+
+  if (setter.control === 'number') {
+    if (value === '' || value === null || value === undefined)
+      return undefined
+    const numeric = typeof value === 'number' ? value : Number(value)
+    if (!Number.isFinite(numeric))
+      return invalidNumber
+    const constrained = Math.min(
+      setter.max ?? Number.POSITIVE_INFINITY,
+      Math.max(setter.min ?? Number.NEGATIVE_INFINITY, numeric),
+    )
+    return setter.integer ? Math.round(constrained) : constrained
+  }
+
+  return value
+}
+
+function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, unknown>>): void {
+  const entry = entriesByField.value.get(String(payload.field))
+  if (!entry)
+    return
+  if (
+    (entry.setter.control === 'text' || entry.setter.control === 'textarea')
+    && controlFor(entry)
+  )
+    return
+  const value = normalizeValue(entry.setter, payload.value)
+  if (value !== invalidNumber)
+    commit(entry.setter.unit === 'px' && typeof value === 'number' ? `${value}px` : value, entry.setter)
+}
+</script>
+
+<template>
+  <component
+    :is="formRenderer"
+    :model="modelPort"
+    :components="components"
+    :fields="fields"
+    :columns="1"
+    :field-span="1"
+    gap="13px"
+    label-position="top"
+    namespace="mx-config-form-designer-property-form"
+    @field-change="handleFieldChange"
+  />
+</template>

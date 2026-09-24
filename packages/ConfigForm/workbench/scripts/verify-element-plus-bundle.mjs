@@ -5,9 +5,13 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const expectedDynamicStyles = {
   'src/adapters/services/element-plus-inspector.ts': [
+    'button',
+    'cascader',
+    'checkbox',
     'input',
     'input-number',
     'segmented',
+    'select',
     'switch',
   ],
   'src/adapters/services/element-plus-runtime.ts': [
@@ -33,13 +37,14 @@ const forbidden = [
   /element-plus\/es\/components\/[a-z0-9-]+\/style\/css/,
 ]
 const sourceFiles = []
+const nonProductionDirectories = new Set(['__integration__', '__tests__'])
 
 function collect(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = resolve(directory, entry.name)
-    if (entry.isDirectory())
+    if (entry.isDirectory() && !nonProductionDirectories.has(entry.name))
       collect(path)
-    else if (/\.(?:css|scss|ts|vue)$/.test(entry.name))
+    else if (!entry.isDirectory() && !/\.test\.ts$/.test(entry.name) && /\.(?:css|scss|ts|vue)$/.test(entry.name))
       sourceFiles.push(path)
   }
 }
@@ -99,7 +104,7 @@ const emittedCss = output
   .filter(file => file.endsWith('.css'))
   .map(file => readFileSync(resolve(outputDirectory, file), 'utf8'))
   .join('\n')
-for (const unusedSelector of ['.el-calendar', '.el-carousel', '.el-color-picker', '.el-tour']) {
+for (const unusedSelector of ['.el-calendar', '.el-carousel', '.el-tour']) {
   if (emittedCss.includes(unusedSelector))
     throw new Error(`Workbench CSS contains unused Element Plus selector ${unusedSelector}; check for a full theme import`)
 }

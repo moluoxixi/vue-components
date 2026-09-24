@@ -1,10 +1,12 @@
 import type { ConfigImportDiagnostic } from '../types'
 
-export const MAX_IMPORT_SOURCE_BYTES = 2 * 1024 * 1024
+// 50 MiB of decoded embedded content expands to about 67 MiB as canonical
+// base64. Keep bounded headroom for the current transfer envelope metadata.
+export const MAX_IMPORT_SOURCE_BYTES = 96 * 1024 * 1024
 export const MAX_IMPORT_DEPTH = 64
 export const MAX_IMPORT_ARRAY_LENGTH = 4096
 export const MAX_IMPORT_STRUCTURE_ENTRIES = 100000
-export const MAX_IMPORT_PAGES = 128
+export const MAX_IMPORT_SURFACES = 128
 export const MAX_IMPORT_NODES = 4096
 
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -29,19 +31,22 @@ export function importSourceByteLength(source: string): number {
   return new TextEncoder().encode(source).byteLength
 }
 
+export function guardConfigImportSourceBytes(bytes: number): ConfigImportDiagnostic[] {
+  return bytes > MAX_IMPORT_SOURCE_BYTES
+    ? [diagnostic(
+        'IMPORT_SOURCE_TOO_LARGE',
+        `JSON source is ${bytes} bytes; the limit is ${MAX_IMPORT_SOURCE_BYTES} bytes.`,
+      )]
+    : []
+}
+
 export function parseConfigImportSource(source: string):
   | { success: true, value: unknown }
   | { success: false, diagnostics: ConfigImportDiagnostic[] } {
   const bytes = importSourceByteLength(source)
-  if (bytes > MAX_IMPORT_SOURCE_BYTES) {
-    return {
-      success: false,
-      diagnostics: [diagnostic(
-        'IMPORT_SOURCE_TOO_LARGE',
-        `JSON source is ${bytes} bytes; the limit is ${MAX_IMPORT_SOURCE_BYTES} bytes.`,
-      )],
-    }
-  }
+  const sourceDiagnostics = guardConfigImportSourceBytes(bytes)
+  if (sourceDiagnostics.length > 0)
+    return { success: false, diagnostics: sourceDiagnostics }
   try {
     return { success: true, value: JSON.parse(source) as unknown }
   }

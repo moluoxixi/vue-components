@@ -1,0 +1,33 @@
+{
+  "id": "config-form-event-architecture",
+  "name": "config-form-event-architecture",
+  "title": "重构配置化表单与设计器事件体系",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "ai-doc-assistant",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-09-12",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "产品方向已改为 Runtime-first；事件编辑、事件转发与事件编排从主产品完整删除。原任务仅保留历史证据，未完成验收不视为已交付。"
+    }
+  }
+}

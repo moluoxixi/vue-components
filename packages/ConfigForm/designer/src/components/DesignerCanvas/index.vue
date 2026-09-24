@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PageNode, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { SurfaceNode, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerNodeAction } from '../DesignSurface/types'
 import type {
@@ -100,7 +100,7 @@ let runtimeNodeDragHooks: {
 // Context menu opened from the iframe runtime (right click on a node).
 const runtimeContextMenu = ref<{ nodeId: string, x: number, y: number }>()
 
-function nodeForDragSource(source: DesignerDragSource | undefined): PageNode | undefined {
+function nodeForDragSource(source: DesignerDragSource | undefined): SurfaceNode | undefined {
   if (!source)
     return undefined
   return source.type === 'node'
@@ -108,7 +108,7 @@ function nodeForDragSource(source: DesignerDragSource | undefined): PageNode | u
     : candidateForDragSource(source)?.node
 }
 
-const candidateNode = computed<PageNode | undefined>(() => nodeForDragSource(dragSource.value))
+const candidateNode = computed<SurfaceNode | undefined>(() => nodeForDragSource(dragSource.value))
 
 const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
   const source = candidateSource.value
@@ -124,10 +124,10 @@ function candidateCommandForSource(source: DesignerDragSource | undefined, targe
   if (!source)
     return undefined
   if (source.type === 'node')
-    return createMoveCommand(props.pageId, source.nodeId, target, { id: `candidate-move-${source.candidateId}` })
+    return createMoveCommand(props.surfaceId, source.nodeId, target, { id: `candidate-move-${source.candidateId}` })
   const candidate = candidateForDragSource(source)
   return candidate
-    ? createInsertCommand(props.pageId, candidate.subgraph, target, { id: `candidate-insert-${source.candidateId}` })
+    ? createInsertCommand(props.surfaceId, candidate.subgraph, target, { id: `candidate-insert-${source.candidateId}` })
     : undefined
 }
 
@@ -202,8 +202,6 @@ const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
   graph: projectedGraph.value,
   interactive: Boolean(props.interactive),
   model: surfaceModel.value,
-  reactionProps: props.reactionProps ?? {},
-  reactionStates: props.reactionStates ?? {},
 }))
 
 const {

@@ -1,9 +1,8 @@
 import type { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import type {
-  PageGraph,
   ProjectChangeSet,
-  ProjectCommand,
   ProjectCommandAction,
+  ProjectEmbeddedResourceWrite,
   ProjectRepository,
   ProjectSummary,
 } from '@moluoxixi/config-form-model'
@@ -17,6 +16,7 @@ import type {
 } from '../../project'
 import type { PreviewSession, WorkbenchDesignSession, WorkbenchExportService } from '../../session'
 import type { WorkbenchRecoveryDraftSummary, WorkbenchUiStore } from '../types'
+import { initializePrototypeProjectSession } from '@moluoxixi/config-form-prototype-runtime/session'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   createIndexedDBProjectRecoveryDraftStore,
@@ -30,7 +30,7 @@ import {
 export function createWorkbenchProjectBinding(options: {
   configError: Ref<string>
   currentAdapter: ShallowRef<WorkbenchAdapter | undefined>
-  currentPageId: Ref<string>
+  currentSurfaceId: Ref<string>
   currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined>
   designSession: WorkbenchDesignSession
   exportService: WorkbenchExportService
@@ -50,7 +50,7 @@ export function createWorkbenchProjectBinding(options: {
   const {
     configError,
     currentAdapter,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     designSession,
     exportService,
@@ -73,16 +73,17 @@ export function createWorkbenchProjectBinding(options: {
   let unsubscribePersistenceSession: (() => void) | undefined
   let persistenceSession: ProjectPersistenceSession | undefined
   let projectSessionIdSequence = 0
-  let projectedPageId = ''
+  let previewSessionSequence = 0
+  let projectedSurfaceId = ''
 
-  function resolveCurrentPageId(
+  function resolveCurrentSurfaceId(
     snapshot: ProjectEditorSessionSnapshot,
-    preferredId = currentPageId.value,
+    preferredId = currentSurfaceId.value,
   ): string {
     const document = snapshot.document
-    const page = (preferredId ? document.pagesById[preferredId] : undefined)
-      ?? document.pagesById[document.homePageId]
-      ?? document.pagesById[document.pageOrder[0]!]
+    const page = (preferredId ? document.surfacesById[preferredId] : undefined)
+      ?? document.surfacesById[document.homeSurfaceId]
+      ?? document.surfacesById[document.surfaceOrder[0]!]
     if (!page)
       throw new TypeError('PROJECT_PAGE_UNKNOWN: An editor session requires at least one page.')
     return page.id
@@ -93,38 +94,53 @@ export function createWorkbenchProjectBinding(options: {
     changeSet?: ProjectChangeSet,
   ): void {
     const previous = projectSessionSnapshot.value
-    const nextPageId = resolveCurrentPageId(snapshot)
+    const nextSurfaceId = resolveCurrentSurfaceId(snapshot)
     const pageChanged = previous?.document.id !== snapshot.document.id
-      || projectedPageId !== nextPageId
+      || projectedSurfaceId !== nextSurfaceId
     const modelChanged = pageChanged
       || previous?.editVersion !== snapshot.editVersion
       || previous?.contentHash !== snapshot.contentHash
     projectSessionSnapshot.value = snapshot
-    currentPageId.value = nextPageId
-    projectedPageId = nextPageId
+    currentSurfaceId.value = nextSurfaceId
+    projectedSurfaceId = nextSurfaceId
     exportService.sync(snapshot)
     if (!modelChanged)
       return
 
-    const projectPage = snapshot.document.pagesById[nextPageId]
-    if (!projectPage)
-      throw new TypeError(`Project snapshot does not contain the current page: ${nextPageId}`)
+    designSession.accept(snapshot, nextSurfaceId, changeSet)
+    const capture = exportService.capture()
+    if (!capture) {
+      previewSession.clear()
+      if (!configError.value)
+        configError.value = 'Preview project compilation failed.'
+      return
+    }
 
-    // Compile only the active page before publishing either surface. Design
-    // and Preview consume the exact same page program and Runtime plan.
-    const compiled = designSession.accept(snapshot, nextPageId, changeSet)
-    const adapter = currentAdapter.value
-    if (!adapter)
-      throw new TypeError('Workbench adapter is unavailable while publishing Preview.')
+    const sequence = ++previewSessionSequence
+    let rowIdSequence = 0
+    const homeInstanceId = `preview-home-${sequence}`
+    const initialized = initializePrototypeProjectSession({
+      compilation: capture.compilation,
+      homeInstanceId,
+      createRowId: () => `preview-row-${sequence}-${++rowIdSequence}`,
+    })
+    if (!initialized.success) {
+      previewSession.clear()
+      configError.value = initialized.diagnostics[0]?.message
+        ?? 'Preview Prototype Session initialization failed.'
+      return
+    }
+
+    const revision = [
+      capture.compilation.key.compilerVersion,
+      capture.compilation.key.environmentHash,
+      capture.compilation.key.irHash,
+    ].join(':')
     previewSession.accept({
-      adapter: adapter.registrySnapshot.adapter,
-      compilation: compiled.compilation,
-      editVersion: snapshot.editVersion,
-      graph: projectPage.graph as PageGraph,
-      pageId: nextPageId,
-      projectId: snapshot.document.id,
-      repositoryRevision: snapshot.repositoryRevision,
-      runtime: compiled.runtime,
+      compilation: capture.compilation,
+      revision,
+      session: initialized.data,
+      sessionId: `${snapshot.document.id}:preview:${sequence}`,
     })
 
     if (pageChanged)
@@ -143,11 +159,11 @@ export function createWorkbenchProjectBinding(options: {
 
   async function bindProjectSession(
     session: ProjectEditorSession,
-    preferredPageId: string,
+    preferredSurfaceId: string,
     activeRepository: ProjectRepository,
     activate: () => void,
   ): Promise<void> {
-    const nextPageId = resolveCurrentPageId(session.snapshot, preferredPageId)
+    const nextSurfaceId = resolveCurrentSurfaceId(session.snapshot, preferredSurfaceId)
     const sessionId = `${session.snapshot.document.id}:workbench:${++projectSessionIdSequence}:${Date.now().toString(36)}`
     const draftStore = activeRepository.persistence === 'durable'
       ? createIndexedDBProjectRecoveryDraftStore()
@@ -165,18 +181,19 @@ export function createWorkbenchProjectBinding(options: {
         coordination,
         draftStore,
         editor: session,
+        readEmbedded: input => session.readEmbedded(input),
         sessionId,
         onExternalRevision: async (resolution) => {
           if (resolution === 'reload' && !isDisposed() && projectSession.value === session)
-            await openProject(session.snapshot.document.id, currentPageId.value)
+            await openProject(session.snapshot.document.id, currentSurfaceId.value)
         },
       })
       await disposeProjectPersistence()
       activate()
       unsubscribeProjectSession?.()
       projectSession.value = session
-      currentPageId.value = nextPageId
-      projectedPageId = ''
+      currentSurfaceId.value = nextSurfaceId
+      projectedSurfaceId = ''
       unsubscribeProjectSession = session.subscribe(acceptProjectSnapshot)
       persistenceSession = nextPersistenceSession
       unsubscribePersistenceSession = nextPersistenceSession.subscribe((snapshot) => {
@@ -202,15 +219,15 @@ export function createWorkbenchProjectBinding(options: {
     }
   }
 
-  function selectCurrentPage(pageId: string): boolean {
+  function selectCurrentSurface(surfaceId: string): boolean {
     const snapshot = projectSessionSnapshot.value
-    if (!snapshot?.document.pagesById[pageId]) {
-      configError.value = `Page does not exist: ${pageId}`
+    if (!snapshot?.document.surfacesById[surfaceId]) {
+      configError.value = `Surface does not exist: ${surfaceId}`
       return false
     }
-    if (currentPageId.value === pageId)
+    if (currentSurfaceId.value === surfaceId)
       return false
-    currentPageId.value = pageId
+    currentSurfaceId.value = surfaceId
     configError.value = ''
     acceptProjectSnapshot(snapshot)
     return true
@@ -220,6 +237,7 @@ export function createWorkbenchProjectBinding(options: {
     label: string,
     actions: ProjectCommandAction[],
     mergeKey?: string,
+    embeddedWrites: readonly ProjectEmbeddedResourceWrite[] = [],
   ): boolean {
     const session = projectSession.value
     if (!session)
@@ -229,18 +247,9 @@ export function createWorkbenchProjectBinding(options: {
       label,
       actions,
       ...(mergeKey ? { mergeKey } : {}),
-    })
+    }, { embeddedWrites })
     configError.value = result.diagnostics[0]?.message ?? ''
     return result.changed
-  }
-
-  function executeProjectCommand(command: ProjectCommand) {
-    const session = projectSession.value
-    if (!session)
-      return { changed: false, diagnostics: [] }
-    const result = session.execute(command)
-    configError.value = result.diagnostics[0]?.message ?? ''
-    return { changed: result.changed, diagnostics: result.diagnostics }
   }
 
   async function refreshProjects(): Promise<void> {
@@ -252,7 +261,7 @@ export function createWorkbenchProjectBinding(options: {
       projects.value = nextProjects
   }
 
-  async function openProject(id: string, pageId?: string): Promise<void> {
+  async function openProject(id: string, surfaceId?: string): Promise<void> {
     const requestId = ++openProjectRequestId
     const activeRepository = repository.value
     if (!activeRepository)
@@ -278,9 +287,9 @@ export function createWorkbenchProjectBinding(options: {
     ) {
       return
     }
-    const page = (pageId ? document.pagesById[pageId] : undefined)
-      ?? document.pagesById[document.homePageId]
-      ?? document.pagesById[document.pageOrder[0]!]
+    const page = (surfaceId ? document.surfacesById[surfaceId] : undefined)
+      ?? document.surfacesById[document.homeSurfaceId]
+      ?? document.surfacesById[document.surfaceOrder[0]!]
     if (!page)
       return
     const session = createProjectEditorSession({
@@ -289,7 +298,7 @@ export function createWorkbenchProjectBinding(options: {
       repository: activeRepository,
     })
     await bindProjectSession(session, page.id, activeRepository, () => {
-      previewSession.clear('project-opened')
+      previewSession.clear()
       configError.value = ''
       currentAdapter.value = adapter
       designSession.configure(adapter)
@@ -297,10 +306,10 @@ export function createWorkbenchProjectBinding(options: {
     })
   }
 
-  async function requestOpenProject(id: string, pageId?: string): Promise<void> {
+  async function requestOpenProject(id: string, surfaceId?: string): Promise<void> {
     if (currentProject.value?.id === id) {
-      if (pageId && currentPageId.value !== pageId)
-        selectCurrentPage(pageId)
+      if (surfaceId && currentSurfaceId.value !== surfaceId)
+        selectCurrentSurface(surfaceId)
       return
     }
     if (hasUnsavedChanges.value) {
@@ -310,7 +319,24 @@ export function createWorkbenchProjectBinding(options: {
       ))
       return
     }
-    await openProject(id, pageId)
+    await openProject(id, surfaceId)
+  }
+
+  async function closeProject(): Promise<void> {
+    openProjectRequestId += 1
+    disposeProjectSubscription()
+    await disposeProjectPersistence()
+    projectSession.value = undefined
+    projectSessionSnapshot.value = undefined
+    persistenceSnapshot.value = undefined
+    currentSurfaceId.value = ''
+    projectedSurfaceId = ''
+    currentAdapter.value = undefined
+    recoveryDrafts.value = []
+    configError.value = ''
+    designSession.clear()
+    exportService.clear()
+    previewSession.clear()
   }
 
   async function initializeRepository(): Promise<void> {
@@ -342,16 +368,16 @@ export function createWorkbenchProjectBinding(options: {
   }
 
   return {
+    closeProject,
     disposeProjectPersistence,
     disposeProjectSubscription,
     executeProjectActions,
-    executeProjectCommand,
     getPersistenceSession,
     initializeRepository,
     invalidateOpenRequests,
     openProject,
     refreshProjects,
     requestOpenProject,
-    selectCurrentPage,
+    selectCurrentSurface,
   }
 }

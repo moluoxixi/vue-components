@@ -1,0 +1,40 @@
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../features/export/index.vue";
+@source "../app/components/ProjectThemeEditor/index.vue";
+
+@theme inline {
+  --color-wb-bg: var(--wb-bg);
+  --color-wb-border: var(--wb-border);
+  --color-wb-control-border: var(--wb-control-border);
+  --color-wb-separator: var(--wb-separator);
+  --color-wb-elevated: var(--wb-elevated);
+  --color-wb-hover: var(--wb-hover);
+  --color-wb-muted: var(--wb-muted);
+  --color-wb-small-text: var(--wb-small-text);
+  --color-wb-surface: var(--wb-surface);
+  --color-wb-surface-raised: var(--wb-surface-raised);
+  --color-wb-text: var(--wb-text);
+  --color-wb-text-strong: var(--wb-text-strong);
+  --color-wb-accent: var(--wb-accent);
+  --color-wb-accent-text: var(--wb-accent-text);
+  --color-wb-action-bg: var(--wb-action-bg);
+  --color-wb-action-text: var(--wb-action-text);
+  --color-wb-accent-soft: var(--wb-accent-soft);
+  --color-wb-accent-line: var(--wb-accent-line);
+  --color-wb-focus: var(--wb-focus);
+  --color-wb-positive: var(--wb-positive);
+  --color-wb-warning: var(--wb-warning);
+  --color-wb-danger: var(--wb-danger);
+  --color-wb-danger-soft: var(--wb-danger-soft);
+  --color-wb-disabled: var(--wb-disabled);
+  --color-wb-editor-surface: var(--wb-editor-surface);
+  --shadow-wb-overlay: var(--wb-shadow-overlay);
+  --shadow-wb-drawer: var(--wb-shadow-drawer);
+  --shadow-wb-float: var(--wb-shadow-float);
+  --shadow-wb-toast: var(--wb-shadow-toast);
+  --shadow-wb-sheet: var(--wb-shadow-sheet);
+}

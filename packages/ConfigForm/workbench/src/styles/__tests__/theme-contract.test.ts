@@ -13,25 +13,33 @@ const stylesheetLayers = [
   { importPath: '../app/components/WorkbenchAppearancePanel/style/index.css', source: new URL('../../app/components/WorkbenchAppearancePanel/style/index.css', import.meta.url) },
   { importPath: '../app/components/WorkbenchAppearanceDrawer/style/index.css', source: new URL('../../app/components/WorkbenchAppearanceDrawer/style/index.css', import.meta.url) },
   { importPath: '../app/components/WorkbenchTopbar/style/index.css', source: new URL('../../app/components/WorkbenchTopbar/style/index.css', import.meta.url) },
+  { importPath: '../app/components/ManagementShell/style/index.css', source: new URL('../../app/components/ManagementShell/style/index.css', import.meta.url) },
   { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
   { importPath: '../app/components/PreviewDrawer/style/index.css', source: new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url) },
   { importPath: './studio.css', source: new URL('../studio.css', import.meta.url) },
   { importPath: '../features/persistence/style/index.css', source: new URL('../../features/persistence/style/index.css', import.meta.url) },
-  { importPath: '../features/flow/style/index.css', source: new URL('../../features/flow/style/index.css', import.meta.url) },
   { importPath: '../features/export/style/index.css', source: new URL('../../features/export/style/index.css', import.meta.url) },
   { importPath: '../features/pages/style/index.css', source: new URL('../../features/pages/style/index.css', import.meta.url) },
+  { importPath: '../features/projects/style/index.css', source: new URL('../../features/projects/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
+  { importPath: './tailwind.css', source: new URL('../tailwind.css', import.meta.url) },
 ] as const
 const stylesheet = stylesheetLayers
   .map(layer => readFileSync(layer.source, 'utf8'))
   .join('\n')
 const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/index.css', import.meta.url), 'utf8')
+const runtimeHostBootstrap = readFileSync(new URL('../../runtime-host/services/bootstrap.ts', import.meta.url), 'utf8')
+const tailwindStylesheet = readFileSync(new URL('../tailwind.css', import.meta.url), 'utf8')
+const exportDialogComponent = readFileSync(new URL('../../features/export/index.vue', import.meta.url), 'utf8')
+const projectThemeEditor = readFileSync(new URL('../../app/components/ProjectThemeEditor/index.vue', import.meta.url), 'utf8')
+const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
 const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
 const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
+const sourceViewerStylesheet = readFileSync(new URL('../../../../source/src/viewer/style/index.scss', import.meta.url), 'utf8')
 const designerStylesheet = compile(
   fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
   { charset: false, loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
@@ -85,7 +93,9 @@ function contrast(foreground: string, background: string): number {
 describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
     expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(`${stylesheetLayers
-      .map(layer => `@import url(${layer.importPath});`)
+      .map(layer => layer.importPath === './tailwind.css'
+        ? '@import "./tailwind.css";'
+        : `@import url(${layer.importPath});`)
       .join('\n')}\n`)
   })
 
@@ -98,17 +108,19 @@ describe('workbench theme contract', () => {
     const ownerContracts = [
       ['../../styles/foundation.css', ':root', '--wb-bg:'],
       ['../../styles/theme.css', '--wb-bg', '.workbench-topbar {'],
+      ['../../styles/tailwind.css', '@theme inline', 'preflight.css'],
       ['../../styles/shell.css', '.workbench-app', '.workbench-topbar'],
       ['../../app/components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
       ['../../app/components/WorkbenchAppearancePopover/style/index.css', '.workbench-appearance-popover', '.appearance-panel'],
       ['../../app/components/WorkbenchAppearancePanel/style/index.css', '.appearance-panel', '.appearance-drawer-shell'],
       ['../../app/components/WorkbenchAppearanceDrawer/style/index.css', '.appearance-drawer-shell', '.appearance-panel {'],
       ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-dialog-shell'],
+      ['../../app/components/ManagementShell/style/index.css', '.management-shell', '.workbench-topbar'],
       ['../../app/components/PreviewDrawer/style/index.css', '.preview-dialog-shell', '.workbench-topbar'],
       ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
-      ['../../features/persistence/style/index.css', '.persistence-dialog', '.flow-workspace-dialog'],
-      ['../../features/flow/style/index.css', '.flow-workspace-dialog', '.export-preview-dialog'],
-      ['../../features/pages/style/index.css', '.page-manager-dialog-shell', '.export-preview-dialog'],
+      ['../../features/persistence/style/index.css', '.persistence-dialog', '.export-preview-dialog'],
+      ['../../features/pages/style/index.css', '.page-manager-page', '.export-preview-dialog'],
+      ['../../features/projects/style/index.css', '.project-manager', '.page-manager-page'],
       ['../../app/style/index.css', '.workbench-message', '.export-preview-dialog'],
       ['../../app/components/TemplateCreationWorkspace/style/index.css', '.template-creation-workspace', '.json-import-pane'],
       ['../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', '.template-catalog-panel', '.json-import-pane'],
@@ -169,6 +181,54 @@ describe('workbench theme contract', () => {
       expect(source).not.toContain('/style/css')
     }
     expect(stylesheet).not.toContain('--el-input-focus-border-color:')
+  })
+
+  it('configures Tailwind v4 as an explicitly scoped Workbench utility layer', async () => {
+    const viteConfig = await import('../../../vite.config.ts?raw').then(module => module.default)
+
+    expect(viteConfig).toMatch(/import tailwindcss from '@tailwindcss\/vite'/)
+    expect(viteConfig).toMatch(/plugins:\s*\[\s*tailwindcss\(\),\s*Vue\(\)/)
+    expect(tailwindStylesheet).toContain('@import "tailwindcss/theme.css" layer(theme);')
+    expect(tailwindStylesheet).toContain('@import "tailwindcss/utilities.css" layer(utilities) source(none);')
+    expect(tailwindStylesheet).not.toMatch(/@import\s+["']tailwindcss["']/)
+    expect(tailwindStylesheet).not.toContain('preflight.css')
+    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(2)
+    expect(tailwindStylesheet).toContain('@source "../features/export/index.vue";')
+    expect(tailwindStylesheet).toContain('@source "../app/components/ProjectThemeEditor/index.vue";')
+    expect(tailwindStylesheet).toContain('--color-wb-editor-surface: var(--wb-editor-surface);')
+    expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
+    expect(exportDialogComponent).toContain('bg-wb-editor-surface')
+    expect(exportDialogComponent).toContain('text-wb-accent-text')
+    expect(projectThemeEditor).toContain('border-[var(--wb-control-border)]')
+    expect(projectThemeEditor).toContain('text-[var(--wb-muted)]')
+    expect(runtimeHostBootstrap).toContain('import \'../styles/index.css\'')
+    expect(runtimeHostBootstrap).not.toContain('import \'../../styles/index.css\'')
+    expect(runtimeHostBootstrap).not.toContain('tailwind.css')
+    expect(runtimeHostStylesheet).not.toContain('tailwindcss')
+    expect(runtimeHostStylesheet).not.toContain('--color-wb-')
+  })
+
+  it('keeps third-party export surfaces in bridge CSS and plain layout in utilities', () => {
+    for (const selector of [
+      '.export-preview-dialog',
+      '.export-preview-dialog .el-dialog__body',
+      '.export-dialog-heading > .el-button',
+      '.export-source-viewer',
+      '.export-diagnostic .el-alert__content',
+      '.dialog-action',
+    ])
+      expect(selectorBlock(selector, exportDialogStylesheet)).not.toBe('')
+
+    const responsiveStart = exportDialogStylesheet.indexOf('@media (max-width: 700px)')
+    const baseStyles = exportDialogStylesheet.slice(0, responsiveStart)
+    for (const selector of ['.export-preview-body', '.dialog-eyebrow', '.export-dialog-footer'])
+      expect(cssRules(baseStyles).some(rule => rule.selector.split(',').some(item => item.trim() === selector))).toBe(false)
+
+    expect(exportDialogComponent).toContain('export-dialog-heading flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain('export-dialog-footer flex min-w-0 items-center justify-between gap-4')
+    expect(responsiveStart).toBeGreaterThan(0)
+    expect(exportDialogStylesheet.slice(responsiveStart)).toContain('.export-dialog-footer {')
+    expect(selectorBlock('.export-preview-dialog', exportDialogStylesheet)).toContain('height: min(800px, calc(100vh - 40px));')
   })
   const paletteSelectors = ['ink', 'morandi', 'cyber', 'glass'].flatMap(palette =>
     ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
@@ -282,7 +342,10 @@ describe('workbench theme contract', () => {
       expect(cssRules(stylesheet).some(rule => rule.selector === selector
         && rule.body.includes('background: var(--wb-hover);'))).toBe(true)
     }
-    expect(stylesheet).toContain('.export-stale .el-button')
+    expect(selectorBlock('.export-source-viewer')).toContain('flex: 1 1 auto;')
+    expect(selectorBlock('.config-form-source-viewer__workspace', sourceViewerStylesheet))
+      .toContain('grid-template-columns: clamp(190px, 24vw, 280px) minmax(0, 1fr);')
+    expect(stylesheet).not.toContain('.config-form-source-viewer__workspace')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
     )).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
@@ -295,12 +358,20 @@ describe('workbench theme contract', () => {
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-accent: var(--wb-accent);')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
+    )).toContain('--mx-designer-accent-text: var(--wb-accent-text);')
+    expect(selectorBlock(
+      '.mx-config-form-designer__tabs button[aria-selected=true]',
+      designerStylesheet,
+    )).toContain('color: var(--mx-designer-accent-text);')
     expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
     const paletteItem = selectorBlock(
       '.mx-config-form-designer__palette-item',
       designerStylesheet,
     )
-    expect(paletteItem).toContain('background: transparent;')
+    expect(paletteItem).toContain('background: var(--mx-designer-subtle);')
+    expect(paletteItem).toContain('border: 1px solid var(--mx-designer-separator);')
     expect(paletteItem).toContain('transition: background-color 100ms ease, border-color 100ms ease;')
     expect(selectorBlock(
       '.mx-config-form-designer__palette-item:focus-within',
@@ -316,6 +387,7 @@ describe('workbench theme contract', () => {
     expect(stylesheet).toContain('--mx-designer-runtime-border: #d9dee7;')
     expect(stylesheet).toContain('--mx-designer-runtime-surface: #fff;')
     expect(designerStylesheet).toContain('--mx-designer-runtime-surface: #ffffff;')
+    expect(designerStylesheet).toContain('--mx-designer-accent-text: var(--mx-designer-accent);')
     expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-overlay-surface, #fff);')
     expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
     for (const [foreground, minimum] of [
@@ -383,17 +455,20 @@ describe('workbench theme contract', () => {
   })
 
   it('keeps export and Preview responsive without mutating intrinsic Canvas runtime styles', () => {
-    expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
+    expect(exportDialogComponent).toContain('bg-wb-editor-surface')
     expect(selectorBlock('.export-menu-popover .el-dropdown-menu__item')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
     for (const selector of [
       '.export-menu-popover .el-dropdown-menu__item',
       '.mobile-action-popover .el-dropdown-menu__item',
-      '.project-file-tree .project-file-tree__row',
     ]) {
       expect(cssRules(stylesheet).some(rule => rule.selector.split(',')
         .some(item => item.trim() === selector) && rule.body.includes('min-height: 44px;'))).toBe(true)
     }
+    expect(stylesheet).not.toContain('.project-file-tree')
+    expect(sourceViewerStylesheet).toContain('@media (max-width: 720px)')
+    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'tree\'] .config-form-source-viewer__code-pane')
+    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'code\'] .config-form-source-viewer__tree-pane')
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(stylesheet).not.toContain('@container preview-runtime')
     expect(runtimeHostStylesheet).toContain('.page-preview-form')

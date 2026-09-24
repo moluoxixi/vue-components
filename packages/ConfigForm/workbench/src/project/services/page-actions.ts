@@ -1,41 +1,43 @@
-import type { ProjectDocument, ProjectPage, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { ProjectDocument, ProjectSurface, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import { safeProjectSlug } from '../utils'
 
-export function listProjectPages(
+export function listProjectSurfaces(
   document: ProjectDocument | ReadonlyProjectDocument,
-): ProjectPage[] {
-  return document.pageOrder.map((pageId) => {
-    const page = document.pagesById[pageId]
-    if (!page)
-      throw new TypeError(`PROJECT_PAGE_UNKNOWN: Page order references ${pageId}.`)
-    return structuredClone(page) as ProjectPage
+): ProjectSurface[] {
+  return document.surfaceOrder.map((surfaceId) => {
+    const surface = document.surfacesById[surfaceId]
+    if (!surface)
+      throw new TypeError(`PROJECT_SURFACE_UNKNOWN: Surface order references ${surfaceId}.`)
+    return structuredClone(surface) as ProjectSurface
   })
 }
 
-export function normalizeProjectPageRoute(route: string): string {
+export function normalizeProjectSurfaceRoute(route: string): string {
   const normalized = `/${route.trim().replace(/^\/+|\/+$/g, '')}`
   return normalized === '/' ? '/' : normalized.replace(/\/{2,}/g, '/')
 }
 
-export function nextProjectPageId(
+export function nextProjectSurfaceId(
   document: ProjectDocument | ReadonlyProjectDocument,
   name: string,
 ): string {
   const base = safeProjectSlug(name)
-  if (!document.pagesById[base])
+  if (!document.surfacesById[base])
     return base
   let suffix = 2
-  while (document.pagesById[`${base}-${suffix}`])
+  while (document.surfacesById[`${base}-${suffix}`])
     suffix += 1
   return `${base}-${suffix}`
 }
 
-export function nextProjectPageRoute(
+export function nextProjectSurfaceRoute(
   document: ProjectDocument | ReadonlyProjectDocument,
   name: string,
 ): string {
-  const base = normalizeProjectPageRoute(safeProjectSlug(name))
-  const routes = new Set(Object.values(document.pagesById).map(page => page.route))
+  const base = normalizeProjectSurfaceRoute(safeProjectSlug(name))
+  const routes = new Set(Object.values(document.surfacesById)
+    .filter((surface): surface is Extract<ProjectSurface, { kind: 'page' }> => surface.kind === 'page')
+    .map(surface => surface.route))
   if (!routes.has(base))
     return base
   let suffix = 2
@@ -44,12 +46,14 @@ export function nextProjectPageRoute(
   return `${base}-${suffix}`
 }
 
-export function duplicateProjectPage(
-  page: ProjectPage | ReadonlyProjectDocument['pagesById'][string],
-  identity: Pick<ProjectPage, 'id' | 'name' | 'route'>,
-): ProjectPage {
-  return {
-    ...structuredClone(page),
-    ...identity,
-  } as ProjectPage
+export function duplicateProjectSurface(
+  surface: ProjectSurface | ReadonlyProjectDocument['surfacesById'][string],
+  identity: { id: string, name: string, route?: string },
+): ProjectSurface {
+  const clone = structuredClone(surface) as ProjectSurface
+  if (clone.kind === 'page' && identity.route !== undefined)
+    clone.route = identity.route
+  clone.id = identity.id
+  clone.name = identity.name
+  return clone
 }

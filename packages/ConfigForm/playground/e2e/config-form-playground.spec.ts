@@ -389,6 +389,19 @@ async function setAntdLinkedSeatCount(scenario: Locator): Promise<void> {
 }
 
 test.describe('ConfigForm playground 布局场景', () => {
+  test('Element 代码态 props.onClick 由 Runtime 直接且每次仅执行一次', async ({ page }) => {
+    await openPlayground(page)
+    const example = await openConfigFormExample(page, suites[0]!)
+    const listener = example.getByTestId('element-code-listener')
+    const calls = example.getByTestId('element-code-listener-count')
+
+    await expect(calls).toHaveText('0')
+    await listener.click()
+    await expect(calls).toHaveText('1')
+    await listener.click()
+    await expect(calls).toHaveText('2')
+  })
+
   for (const suite of suites) {
     test(`${suite.libraryTabName} 通过 switch 切换 inline/grid 并覆盖已知组件`, async ({ page }) => {
       await openPlayground(page)

@@ -18,7 +18,7 @@ if (!entrySource)
 const entryFile = outputPath(entrySource)
 const monacoMarkers = [
   'MonacoEnvironment',
-  'inmemory://config-form-workbench/',
+  'inmemory://config-form-source/',
   'editor.worker',
   'ts.worker',
 ]
@@ -68,8 +68,8 @@ const asyncJavaScript = readdirSync(assetsRoot)
   .filter(file => file.endsWith('.js') && !initialJavaScript.has(`assets/${file}`))
   .map(file => readFileSync(resolve(assetsRoot, file), 'utf8'))
 
-if (!asyncJavaScript.some(source => source.includes('inmemory://config-form-workbench/')))
-  throw new Error('Workbench build emitted no async WorkspaceCodeEditor chunk.')
+if (!asyncJavaScript.some(source => source.includes('inmemory://config-form-source/')))
+  throw new Error('Workbench build emitted no async ConfigFormSourceViewer chunk.')
 
 function normalizeBasePath(value) {
   const withLeadingSlash = value.startsWith('/') ? value : `/${value}`

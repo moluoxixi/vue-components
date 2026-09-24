@@ -1,0 +1,9 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/confirmed-product-decisions.md","reason":"状态、值和单一主要 UI 动作及参数/结果的已确认边界"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"现有 reaction 初始化行为与目标三通道执行语义的差距"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"Interaction 与资产命令、Materials、Dataset、Prototype Runtime 的前置和所有权"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"安全 AST、规则联合、事务、会话动作、诊断和测试合同"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"状态投影、值事务、主要动作与生产 listener 的执行边界"}
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"禁止原始事件、动作链、Flow、HTTP 和函数序列化"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"Experience、浮层焦点、响应式和可访问性门禁"}
+{"file": ".trellis/spec/config-form-model/frontend/index.md", "reason": "Interaction AST/版本与诊断合同"}
+{"file": ".trellis/spec/config-form-prototype-runtime/frontend/index.md", "reason": "Prototype session/reducer/overlay 实现边界"}

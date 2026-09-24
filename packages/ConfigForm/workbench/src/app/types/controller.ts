@@ -1,6 +1,30 @@
-import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { ProjectRecoveryDraftSummary } from '../../project'
-import type { createWorkbenchController } from '../services/controller'
+import type { createDesignerLocale, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type {
+  ProjectEmbeddedResourceRead,
+  ProjectSummary,
+  ProjectSurface,
+  SurfaceGraph,
+} from '@moluoxixi/config-form-model'
+import type { ComputedRef, Ref, ShallowRef } from 'vue'
+import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
+import type { ProjectEditorSessionSnapshot, ProjectRecoveryDraftSummary } from '../../project'
+import type { createWorkbenchDesignSession, createWorkbenchExportService, PreviewSession } from '../../session'
+import type { StudioLayerEntry } from '../../studio'
+import type { createWorkbenchAssetCommands } from '../services/controller-assets'
+import type { createWorkbenchCreationCommands } from '../services/controller-creation'
+import type { createWorkbenchSurfaceCommands } from '../services/controller-page-commands'
+import type { createWorkbenchPersistenceCommands } from '../services/controller-persistence'
+import type { createWorkbenchProjectBinding } from '../services/controller-project-binding'
+import type { createWorkbenchProjectCommands } from '../services/controller-project-commands'
+import type { createWorkbenchThemeCommands } from '../services/controller-theme-commands'
+
+type CreationCommands = ReturnType<typeof createWorkbenchCreationCommands>
+type SurfaceCommands = ReturnType<typeof createWorkbenchSurfaceCommands>
+type PersistenceCommands = ReturnType<typeof createWorkbenchPersistenceCommands>
+type ProjectBinding = ReturnType<typeof createWorkbenchProjectBinding>
+type ProjectCommands = ReturnType<typeof createWorkbenchProjectCommands>
+type AssetCommands = ReturnType<typeof createWorkbenchAssetCommands>
+type ThemeCommands = ReturnType<typeof createWorkbenchThemeCommands>
 
 export interface WorkbenchControllerProps {
   locale?: DesignerLocaleOptions
@@ -21,4 +45,49 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
   presence: 'active' | 'inactive' | 'unknown'
 }
 
-export type WorkbenchController = ReturnType<typeof createWorkbenchController>
+export interface WorkbenchController extends
+  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
+  Pick<ProjectCommands, 'deleteProject' | 'renameProject'>,
+  AssetCommands,
+  ThemeCommands,
+  Pick<SurfaceCommands, 'handleSurfaceAction' | 'selectSurfaceFromDesigner'>,
+  Pick<PersistenceCommands, | 'createNamedCheckpoint'
+  | 'discardRecoveryDraft'
+  | 'inspectProjectVersion'
+  | 'listProjectVersions'
+  | 'listRecoveryDrafts'
+  | 'restoreProjectVersion'
+  | 'restoreRecoveryDraft'
+  | 'reloadCurrentProject'
+  | 'saveProject'
+  | 'saveCurrentDraftAsProject'
+  | 'setProjectVersionLabel'> {
+  projects: Ref<ProjectSummary[]>
+  busy: Ref<boolean>
+  componentRegistry: ComputedRef<WorkbenchAdapter['componentRegistry']>
+  configError: Ref<string>
+  currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined>
+  currentGraph: ComputedRef<SurfaceGraph | undefined>
+  currentSurface: ComputedRef<ProjectSurface | undefined>
+  currentSurfaceId: Ref<string>
+  modelRevision: ComputedRef<number>
+  designerFieldNames: ComputedRef<string[]>
+  designerLayers: ComputedRef<StudioLayerEntry[]>
+  dirty: ComputedRef<boolean>
+  getCurrentAdapterId: () => WorkbenchAdapterId
+  initialized: Ref<boolean>
+  localeOptions: ComputedRef<DesignerLocaleOptions>
+  previewState: ComputedRef<{ label: string, tone: 'error' | 'live' }>
+  readEmbeddedResource: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
+  registry: ComputedRef<WorkbenchAdapter['designerRegistry']>
+  repositoryRevision: ComputedRef<number>
+  recoveryDrafts: ShallowRef<WorkbenchRecoveryDraftSummary[]>
+  closeProject: ProjectBinding['closeProject']
+  requestOpenProject: ProjectBinding['requestOpenProject']
+  statusLabel: ComputedRef<string>
+  workbenchLocale: ComputedRef<ReturnType<typeof createDesignerLocale>>
+  workspaceRecoveryNotice: ComputedRef<WorkbenchRecoveryNotice | undefined>
+  designSession: ReturnType<typeof createWorkbenchDesignSession>
+  exportService: ReturnType<typeof createWorkbenchExportService>
+  previewSession: PreviewSession
+}

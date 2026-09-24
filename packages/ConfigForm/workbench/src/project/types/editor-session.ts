@@ -5,6 +5,8 @@ import type {
   ProjectCommand,
   ProjectDomainEngineOptions,
   ProjectDomainSnapshot,
+  ProjectEmbeddedResourceRead,
+  ProjectEmbeddedResourceWrite,
   ProjectRepository,
   ProjectRepositoryPersistence,
   ProjectSnapshot,
@@ -64,13 +66,21 @@ export interface ProjectEditorSession {
    * autosave) react once instead of once per dispatch.
    */
   batch: <T>(work: () => T) => T
-  execute: (command: ProjectCommand) => ProjectEditorSessionDispatchResult
+  execute: (
+    command: ProjectCommand,
+    options?: ProjectEditorSessionExecuteOptions,
+  ) => ProjectEditorSessionDispatchResult
+  readEmbedded: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
   redo: () => ProjectEditorSessionDispatchResult
   save: (options: ProjectEditorSessionSaveOptions) => Promise<ProjectEditorSessionSaveResult>
   subscribe: (
     listener: (snapshot: ProjectEditorSessionSnapshot, changeSet: ProjectChangeSet) => void,
   ) => () => void
   undo: () => ProjectEditorSessionDispatchResult
+}
+
+export interface ProjectEditorSessionExecuteOptions {
+  embeddedWrites?: readonly ProjectEmbeddedResourceWrite[]
 }
 
 export interface ProjectEditorSessionSaveOptions {

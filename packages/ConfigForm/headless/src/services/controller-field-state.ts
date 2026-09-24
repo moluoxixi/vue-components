@@ -15,14 +15,18 @@ export function resolveControllerFieldStates<TValues extends ConfigFormValues>(
   fields: ControllerNode<TValues>[],
   projection: ConfigFormReactionProjection<TValues>,
   readonly: ConfigFormCondition<TValues> | undefined,
+  allowScopedDuplicates = false,
 ): ControllerFieldState<TValues>[] {
   const states = resolveConfigFormFieldStates(
     fields,
     projection.values,
     readonly,
     projection.states,
-  )
-  assertUniqueFields(states)
+  ) as ControllerFieldState<TValues>[]
+  if (allowScopedDuplicates)
+    assertUniqueNodeIds(states)
+  else
+    assertUniqueFields(states)
   return states
 }
 
@@ -60,5 +64,16 @@ function assertUniqueFields<TValues extends ConfigFormValues>(
     if (names.has(field.field))
       throw new Error(`ConfigForm field "${field.field}" is declared more than once.`)
     names.add(field.field)
+  })
+}
+
+function assertUniqueNodeIds<TValues extends ConfigFormValues>(
+  states: ControllerFieldState<TValues>[],
+): void {
+  const ids = new Set<string>()
+  states.forEach(({ field }) => {
+    if (ids.has(field.id))
+      throw new Error(`ConfigForm node "${field.id}" is declared more than once.`)
+    ids.add(field.id)
   })
 }

@@ -1,0 +1,11 @@
+{"file":".trellis/spec/config-form/frontend/product-boundaries.md","reason":"检查没有恢复事件编排、兼容层、业务函数或 Raw 内部运行依赖。"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查版本硬切、Surface/IR 严格读取和 Experience/Source 行为一致性。"}
+{"file":".trellis/spec/zod3-to-rule/frontend/index.md","reason":"检查 RuleSet 包边界和包级验证要求。"}
+{"file":".trellis/spec/config-form-model/frontend/index.md","reason":"检查字段持久化合同和严格版本 Reader。"}
+{"file":".trellis/spec/config-form-compiler/frontend/index.md","reason":"检查 Canonical IR 与 Compiler 版本原子切换。"}
+{"file":".trellis/spec/config-form-vue-backend/frontend/index.md","reason":"检查字段校验到 Runtime 的投影和下游回归。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查 Designer 属性交互、浏览器回归、可访问性和真实 Runtime 证据。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查 Workbench 诊断、Runtime Host、导出快照与 Playwright 门禁。"}
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"检查生成器 Node 边界、依赖白名单、消费工程构建与双输出。"}
+{"file":".trellis/tasks/09-20-config-form-validation-source-hardening/research/property-panel-browser-diagnosis.md","reason":"逐条复验已知浏览器故障和连续操作矩阵。"}
+{"file":".trellis/tasks/09-20-config-form-validation-source-hardening/research/raw-source-boundary-audit.md","reason":"复验 Raw 外部消费与 mode-specific 失败隔离。"}

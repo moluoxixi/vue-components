@@ -34,10 +34,6 @@ function projectMaterialCapabilities(material: DesignerMaterialDefinition): Desi
   const node = materialRootNode(material)
   const valueProp = material.runtime.valueProp ?? 'modelValue'
   const trigger = material.runtime.trigger ?? `update:${valueProp}`
-  const events = new Map<string, { name: string }>()
-  if (material.kind === 'field')
-    events.set(trigger, { name: trigger })
-  material.events?.forEach(event => events.set(event.name, { name: event.name }))
 
   const properties = new Map<string, DesignerMaterialCapabilities['contract']['props'][number]>()
   material.setters.forEach((setter) => {
@@ -56,8 +52,17 @@ function projectMaterialCapabilities(material: DesignerMaterialDefinition): Desi
       version: String(material.version),
       kind: material.kind,
       props: [...properties.values()],
-      events: [...events.values()],
       bindings: material.kind === 'field' ? [{ name: 'value', valueProp, trigger }] : [],
+      semanticTriggers: [...(material.semanticTriggers ?? (material.kind === 'field' ? ['activate'] : []))],
+      stateProjectionProperties: (material.stateProjectionProperties ?? []).map(path => [...path]),
+      datasetBindings: (material.datasetBindings ?? []).map(binding => ({
+        key: binding.key,
+        projectionKinds: [...binding.projectionKinds],
+      })),
+      resourceBindings: (material.resourceBindings ?? []).map(binding => ({
+        key: binding.key,
+        ...(binding.mediaTypes ? { mediaTypes: [...binding.mediaTypes] } : {}),
+      })),
       slots: (material.kind === 'layout' ? material.slots : []).map(slot => ({
         name: slot.name,
         ...(slot.accepts ? { accepts: [...slot.accepts] } : {}),
@@ -83,7 +88,6 @@ function projectMaterialCapabilities(material: DesignerMaterialDefinition): Desi
       category: material.category,
       ...(material.icon ? { icon: material.icon } : {}),
       setters: material.setters,
-      events: material.events ?? [],
       slots: material.kind === 'layout' ? material.slots : [],
       ...(material.designPolicy ? { policy: material.designPolicy } : {}),
     },

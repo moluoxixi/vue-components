@@ -13,8 +13,9 @@ import { applyProjectTransaction } from './transactions'
 
 const EMPTY_CHANGE_SET = Object.freeze({
   project: false,
-  pageIds: Object.freeze([]),
-  nodeIds: Object.freeze([]),
+  surfaceIds: Object.freeze([]),
+  datasetIds: Object.freeze([]),
+  resourceIds: Object.freeze([]),
   nodeChanges: Object.freeze([]),
 })
 
@@ -76,12 +77,7 @@ export function applyProjectHistoryTransaction(
   return {
     changed: true,
     diagnostics: [],
-    changeSet: {
-      project: result.changedProject,
-      pageIds: result.changedPageIds,
-      nodeIds: result.changedNodeIds,
-      nodeChanges: result.changedNodeChanges,
-    },
+    changeSet: result.changeSet,
     history: {
       ...history,
       snapshot,
@@ -101,7 +97,7 @@ export function undoProjectHistory(
   const result = applyProjectTransaction(
     currentDocument(history),
     entry.inverse,
-    inverseOptions(entry.transaction, options),
+    options,
   )
   if (!result.success)
     return { changed: false, history, diagnostics: result.diagnostics, changeSet: EMPTY_CHANGE_SET }
@@ -111,12 +107,7 @@ export function undoProjectHistory(
   return {
     changed: true,
     diagnostics: [],
-    changeSet: {
-      project: result.changedProject,
-      pageIds: result.changedPageIds,
-      nodeIds: result.changedNodeIds,
-      nodeChanges: result.changedNodeChanges,
-    },
+    changeSet: result.changeSet,
     history: {
       ...history,
       snapshot,
@@ -124,19 +115,6 @@ export function undoProjectHistory(
       future: [entry, ...history.future],
     },
   }
-}
-
-function inverseOptions(
-  transaction: ProjectTransaction,
-  options: ApplyProjectHistoryOptions,
-): ApplyProjectHistoryOptions {
-  if (!transaction.operations.every(operation => operation.type === 'node.config.remove'))
-    return options
-  // The forward transaction was accepted only because every operation was a
-  // monotonic deletion. Its engine-generated inverse must be able to restore
-  // the exact prior snapshot, including the stale Registry data being repaired.
-  const { registry: _registry, ...rest } = options
-  return rest
 }
 
 export function redoProjectHistory(
@@ -155,12 +133,7 @@ export function redoProjectHistory(
   return {
     changed: true,
     diagnostics: [],
-    changeSet: {
-      project: result.changedProject,
-      pageIds: result.changedPageIds,
-      nodeIds: result.changedNodeIds,
-      nodeChanges: result.changedNodeChanges,
-    },
+    changeSet: result.changeSet,
     history: {
       ...history,
       snapshot,

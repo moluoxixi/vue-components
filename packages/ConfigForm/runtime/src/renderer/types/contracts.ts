@@ -1,3 +1,4 @@
+import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormField,
   ConfigFormNode,
@@ -13,6 +14,22 @@ export type ConfigFormRendererCellAttrs = HTMLAttributes
 export type ConfigFormRendererFieldAttrs = HTMLAttributes
 export type ConfigFormComponentRegistration = HeadlessComponentRegistration<Component>
 export type ConfigFormComponentRegistry = HeadlessComponentRegistry<Component>
+
+/** Closed semantic interaction vocabulary consumed by prototype hosts. */
+export type ConfigFormRendererSemanticTrigger
+  = 'activate' | 'submit' | 'rowActivate' | 'itemActivate'
+
+/** Provider event names are compiled data, not user-authored event bindings. */
+export type ConfigFormRendererSemanticEvents = Partial<Record<
+  ConfigFormRendererSemanticTrigger,
+  string
+>>
+
+export interface ConfigFormRendererSemanticActivation {
+  nodeId: string
+  trigger: ConfigFormRendererSemanticTrigger
+  args: readonly unknown[]
+}
 
 /**
  * The renderer mode controls whether form controls are allowed to update the
@@ -30,6 +47,8 @@ export type ConfigFormRendererNode<TValues extends ConfigFormValues = ConfigForm
   > & {
     /** Stable model id supplied by a designer/LowCode page model. */
     id: string
+    /** Closed provider event mapping for a declared semantic trigger. */
+    semanticEvents?: ConfigFormRendererSemanticEvents
   }
 
 export type ConfigFormRendererField<TValues extends ConfigFormValues = ConfigFormValues>
@@ -41,6 +60,8 @@ export type ConfigFormRendererField<TValues extends ConfigFormValues = ConfigFor
   > & {
     /** Stable model id supplied by a designer/LowCode page model. */
     id: string
+    /** Closed provider event mapping for a declared semantic trigger. */
+    semanticEvents?: ConfigFormRendererSemanticEvents
   }
 
 export interface ConfigFormControlBinding {
@@ -66,28 +87,16 @@ export interface ConfigFormRuntimeNodeMetadata<
   component: Component | string
   node: ConfigFormRendererNode<TValues>
   mode: ConfigFormRenderMode
+  /** Array row identity chain for this rendered instance. */
+  scope?: ConfigFormScopePath
   /** Optional transient state supplied by an editor bridge. */
   state?: unknown
 }
 
-/** Context passed to editor event interception hooks. */
-export interface ConfigFormRuntimeEventContext<
-  TValues extends ConfigFormValues = ConfigFormValues,
-> {
-  metadata: ConfigFormRuntimeNodeMetadata<TValues>
-  event: string
-  args: unknown[]
-}
-
-/** Event emitted by the Preview Runtime for Flow component.event triggers. */
-export type ConfigFormRuntimeEventPayload<TValues extends ConfigFormValues = ConfigFormValues>
-  = ConfigFormRuntimeEventContext<TValues>
-
 /**
  * Optional bridge used by Design Canvas integrations. Registration is invoked
- * with the real node cell element when it mounts. Returning `false` from
- * `interceptEvent` explicitly allows the normal renderer listener to run;
- * any other return value keeps design mode side-effect free.
+ * with the real node cell element when it mounts. Component interaction is
+ * blocked internally whenever the Renderer is in design mode.
  */
 export interface ConfigFormRuntimeEditorBridge<
   TValues extends ConfigFormValues = ConfigFormValues,
@@ -97,7 +106,6 @@ export interface ConfigFormRuntimeEditorBridge<
     element: HTMLElement,
   ) => void | (() => void)
   unregisterNode?: (metadata: ConfigFormRuntimeNodeMetadata<TValues>, element?: HTMLElement) => void
-  interceptEvent?: (context: ConfigFormRuntimeEventContext<TValues>) => boolean | void
   /** Optional state reader for overlays; renderer never mutates this state. */
   readState?: (metadata: ConfigFormRuntimeNodeMetadata<TValues>) => unknown
   /**

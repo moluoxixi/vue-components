@@ -3,6 +3,7 @@
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { ExportDialog } from '..'
@@ -21,7 +22,16 @@ async function createInput(): Promise<BuildExportSnapshotInput> {
   })
   if (!compiled.success)
     throw new Error(compiled.diagnostics[0]?.message ?? 'Compilation failed.')
-  return { compilation: compiled.compilation, resolver: adapter.sourceResolver }
+  return {
+    bindingResolver: adapter.sourceBindingResolver,
+    compilation: compiled.compilation,
+    componentResolver: adapter.sourceComponentResolver,
+    resourceReader: {
+      async readEmbedded() {
+        return { success: true, data: new Uint8Array(), diagnostics: [] }
+      },
+    },
+  }
 }
 
 describe('export dialog', () => {
@@ -36,12 +46,11 @@ describe('export dialog', () => {
       props: {
         capture: () => input,
         currentCompilation: input.compilation,
-        currentPageId: input.compilation.snapshot.document.homePageId,
         mode: 'source',
         theme: 'light',
       },
       global: {
-        stubs: { WorkspaceCodeEditor: true },
+        stubs: { SourceTextViewer: true },
       },
     })
     const root = new DOMWrapper(target)
@@ -49,28 +58,158 @@ describe('export dialog', () => {
     await flushPromises()
 
     expect(root.get('[role="tree"]').text()).toContain('package.json')
-    expect(root.get('[role="tree"]').text()).toContain('Page.vue')
+    expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
+    expect(root.get('.export-dialog-heading h2').text()).toBe('Raw Vue source')
+    expect(root.findAll('.export-style-target .el-segmented__item')).toHaveLength(2)
+    expect(root.get('.export-style-target').text()).toContain('CSS')
+    expect(root.get('.export-style-target').text()).toContain('Tailwind v4')
     expect(root.text()).toContain('Snapshot model revision 7')
     expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(root.get('[role="tree"]').text()).toContain('project.config.ts')
-    expect(root.get('[role="tree"]').text()).toContain('form.config.ts')
+    expect(root.get('.export-dialog-heading h2').text()).toBe('ConfigForm binding source')
+    expect(root.get('[role="tree"]').text()).toContain('config.ts')
+    expect(root.get('[role="tree"]').text()).toContain('package.json')
+    expect(root.find('.config-json-view').exists()).toBe(false)
+    expect(root.find('.config-json-scope').exists()).toBe(false)
+    expect(root.find('.config-view-tabs').exists()).toBe(false)
 
-    await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
-    await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain('"version": 4')
-    await root.findAll('.el-segmented__item').find(item => item.text().includes('Current page'))!.trigger('click')
-    await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain('"graph"')
-    expect(root.get('.config-json-view').text()).not.toContain('"version": 4')
+    wrapper.unmount()
+    target.remove()
+  })
 
-    await wrapper.setProps({ currentPageId: 'missing-page' })
+  it('regenerates both outputs with a session-only Tailwind v4 target', async () => {
+    const input = await createInput()
+    let captureCalls = 0
+    const target = document.createElement('main')
+    target.id = 'workbench-overlays'
+    document.body.append(target)
+    const wrapper = mount(ExportDialog, {
+      props: {
+        capture: () => {
+          captureCalls += 1
+          return input
+        },
+        currentCompilation: input.compilation,
+        mode: 'source',
+        theme: 'light',
+      },
+      global: { stubs: { SourceTextViewer: true } },
+    })
+    const root = new DOMWrapper(target)
     await flushPromises()
-    expect(root.get('[role="status"]').text()).toBe('The current page is unavailable in this export snapshot.')
-    expect(root.findAll('button').find(button => button.text().trim() === 'Copy')!.attributes('disabled')).toBeDefined()
-    expect(root.findAll('button').find(button => button.text().trim() === 'Download')!.attributes('disabled')).toBeDefined()
+    expect(captureCalls).toBe(1)
+
+    const targetOptions = root.findAll('.export-style-target .el-segmented__item')
+    await targetOptions[1]!.trigger('click')
+    await flushPromises()
+    expect(captureCalls).toBe(1)
+
+    const viewer = wrapper.findComponent(ConfigFormSourceViewer)
+    const rawFiles = viewer.props('files') as { files: readonly { kind: string, path: string, content?: string }[] }
+    const rawManifest = rawFiles.files.find(file => file.path === 'package.json')
+    expect(rawManifest?.content).toContain('"@tailwindcss/vite": "^4.1.13"')
+    expect('styleTarget' in input.compilation.snapshot.document).toBe(false)
+
+    await wrapper.setProps({ mode: 'config' })
+    await flushPromises()
+    const bindingFiles = viewer.props('files') as { files: readonly { kind: string, path: string, content?: string }[] }
+    const bindingManifest = bindingFiles.files.find(file => file.path === 'package.json')
+    expect(bindingManifest?.content).toContain('"tailwindcss": "^4.1.13"')
+
+    wrapper.unmount()
+    target.remove()
+  })
+
+  it('shows diagnostics only for the failed output mode', async () => {
+    const input = await createInput()
+    const resolveConfigFormBinding = input.bindingResolver.resolveConfigFormBinding
+    let bindingAvailable = false
+    const capture = {
+      ...input,
+      bindingResolver: {
+        resolveConfigFormBinding: () => bindingAvailable
+          ? resolveConfigFormBinding()
+          : { success: false as const, reason: 'binding unavailable' },
+      },
+    }
+    const target = document.createElement('main')
+    target.id = 'workbench-overlays'
+    document.body.append(target)
+    const wrapper = mount(ExportDialog, {
+      props: {
+        capture: () => capture,
+        currentCompilation: input.compilation,
+        mode: 'source',
+        theme: 'light',
+      },
+      global: { stubs: { SourceTextViewer: true } },
+    })
+    const root = new DOMWrapper(target)
+
+    await flushPromises()
+    expect(root.find('.export-diagnostic').exists()).toBe(false)
+    expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
+
+    await wrapper.setProps({ mode: 'config' })
+    await flushPromises()
+    expect(root.get('.export-diagnostic').text()).toContain('binding unavailable')
+    expect(root.find('[role="tree"]').exists()).toBe(false)
+    expect(root.findAll('button.dialog-action').every(button => button.attributes('disabled') !== undefined)).toBe(true)
+
+    bindingAvailable = true
+    await root.get('button.export-diagnostic-refresh').trigger('click')
+    await flushPromises()
+    expect(root.find('.export-diagnostic').exists()).toBe(false)
+    expect(root.get('[role="tree"]').text()).toContain('config.ts')
+    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
+
+    wrapper.unmount()
+    target.remove()
+  })
+
+  it('keeps ConfigForm binding commands available when Raw Vue fails', async () => {
+    const input = await createInput()
+    const resolveComponent = input.componentResolver.resolveComponent
+    let rejectNextResolution = true
+    const capture = {
+      ...input,
+      componentResolver: {
+        ...input.componentResolver,
+        resolveComponent(request: Parameters<typeof resolveComponent>[0]) {
+          if (rejectNextResolution) {
+            rejectNextResolution = false
+            return { success: false as const, reason: 'raw component unavailable' }
+          }
+          return resolveComponent(request)
+        },
+      },
+    }
+    const target = document.createElement('main')
+    target.id = 'workbench-overlays'
+    document.body.append(target)
+    const wrapper = mount(ExportDialog, {
+      props: {
+        capture: () => capture,
+        currentCompilation: input.compilation,
+        mode: 'source',
+        theme: 'light',
+      },
+      global: { stubs: { SourceTextViewer: true } },
+    })
+    const root = new DOMWrapper(target)
+
+    await flushPromises()
+    expect(root.get('.export-diagnostic').text()).toContain('raw component unavailable')
+    expect(root.find('[role="tree"]').exists()).toBe(false)
+    expect(root.findAll('button.dialog-action').every(button => button.attributes('disabled') !== undefined)).toBe(true)
+
+    await wrapper.setProps({ mode: 'config' })
+    await flushPromises()
+    expect(root.find('.export-diagnostic').exists()).toBe(false)
+    expect(root.get('[role="tree"]').text()).toContain('config.ts')
+    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
     wrapper.unmount()
     target.remove()

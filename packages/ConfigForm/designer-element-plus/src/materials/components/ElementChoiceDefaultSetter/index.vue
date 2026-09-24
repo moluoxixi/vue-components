@@ -1,27 +1,22 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
-import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps, ElementPlusDesignerOption } from '../../../types'
+import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps } from '../../../types'
 import { computed } from 'vue'
-import {
-  normalizeElementPlusOptions,
-  readElementPlusOptionSource,
-  useElementPlusResolvedOptions,
-} from '../../../options'
-import ElementOptionState from '../ElementOptionState/index.vue'
+import { normalizeElementPlusOptions } from '../../../options'
 import ElementDefaultValueSetter from '../ElementDefaultValueSetter/index.vue'
 
 const props = defineProps<ElementChoiceDefaultSetterProps>()
 
 const emit = defineEmits<ElementChoiceDefaultSetterEmits>()
 
-const staticOptions = computed(() => normalizeElementPlusOptions(props.node?.props?.options as unknown[] | undefined))
-const source = computed(() => readElementPlusOptionSource(props.node?.props?.optionSource))
-const state = useElementPlusResolvedOptions(source, staticOptions)
-const setterOptions = computed(() => state.value.options.flatMap((option) => {
-  if (props.kind === 'multiselect' && typeof option.value === 'boolean')
-    return []
-  return [{ label: option.label, value: option.value }]
-}))
+const staticOptions = computed(() => normalizeElementPlusOptions(
+  props.node?.props?.options as unknown[] | undefined,
+  props.optionValueTypes,
+))
+const setterOptions = computed(() => staticOptions.value.map(option => ({
+  label: option.label,
+  value: option.value,
+})))
 
 function updateValue(value: unknown): void {
   emit('update:modelValue', value as DesignerJsonValue | undefined)
@@ -34,9 +29,8 @@ function updateValue(value: unknown): void {
       :model-value="modelValue as DesignerJsonValue"
       :kind="kind"
       :options="setterOptions"
-      :disabled="disabled || state.status === 'loading'"
+      :disabled="disabled"
       @update:model-value="updateValue"
     />
-    <ElementOptionState :state="state" />
   </div>
 </template>

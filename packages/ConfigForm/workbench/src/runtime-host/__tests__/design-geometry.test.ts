@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { ConfigFormRendererNode, ConfigFormRuntimeNodeMetadata } from '@moluoxixi/config-form'
-import type { RuntimeHostToParentPayload } from '../types'
+import type { RuntimeHostPayloadV7, RuntimeHostToParentMessageV7 } from '../types'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, ref } from 'vue'
@@ -28,14 +28,16 @@ describe('runtime host design geometry', () => {
     vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(640)
     vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(480)
     vi.spyOn(document.body, 'scrollHeight', 'get').mockReturnValue(480)
-    const messages: RuntimeHostToParentPayload[] = []
+    const messages: Array<RuntimeHostPayloadV7<RuntimeHostToParentMessageV7>> = []
+    const runtimeMode = ref<'design' | 'experience'>('design')
     let geometry!: ReturnType<typeof useRuntimeHostDesignGeometry>
     const wrapper = mount(defineComponent({
       setup() {
         geometry = useRuntimeHostDesignGeometry({
-          design: ref({ breakpoint: 'desktop', variant: 'canvas' }),
+          design: ref({ variant: 'canvas' as const }),
           postMessage: message => messages.push(message),
-          runtimeMode: ref('design'),
+          runtimeMode,
+          surfaceId: ref('home'),
         })
         return geometry
       },
@@ -67,22 +69,31 @@ describe('runtime host design geometry', () => {
 
     await geometry.sync()
 
-    const geometryMessage = messages.find((message): message is Extract<RuntimeHostToParentPayload, { type: 'geometry' }> => message.type === 'geometry')
+    const geometryMessage = messages.find((message): message is Extract<RuntimeHostPayloadV7<RuntimeHostToParentMessageV7>, { type: 'design.geometry' }> => message.type === 'design.geometry')
+    expect(geometryMessage?.surfaceId).toBe('home')
     expect(geometryMessage?.payload).toMatchObject({
       nodes: [{ depth: 2, nodeId: 'submit', order: 0, path: 'root.0' }],
       surfaceRect: { left: 10, top: 20, width: 300, height: 200 },
       viewport: { height: 480, width: 640 },
     })
-    geometry.postDesignPointer('designPointerMove', pointer(50, 60))
-    const pointerMessage = messages.find(message => message.type === 'designPointerMove')
-    if (!pointerMessage || pointerMessage.type !== 'designPointerMove')
+    geometry.postDesignPointer('design.pointerMove', pointer(50, 60))
+    const pointerMessage = messages.find(message => message.type === 'design.pointerMove')
+    if (!pointerMessage || pointerMessage.type !== 'design.pointerMove')
       throw new Error('Expected a design pointer message.')
+    expect(pointerMessage.surfaceId).toBe('home')
     expect(pointerMessage.payload).toMatchObject({ clientX: 50, clientY: 60, nodeId: 'submit', pointerId: 7 })
+
+    const designMessageCount = messages.length
+    runtimeMode.value = 'experience'
+    geometry.postDesignPointer('design.pointerMove', pointer(60, 70))
+    await geometry.sync()
+    expect(messages).toHaveLength(designMessageCount)
+    runtimeMode.value = 'design'
 
     unregister()
     await geometry.sync()
     const latestGeometry = messages
-      .filter((message): message is Extract<RuntimeHostToParentPayload, { type: 'geometry' }> => message.type === 'geometry')
+      .filter((message): message is Extract<RuntimeHostPayloadV7<RuntimeHostToParentMessageV7>, { type: 'design.geometry' }> => message.type === 'design.geometry')
       .at(-1)
     expect(latestGeometry?.payload.nodes).toEqual([])
     expect(unobserve).toHaveBeenCalledWith(node)

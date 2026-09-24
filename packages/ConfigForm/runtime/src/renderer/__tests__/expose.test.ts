@@ -19,12 +19,18 @@ describe('createConfigFormRendererExpose', () => {
       },
     })
     const scrollToField = vi.fn()
+    const data = {
+      getVariables: vi.fn(() => ({ count: 1 })),
+      getDataSourceState: vi.fn(() => ({ sourceId: 'source', status: 'idle' as const })),
+      getOptionState: vi.fn(() => undefined),
+      loadDataSource: vi.fn(async () => ({ sourceId: 'source', status: 'empty' as const, data: [] })),
+    }
     const rendererRef = shallowRef<ConfigFormRendererExpose<TestValues> | null>(null)
     const expose = createConfigFormRendererExpose(rendererRef)
 
     expect(() => expose.getValues()).toThrow('ConfigFormRenderer is not mounted.')
 
-    rendererRef.value = { ...controller, scrollToField }
+    rendererRef.value = { ...controller, ...data, scrollToField }
     expose.setValue('name', 'Grace')
     expose.setValues({ age: 20 })
     expose.setTouched('name')
@@ -35,6 +41,11 @@ describe('createConfigFormRendererExpose', () => {
     expect(expose.getFieldMeta('name')).toEqual({ dirty: true, touched: true })
     expect(expose.getMeta()).toMatchObject({ dirty: true, touched: true })
     expect(scrollToField).toHaveBeenCalledWith('name')
+    expect(expose.getVariables()).toEqual({ count: 1 })
+    expect(expose.getDataSourceState('source')).toMatchObject({ status: 'idle' })
+    expect(expose.getOptionState({ nodeId: 'name', scope: [] })).toBeUndefined()
+    await expect(expose.loadDataSource('source', { force: true })).resolves.toMatchObject({ status: 'empty' })
+    expect(data.loadDataSource).toHaveBeenCalledWith('source', { force: true })
 
     let replacementModel: TestValues = { age: 30, name: 'Lin' }
     const replacement = createConfigFormController<TestValues>({
@@ -50,7 +61,8 @@ describe('createConfigFormRendererExpose', () => {
     const replacementSetErrors = vi.spyOn(replacement, 'setErrors')
     const replacementSubmit = vi.spyOn(replacement, 'submit')
     const replacementValidateField = vi.spyOn(replacement, 'validateField')
-    rendererRef.value = { ...replacement, scrollToField }
+    rendererRef.value = { ...replacement, ...data, getVariables: () => ({ count: 2 }), scrollToField }
+    expect(expose.getVariables()).toEqual({ count: 2 })
 
     expose.setValues({ age: 31 }, false)
     expect(expose.getValues()).toEqual({ age: 31, name: 'Lin' })

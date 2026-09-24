@@ -4,6 +4,7 @@ import type {
   ControllerResetServiceOptions,
 } from '../types/controller-internal'
 import {
+  cloneControllerValue,
   normalizeControllerFieldNames,
   setConfigFormValue,
 } from './controller-values'
@@ -11,16 +12,18 @@ import {
 export function createControllerResetService<TValues extends ConfigFormValues>(
   options: ControllerResetServiceOptions<TValues>,
 ): ControllerReset {
-  return (fields): void => {
+  return (fields): Promise<boolean> => {
+    options.beginReset()
     const fieldNames = normalizeControllerFieldNames(fields)
     if (fieldNames === undefined) {
       options.clearTouched()
-      options.commitValues(options.createResetValues())
-      return
+      const values = options.createResetValues()
+      options.commitValues(values, undefined, false)
+      return options.runLifecycle('form.reset', { values })
     }
 
     options.clearTouched(fieldNames)
-    const values = { ...options.readValues() }
+    const values = cloneControllerValue(options.readValues())
     const resetValues = options.createResetValues()
     fieldNames.forEach((field) => {
       if (Object.hasOwn(resetValues, field))
@@ -28,6 +31,7 @@ export function createControllerResetService<TValues extends ConfigFormValues>(
       else
         delete values[field]
     })
-    options.commitValues(values, fieldNames)
+    options.commitValues(values, fieldNames, false)
+    return options.runLifecycle('form.reset', { fields: fieldNames, values })
   }
 }

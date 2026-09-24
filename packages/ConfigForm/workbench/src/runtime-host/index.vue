@@ -1,32 +1,50 @@
 <script setup lang="ts">
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { PrototypeSurfaceHost } from '@moluoxixi/config-form-prototype-runtime/vue'
+import { computed, markRaw } from 'vue'
+import { ExperienceSurfaceRenderer } from './components'
 import { useRuntimeHostDesignGeometry, useRuntimeHostProtocol } from './composables'
+import { projectThemeStyle } from './services/theme'
 
 const protocol = useRuntimeHostProtocol()
 const geometry = useRuntimeHostDesignGeometry({
   design: protocol.design,
   postMessage: protocol.postMessage,
   runtimeMode: protocol.runtimeMode,
+  surfaceId: protocol.surfaceId,
 })
 protocol.setGeometryPort({ reset: geometry.reset, sync: geometry.sync })
 
 const {
   active,
   design,
+  experience,
+  experienceArtifacts,
+  experienceContext,
+  experienceGeneration,
   fieldChange,
   modelValue,
   namespace,
-  postRuntimeState,
-  reactionProjection,
+  postExperienceInstanceState,
+  prototypeHost,
   renderer,
   runtimeError,
-  runtimeEvent,
   runtimeMode,
   runtimeSessionKey,
-  submitValues,
   updateModel,
 } = protocol
 const model = { read: () => modelValue.value, write: updateModel }
+const prototypeArtifacts = computed(() => Object.fromEntries(
+  Object.keys(experienceArtifacts.value).map(surfaceId => [surfaceId, {
+    surfaceId,
+    component: markRaw(ExperienceSurfaceRenderer),
+  }]),
+))
+const themeStyle = computed(() => projectThemeStyle(
+  runtimeMode.value === 'experience'
+    ? experience.value?.compilation.ir.theme
+    : design.value?.compilation.theme,
+))
 const {
   designEditor,
   handleDesignContextMenu,
@@ -36,42 +54,70 @@ const {
   stageStyle,
 } = geometry
 </script>
+
 <template>
-  <main
+  <div
     class="runtime-host-root"
     :data-mode="runtimeMode"
     :data-runtime-session="runtimeSessionKey"
     :data-variant="design?.variant"
+    :style="themeStyle"
     @pointerdown.capture="handleDesignPointerDown"
     @contextmenu.capture="handleDesignContextMenu"
-    @pointermove.capture="postDesignPointer('designPointerMove', $event)"
-    @pointerup.capture="postDesignPointer('designPointerUp', $event)"
-    @pointercancel.capture="postDesignPointer('designPointerCancel', $event)"
+    @pointermove.capture="postDesignPointer('design.pointerMove', $event)"
+    @pointerup.capture="postDesignPointer('design.pointerUp', $event)"
+    @pointercancel.capture="postDesignPointer('design.pointerCancel', $event)"
   >
     <div v-if="runtimeError" class="runtime-host-error" role="alert">
       <strong>Preview Runtime error</strong>
       <p>{{ runtimeError }}</p>
     </div>
-    <div v-if="active" ref="stage" class="runtime-host-stage" :style="stageStyle">
+    <div
+      v-if="runtimeMode === 'design' && active"
+      ref="stage"
+      class="runtime-host-stage"
+      :style="stageStyle"
+    >
       <ConfigFormRenderer
         :key="runtimeSessionKey"
         ref="renderer"
         :model="model"
-        :class="runtimeMode === 'design' ? 'page-design-form' : 'page-preview-form'"
-        :mode="runtimeMode"
-        :breakpoint="runtimeMode === 'design' ? design?.breakpoint : undefined"
-        :editor="runtimeMode === 'design' ? designEditor : undefined"
-        :aria-hidden="runtimeMode === 'design' ? 'true' : undefined"
-        :inert="runtimeMode === 'design' ? true : undefined"
+        class="surface-design-form"
+        mode="design"
+        :breakpoint="design?.breakpoint"
+        :editor="designEditor"
+        aria-hidden="true"
+        :inert="true"
         :namespace="namespace"
-        :reaction-projection="reactionProjection"
-        v-bind="active.artifact.plan.renderer"
-        @submit="submitValues"
+        v-bind="active.artifact.renderer"
         @field-change="fieldChange"
-        @errors-change="postRuntimeState"
-        @meta-change="postRuntimeState"
-        @runtime-event="runtimeEvent"
+        @errors-change="protocol.postRuntimeState()"
+        @meta-change="protocol.postRuntimeState()"
       />
     </div>
-  </main>
+    <div
+      v-else-if="runtimeMode === 'experience' && experience && experienceContext"
+      class="runtime-host-stage"
+    >
+      <PrototypeSurfaceHost
+        ref="prototypeHost"
+        :artifacts-by-surface-id="prototypeArtifacts"
+        :context="experienceContext"
+        :session="experience.session"
+        @transition="protocol.handleExperienceTransition"
+      >
+        <template #surface="{ bindings }">
+          <ExperienceSurfaceRenderer
+            v-if="experienceArtifacts[bindings.instance.surfaceId]"
+            :key="`${experienceGeneration}:${bindings.instance.instanceId}`"
+            :artifact="experienceArtifacts[bindings.instance.surfaceId]!"
+            :bindings="bindings"
+            :namespace="namespace"
+            @error="protocol.reportExperienceError"
+            @state="postExperienceInstanceState"
+          />
+        </template>
+      </PrototypeSurfaceHost>
+    </div>
+  </div>
 </template>

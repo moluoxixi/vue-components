@@ -1,13 +1,13 @@
-import type { ModelJsonValue, PageGraph, PageNode, SlotItem } from '@moluoxixi/config-form-model'
+import type { ModelJsonValue, SurfaceGraph, SurfaceNode, SlotItem } from '@moluoxixi/config-form-model'
 import type { DesignerJsonObject, DesignerJsonValue, DesignNodeLocation, DesignNodeVisit } from '../types'
 import { cloneConfigFormJsonValue } from '@moluoxixi/config-form-core'
 
 function visitSequence(
-  graph: PageGraph,
+  graph: SurfaceGraph,
   sequence: SlotItem[],
   visitor: (visit: DesignNodeVisit) => void,
   path: Array<string | number>,
-  parent?: Extract<PageNode, { kind: 'layout' }>,
+  parent?: Extract<SurfaceNode, { kind: 'layout' }>,
   slot?: string,
 ): void {
   sequence.forEach((item, index) => {
@@ -33,16 +33,16 @@ function visitSequence(
   })
 }
 
-export function walkDesignGraph(graph: PageGraph, visitor: (visit: DesignNodeVisit) => void): void {
+export function walkDesignGraph(graph: SurfaceGraph, visitor: (visit: DesignNodeVisit) => void): void {
   visitSequence(graph, graph.root, visitor, ['root'])
 }
 
-export function findDesignNode(graph: PageGraph, nodeId: string): DesignNodeLocation | undefined {
+export function findDesignNode(graph: SurfaceGraph, nodeId: string): DesignNodeLocation | undefined {
   let found: DesignNodeLocation | undefined
   const search = (
     sequence: SlotItem[],
     path: Array<string | number>,
-    parent?: Extract<PageNode, { kind: 'layout' }>,
+    parent?: Extract<SurfaceNode, { kind: 'layout' }>,
     slot?: string,
   ): void => {
     if (found)
@@ -79,7 +79,7 @@ export function findDesignNode(graph: PageGraph, nodeId: string): DesignNodeLoca
   return found
 }
 
-export function collectDesignSubtreeIds(graph: PageGraph, nodeId: string): Set<string> {
+export function collectDesignSubtreeIds(graph: SurfaceGraph, nodeId: string): Set<string> {
   const ids = new Set<string>()
   const visit = (currentId: string): void => {
     if (ids.has(currentId))

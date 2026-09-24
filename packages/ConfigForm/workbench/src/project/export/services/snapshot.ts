@@ -3,62 +3,82 @@ import type {
   ProjectCompilation,
   ProjectCompilationOrigin,
 } from '@moluoxixi/config-form-compiler'
-import type { ProjectPath, WorkspaceFile } from '../../types'
+import type { ContractResult, ModelDiagnostic } from '@moluoxixi/config-form-model'
+import type { SourceFile, SourceFileSetV1 } from '@moluoxixi/config-form-source/generator'
 import type {
   BuildExportSnapshotInput,
   CreateExportSessionOptions,
-  ExportFileSet,
+  ExportArtifact,
   ExportSession,
   ExportSessionRefreshResult,
   ExportSessionState,
   ExportSnapshot,
 } from '../types'
-import { assertUniqueProjectPaths, normalizeProjectPath } from '../../utils'
-import { createCanonicalProjectConfigExport } from './config'
-import { createCanonicalProjectSourceExport } from './source'
+import {
+  generateConfigFormBindings,
+  generateVueSource,
+} from '@moluoxixi/config-form-source/generator'
 
-export const CONFIG_FORM_EXPORT_GENERATOR_VERSION = '1.0.0' as const
-
-function cloneSnapshotFile(file: WorkspaceFile): Readonly<WorkspaceFile> {
-  if (file.kind === 'text')
-    return Object.freeze({ ...file })
-
-  const content = Uint8Array.from(file.content)
-  return Object.freeze({
-    ...file,
-    get content() {
-      return Uint8Array.from(content)
-    },
-  })
+function freezeFile(file: SourceFile): SourceFile {
+  return Object.freeze({ ...file })
 }
 
-export function createExportFileSet(
-  entryInput: ProjectPath,
-  sourceFiles: Readonly<Record<ProjectPath, WorkspaceFile>>,
-): ExportFileSet {
-  const sourcePaths = Object.keys(sourceFiles)
-  const paths = assertUniqueProjectPaths(sourcePaths)
-  const files = Object.freeze(Object.fromEntries(paths.map((path, index) => [
-    path,
-    cloneSnapshotFile(sourceFiles[sourcePaths[index]! as ProjectPath]!),
-  ])) as Record<ProjectPath, Readonly<WorkspaceFile>>)
-  const entry = normalizeProjectPath(entryInput)
-  if (!Object.hasOwn(files, entry))
-    throw new Error(`[config-form-workbench] export entry "${entry}" does not exist`)
-  return Object.freeze({ entry, files })
+function freezeDiagnostics(diagnostics: readonly ModelDiagnostic[]): readonly ModelDiagnostic[] {
+  return Object.freeze(diagnostics.map(diagnostic => Object.freeze({
+    ...diagnostic,
+    ...(diagnostic.path ? { path: [...diagnostic.path] } : {}),
+  })))
 }
 
-export function buildExportSnapshot(input: BuildExportSnapshotInput): ExportSnapshot {
-  const generatorVersion = input.generatorVersion ?? CONFIG_FORM_EXPORT_GENERATOR_VERSION
-  if (!generatorVersion.trim())
-    throw new Error('[config-form-workbench] export generator version is required')
-  const source = createCanonicalProjectSourceExport(input.compilation, input.resolver)
-  const config = createCanonicalProjectConfigExport(input.compilation, input.resolver)
+async function generateArtifact<TFileSet extends SourceFileSetV1>(
+  label: string,
+  generate: () => Promise<ContractResult<TFileSet>>,
+): Promise<ExportArtifact<TFileSet>> {
+  try {
+    const result = await generate()
+    return result.success
+      ? Object.freeze({ status: 'ready' as const, fileSet: freezeFileSet(result.data) })
+      : Object.freeze({ status: 'failed' as const, diagnostics: freezeDiagnostics(result.diagnostics) })
+  }
+  catch (cause) {
+    return Object.freeze({
+      status: 'failed' as const,
+      diagnostics: freezeDiagnostics([{
+        code: 'source_generation_failed',
+        message: `${label} generation failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      }]),
+    })
+  }
+}
+
+function freezeFileSet<TFileSet extends SourceFileSetV1>(fileSet: TFileSet): TFileSet {
+  const files = Object.freeze(fileSet.files.map(freezeFile))
+  const snapshot: TFileSet = { ...fileSet, files }
+  Object.freeze(snapshot)
+  return snapshot
+}
+
+export async function buildExportSnapshot(input: BuildExportSnapshotInput): Promise<ExportSnapshot> {
+  const styleTarget = input.styleTarget ?? 'css'
+  const rawInput = {
+    compilation: input.compilation,
+    componentResolver: input.componentResolver,
+    resourceReader: input.resourceReader,
+    styleTarget,
+  }
+  const [rawSource, configBindings] = await Promise.all([
+    generateArtifact('Raw Vue source', () => generateVueSource(rawInput)),
+    generateArtifact('ConfigForm binding source', () => generateConfigFormBindings({
+      ...rawInput,
+      bindingResolver: input.bindingResolver,
+    })),
+  ])
+
   return Object.freeze({
     compilation: input.compilation,
-    config: createExportFileSet(config.entry, config.files),
-    generatorVersion,
-    source: createExportFileSet(source.entry, source.files),
+    configBindings,
+    rawSource,
+    styleTarget,
   })
 }
 
@@ -97,33 +117,27 @@ export function isSameCompilationOrigin(
 export function isExportSnapshotStale(
   snapshot: ExportSnapshot | undefined,
   current: ProjectCompilation | undefined,
-  currentGeneratorVersion: string = CONFIG_FORM_EXPORT_GENERATOR_VERSION,
 ): boolean {
   return !!snapshot && (
     !current
-    || snapshot.generatorVersion !== currentGeneratorVersion
     || !isSameCompilation(snapshot.compilation.key, current.key)
     || !isSameCompilationOrigin(snapshot.compilation.origin, current.origin)
   )
 }
 
 export function resolveExportSnapshotPath(
-  fileSet: ExportFileSet,
-  preferred?: ProjectPath,
-): ProjectPath | undefined {
-  if (preferred && Object.hasOwn(fileSet.files, preferred))
+  fileSet: SourceFileSetV1,
+  preferred?: string,
+): string | undefined {
+  if (preferred && fileSet.files.some(file => file.path === preferred))
     return preferred
-  if (Object.hasOwn(fileSet.files, fileSet.entry))
+  if (fileSet.files.some(file => file.path === fileSet.entry))
     return fileSet.entry
-
-  const paths = Object.keys(fileSet.files).sort((left, right) => left.localeCompare(right, 'en')) as ProjectPath[]
-  return paths.find(path => fileSet.files[path]?.kind === 'text') ?? paths[0]
+  return fileSet.files.find(file => file.kind === 'text')?.path ?? fileSet.files[0]?.path
 }
 
 export function createExportSession(options: CreateExportSessionOptions): ExportSession {
   const build = options.build ?? buildExportSnapshot
-  const currentGeneratorVersion = options.currentGeneratorVersion
-    ?? (() => CONFIG_FORM_EXPORT_GENERATOR_VERSION)
   const listeners = new Set<(state: ExportSessionState) => void>()
   let state: ExportSessionState = Object.freeze({ stale: false })
 
@@ -137,7 +151,6 @@ export function createExportSession(options: CreateExportSessionOptions): Export
     const stale = isExportSnapshotStale(
       state.snapshot,
       options.currentCompilation(),
-      currentGeneratorVersion(),
     )
     if (stale === state.stale)
       return state
@@ -151,13 +164,12 @@ export function createExportSession(options: CreateExportSessionOptions): Export
       return { success: false, error, state: publish({ ...state, error, stale: !!state.snapshot }) }
     }
     try {
-      const snapshot = build(input)
+      const snapshot = await build(input)
       const next = publish({
         snapshot,
         stale: isExportSnapshotStale(
           snapshot,
           options.currentCompilation(),
-          currentGeneratorVersion(),
         ),
       })
       return { success: true, snapshot, state: next }
@@ -170,7 +182,6 @@ export function createExportSession(options: CreateExportSessionOptions): Export
         stale: isExportSnapshotStale(
           state.snapshot,
           options.currentCompilation(),
-          currentGeneratorVersion(),
         ),
       })
       return { success: false, error, state: next }

@@ -1,0 +1,21 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"核对所有 Page 身份、Reader、缓存和协议触点完成原子切换"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"核对 foundation 未侵占资产、Dataset 编辑、Materials、Interaction UI 或 Source 抽离职责"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"检查 Surface、实例、会话、版本、诊断和测试矩阵符合目标合同"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"检查生产状态与 Prototype session 隔离且 Preview/Source 不复制 reducer"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查公共包、依赖方向、README 和 current-contract-only 同步"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Model 到持久化、Compiler、Host、Preview 的完整数据流和失败路径"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查会话 reducer、引用解析和版本常量没有重复实现"}
+{"file":".trellis/spec/config-form-model/frontend/index.md","reason":"检查 Model Reader、事务、Repository 和版本门禁"}
+{"file":".trellis/spec/config-form-compiler/frontend/index.md","reason":"检查 Surface IR、增量缓存与版本拒绝"}
+{"file":".trellis/spec/config-form-vue-backend/frontend/index.md","reason":"检查 Vue Surface artifact 与 Runtime 依赖方向"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"检查持久化、Host、Preview、generator 与跨 iframe 质量要求"}
+{"file":".trellis/spec/config-form-prototype-runtime/frontend/index.md","reason":"检查纯 session、Vue host、多入口和 Node import 边界"}
+{"file":".trellis/spec/config-form/frontend/index.md","reason":"检查生产 Runtime 只同步 Surface 命名且保留 code-authored 能力"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"检查 Registry v3 capability/fingerprint 只有一个事实源"}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"检查 Designer Registry projection 与领域边界"}
+{"file":".trellis/spec/config-form-designer-element-plus/frontend/index.md","reason":"检查 Element Plus 基础物料完整迁移到 Registry v3"}
+{"file":".trellis/spec/config-form-designer-antd-vue/frontend/index.md","reason":"检查 Ant Design Vue 基础物料完整迁移到 Registry v3"}
+{"file":".trellis/spec/indexed-db/frontend/index.md","reason":"检查 codec/draft bytes 原子 transaction 与失败回滚"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/model-persistence-surface-cut.md","reason":"核对 Model/Repository/codec 影响面无遗漏"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/compiler-runtime-surface-cut.md","reason":"核对编译、运行和 package/release 影响面"}
+{"file":".trellis/tasks/09-18-config-form-surface-foundation/research/workbench-protocol-surface-cut.md","reason":"核对 Workbench protocol、cache、import/export 原子切换"}

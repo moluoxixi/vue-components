@@ -1,0 +1,83 @@
+.management-shell {
+  display: flex;
+  box-sizing: border-box;
+  height: 100vh;
+  color: var(--wb-text);
+  background: var(--wb-bg);
+}
+
+.management-shell__nav {
+  display: flex;
+  width: 96px;
+  flex: none;
+  flex-direction: column;
+  padding: 12px 8px;
+  gap: 4px;
+  border-right: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+/* Element Plus owns the button base; these rules only supply the rail layout and
+   the Workbench palette colors, so the selectors outweigh `.el-button.is-text`. */
+.management-shell__nav .management-shell__tab.el-button {
+  width: 100%;
+  height: auto;
+  padding: 10px 6px;
+  color: var(--wb-muted);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* Element Plus wraps slot content in a single span, so the rail stacks that. */
+.management-shell__nav .management-shell__tab.el-button > span {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  gap: 4px;
+}
+
+.management-shell__nav .management-shell__tab.el-button:hover:not(.is-active) {
+  color: var(--wb-text);
+  background: var(--wb-hover);
+}
+
+.management-shell__nav .management-shell__tab.el-button.is-active {
+  color: var(--wb-accent);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+}
+
+.management-shell__nav .management-shell__tab.el-button:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 2px;
+}
+
+.management-shell__screen {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+@media (max-width: 700px) {
+  .management-shell {
+    flex-direction: column;
+  }
+
+  .management-shell__nav {
+    width: auto;
+    flex-direction: row;
+    padding: 8px;
+    gap: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--wb-separator);
+  }
+
+  .management-shell__nav .management-shell__tab.el-button {
+    min-height: 44px;
+    flex: 1;
+  }
+}

@@ -6,14 +6,11 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { PreviewDrawer } from '../../app'
-import { WorkbenchCommandHint } from '../../app/components'
 
 const RuntimeStub = defineComponent({
   name: 'PreviewRuntimeHostFrameStub',
-  setup(_, { expose }) {
-    expose({ submit: vi.fn() })
-    return () => h('div', { 'data-runtime-stub': '' })
-  },
+  emits: ['error', 'instanceState', 'mounted', 'ready', 'session'],
+  setup: () => () => h('div', { 'data-runtime-stub': '' }),
 })
 
 function props() {
@@ -22,17 +19,9 @@ function props() {
     compilation: {} as never,
     expanded: false,
     open: true,
-    projection: {
-      current: {
-        pageId: 'home',
-        projectId: 'project',
-        revisionKey: 'project:home:1',
-        runtimeSessionKey: 'session',
-      },
-      compileResult: { success: true, diagnostics: [] },
-    } as never,
-    reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
-    runtimeState: { values: {}, touched: [], validation: {} },
+    revision: 'revision-1',
+    session: {} as never,
+    sessionId: 'session-1',
     state: { label: 'Live', tone: 'live' as const },
     viewport: 'desktop' as const,
   }
@@ -56,28 +45,24 @@ function mountPreviewDrawer(componentProps: Record<string, unknown>): {
 }
 
 describe('preview drawer', () => {
-  it('renders the revision-bound submission result and exposes clear action', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer({
-      ...props(),
-      lastSubmission: {
-        status: 'invalid',
-        values: { name: '' },
-        touched: ['name'],
-        validation: { name: ['Required'] },
-        revisionKey: 'project:home:1',
-        submittedAt: 1,
-      },
-    })
+  it('renders the revision-bound Experience host and accepts ready only for its current identity', async () => {
+    const { root, target, wrapper } = mountPreviewDrawer(props())
 
     await flushPromises()
 
-    expect(root.get('[data-preview-results]').text()).toContain('Validation failed')
-    expect(root.get('[data-preview-submission-json]').text()).toContain('"name": ""')
-    expect(root.text()).toContain('Required')
-    expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Page preview')
-
-    await root.get('[data-preview-results] button[aria-label="Clear submission result"]').trigger('click')
-    expect(wrapper.emitted('clearSubmission')).toEqual([[]])
+    expect(root.find('[data-runtime-stub]').exists()).toBe(true)
+    expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Surface preview')
+    const runtime = wrapper.findComponent(RuntimeStub)
+    const identity = {
+      hostId: 'host-1',
+      projectId: 'project',
+      revision: 'revision-1',
+      sessionId: 'session-1',
+    }
+    runtime.vm.$emit('ready', { ...identity, revision: 'stale' })
+    expect(wrapper.emitted('ready')).toBeUndefined()
+    runtime.vm.$emit('ready', identity)
+    expect(wrapper.emitted('ready')).toEqual([[identity]])
 
     await wrapper.setProps({ expanded: true })
     await nextTick()
@@ -86,49 +71,32 @@ describe('preview drawer', () => {
     target.remove()
   })
 
-  it('presents preview as a centered modal dialog and collapses the empty result panel', async () => {
+  it('presents Preview as one centered modal without the removed submission panel', async () => {
     const { root, target, wrapper } = mountPreviewDrawer(props())
 
     await flushPromises()
 
-    // Preview is a dialog, not a side drawer: it is modal from the start.
     expect(root.find('.preview-dialog-shell').exists()).toBe(true)
     expect(root.find('.el-drawer').exists()).toBe(false)
     expect(root.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
-    // Without a submission the result panel only claims its own height.
-    expect(root.get('[role="complementary"]').classes()).toContain('is-result-empty')
-
-    await wrapper.setProps({
-      lastSubmission: {
-        status: 'success',
-        values: { name: 'a' },
-        touched: ['name'],
-        validation: {},
-        revisionKey: 'project:home:1',
-        submittedAt: 1,
-      },
-    })
-    await nextTick()
-    expect(root.get('[role="complementary"]').classes()).not.toContain('is-result-empty')
+    expect(root.find('[data-preview-results]').exists()).toBe(false)
+    expect(root.find('[data-runtime-stub]').exists()).toBe(true)
 
     wrapper.unmount()
     target.remove()
   })
 
-  it('keeps the empty state usable before the first submission', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer(props())
+  it('shows an unavailable state until all Experience inputs exist', async () => {
+    const { root, target, wrapper } = mountPreviewDrawer({ ...props(), session: undefined })
 
     await flushPromises()
 
-    expect(root.get('[data-preview-results]').text()).toContain('Submit the preview form')
+    expect(root.get('.preview-errors').text()).toContain('Preview unavailable')
+    expect(root.find('[data-runtime-stub]').exists()).toBe(false)
+
+    await wrapper.setProps({ session: {} as never })
+    await nextTick()
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
-    expect(wrapper.findAllComponents(WorkbenchCommandHint)).toHaveLength(6)
-    const submit = root.get('button[aria-label="Submit preview form"]')
-    expect(submit.attributes('aria-disabled')).toBe('true')
-    expect(wrapper.findAllComponents(WorkbenchCommandHint)
-      .find(hint => hint.props('label') === 'Submit preview form')
-      ?.props('disabledReason')).toBe('Preview is not ready to submit')
-    expect(submit.attributes('disabled')).toBeUndefined()
 
     await wrapper.setProps({ open: false })
     await nextTick()
@@ -153,5 +121,23 @@ describe('preview drawer', () => {
     wrapper.unmount()
     target.remove()
     trigger.remove()
+  })
+
+  it('collapses fullscreen through the dialog close guard without destroying its content', async () => {
+    const { root, target, wrapper } = mountPreviewDrawer({ ...props(), expanded: true })
+    await flushPromises()
+    const runtime = root.get('[data-runtime-stub]').element
+    const done = vi.fn()
+    const dialog = wrapper.findComponent({ name: 'ElDialog' })
+    dialog.props('beforeClose')(done)
+    expect(done).not.toHaveBeenCalled()
+    expect(wrapper.emitted('update:expanded')).toEqual([[false]])
+    expect(wrapper.emitted('close')).toBeUndefined()
+    await wrapper.setProps({ expanded: false })
+    expect(root.get('[data-runtime-stub]').element).toBe(runtime)
+    dialog.props('beforeClose')(done)
+    expect(done).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+    target.remove()
   })
 })

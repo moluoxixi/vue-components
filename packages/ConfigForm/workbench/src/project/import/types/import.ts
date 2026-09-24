@@ -1,9 +1,20 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ProjectDocument, ProjectPage, RegistryLock } from '@moluoxixi/config-form-model'
+import type { SurfaceCompilation } from '@moluoxixi/config-form-compiler'
+import type {
+  ProjectDocument,
+  ProjectEmbeddedResourceWrite,
+  ProjectSurface,
+  RegistryLock,
+} from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../../adapters'
 import type { IsolatedProjectPreview, ProjectIdentityFactory } from '../../types'
 
-export type ConfigImportTarget = 'page' | 'project'
+export type ConfigImportTarget = 'surface' | 'project'
+
+export interface ImportedIdentityMaps {
+  surfaces: ReadonlyMap<string, string>
+  datasets: ReadonlyMap<string, string>
+  resources: ReadonlyMap<string, string>
+}
 
 export interface PrepareConfigImportOptions {
   currentProject?: ProjectDocument
@@ -21,7 +32,7 @@ export type ConfigImportDiagnosticCode
     | 'IMPORT_FORMAT_UNSUPPORTED'
     | 'IMPORT_JSON_INVALID'
     | 'IMPORT_NODE_LIMIT_EXCEEDED'
-    | 'IMPORT_PAGE_LIMIT_EXCEEDED'
+    | 'IMPORT_SURFACE_LIMIT_EXCEEDED'
     | 'IMPORT_PROJECT_INVALID'
     | 'IMPORT_REGISTRY_INVALID'
     | 'IMPORT_SOURCE_TOO_LARGE'
@@ -31,7 +42,7 @@ export type ConfigImportDiagnosticCode
     | 'IMPORT_UNSAFE_KEY'
     | 'IMPORT_VALUE_UNSAFE'
     | 'IMPORT_VERSION_UNSUPPORTED'
-    | 'IMPORT_PAGE_INVALID'
+    | 'IMPORT_SURFACE_INVALID'
     | 'IMPORT_PREVIEW_COMPILE_FAILED'
 
 export interface ConfigImportDiagnostic {
@@ -42,11 +53,10 @@ export interface ConfigImportDiagnostic {
 
 export interface ConfigImportSummary {
   adapter: WorkbenchAdapterId
-  flowCount: number
   name: string
   nodeCount: number
-  pageCount: number
-  pageGraphVersion: number
+  surfaceCount: number
+  surfaceGraphVersion: number
   resourceCount: number
   version?: number
   target: ConfigImportTarget
@@ -55,8 +65,9 @@ export interface ConfigImportSummary {
 interface PreparedConfigImportBase {
   adapter: WorkbenchAdapterId
   diagnostics: ConfigImportDiagnostic[]
+  embeddedContents: ProjectEmbeddedResourceWrite[]
   preview: IsolatedProjectPreview
-  previewCompilation: PageCompilation
+  previewCompilation: SurfaceCompilation
   summary: ConfigImportSummary
   target: ConfigImportTarget
 }
@@ -66,26 +77,27 @@ export interface PreparedProjectImport extends PreparedConfigImportBase {
   target: 'project'
 }
 
-export interface PreparedPageImport extends PreparedConfigImportBase {
+export interface PreparedSurfaceImport extends PreparedConfigImportBase {
   originContentHash: string
   originProjectId: string
-  page: ProjectPage
-  target: 'page'
+  /** Candidate document containing the flat dependency closure to add. */
+  document: ProjectDocument
+  surface: ProjectSurface
+  registryLock: RegistryLock
+  target: 'surface'
 }
 
-export type PreparedConfigImport = PreparedPageImport | PreparedProjectImport
+export type PreparedConfigImport = PreparedSurfaceImport | PreparedProjectImport
 
 export type PrepareConfigImportResult
   = | { success: true, prepared: PreparedConfigImport }
     | { success: false, diagnostics: ConfigImportDiagnostic[] }
 
-export interface PageTransferDocument {
-  kind: 'config-form-page'
-  version: typeof import('../constants').PAGE_TRANSFER_VERSION
-  registryLock: RegistryLock
-  page: ProjectPage
-}
-
 export type CanonicalImportPayload
-  = | { target: 'page', page: ProjectPage, registryLock: RegistryLock }
-    | { target: 'project', document: ProjectDocument }
+  = | { target: 'surface', envelope: unknown }
+    | { target: 'project', envelope: unknown }
+
+export interface PreparedImportAdapterContext {
+  adapter: WorkbenchAdapter
+  identityFactory: ProjectIdentityFactory
+}

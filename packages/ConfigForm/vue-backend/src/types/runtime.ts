@@ -1,22 +1,56 @@
 import type {
   ConfigFormComponentRegistry,
   ConfigFormRendererNode,
+  ConfigFormRendererSemanticEvents,
   ConfigFormResponsiveLayout,
+  ConfigFormSurfaceRuntimePlan,
 } from '@moluoxixi/config-form'
 import type {
-  CanonicalPageIdentity,
   CanonicalProjectIdentity,
-  PageCompilation,
+  CanonicalSurfaceIdentity,
   ProjectCompilation,
+  SurfaceCompilation,
 } from '@moluoxixi/config-form-compiler'
+import type {
+  ConfigFormScopedFieldDefinition,
+  ConfigFormValueScopeDefinition,
+} from '@moluoxixi/config-form-core'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 
 /** Public contracts for projecting Canonical IR into the Vue renderer. */
 
-export type CanonicalRuntimePage = PageCompilation['page']
-export type CanonicalRuntimeNode = CanonicalRuntimePage['nodesById'][string]
-export type CanonicalRuntimeFieldNode = Extract<CanonicalRuntimeNode, { readonly kind: 'field' }>
+type RuntimeMutable<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly [infer Head, ...infer Tail]
+    ? [RuntimeMutable<Head>, ...RuntimeMutable<Tail>]
+    : T extends readonly (infer Item)[]
+      ? RuntimeMutable<Item>[]
+      : T extends object
+        ? { -readonly [Key in keyof T]: RuntimeMutable<T[Key]> }
+        : T
+
+type CompilerCanonicalRuntimeSurfaceSource = SurfaceCompilation['surface']
+type CompilerCanonicalRuntimeSurface = RuntimeMutable<CompilerCanonicalRuntimeSurfaceSource>
+type CompilerCanonicalRuntimeNode = CompilerCanonicalRuntimeSurface['nodesById'][string]
+
+export type CanonicalRuntimeFieldNode
+  = Extract<CompilerCanonicalRuntimeNode, { kind: 'field' }>
+
+export type CanonicalRuntimeLayoutNode
+  = Extract<CompilerCanonicalRuntimeNode, { kind: 'layout' }>
+    & { valueScope?: Omit<ConfigFormValueScopeDefinition, 'nodeId' | 'parentId'> }
+
+export type CanonicalRuntimeElementNode = Extract<CompilerCanonicalRuntimeNode, { kind: 'element' }>
+
+export type CanonicalRuntimeNode
+  = CanonicalRuntimeFieldNode | CanonicalRuntimeLayoutNode | CanonicalRuntimeElementNode
+
+export type CanonicalRuntimeSurface = CompilerCanonicalRuntimeSurface & {
+  nodesById: Record<string, CanonicalRuntimeNode>
+  scopedFields: ConfigFormScopedFieldDefinition[]
+  valueScopes: ConfigFormValueScopeDefinition[]
+}
 
 export interface VueRuntimeReadonlyRenderContext {
   componentProps: Record<string, unknown>
@@ -29,12 +63,14 @@ export interface VueRuntimeComponentBinding {
   component: Component | string
   contractFingerprint: string
   contractVersion: string
-  kind: 'field' | 'layout'
+  kind: 'field' | 'layout' | 'element'
   blurTrigger?: string
   getValueFromEvent?: (...args: unknown[]) => unknown
   readonlyRender?: (context: VueRuntimeReadonlyRenderContext) => VNodeChild
   trigger?: string
   valueProp?: string
+  /** Closed semantic trigger to provider event mapping for prototype hosts. */
+  semanticEvents?: ConfigFormRendererSemanticEvents
 }
 
 export interface VueRuntimeBindingResolver {
@@ -46,6 +82,8 @@ export interface VueRuntimeBindingResolver {
 export interface VueRuntimeRendererConfig {
   components?: ConfigFormComponentRegistry
   fields: ConfigFormRendererNode[]
+  /** The sole compiled execution-data input consumed by ConfigFormRenderer. */
+  plan: ConfigFormSurfaceRuntimePlan
   readonly?: boolean
   inline?: boolean
   columns?: number
@@ -56,24 +94,23 @@ export interface VueRuntimeRendererConfig {
   responsive?: ConfigFormResponsiveLayout
 }
 
-export interface VueRuntimeRenderPlan {
-  renderer: VueRuntimeRendererConfig
-}
-
 /**
- * Immutable identity envelope for one page runtime derived from a complete
- * ProjectCompilation. Runtime consumers retain this envelope instead of
- * pairing a page plan with an independently captured project revision.
+ * Immutable identity envelope for one Surface runtime derived from a complete
+ * SurfaceCompilation or ProjectCompilation. Runtime consumers retain this
+ * envelope instead of pairing a renderer plan with an independently captured
+ * project revision.
  */
-export interface VueRuntimeArtifact {
-  readonly compilationKey: Readonly<CanonicalPageIdentity | CanonicalProjectIdentity>
-  readonly pageId: string
-  readonly plan: Readonly<VueRuntimeRenderPlan>
+export interface VueSurfaceRuntimeArtifact {
+  readonly compilationKey: Readonly<CanonicalSurfaceIdentity | CanonicalProjectIdentity>
+  readonly surfaceId: string
+  readonly kind: CanonicalRuntimeSurface['kind']
+  readonly presentation?: Extract<CanonicalRuntimeSurface, { kind: 'dialog' | 'drawer' }>['presentation']
+  readonly renderer: Readonly<VueRuntimeRendererConfig>
 }
 
-export type CompileCanonicalPageRuntimeInput
-  = | { compilation: PageCompilation, pageId?: never }
-    | { compilation: ProjectCompilation, pageId: string }
+export type CompileCanonicalSurfaceRuntimeInput
+  = | { compilation: SurfaceCompilation, surfaceId?: never }
+    | { compilation: ProjectCompilation, surfaceId: string }
 
 export type VueRuntimeDiagnosticSeverity = 'error' | 'warning'
 
@@ -87,7 +124,7 @@ export interface VueRuntimeDiagnostic {
 
 export interface VueRuntimeCompileSuccess {
   success: true
-  artifact: VueRuntimeArtifact
+  artifact: VueSurfaceRuntimeArtifact
   diagnostics: readonly VueRuntimeDiagnostic[]
 }
 

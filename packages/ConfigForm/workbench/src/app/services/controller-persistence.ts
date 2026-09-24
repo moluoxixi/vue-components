@@ -1,5 +1,10 @@
 import type { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import type { ProjectDocument, ProjectRepository, ProjectVersionSummary } from '@moluoxixi/config-form-model'
+import type {
+  ProjectDocument,
+  ProjectEmbeddedResourceWrite,
+  ProjectRepository,
+  ProjectVersionSummary,
+} from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type {
   ProjectEditorSession,
@@ -12,14 +17,37 @@ import {
   createMemoryProjectRecoveryDraftStore,
 } from '../../project'
 
+async function readEmbeddedSnapshot(
+  repository: ProjectRepository,
+  document: ProjectDocument,
+): Promise<ProjectEmbeddedResourceWrite[]> {
+  const resources = Object.values(document.resources)
+    .filter(resource => resource.kind === 'embedded')
+    .sort((left, right) => left.id.localeCompare(right.id))
+  return await Promise.all(resources.map(async (resource) => {
+    const bytes = await repository.readEmbedded({
+      projectId: document.id,
+      resourceId: resource.id,
+      contentHash: resource.contentHash,
+    })
+    if (!bytes)
+      throw new Error(`Embedded Resource bytes are unavailable: ${resource.id}`)
+    return {
+      resourceId: resource.id,
+      contentHash: resource.contentHash,
+      bytes: new Uint8Array(bytes),
+    }
+  }))
+}
+
 export function createWorkbenchPersistenceCommands(options: {
   busy: Ref<boolean>
   configError: Ref<string>
-  currentPageId: Ref<string>
+  currentSurfaceId: Ref<string>
   currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined>
   disposeProjectPersistence: () => Promise<void>
   getPersistenceSession: () => ProjectPersistenceSession | undefined
-  openProject: (id: string, pageId?: string) => Promise<void>
+  openProject: (id: string, surfaceId?: string) => Promise<void>
   projectSession: ShallowRef<ProjectEditorSession | undefined>
   recoveryDrafts: ShallowRef<WorkbenchRecoveryDraftSummary[]>
   refreshProjects: () => Promise<void>
@@ -31,7 +59,7 @@ export function createWorkbenchPersistenceCommands(options: {
   const {
     busy,
     configError,
-    currentPageId,
+    currentSurfaceId,
     currentProject,
     disposeProjectPersistence,
     getPersistenceSession,
@@ -157,7 +185,7 @@ export function createWorkbenchPersistenceCommands(options: {
         id: projectId,
         metadata: { source: 'restore', restoredFromRevision: revision },
       })
-      await openProject(projectId, currentPageId.value)
+      await openProject(projectId, currentSurfaceId.value)
       await refreshProjects()
     }
     catch (error) {
@@ -232,12 +260,13 @@ export function createWorkbenchPersistenceCommands(options: {
       await activeRepository.commit({
         commandId: `${projectId}:recover:${draft.editVersion}:${Date.now().toString(36)}`,
         document: draft.document,
+        embeddedWrites: draft.embeddedContents,
         expectedRepositoryRevision: latest.repositoryRevision,
         id: projectId,
         metadata: { source: 'manual', label: 'Recovered draft' },
       })
       await store?.delete(draftId)
-      await openProject(projectId, currentPageId.value)
+      await openProject(projectId, currentSurfaceId.value)
       await refreshProjects()
       recoveryDrafts.value = recoveryDrafts.value.filter(draft => draft.draftId !== draftId)
     }
@@ -252,14 +281,14 @@ export function createWorkbenchPersistenceCommands(options: {
 
   async function reloadCurrentProject(): Promise<void> {
     const projectId = currentProject.value?.id
-    const pageId = currentPageId.value
+    const surfaceId = currentSurfaceId.value
     if (!projectId || busy.value)
       return
     busy.value = true
     ui.clearMessage()
     try {
       const discardedDraftId = getPersistenceSession()?.draftId
-      await openProject(projectId, pageId)
+      await openProject(projectId, surfaceId)
       if (discardedDraftId)
         await discardRecoveryDraft(discardedDraftId)
       ui.notify(workbenchLocale.value.t('recovery.reloaded', 'Reloaded the latest saved revision'))
@@ -275,20 +304,21 @@ export function createWorkbenchPersistenceCommands(options: {
   async function saveCurrentDraftAsProject(): Promise<void> {
     const activeRepository = repository.value
     const document = currentProject.value
-    const pageId = currentPageId.value
+    const surfaceId = currentSurfaceId.value
     if (!activeRepository || !document || busy.value)
       return
     busy.value = true
     try {
       await getPersistenceSession()?.handleVisibilityHidden()
       const oldDraftId = getPersistenceSession()?.draftId
+      const embeddedContents = await readEmbeddedSnapshot(activeRepository, document as ProjectDocument)
       const id = `${document.id}-recovered-${Date.now().toString(36)}`
       const fork: ProjectDocument = structuredClone(document) as ProjectDocument
       fork.id = id
       fork.name = `${document.name} recovered`
-      await activeRepository.create({ document: fork })
+      await activeRepository.create({ document: fork, embeddedContents })
       await refreshProjects()
-      await openProject(id, pageId)
+      await openProject(id, surfaceId)
       if (oldDraftId)
         await discardRecoveryDraft(oldDraftId)
       ui.notify(workbenchLocale.value.t(

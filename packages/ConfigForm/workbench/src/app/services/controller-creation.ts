@@ -1,5 +1,5 @@
 import type { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import type { ProjectDocument, ProjectRepository } from '@moluoxixi/config-form-model'
+import type { ProjectDocument, ProjectEmbeddedResourceWrite, ProjectRepository } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type { WorkbenchAdapter } from '../../adapters'
 import type {
@@ -13,21 +13,28 @@ import type { WorkbenchUiStore } from '../types'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   analyzeTemplateEligibility,
-  instantiateTemplatePage,
+  createProjectTransferDocument,
+  downloadProjectTransfer,
   instantiateTemplateProject,
-  nextProjectPageId,
-  nextProjectPageRoute,
+  instantiateTemplateSurface,
+  nextProjectSurfaceId,
+  nextProjectSurfaceRoute,
   preflightPreparedProject,
   prepareConfigImport,
 } from '../../project'
 
 export function createWorkbenchCreationCommands(options: {
-  addPreparedPage: (page: ProjectDocument['pagesById'][string], adapter: WorkbenchAdapter, document: ProjectDocument) => boolean
+  addPreparedSurface: (
+    surface: ProjectDocument['surfacesById'][string],
+    adapter: WorkbenchAdapter,
+    document: ProjectDocument,
+    embeddedWrites?: readonly ProjectEmbeddedResourceWrite[],
+  ) => boolean
   busy: Ref<boolean>
   currentProject: ComputedRef<ProjectEditorSessionSnapshot['document'] | undefined>
   hasUnsavedChanges: ComputedRef<boolean>
   isDisposed: () => boolean
-  openProject: (id: string, pageId?: string) => Promise<void>
+  openProject: (id: string, surfaceId?: string) => Promise<void>
   projectSessionSnapshot: ShallowRef<ProjectEditorSessionSnapshot | undefined>
   refreshProjects: () => Promise<void>
   repository: ShallowRef<ProjectRepository | undefined>
@@ -35,7 +42,7 @@ export function createWorkbenchCreationCommands(options: {
   workbenchLocale: ComputedRef<ReturnType<typeof createDesignerLocale>>
 }) {
   const {
-    addPreparedPage,
+    addPreparedSurface,
     busy,
     currentProject,
     hasUnsavedChanges,
@@ -52,9 +59,10 @@ export function createWorkbenchCreationCommands(options: {
     project: ProjectDocument,
     adapter: WorkbenchAdapter,
     activeRepository: ProjectRepository,
+    embeddedContents: readonly ProjectEmbeddedResourceWrite[] = [],
   ): Promise<boolean> {
     preflightPreparedProject(project, adapter.registrySnapshot)
-    await activeRepository.create({ document: project })
+    await activeRepository.create({ document: project, embeddedContents })
     try {
       await openProject(project.id)
       if (currentProject.value?.id !== project.id)
@@ -129,7 +137,7 @@ export function createWorkbenchCreationCommands(options: {
     }
   }
 
-  async function createPageFromTemplate(
+  async function createSurfaceFromTemplate(
     template: ProjectTemplateCatalogEntry,
     name = template.manifest.displayName,
   ): Promise<boolean> {
@@ -145,18 +153,18 @@ export function createWorkbenchCreationCommands(options: {
         return false
       const eligibility = analyzeTemplateEligibility(template, {
         registry: adapter.registrySnapshot,
-        target: 'page',
+        target: 'surface',
         targetLock: structuredClone(document.registryLock),
       })
       if (!eligibility.eligible)
         throw new TypeError(eligibility.diagnostics[0]?.message ?? 'Template requirements do not match the current project Registry.')
-      const id = nextProjectPageId(document, name)
-      const page = instantiateTemplatePage(template, {
+      const id = nextProjectSurfaceId(document, name)
+      const surface = instantiateTemplateSurface(template, {
         id,
         name,
-        route: nextProjectPageRoute(document, name),
+        route: nextProjectSurfaceRoute(document, name),
       })
-      return addPreparedPage(page, adapter, structuredClone(document) as ProjectDocument)
+      return addPreparedSurface(surface, adapter, structuredClone(document) as ProjectDocument)
     }
     catch (error) {
       ui.notify(error)
@@ -179,7 +187,7 @@ export function createWorkbenchCreationCommands(options: {
       ...(currentProject.value ? { currentProject: structuredClone(currentProject.value) as ProjectDocument } : {}),
     })
     if (
-      target === 'page'
+      target === 'surface'
       && (
         currentProject.value?.id !== capturedProjectId
         || projectSessionSnapshot.value?.contentHash !== capturedContentHash
@@ -189,7 +197,7 @@ export function createWorkbenchCreationCommands(options: {
         success: false,
         diagnostics: [{
           code: 'IMPORT_STALE',
-          message: 'The active project changed while the page import was being analyzed.',
+          message: 'The active project changed while the Surface import was being analyzed.',
           path: '$',
         }],
       }
@@ -211,10 +219,10 @@ export function createWorkbenchCreationCommands(options: {
       ))
       return false
     }
-    if (prepared.target === 'page' && !document)
+    if (prepared.target === 'surface' && !document)
       return false
     if (
-      prepared.target === 'page'
+      prepared.target === 'surface'
       && (
         prepared.originProjectId !== document?.id
         || prepared.originContentHash !== capturedContentHash
@@ -239,8 +247,13 @@ export function createWorkbenchCreationCommands(options: {
         return false
       }
       if (prepared.target === 'project')
-        return await persistPreparedProject(prepared.document, adapter, activeRepository)
-      return addPreparedPage(prepared.page, adapter, structuredClone(document!) as ProjectDocument)
+        return await persistPreparedProject(prepared.document, adapter, activeRepository, prepared.embeddedContents)
+      return addPreparedSurface(
+        prepared.surface,
+        adapter,
+        prepared.document,
+        prepared.embeddedContents,
+      )
     }
     catch (error) {
       ui.notify(error)
@@ -251,9 +264,87 @@ export function createWorkbenchCreationCommands(options: {
     }
   }
 
+  async function duplicateProject(projectId: string): Promise<boolean> {
+    const activeRepository = repository.value
+    if (!activeRepository || busy.value)
+      return false
+    if (currentProject.value?.id === projectId && hasUnsavedChanges.value) {
+      ui.notify(workbenchLocale.value.t(
+        'project.duplicateBlocked',
+        'Save or resolve the current project before duplicating it.',
+      ))
+      return false
+    }
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const source = await activeRepository.get(projectId)
+      if (!source)
+        throw new TypeError(`Project does not exist: ${projectId}`)
+      const document = structuredClone(source.document) as ProjectDocument
+      document.name = `${document.name.slice(0, 155)} copy`
+      const transfer = await createProjectTransferDocument(
+        document,
+        input => activeRepository.readEmbedded(input),
+      )
+      const prepared = await prepareConfigImport({
+        source: JSON.stringify(transfer),
+        target: 'project',
+      })
+      if (!prepared.success)
+        throw new TypeError(prepared.diagnostics[0]?.message ?? 'Project copy could not be prepared.')
+      if (prepared.prepared.target !== 'project')
+        throw new TypeError('Project copy preparation returned an invalid target.')
+      const adapter = await loadWorkbenchAdapter(prepared.prepared.adapter)
+      if (isDisposed() || repository.value !== activeRepository)
+        return false
+      return await persistPreparedProject(
+        prepared.prepared.document,
+        adapter,
+        activeRepository,
+        prepared.prepared.embeddedContents,
+      )
+    }
+    catch (error) {
+      ui.notify(error)
+      return false
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function exportProject(projectId: string): Promise<string | undefined> {
+    const activeRepository = repository.value
+    if (!activeRepository || busy.value)
+      return undefined
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const project = await activeRepository.get(projectId)
+      if (!project)
+        throw new TypeError(`Project does not exist: ${projectId}`)
+      const filename = await downloadProjectTransfer({
+        document: project.document,
+        readEmbedded: input => activeRepository.readEmbedded(input),
+      })
+      ui.notify(workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }))
+      return filename
+    }
+    catch (error) {
+      ui.notify(error)
+      return undefined
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
   return {
     createFromJsonImport,
-    createPageFromTemplate,
+    duplicateProject,
+    exportProject,
+    createSurfaceFromTemplate,
     createProjectFromTemplate,
     prepareJsonImport,
   }

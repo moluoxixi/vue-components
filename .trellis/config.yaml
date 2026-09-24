@@ -140,8 +140,8 @@ channel:
 #
 # All values are byte counts. `0` disables the corresponding limit.
 #
-# context_injection:
-#   max_file_bytes: 32768        # per implement.jsonl / check.jsonl referenced file
+context_injection:
+  max_file_bytes: 65536          # per implement.jsonl / check.jsonl referenced file
 #   max_artifact_bytes: 65536    # per task artifact (prd.md / design.md / implement.md)
 #   max_total_bytes: 131072      # whole injected payload; overflow degrades to index lines
 
@@ -191,6 +191,8 @@ packages:
     path: packages/zod3-to-rule
   config-form-antd-vue:
     path: packages/ConfigForm/antd
+  config-form-compiler:
+    path: packages/ConfigForm/compiler
   config-form-core:
     path: packages/ConfigForm/core
   config-form-designer:
@@ -205,6 +207,12 @@ packages:
     path: packages/ConfigForm/element
   config-form-headless:
     path: packages/ConfigForm/headless
+  config-form-model:
+    path: packages/ConfigForm/model
+  config-form-prototype-runtime:
+    path: packages/ConfigForm/prototype-runtime
+  config-form-source:
+    path: packages/ConfigForm/source
   config-form-workbench:
     path: packages/ConfigForm/workbench
   playground:
@@ -215,6 +223,8 @@ packages:
     path: packages/ConfigForm/plugin-element-plus
   config-form:
     path: packages/ConfigForm/runtime
+  config-form-vue-backend:
+    path: packages/ConfigForm/vue-backend
   components-playground:
     path: playgrounds/components-playground
   vue-playground:

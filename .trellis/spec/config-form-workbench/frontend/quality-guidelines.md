@@ -1,13 +1,31 @@
 # ConfigForm Workbench Quality Contracts
 
-These contracts apply to `packages/ConfigForm/workbench`. Read them before
-changing Monaco language services, dialog focus behavior, or accessibility
-gates.
+These contracts apply to the current `packages/ConfigForm/workbench` and its
+evolution into the ConfigForm Studio composition root. Read them before
+changing Monaco language services, assets, Preview/Experience, Source
+composition, dialog focus behavior, or accessibility gates. Current Workbench
+facts and target Studio responsibilities must be labeled separately.
+
+## Workbench Control Set
+
+Element Plus is the Workbench control set. Reach for it before hand-rolling markup and styling:
+
+- **Commands and links use `ElButton`**: `type="primary"` for the main action, `text`/`circle` for icon
+  commands, and `link type="primary"` for a link-styled command (page names that open a screen, breadcrumbs).
+  Reset only the deltas the screen needs — inline metrics, `--wb-accent` palette color, hover underline — and
+  keep the selector specific enough (`.block .item.el-button`) to beat `.el-button.is-text`.
+- **Raw `<button>` is reserved for composite widgets and foreign design systems**: `role="tab"`/`role="option"`
+  items, segmented controls, table rows that are one big click target, the designer's own
+  `mx-config-form-designer__*` icon buttons, and the 44px mobile dock. Those need ARIA roles or layout that
+  `ElButton`'s own spacing, height, and disabled styling would fight.
+- Never ship native `input`/`textarea`/`select`; the architecture gate fails on them.
 
 ## Workbench Stylesheet Ownership
 
 - `src/styles/index.css` is the synchronous cascade manifest used by the main
-  Workbench entry. It imports styles only and keeps `responsive.css` last.
+  Workbench entry. It imports owner styles first and keeps `tailwind.css` as the
+  final manifest import so Vite does not expand Tailwind before a later CSS
+  `@import`.
 - A feature or component selector family lives beside its owner under
   `style/index.css`. `src/styles/` keeps only shell/studio/responsive and truly
   cross-feature surface rules; it must not become a second home for dialogs,
@@ -23,61 +41,301 @@ order, rejects removed aggregate/orphan selectors, checks representative
 include/exclude families, builds both Workbench entries, and runs desktop,
 tablet, and mobile visual baselines.
 
+## Scenario: Workbench Tailwind Utility Layer
+
+### 1. Scope / Trigger
+
+Apply this contract when adding Tailwind to the Workbench, moving another
+Workbench-owned view to utilities, or changing the main stylesheet manifest.
+Tailwind is a main-document presentation tool; it is not a persisted visual
+contract and does not cross into Runtime Host or Provider packages.
+
+### 2. Signatures
+
+The Workbench Tailwind entry uses the split v4 imports and an explicit source
+allowlist:
+
+```css
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../features/export/index.vue";
+
+@theme inline {
+  --color-wb-text: var(--wb-text);
+}
+```
+
+The Vite application registers `@tailwindcss/vite`. The main
+`src/styles/index.css` imports `tailwind.css` synchronously as its final import.
+
+### 3. Contracts
+
+- Do not import `tailwindcss` as one aggregate entry and do not import
+  `preflight.css`; `foundation.css` remains the only global reset owner.
+- Start scanning from `source(none)` and add one exact `@source` for each
+  migrated Workbench owner. Never scan Runtime Host, Provider packages, or the
+  complete repository.
+- Map utility tokens through `@theme inline` to the existing `--wb-*` theme
+  variables. Do not copy palette values or introduce a parallel token source.
+- Keep `tailwind.css` last in the current CSS import manifest. Vite expands its
+  Tailwind layers and `@property` rules in place; putting any owner `@import`
+  after that expansion can violate CSS import ordering and drop the later
+  stylesheet in development.
+- Tailwind utilities own plain Workbench DOM composition. Unlayered feature CSS
+  continues to own Element Plus internals, Source Viewer integration, complex
+  states, and required media-query overrides; do not compensate with important
+  utilities.
+- `runtime-host/services/bootstrap.ts` imports only Runtime Host styles. It must
+  not import the Workbench stylesheet manifest or `tailwind.css`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Aggregate Tailwind or Preflight is imported | Reject the change; retain the Workbench reset and component-library defaults |
+| Automatic or repository-wide source detection is enabled | Reject it; restore `source(none)` and exact owner sources |
+| A utility needs a product color or shadow | Map it to the matching `--wb-*` token through `@theme inline` |
+| An owner import appears after `tailwind.css` | Move `tailwind.css` back to the final manifest position |
+| A third-party internal rule conflicts with a layered utility | Keep the integration rule in owner CSS instead of adding important utilities |
+| Runtime Host output contains a Workbench semantic utility | Fail the build isolation gate |
+
+### 5. Good / Base / Bad Cases
+
+- Good: an Export Dialog wrapper uses semantic utilities while its
+  `.el-dialog__body` bridge remains beside the feature.
+- Base: an unmigrated feature remains entirely in its owner stylesheet and is
+  absent from the Tailwind source allowlist.
+- Bad: import full Tailwind, scan all Vue files, hard-code palette colors in
+  classes, move third-party internals into utilities, or load Workbench CSS in
+  `runtime-host.html`.
+
+### 6. Tests Required
+
+- Contract tests assert split imports, no Preflight, one exact source per
+  migrated owner, inline `--wb-*` token aliases, final manifest position, and
+  Runtime Host bootstrap isolation.
+- The production build must inspect emitted CSS and prove required semantic
+  utilities exist, Tailwind directives/Preflight markers are absent, and
+  Runtime Host CSS contains no Workbench semantic utility.
+- Browser coverage verifies computed desktop/mobile layout, all supported
+  palette/theme token resolutions, horizontal overflow, and accessibility.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```css
+@import "tailwindcss";
+@source "../../**/*.vue";
+@import url(../features/export/style/index.css);
+```
+
+Correct:
+
+```css
+@import url(../features/export/style/index.css);
+@import "./tailwind.css";
+```
+
 ---
 
-## Monaco Vue SFC Language Services
+## Source Viewer Monaco Boundary
 
-The workbench keeps the visible `src/App.vue` model on the `vue` language so template HTML, folding, and embedded
-tokenization remain available. TypeScript semantics for `<script>` blocks use a hidden `typescript` mirror whose length and
-line breaks exactly match the SFC; all non-script characters are replaced with spaces. This makes TypeScript worker offsets
-safe to map directly back to the visible Vue model.
+Workbench no longer owns an editable Source workspace or Vue/TypeScript
+language-service layer. It lazy-loads the export dialog, which consumes the
+public readonly `ConfigFormSourceViewer`; the Viewer alone dynamically imports
+its Monaco runtime.
 
 Required contracts:
 
-- `MonacoEnvironment.getWorker(..., 'vue')` must return the bundled HTML worker because the custom Vue HTML language
-  service creates its worker with the `vue` label.
-- Vue script completion and Hover must query Monaco's TypeScript worker and the shared workbench declarations. A global
-  mixed Vue/ConfigForm completion list is forbidden because it leaks exports across named-import modules.
-- TypeScript Config semantic completion and Hover belong to Monaco's built-in TypeScript provider. The custom provider
-  is limited to ConfigForm snippets and project-manifest module paths that have no ambient declaration; it must not
-  duplicate worker exports or signatures.
-- Module-path completion may use the explicit workbench module allowlist for Vue/Config fallback, plus package names from
-  the current project manifest. Named-import completion must come from the declaration for the statement's actual module.
-- Installing the workbench worker router must preserve an existing `MonacoEnvironment` and delegate unknown labels to its
-  previous `getWorker`; TypeScript entries are de-duplicated before they are mapped to Monaco suggestions.
-- If modular loading misses Monaco's one-shot TypeScript language event, initialize the pinned Monaco `tsMode` with
-  `typescriptDefaults` before retrying `getTypeScriptWorker()`.
-- Mirror content must update with the SFC model and be disposed with it.
-- Every language used by an embedded SFC region must load its Monaco basic-language contribution explicitly;
-  language-service workers provide diagnostics and semantic features but do not provide syntax tokenization.
-- Vue SFC boundary rules must accept attributes on `<template>` as well as `<script>` and `<style>`, otherwise the
-  template falls back to the outer plain-text tokenizer and loses HTML highlighting.
-- `WorkspaceCodeEditor/services/language-features.ts` owns only singleton installation, warm-up, and reverse-order
-  disposal. TypeScript worker/mirror/provider behavior belongs to `typescript-language-features.ts`; Vue language
-  registration and the HTML service definition belong to `vue-language-definition.ts`.
+- Root and `/generator` imports never reach Vue DOM or Monaco. `/viewer` may use
+  Vue, while the Monaco editor implementation stays behind a literal dynamic
+  import inside the text-viewer boundary.
+- Only text files create Monaco models. Binary selections render the explicit
+  readonly binary state and never initialize Monaco.
+- The editor sets both `readOnly` and `domReadOnly`, loads only syntax-language
+  contributions, and exposes no completion, Hover, save, or content-change API.
+- A path/language change replaces and disposes the previous model; content and
+  theme changes update the active session. Unmount disposes the editor, model,
+  ResizeObserver/window listener, and ignores a late async load.
+- Monaco load failure falls back to focusable plain text without changing the
+  controlled `selectedPath` contract.
 
-Regression coverage must assert worker routing for `vue`, exact mirror offsets/newlines, named-import module detection,
-declaration isolation, manifest module merging, and real-browser completion/Hover for both Vue Source and TypeScript
-Config models. Config checks must also prove that worker-provided exports and field properties are visible without duplicate
-custom candidates. Lifecycle coverage must also prove reverse disposal, configure-after-dispose, and the pinned `tsMode`
-retry when Monaco reports `TypeScript not registered!`.
+Regression coverage must prove the lazy boundary, text/binary split, readonly
+options, update/disposal lifecycle, load-failure fallback, real-browser Source
+dialog behavior, and absence of Monaco from the Workbench initial static graph.
 
 ---
 
 ## Source Export Service Boundaries
 
-The export facade keeps generation order and error semantics stable while private services own recursive graph concerns:
+### 1. Scope / Trigger
 
-- `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
-- `source-page.ts` generates one page's Vue source and delegates layout serialization, Registry lookup, portability
-  validation, and dependency collection.
-- `source-portability.ts` recursively validates every nested node, event, binding, action, and source reference before
-  source generation.
-- `source-libraries.ts` recursively collects libraries and rejects conflicting declarations for the same package.
-- `source-registry.ts` centralizes component lookup and retains the public export error wording.
+Apply this contract when changing Source generation integration, the export
+dialog/session, stale detection, copy, single-file download, or ZIP assembly.
+Workbench owns commands around a pinned export, not generation or source-code
+editing.
 
-Regression coverage must include invalid nested components/events/bindings/actions/sources, dependencies that appear only
-in child nodes, nested library conflicts, canonical Source snapshots, and byte-stable generated project/page files.
+### 2. Signatures
+
+Workbench is the authoritative owner of the in-memory export session:
+
+```ts
+interface ExportSnapshot {
+  readonly compilation: ProjectCompilation
+  readonly rawSource: ExportArtifact<RawSourceFileSetV1>
+  readonly configBindings: ExportArtifact<ConfigBindingFileSetV1>
+}
+
+type ExportArtifact<T> =
+  | { readonly status: 'ready', readonly fileSet: T }
+  | { readonly status: 'failed', readonly diagnostics: readonly ModelDiagnostic[] }
+}
+
+interface SourceArchiveInput {
+  readonly files: readonly SourceFile[]
+  readonly name: string
+}
+
+interface BuildExportSnapshotInput {
+  readonly compilation: ProjectCompilation
+  readonly componentResolver: SourceComponentResolver
+  readonly bindingResolver: SourceConfigFormBindingResolver
+  readonly resourceReader: SourceResourceReader
+}
+```
+
+### 3. Contracts
+
+Snapshot freshness compares the complete `ProjectCompilation.key` and its
+committed `editVersion` or draft `baseEditVersion + draftId` origin. There is no
+generator-version identity: `SourceFileSetV1.version` owns the serialized file
+set contract, while an application-code update recreates the memory-only
+session. `sync()` may compare identities but must not compile; opening or
+explicitly refreshing Export captures one compilation and invokes both
+generators independently. The published snapshot always contains one
+`ExportArtifact` for each mode, so a mode-specific failure keeps its own
+diagnostics without suppressing a successful sibling mode. A session-level
+failure before that envelope can be built retains the previous snapshot and
+reports it as stale.
+
+Preview, copy, single-file download, and `createSourceArchive` /
+`downloadSourceArchive` read the same pinned file-set bytes. Text remains UTF-8;
+binary files remain canonical base64 and are decoded to fresh bytes. Archive
+roots use the safe project slug, filenames are stable, and object URLs are
+revoked only after the browser has had a task to consume the download. The old
+Workspace archive names are not aliases and must not be exported.
+
+The generator, `SourceFileSetV1`, file-tree model, and readonly
+`ConfigFormSourceViewer` belong to `@moluoxixi/config-form-source`.
+
+- Generator owns deterministic generation plus three distinct input
+  responsibilities: provider-neutral `SourceComponentResolver`, ConfigForm-only
+  `SourceConfigFormBindingResolver`, and asynchronous
+  `SourceResourceReader`. It imports no Designer, Workbench, concrete provider
+  UI, Repository, Monaco, Vue DOM, or browser global.
+- Studio reads locked adapter metadata and Repository content at its application
+  composition root, creates those three implementations, and injects them into
+  Source. Raw Vue receives only the component resolver and resource reader;
+  ConfigForm binding generation additionally receives the binding resolver.
+  Source validates bytes and derives output paths; adapter/storage
+  implementations do not become Source dependencies.
+- Raw Vue runtime dependencies are limited to `vue`, `vue-router`, and the
+  selected target UI package returned by the component resolver. Its manifest
+  and generated files contain no `@moluoxixi/*`, `@config-form/*`, Zod,
+  ConfigForm, RuleSet converter, Compiler, or internal Runtime import. Field
+  validation is emitted as readable project-local TypeScript.
+- Studio owns the Source dialog, regeneration, clipboard, single-file download,
+  ZIP, notifications, and persistence. Viewer owns none of those commands.
+- Viewer renders a file tree and readonly code, with a desktop split and narrow
+  tree/code switch. Its `selectedPath` is a required controlled v-model and
+  Monaco loads only through the Viewer async boundary.
+- Studio Experience consumes Prototype Runtime. Raw generated projects preserve
+  the same observable demo behavior as readable application code without
+  importing or copying a session reducer/runtime core; ConfigForm bindings
+  contain configuration only.
+- The move is a completed hard ownership cut. The old Workbench generator and
+  editable Viewer are deleted; no wrapper, alias, deprecated export, or
+  re-export remains.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Current compilation is missing | Mark an existing snapshot stale and retain its files |
+| Compilation key, committed edit version, draft base version, or draft ID changes | Mark the snapshot stale without regenerating during `sync()` |
+| Raw Vue generation fails and ConfigForm binding succeeds | Publish Raw as `failed` and Binding as `ready`; keep Binding selectable, copyable, and downloadable |
+| ConfigForm binding generation fails and Raw Vue succeeds | Publish Binding as `failed` and Raw as `ready`; keep Raw selectable, copyable, and downloadable |
+| One mode's file-set version/path/entry/content is invalid | Source returns diagnostics for that mode; publish its artifact as `failed` without erasing the sibling result |
+| Selected mode is `failed` | Show its diagnostics and disable file selection, copy, single-file download, and ZIP for that mode only |
+| Export capture/build fails before per-mode results exist | Retain the previous snapshot and expose the session error as stale |
+| Raw manifest or source imports a package outside the dependency whitelist | Fail Raw generation/consumer architecture gates; never add an internal package or soft link |
+| A binary file is selected | Disable text copy and download the exact decoded bytes |
+| Archive name contains unsafe path characters | Use the safe project slug as the single archive root |
+| A removed generator-version or Workspace archive symbol appears | Fail the architecture gate; do not add an alias |
+
+### 5. Good / Base / Bad Cases
+
+- Good: one refresh builds `rawSource` and `configBindings` from the same
+  compilation, freezes each independent artifact, and publishes a single
+  snapshot where one may be `ready` while the other is `failed`.
+- Base: switching the selected file or output mode reads the pinned snapshot
+  without recompilation.
+- Bad: versioning an in-memory generator implementation, refreshing one output
+  against a different compilation, treating one mode's failure as atomic failure
+  of both, passing the binding resolver to Raw, copying binary through a text
+  getter, or restoring an old Workspace wrapper.
+
+### 6. Tests Required
+
+Regression coverage includes Node import without DOM, deterministic generation
+for the same compilation/resolvers, per-generator resolution failure with no
+partial file set, installed generated-project typecheck/test/build, controlled
+Viewer selection, responsive layout, lazy Monaco, accessibility, and executed
+Experience/generated-project parity. It proves Raw succeeds when only binding
+resolution fails, Binding succeeds when only Raw generation fails, and each
+failed-mode dialog disables its commands without disabling the ready mode. Raw
+consumer tests cover both providers from real generated files, install no
+workspace/internal soft links, and scan every manifest/import for the exact
+Vue/Vue Router/target-UI whitelist. Coverage also independently includes
+committed and draft stale identity, session-level refresh failure retention,
+exact text/binary archive bytes, safe archive roots, deferred URL revocation,
+and the absence of old generator-version and Workspace archive symbols. String
+containment is not parity evidence.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+const rawSource = await generateVueSource({
+  compilation,
+  componentResolver,
+  resourceReader,
+  bindingResolver, // Raw must not know this contract.
+})
+if (!rawSource.success)
+  throw rawSource.diagnostics // Incorrectly suppresses the binding result.
+```
+
+Correct:
+
+```ts
+const snapshot = await buildExportSnapshot({
+  compilation,
+  componentResolver,
+  bindingResolver,
+  resourceReader,
+})
+
+if (snapshot.rawSource.status === 'ready')
+  await downloadSourceArchive({ files: snapshot.rawSource.fileSet.files, name })
+
+// snapshot.configBindings remains independently ready or failed for this same compilation.
+```
 
 ---
 
@@ -91,22 +349,22 @@ outlive the project session which created it.
 ### 2. Signatures
 
 ```ts
-installMonacoWorkerEnvironment(): void
-disposeMonacoLanguageFeatures(): void
+loadMonacoViewerRuntime(): Promise<MonacoViewerRuntime>
 onExternalRevision(resolution, message): Promise<void>
 ```
 
-The export workspace continues to load `WorkspaceCodeEditor` through a literal dynamic import. Persistence callbacks may
-call controller commands only while their captured `ProjectEditorSession` is still the controller's active session.
+Workbench lazy-loads its export dialog, and the Source Viewer loads its Monaco
+runtime through a literal dynamic import. Studio still owns the dialog. Persistence
+callbacks may call controller commands only while their captured
+`ProjectEditorSession` is still the controller's active session.
 
 ### 3. Contracts
 
-- An absent `globalThis.MonacoEnvironment` is an uninitialized state. Never use `undefined === undefined` as proof that
-  the worker router was installed. Record the installed environment only after assigning the router.
-- Reuse the installed router while it remains current. If another integration replaces `MonacoEnvironment`, a later
-  editor mount wraps that new environment and delegates unknown labels to its `getWorker`.
-- Monaco completion providers, hover providers, and TypeScript extra libraries have one singleton disposer owner. Dispose
-  and reset them during HMR or an explicit test teardown, never from one editor instance while another can remain mounted.
+- Monaco is requested only after a text viewer mounts. A request that resolves
+  after unmount or after a newer request must not create an editor.
+- Every Viewer instance owns and disposes its editor model, observer/listener,
+  and late-load guard. The readonly Viewer installs no completion/Hover provider
+  or TypeScript extra library.
 - The Workbench production build checks the entry's complete static module graph, including HTML module preloads and
   transitive static imports. Monaco markers must exist only outside that initial graph.
 - A delayed external-revision callback validates both controller lifetime and captured session identity immediately before
@@ -116,9 +374,9 @@ call controller commands only while their captured `ProjectEditorSession` is sti
 
 | Condition | Required result |
 | --- | --- |
-| First editor mount with no Monaco environment | Install the Workbench worker router |
-| Existing environment handles an unknown label | Delegate to its `getWorker` |
-| Environment is replaced after an editor mount | Wrap the replacement on the next install call |
+| Text viewer mounts | Dynamically load and mount one readonly Monaco session |
+| Viewer unmounts before the import resolves | Ignore the stale result and create no editor |
+| Binary file is selected | Render binary metadata; do not request Monaco |
 | Monaco marker is reachable from an entry preload/static import | Fail the Workbench build |
 | Monaco marker exists only in a lazy editor chunk | Pass the lazy-boundary check |
 | External reload resolves for the active session | Open the current project revision |
@@ -126,38 +384,24 @@ call controller commands only while their captured `ProjectEditorSession` is sti
 
 ### 5. Good / Base / Bad Cases
 
-- Good: worker routing is installed before editor use, global registrations have one service owner, and editor models,
-  mirrors, subscriptions, and observers have explicit instance owners.
-- Base: reopening the export dialog reacquires the same lazy Monaco runtime without adding duplicate providers.
-- Bad: mark an undefined environment as already installed, scan only the entry file instead of its static dependency graph,
-  or let a callback from project A reopen A after project B is active.
+- Good: every readonly editor model, subscription, observer, and late-load guard
+  has an explicit Viewer-instance owner.
+- Base: reopening the export dialog reacquires the lazy Monaco module and creates
+  a fresh disposable Viewer session.
+- Bad: create Monaco for a binary file, scan only the entry file instead of its
+  static dependency graph, or let a callback from project A reopen A after
+  project B is active.
 
 ### 6. Tests Required
 
-- Happy-DOM tests cover first install without a previous environment, replacement/delegation, provider/extra-lib disposal,
-  model reuse, mirror synchronization, and full editor cleanup.
+- Happy-DOM tests cover delayed import after unmount, file/theme updates, model
+  replacement/disposal, ResizeObserver/listener cleanup, and load failure.
 - The Workbench build runs `scripts/verify-monaco-bundle.mjs` after Vite and the Element Plus bundle check.
 - Controller tests retain a superseded session callback, switch projects, invoke the callback, and assert the newer project
   remains active.
 - The readonly export Playwright scenario must finish with no browser errors; this is the real-worker regression gate.
 
 ### 7. Wrong vs Correct
-
-Wrong:
-
-```ts
-let installedEnvironment
-if (globalThis.MonacoEnvironment === installedEnvironment)
-  return
-```
-
-Correct:
-
-```ts
-let installedEnvironment: MonacoEnvironment | null = null
-if (installedEnvironment && globalThis.MonacoEnvironment === installedEnvironment)
-  return
-```
 
 Wrong:
 
@@ -192,9 +436,11 @@ function chooseMobileAction(action: MobileAction): void {
 
 Required regression coverage:
 
-- Choosing Flow, Page Manager, or another dialog workspace from the mobile action menu focuses the stable menu trigger
-  before the host event is emitted.
+- Choosing Source or another dialog workspace from the mobile action menu focuses the stable menu trigger before the host
+  event is emitted.
 - Closing the resulting dialog restores focus to that trigger, not `body` or an unmounted menu item.
+- Page management is a routed screen rather than a dialog; its focus contract belongs to the application-routing
+  scenario below.
 - Escape and pointer-close paths share the same restoration behavior.
 
 ---
@@ -202,8 +448,7 @@ Required regression coverage:
 ## Element Plus Inspector Text Controls
 
 Workbench inspector fields that edit user-facing text or JSON must use the
-Element Plus `ElInput` component, including the Flow inspector's event-flow
-name, node ID, action ref, and node config fields. Do not add a parallel native
+Element Plus `ElInput` component. Do not add a parallel native
 `input`/`textarea` border or focus rule for those controls: Element Plus owns
 the wrapper, focus state, and `--el-input-*` theme tokens. Feature-specific
 text-area behavior belongs on `ElInput` props or the component's inner
@@ -211,11 +456,10 @@ text-area behavior belongs on `ElInput` props or the component's inner
 
 Required regression coverage:
 
-- Flow inspector text fields render the Element Plus wrapper and inner control.
-- The event-flow name uses the same wrapper/focus structure as other Workbench
-  inspector text controls in both light and dark themes.
-- No feature stylesheet targets native Flow inspector text controls with a
-  competing border or focus treatment.
+- Inspector text/JSON fields render the Element Plus wrapper and inner control.
+- The wrapper/focus structure remains consistent in both light and dark themes.
+- No feature stylesheet targets native Inspector text controls with a competing
+  border or focus treatment.
 
 ---
 
@@ -250,7 +494,7 @@ Required regression coverage:
 
 Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses
 `@axe-core/playwright` with WCAG 2 A/AA and WCAG 2.1 A/AA tags against the initial template dialog, desktop dark and
-light themes, the 390px Inspector, Flow dialog, and Source export dialog. Do not disable a rule or exclude a component
+light themes, the 390px Inspector, Preview dialog, and Source export dialog. Do not disable a rule or exclude a component
 to make this gate pass.
 
 Theme tests run immediately after the theme control is activated. A foreground may not switch instantly while its
@@ -329,3 +573,222 @@ Correct:
 ```
 
 ---
+
+## Scenario: JSON Value Boundaries Across Vue And Runtime Hosts
+
+### 1. Scope / Trigger
+
+Apply this contract when Workbench passes reactive project, compilation,
+Prototype session, command, projection, or value state into Model services,
+iframe messages, or Runtime Host component props.
+
+### 2. Signatures
+
+```ts
+cloneWorkbenchJson<T>(value: T): T
+```
+
+### 3. Contracts
+
+- Clone reactive JSON inputs through `cloneWorkbenchJson` before crossing an
+  iframe, Runtime Host, or plain Model boundary. Do not call native
+  `structuredClone` directly on a Vue proxy.
+- The helper unwraps the root with Vue `toRaw`, prefers `structuredClone`, and
+  falls back to a JSON round trip only because these boundaries already require
+  JSON-safe data. It is not a validator and must not be used to make functions,
+  DOM nodes, class instances, or other non-JSON values appear supported.
+- Every outbound Runtime Host message owns a detached payload. A receiver may
+  update its local session or value state without mutating the Workbench source,
+  and Workbench must clone accepted inbound snapshots before storing them in
+  reactive state.
+- Surface identity stays `surfaceId` and runtime state stays keyed by
+  `instanceId`; cloning must not collapse those two ownership domains or reuse a
+  mutable object between instances.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Reactive `SurfaceGraph`, compilation, session, command, projection, or values cross a host boundary | Convert them to detached plain JSON through `cloneWorkbenchJson` |
+| Native structured clone rejects a proxy or host object | Use the helper's deterministic JSON fallback |
+| A payload contains a non-JSON value | Reject it through the owning Reader/guard; do not treat cloning as validation |
+| Two open instances render the same Surface | Store detached values/projection for each `instanceId` |
+| A closed instance sends a late snapshot | Reject it through Runtime Host protocol state; cloning does not make it current |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a reactive Prototype session is cloned before `postMessage`, and the
+  accepted reply is cloned again before Workbench stores it.
+- Base: non-reactive JSON input clones without semantic changes and does not
+  retain nested object identity.
+- Bad: pass a Vue proxy directly to `structuredClone`, share one values object
+  across two `instanceId` entries, or use the JSON fallback as permission to
+  accept an otherwise invalid protocol payload.
+
+### 6. Tests Required
+
+- Unit coverage passes nested Vue reactive JSON to `cloneWorkbenchJson`, asserts
+  no `DataCloneError`, deep equality, and detached nested references.
+- Runtime Host protocol coverage mutates a delivered message fixture and proves
+  the source session/compilation is unchanged; malformed and late messages still
+  fail their exact guards.
+- Experience coverage opens the same Surface twice and proves values,
+  validation, projection, and focus snapshots remain isolated by `instanceId`.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+postMessage({ session: structuredClone(reactiveSession) })
+instancesById[next.surfaceId] = next.values
+```
+
+Correct:
+
+```ts
+postMessage({ session: cloneWorkbenchJson(reactiveSession) })
+instancesById[next.instanceId] = cloneWorkbenchJson(next.values)
+```
+
+---
+
+---
+## Scenario: Workbench Application Routing
+
+### 1. Scope / Trigger
+
+Apply this contract when changing the Workbench/Studio application shell, its route table, the URL ⇄ workspace
+synchronization, or any command that navigates between project management, page management, the form designer, and the
+creation workspaces.
+
+### 2. Signatures
+
+```ts
+createWorkbenchRouter(options?: { base?: string }): Router
+projectsPath(): string
+projectCreatePath(mode: 'json' | 'template'): string
+projectPagesPath(projectId: string): string
+pageCreatePath(projectId: string): string
+pageDesignPath(projectId: string, pageId: string): string
+readWorkbenchRouteTarget(route: Pick<RouteLocationNormalized, 'params'>): WorkbenchRouteTarget
+hasWorkbenchPage(document: WorkbenchPageSource, pageId: string): boolean
+useWorkbenchRouteSync(options: WorkbenchRouteSyncOptions): void
+useCreationReturnFocus(): void
+useWorkbenchManagementNav(): {
+  active: ComputedRef<WorkbenchManagementTarget | undefined>
+  select: (target: WorkbenchManagementTarget) => Promise<void>
+}
+```
+
+The hierarchy is **project › page › design**. A `pageId` segment carries the Surface id of any kind (page, dialog, or
+drawer), because page management lists all three kinds and they share one form designer.
+
+Route table (hash history, base defaults to `location.pathname`):
+
+| Path | Name | Screen |
+| --- | --- | --- |
+| `/` | — | redirect to `/projects` |
+| `/projects` | `projects` | project management, the first screen |
+| `/projects/new` | `project-create` | creation workspace, template mode, project target |
+| `/projects/import` | `project-import` | creation workspace, JSON mode, project target |
+| `/projects/:projectId/pages` | `project-pages` | page management of one project |
+| `/projects/:projectId/pages/new` | `page-create` | creation workspace, page target |
+| `/projects/:projectId/pages/:pageId/design` | `page-design` | the form designer of one page |
+| `/:pathMatch(.*)*` | — | redirect to `/projects` |
+
+`/projects/new` and `/projects/import` are two segments deep while every project-scoped path is at least three, so a
+static segment can never shadow a real project id. There is deliberately no project-level `design` route: the designer
+belongs to a page, and a URL must never read as "the project's designer".
+
+### 3. Contracts
+
+- Hash history is mandatory. The published artifact is served by a static host at a non-root base with no rewrite rule,
+  and `designer.html` must stay a byte-equivalent copy of `index.html`. `createWebHashHistory()` without an explicit
+  base resolves against `location.pathname`, so every published entry keeps working deep links.
+- The URL is the only owner of "which project and which page are open". `App.vue` provides the contexts and renders
+  `RouterView`; the removed local view flag must not come back.
+- There is no unconditional boot-time project. The route decides what is open, so the projects list stays a list.
+- Route → workspace: a project route opens exactly the project it names. A missing project returns to `/projects` with a
+  notice; a `pageId` the project no longer has returns to that project's page management with a notice.
+- Workspace → route: only the designer rewrites the URL, to the canonical `.../pages/:pageId/design` path. Page
+  management and page creation keep their own path while the same project stays open.
+- Project switching is refused while the open project has unsaved work or an unresolved configuration error. Navigation
+  inside the same project and navigation back to the projects list always pass.
+- The hierarchy stays walkable in both directions. Project management enters a project at its page list; page management
+  links back to project management and each row opens that page's designer; the designer links back to page management
+  and to project management.
+- Page management is a routed screen owned by `features/pages`, not an overlay: no `ElDialog` shell, and no
+  `pageManagerOpen`/`pageManagerLoaded` chrome state.
+- Project management and page management are **sibling consoles**, not one screen reached from the other. Both render the
+  shared `ManagementShell` rail, so either console is always one click away and the active one carries
+  `aria-current="page"`. Page management is the only console that needs a project, so its rail command opens the open
+  project, or the most recently updated project, and reports an empty workspace instead of failing silently. The
+  designer keeps its own chrome and does not render the rail.
+- Each console owns its own creation entry. Project management creates projects; page management creates pages. They are
+  different operations — creating a project replaces the active project and is not undoable, while creating a page is one
+  undoable command inside the current project — so page management must not offer a second project-creation entry.
+- Page management is a **browsing surface first**. Rows render the page name as text and the route as a link that opens
+  that page's designer; name and route only become editable fields after the row's edit command puts that row into edit
+  mode. Escape cancels an edit without emitting a command, and leaving the screen never leaves edits uncommitted.
+- Navigation stays a shell concern. Lazy features keep receiving commands and events and never import `vue-router`.
+- A creation route records its origin (`path` plus trigger key). Cancel returns to that origin and restores focus to
+  `[data-create-trigger="<key>"]`; success opens the created page's designer and focuses `[data-designer-entry]`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| URL names an unknown project | Notice, then `replace('/projects')` |
+| Page management is selected with an open project | Open that project's page list |
+| Page management is selected with no open project | Open the most recently updated project, then its page list |
+| Page management is selected in an empty workspace | Notice, stay on the projects list |
+| URL names a page the project no longer has | Notice, then `replace('/projects/:projectId/pages')` |
+| URL names a page the workspace just created but the snapshot lags behind | Trust the selected page and keep the URL |
+| Deep link resolves before the repository is ready | Wait for `initialized`, then reconcile once |
+| Open project is dirty and the target is another project | Abort the navigation, keep the URL, notify |
+| Target is the same project or `/projects` | Proceed |
+| Open project is closed from the workspace | `replace('/projects')` |
+| Creation cancelled | Return to the origin route and focus the recorded trigger |
+| Creation succeeded | Open the created page's designer and focus `[data-designer-entry]` |
+| A feature imports `vue-router` | Fail the architecture gate |
+
+### 5. Good / Base / Bad Cases
+
+- Good: `designer.html#/projects/<id>/pages/<pageId>/design` reopens the same project and page after a refresh or from a
+  shared link, and browser back returns to the previous screen.
+- Base: entering a project from the projects list pushes its page-management route; the projects screen itself never
+  opens a page.
+- Bad: keep a `view` ref beside the router, auto-open `projects[0]` on boot, hang the designer off a project-level
+  `design` path, canonicalize a page-management URL into a design URL, block navigation inside the same project because
+  a draft is dirty, or let a lazy feature navigate itself.
+
+### 6. Tests Required
+
+- Router unit tests cover the root and unknown redirects, one named route per screen, the page-scoped designer path,
+  path builders round-tripping through the table, malformed parameters, page existence, and the switch-guard matrix.
+- Route-sync tests cover deep-link opening, page management opening a project without selecting a page, an unknown
+  project, a removed page, a just-created page the snapshot has not published yet, the repository-ready wait, the
+  designer rewriting the URL for another page, refusal while dirty, and close-project fallback.
+- Shell tests mount `App` against the real route table with stub screens and prove one screen per deep link plus global
+  chrome persistence, while the architecture gate proves the URL owns the workspace and features never import the router.
+- Browser coverage walks project › page › design through the URL, proves both consoles are one rail click apart with the
+  active one marked, proves cancel and success focus restoration through the routed creation workspace, and proves page
+  management renders as a screen without a dialog shell.
+- The accessibility gate covers both management consoles at desktop and mobile widths, including the rail landmark.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+// Project-scoped designer: reads as "the project has a designer".
+{ path: '/projects/:projectId/design/:surfaceId', name: 'surface-design' }
+```
+
+Correct:
+
+```ts
+// Page-scoped designer: a project owns pages, and the designer belongs to a page.
+{ path: '/projects/:projectId/pages/:pageId/design', name: 'page-design' }
+```

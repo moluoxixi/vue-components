@@ -1,0 +1,33 @@
+{
+  "id": "config-form-event-product",
+  "name": "config-form-event-product",
+  "title": "重建事件编排共享合同与完整交互",
+  "description": "落实有序动作嵌套条件、生命周期、动作配置、事务保存与调试闭环",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "ai-doc-assistant",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-09-12",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "09-12-config-form-production",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "disposition": {
+      "status": "superseded",
+      "by": "09-17-config-form-runtime-first",
+      "date": "2026-09-18",
+      "reason": "产品方向已改为 Runtime-first；事件编辑、事件转发与事件编排从主产品完整删除。原任务仅保留历史证据，未完成验收不视为已交付。"
+    }
+  }
+}

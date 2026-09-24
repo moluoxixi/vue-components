@@ -1,15 +1,16 @@
-import type { PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDragSource, DesignerRuntimeNodeGeometry } from '../src/components/DesignerCanvas/types'
+import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { effectScope, ref } from 'vue'
 import { useDesignerCanvasDropTargets } from '../src/components/DesignerCanvas/composables/use-designer-canvas-drop-targets'
 
-const inputNode: PageNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {}, events: {}, bindings: {} }
-const sectionNode: PageNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, events: {}, bindings: {}, slots: { default: [] } }
-const candidate: PageNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {}, events: {}, bindings: {} }
+const inputNode: SurfaceNode = { id: 'input-1', kind: 'field', component: 'element.input', field: 'name', props: {} }
+const sectionNode: SurfaceNode = { id: 'sec-1', kind: 'layout', component: 'element.section', props: {}, slots: { default: [] } }
+const candidate: SurfaceNode = { id: 'cand-1', kind: 'field', component: 'element.input', field: 'cand_1', props: {} }
 
-const graph: PageGraph = {
-  version: 1,
+const graph: SurfaceGraph = {
+  version: SURFACE_GRAPH_VERSION,
   props: {},
   form: {} as never,
   root: [{ nodeId: 'input-1', placement: {} }, { nodeId: 'sec-1', placement: {} }],
@@ -17,8 +18,8 @@ const graph: PageGraph = {
 } as never
 
 const geometry: DesignerRuntimeNodeGeometry[] = [
-  { nodeId: 'input-1', rect: { left: 100, top: 100, width: 400, height: 60, right: 500, bottom: 160 } },
-  { nodeId: 'sec-1', rect: { left: 100, top: 180, width: 400, height: 36, right: 500, bottom: 216 } },
+  { depth: 2, nodeId: 'input-1', order: 0, path: 'root.0', rect: { left: 100, top: 100, width: 400, height: 60, right: 500, bottom: 160 } },
+  { depth: 2, nodeId: 'sec-1', order: 1, path: 'root.1', rect: { left: 100, top: 180, width: 400, height: 36, right: 500, bottom: 216 } },
 ]
 
 const registry = {
@@ -34,7 +35,7 @@ function createHarness() {
   const targets = scope.run(() => useDesignerCanvasDropTargets({
     activeSource: () => ({ type: 'material', materialKey: 'element.input', candidateId: 'cand-1' } satisfies DesignerDragSource),
     cameraViewportRef: ref<HTMLElement>(),
-    candidateCommandForSource: (_source, target) => ({ id: 'preview', label: 'preview', actions: [{ type: 'operation.apply', operations: [{ type: 'node.insert', pageId: 'page', subgraph: { root: [], nodesById: {} }, target }] }] } as never),
+    candidateCommandForSource: (_source, target) => ({ id: 'preview', label: 'preview', actions: [{ type: 'operation.apply', operations: [{ type: 'node.insert', surfaceId: 'surface', subgraph: { root: [], nodesById: {} }, target }] }] } as never),
     candidateNode: () => candidate,
     candidatePreview: command => ({ command, graph }),
     dragController: undefined,

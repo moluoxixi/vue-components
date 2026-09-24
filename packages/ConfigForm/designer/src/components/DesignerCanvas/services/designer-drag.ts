@@ -1,4 +1,4 @@
-import type { NodeSubgraph, PageNode } from '@moluoxixi/config-form-model'
+import type { NodeSubgraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../../graph'
 import type { DesignerRegistry } from '../../../registry'
 import type {
@@ -48,7 +48,7 @@ export function captureDesignerPointer(target: HTMLElement | undefined, pointerI
 
 export function resolveDesignerDragVisualHeight(
   measuredHeight: number,
-  kind?: 'field' | 'layout',
+  kind?: 'field' | 'layout' | 'element',
 ): number {
   return measuredHeight <= 0 && kind === 'layout'
     ? 36
@@ -282,7 +282,7 @@ export function createDesignerMaterialCandidate(
   registry: DesignerRegistry,
   materialKey: string,
   candidateId: string,
-): { node: PageNode, subgraph: NodeSubgraph } | undefined {
+): { node: SurfaceNode, subgraph: NodeSubgraph } | undefined {
   const material = registry.getMaterial(materialKey)
   if (!material)
     return undefined

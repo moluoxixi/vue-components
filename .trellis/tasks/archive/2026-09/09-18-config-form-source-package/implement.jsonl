@@ -1,0 +1,7 @@
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/cross-package-impact.md","reason":"现有 Workbench generator、Surface IR 与生成项目迁移触点"}
+{"file":".trellis/tasks/09-18-config-form-demo-studio/research/task-dependency-audit.md","reason":"Source 抽包顺序、resolver 注入与 Viewer 所有权审计"}
+{"file":".trellis/spec/config-form/frontend/studio-domain-contracts.md","reason":"Source resolver/resource reader、SourceFileSet v1、Resource 完整性、诊断与 parity 合同"}
+{"file":".trellis/spec/config-form-source/frontend/index.md","reason":"规划 Source 包的入口、DOM 隔离和目标合同索引"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"旧实现移除、Studio 组合根和生成项目质量门禁"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"公共包依赖方向、current-contract-only 与入口边界"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对 compilation、provider、Repository bytes、Viewer 与下载数据流"}

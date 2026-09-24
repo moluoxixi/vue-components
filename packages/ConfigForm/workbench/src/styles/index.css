@@ -6,13 +6,15 @@
 @import url(../app/components/WorkbenchAppearancePanel/style/index.css);
 @import url(../app/components/WorkbenchAppearanceDrawer/style/index.css);
 @import url(../app/components/WorkbenchTopbar/style/index.css);
+@import url(../app/components/ManagementShell/style/index.css);
 @import url(../app/style/index.css);
 @import url(../app/components/PreviewDrawer/style/index.css);
 @import url(./studio.css);
 @import url(../features/persistence/style/index.css);
-@import url(../features/flow/style/index.css);
 @import url(../features/export/style/index.css);
 @import url(../features/pages/style/index.css);
+@import url(../features/projects/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css);
+@import "./tailwind.css";

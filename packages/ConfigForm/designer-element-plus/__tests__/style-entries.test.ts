@@ -17,7 +17,6 @@ describe('element Plus designer component Sass entries', () => {
     expect(css).toContain('.mx-element-flex-layout')
     expect(css).toContain('.mx-element-grid-layout')
     expect(css).toContain('.mx-element-designer-choice-field')
-    expect(css).toContain('.mx-element-designer-option-state')
     expect(css).toContain('.mx-element-designer-default-value')
   })
 
@@ -47,12 +46,7 @@ describe('element Plus designer component Sass entries', () => {
     {
       entry: 'src/materials/components/ElementSelectField/style/index.scss',
       includes: '.mx-element-designer-choice-field',
-      excludes: ['.mx-element-designer-option-state', '.mx-element-flex-layout'],
-    },
-    {
-      entry: 'src/materials/components/ElementOptionState/style/index.scss',
-      includes: '.mx-element-designer-option-state',
-      excludes: ['.mx-element-designer-choice-field', '.mx-element-grid-layout'],
+      excludes: ['.mx-element-designer-default-value', '.mx-element-flex-layout'],
     },
     {
       entry: 'src/materials/components/ElementDefaultValueSetter/style/index.scss',
@@ -82,8 +76,6 @@ describe('element Plus designer component Sass entries', () => {
       'element-checkbox-field',
       'element-radio-field',
       'element-select-field',
-      'element-option-state',
-      'element-option-source-setter',
       'element-choice-default-setter',
       'element-default-value-setter',
     ]) {
@@ -97,8 +89,6 @@ describe('element Plus designer component Sass entries', () => {
       'ElementCheckboxField',
       'ElementRadioField',
       'ElementSelectField',
-      'ElementOptionState',
-      'ElementOptionSourceSetter',
       'ElementChoiceDefaultSetter',
       'ElementDefaultValueSetter',
     ]) {

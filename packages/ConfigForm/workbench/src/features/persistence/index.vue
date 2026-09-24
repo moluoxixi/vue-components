@@ -184,7 +184,7 @@ watch(() => props.mode, async (mode) => {
       <article v-for="draft in drafts" :key="draft.draftId" :data-presence="draft.presence">
         <div>
           <strong>{{ new Date(draft.updatedAt).toLocaleString() }}</strong>
-          <span>v{{ draft.baseRepositoryRevision }} · {{ draft.changedPageIds.length }} pages · {{ draft.changedNodeCount }} nodes</span>
+          <span>v{{ draft.baseRepositoryRevision }} · {{ draft.changedSurfaceIds.length }} surfaces · {{ draft.changedNodeCount }} nodes</span>
           <small>{{ draft.presence === 'active'
             ? locale.t('recovery.active', 'Open in another tab')
             : draft.presence === 'unknown'

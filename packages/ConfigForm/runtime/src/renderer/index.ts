@@ -1,5 +1,7 @@
 export { ConfigFormRenderer } from './services/component'
+export { projectRendererDesignValueSchema } from './services/design-value-schema'
 export { createConfigFormRendererExpose } from './services/expose'
 export { withConfigFormInstall } from './services/install'
+export { initializeRendererVariables } from './services/variables'
 export type * from './types'
 export * from './utils'

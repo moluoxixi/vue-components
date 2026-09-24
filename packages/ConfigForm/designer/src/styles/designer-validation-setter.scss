@@ -24,3 +24,48 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+.mx-config-form-designer__validate-on {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mx-config-form-designer__advanced-rule {
+  display: grid;
+  min-width: 0;
+  padding: 8px;
+  gap: 6px;
+  background: var(--mx-designer-subtle);
+  border: 1px solid var(--mx-designer-separator);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__advanced-rule > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__advanced-rule code {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+}
+
+.mx-config-form-designer__advanced-rule pre {
+  max-width: 100%;
+  max-height: 140px;
+  margin: 0;
+  padding: 7px;
+  overflow: auto;
+  color: var(--mx-designer-text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  background: var(--mx-designer-surface);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

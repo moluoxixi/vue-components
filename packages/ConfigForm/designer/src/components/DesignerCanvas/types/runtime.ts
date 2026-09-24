@@ -1,5 +1,5 @@
-import type { ConfigFormBreakpoint, ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
-import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ConfigFormBreakpoint } from '@moluoxixi/config-form-core'
+import type { ModelJsonObject, ProjectCommand, SurfaceGraph } from '@moluoxixi/config-form-model'
 
 export type { ConfigFormBreakpoint } from '@moluoxixi/config-form-core'
 
@@ -70,11 +70,9 @@ export interface DesignerRuntimeSlotScope {
   candidateId?: string
   candidateUsesFallback: boolean
   command?: ProjectCommand
-  graph: PageGraph
+  graph: SurfaceGraph
   interactive: boolean
-  model: Record<string, unknown>
-  reactionProps: ConfigFormReactionProjection['props']
-  reactionStates: ConfigFormReactionProjection['states']
+  model: ModelJsonObject
 }
 
 export interface DesignerDragVisualSlotScope extends DesignerRuntimeSlotScope {

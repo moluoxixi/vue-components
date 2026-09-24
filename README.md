@@ -7,7 +7,7 @@
 - [组件文档](https://moluoxixi.github.io/vue-components/)
 - [ConfigForm 可视化设计器](https://moluoxixi.github.io/vue-components/config-form-playground/designer.html)
 
-ConfigForm 只保留 `packages/ConfigForm/` 下的一套当前实现：`@moluoxixi/config-form` 从根入口提供 Runtime 与 Renderer，Element Plus、Ant Design Vue、Headless、Designer、Compiler 和 Workbench 分别由专用包负责。`@moluoxixi/components` 不再转发或重复包装 ConfigForm。包职责、依赖方向和扩展边界以 [ConfigForm 架构文档](./packages/ConfigForm/README.md) 为准。
+ConfigForm 的当前生产底座是 Vue/TypeScript Runtime；目标产品 ConfigForm Studio 用于创作不调用真实接口的高保真业务界面 Demo，覆盖 UI、布局、校验、模拟 Dataset 和本地页面/浮层交互，再把可运行源码单向交给程序员。复杂业务逻辑仍直接写在导出后的代码或宿主 config 的 `props.onX` 函数中，不进入事件转发、动作链或 Flow。当前仓库仍是 Page-only 实现，Surface、Prototype Runtime 和独立 Source 包属于规划目标；状态与取舍见 [ConfigForm 产品边界](./packages/ConfigForm/PRODUCT.md)、[路线图](./packages/ConfigForm/ROADMAP.md)和[架构文档](./packages/ConfigForm/README.md)。
 
 ## 包
 
@@ -20,13 +20,13 @@ ConfigForm 只保留 `packages/ConfigForm/` 下的一套当前实现：`@moluoxi
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/)                             | Element Plus 轻量 ConfigForm                                |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/)                               | Ant Design Vue 轻量 ConfigForm                              |
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigForm/devtools-vite-plugin/)   | 开发态源码定位 Vite 插件                                    |
-| [`@moluoxixi/config-form-designer`](./packages/ConfigForm/designer/)                           | UI 框架无关的可视化设计器文档、注册器、诊断、编译器与界面   |
+| [`@moluoxixi/config-form-designer`](./packages/ConfigForm/designer/)                           | 当前 UI 框架无关的 Page 设计器与属性/校验检查器             |
 | [`@moluoxixi/config-form-designer-element-plus`](./packages/ConfigForm/designer-element-plus/) | Element Plus 可视化设计器适配                               |
 | [`@moluoxixi/config-form-designer-antd-vue`](./packages/ConfigForm/designer-antd-vue/)         | Ant Design Vue 可视化设计器适配                             |
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigForm/plugin-antd-vue/)             | Ant Design Vue runtime adapter                              |
 | [`@moluoxixi/config-form-plugin-element-plus`](./packages/ConfigForm/plugin-element-plus/)     | Element Plus runtime adapter                                |
 | [`components-playground`](./playgrounds/components-playground/)                                | `@moluoxixi/components` 包组件示例                          |
-| [`config-form-playground`](./packages/ConfigForm/playground/)                                  | Element Plus、Ant Design Vue 与可视化设计器示例和交互测试   |
+| [`config-form-playground`](./packages/ConfigForm/playground/)                                  | Element Plus、Ant Design Vue 与当前可视化设计器示例和测试   |
 
 ConfigForm runtime adapter 包不单独提供 playground，也不是 Vue `app.use()` 插件；需要接入 adapter 时，由对应 UI 示例或业务入口传给 `runtime.plugins`。
 

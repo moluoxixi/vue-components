@@ -68,7 +68,7 @@ function updateNumber(value: number | undefined): void {
 }
 
 function updateValue(value: unknown): void {
-  emit('update:modelValue', (value === null || value === '') ? undefined : value as DesignerJsonValue)
+  emit('update:modelValue', value === null || value === undefined ? undefined : value as DesignerJsonValue)
 }
 </script>
 

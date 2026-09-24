@@ -2,24 +2,51 @@
 
 ## Convention: Keep the architecture README current
 
-`packages/ConfigForm/README.md` is the current-state architecture source of truth for the ConfigForm package family.
+`packages/ConfigForm/README.md` is the architecture entry for the ConfigForm
+package family. It must keep **current implementation** and **target contract**
+in separate, explicitly named sections:
+
+- `PRODUCT.md` owns the approved target product boundary.
+- `ROADMAP.md` owns the current baseline, migration stages, and target-version
+  ownership.
+- `README.md` owns current package/dependency facts and may summarize planned
+  dependencies only when they are labeled as unavailable target contracts.
+- Package READMEs document current importable APIs. A target-responsibility
+  section may explain migration ownership but must state that its API does not
+  yet exist.
+
+Task `design.md` records implementation history and trade-offs. It is not a
+public current-state source, and it is not a substitute for these documents.
 
 Update it in the same change set when a task changes any of these contracts:
 
 - package ownership, package names, public subpaths, dependencies, or peer dependencies;
 - the Headless/Renderer path or the Runtime/Plugin path;
-- ProjectDocument, PageGraph, Headless node, reaction, slot, option source, or extension metadata;
+- ProjectDocument, SurfaceGraph, Dataset, Resource, Headless node, Prototype
+  Interaction, slot, static options, or extension metadata;
 - material/component registries, naming rules, error codes, discovery, or precedence;
 - a capability reused by two or more ConfigForm packages.
 
-Task `design.md` records implementation history and trade-offs. Package README files document package APIs. Neither is a substitute for updating the current architecture facts in `packages/ConfigForm/README.md`.
+When a planned public package becomes real, the same atomic change must add its
+implementation, package manifest, root README, public entries, build/type tests,
+architecture routing, release metadata, and current dependency diagram. Do not
+create an empty package, placeholder export, or README that implies installable
+behavior before then. In particular, the documented
+`@moluoxixi/config-form-prototype-runtime` is current and must be documented
+with its root, `/session`, `/vue`, and `/vue/style` entries. The Source package
+`@moluoxixi/config-form-source` has also landed and must be documented with its
+root, `/generator`, `/viewer`, and `/viewer/style` entries plus its two distinct
+generated file-set kinds.
 
 Before finishing a cross-package ConfigForm task, verify:
 
 1. The dependency diagram still matches package manifests.
-2. Package responsibilities and data flows match the implementation.
+2. Current package responsibilities and data flows match the implementation;
+   target-only paths are visibly marked unavailable.
 3. Extension selection and override precedence remain accurate.
-4. New terminology distinguishes Runtime plugins, Designer adapters, lightweight UI packages, and Vue plugins.
+4. New terminology distinguishes Material/Surface/Instance, Dataset/Data Source,
+   Prototype Interaction/host listener, Runtime plugins, Designer adapters, and
+   Vue plugins.
 5. `pnpm test:config-form-packages` covers any new public package boundary.
 
 ## Scenario: Headless Nested Slot Attr Inference
@@ -106,6 +133,12 @@ migration chain, deprecated alias, shape fallback, or compatibility shim.
 Archived Trellis tasks remain historical evidence and are not current
 contracts.
 
+The constants below are the **currently implemented** identities. Target
+Studio identities are recorded in
+`config-form/frontend/studio-domain-contracts.md`; documenting a target number
+does not make it current. The implementation task that owns a Reader replaces
+its current constant, writer, parser, fixtures, docs, and consumers atomically.
+
 ### 2. Signatures
 
 Current version identities are explicit at every ingest boundary and use one
@@ -113,20 +146,28 @@ field name: `version`. `revision` is reserved for content/history cursors;
 `adapterVersion` and `contractVersion` are dependency/component identities.
 
 ```ts
-PROJECT_DOCUMENT_VERSION = 4
-PAGE_GRAPH_VERSION = 2
-REGISTRY_CONTRACT_SNAPSHOT_VERSION = 1
-CONFIG_FORM_FLOW_VERSION = 1
-RUNTIME_HOST_PROTOCOL_VERSION = 3
+RULE_SET_VERSION = 2
+PROJECT_DOCUMENT_VERSION = 8
+SURFACE_GRAPH_VERSION = 3
+REGISTRY_CONTRACT_SNAPSHOT_VERSION = 3
+PROJECT_TRANSFER_VERSION = 1
+SURFACE_TRANSFER_VERSION = 1
+CANONICAL_PROJECT_IR_VERSION = 7
+CONFIG_FORM_COMPILER_VERSION = '8.0.0'
+PROJECT_ENTITY_CODEC_VERSION = 4
+RUNTIME_HOST_PROTOCOL_VERSION = 7
+PROTOTYPE_SESSION_VERSION = 1
 ```
 
 The serialized field is always `version`:
 
 ```ts
+RuleSet.version = RULE_SET_VERSION
 ProjectDocument.version = PROJECT_DOCUMENT_VERSION
-PageGraph.version = PAGE_GRAPH_VERSION
+SurfaceGraph.version = SURFACE_GRAPH_VERSION
 RegistryContractSnapshot.version = REGISTRY_CONTRACT_SNAPSHOT_VERSION
-PageTransferDocument.version = 1
+ProjectTransferEnvelope.version = PROJECT_TRANSFER_VERSION
+SurfaceTransferEnvelope.version = SURFACE_TRANSFER_VERSION
 ProjectTemplateManifest.version = 1
 ```
 
@@ -155,6 +196,16 @@ type CurrentContractResult<T, D> =
   tests, fixtures, examples, generated source, documentation, and package
   exports in the same change set. Existing development data may be discarded;
   do not preserve it by adding an upgrade path.
+- RuleSet v2 contains only general base/refinement validation. Field-level
+  `required?: boolean` and `requiredMessage?: string` live on the current
+  Surface field contract and flow through Canonical IR, Runtime, Designer, and
+  Source independently. Readers reject RuleSet v1 and every
+  `{ kind: 'required' }` descriptor; no parser, migration, or alias converts it.
+- A multi-stage target does not permit an intermediate dual reader. The first
+  task that owns a Reader lands the complete reviewed target shape; later tasks
+  consume it or return to contract review before changing it again.
+- Dataset raw-row ingestion is an explicit current-shape creation command, not
+  a Reader fallback. A versioned envelope parser still rejects a bare array.
 - The ConfigForm public surface is owned only by the dedicated packages under
   `packages/ConfigForm/`. General-purpose aggregators such as
   `@moluoxixi/components` must not depend on, wrap, re-export, auto-import, or
@@ -175,10 +226,18 @@ type CurrentContractResult<T, D> =
   `schemaVersion`, `protocolVersion`, and `storageSchemaVersion` are not
   compatibility aliases and must be rejected.
 - Cross-layer adaptation between two current contracts is allowed. For example,
-  projecting current PageGraph placement into the current Runtime `span` field
+  projecting current SurfaceGraph placement into the current Runtime `span` field
   is not backward compatibility.
 - Historical changelogs and archived task artifacts may describe removed
   contracts. Current README/spec documents and executable examples must not.
+- A planned package name or entry may appear in target-contract documentation,
+  but not in current install/import examples, package graphs, release lists, or
+  runtime dependencies until a real implementation lands.
+- Data Source HTTP results use the response value-reference contract only:
+  `kind: 'response'`, `ConfigFormValueContext.response`, `$response`, and
+  `usesResponse`. The removed `event` form is not a compatibility spelling.
+  Vue template `$event`, component listeners, and `getValueFromEvent` remain
+  legal UI/value-binding concepts and are not Data Source response aliases.
 
 ### 4. Validation & Error Matrix
 
@@ -189,6 +248,7 @@ type CurrentContractResult<T, D> =
 | Version is missing or shape is ambiguous | Return unsupported-format/schema diagnostics; do not guess |
 | Registry identity differs in version, fingerprint, key set, or component contract | Reject; do not rebuild the source lock and continue |
 | Persisted development record uses an old storage contract | Reject or remove it through an explicit development reset; do not migrate |
+| RuleSet version is not `2` or contains `kind: 'required'` | Reject at the RuleSet/owning document boundary; do not lift it into field settings |
 | A deprecated alias and its replacement are both supplied | The alias must not exist in the current public type or parser |
 | A package outside `packages/ConfigForm/` exposes or wraps ConfigForm | Delete that dependency, source, export, auto-loader entry, documentation, and fixture |
 | A current protocol has version `1` and matches its literal schema | Accept; the number alone is not evidence of legacy compatibility |
@@ -197,7 +257,7 @@ type CurrentContractResult<T, D> =
 
 - Good: bump a contract, update every producer and consumer atomically, remove
   the prior parser/type/tests, and make stale development state fail closed.
-- Base: keep Flow v1 because it is the current and only accepted Flow contract.
+- Base: keep a version-1 protocol when it is still the current and only accepted contract; the number alone is not a legacy reader.
 - Bad: retain `legacyProject`, an optional `onEvent` alias, an IndexedDB v2→v3
   migrator, or a dormant component migration registry "just in case".
 
@@ -205,6 +265,9 @@ type CurrentContractResult<T, D> =
 
 - Boundary tests accept the current literal and reject lower, higher, missing,
   malformed, and ambiguous versions with stable codes and precise paths.
+- RuleSet tests accept v2 without Required descriptors and reject v1,
+  missing/future versions, unknown shapes, and `kind: 'required'`; current
+  Project/IR fixtures carry Required only on the field.
 - Architecture tests scan public exports and production source for removed
   legacy/deprecated symbols, migration entry points, aliases, and fallback
   branches.
@@ -215,6 +278,11 @@ type CurrentContractResult<T, D> =
   the current schema.
 - Registry tests prove exact adapter/version/fingerprint/component-key and
   component-contract matching; no migration-required success branch exists.
+- Core value-reference behavior tests accept the response context and reject
+  removed `kind: 'event'` and `$event` inputs. A narrow architecture gate scans
+  only the value-reference contract/service and Data Source response injection
+  files for `context.event`, `$event`, and `usesEvent`; it does not scan or block
+  legitimate Vue event handling.
 - `pnpm test:config-form-packages` and the affected package build/typecheck/E2E
   gates run after every cross-package hard cut.
 

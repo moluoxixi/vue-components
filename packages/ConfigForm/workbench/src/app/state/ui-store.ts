@@ -1,9 +1,9 @@
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { WorkbenchLocaleId } from '../../locale'
 import type { PreviewViewport, StudioLeftView } from '../../studio'
 import type {
   MobileStudioView,
   ShowWorkbenchNoticeOptions,
+  WorkbenchCreationOrigin,
   WorkbenchNotice,
   WorkbenchPaletteFamily,
   WorkbenchThemePreference,
@@ -41,13 +41,9 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const previewOpen = ref(false)
   const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
-  const pageManagerOpen = ref(false)
-  const pageManagerLoaded = ref(false)
+  const creationOrigin = shallowRef<WorkbenchCreationOrigin>()
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
-  const flowWorkspaceOpen = ref(false)
-  const flowDialogLoaded = ref(false)
-  const flowInitialTrigger = shallowRef<ConfigFormFlowTrigger>()
   const appearanceDrawerOpen = ref(false)
   const themePreference = ref<WorkbenchThemePreference>(appearance.themePreference)
   const paletteFamily = ref<WorkbenchPaletteFamily>(appearance.paletteFamily)
@@ -113,30 +109,24 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     exportPreviewMode.value = mode
   }
 
-  function closeFlowWorkspace(): void {
-    flowWorkspaceOpen.value = false
+  /**
+   * Records where the routed creation workspace was opened from. Cancel and
+   * success both navigate back here, and the destination restores focus to the
+   * recorded trigger.
+   */
+  function setCreationOrigin(origin: WorkbenchCreationOrigin): void {
+    creationOrigin.value = origin
   }
 
-  function openFlowWorkspace(trigger: ConfigFormFlowTrigger): void {
-    flowInitialTrigger.value = trigger
-    flowDialogLoaded.value = true
-    flowWorkspaceOpen.value = true
-  }
-
-  function closePageManager(): void {
-    pageManagerOpen.value = false
-  }
-
-  function openPageManager(): void {
-    pageManagerLoaded.value = true
-    pageManagerOpen.value = true
+  function clearCreationOrigin(): void {
+    creationOrigin.value = undefined
   }
 
   function selectMobileStudioView(view: MobileStudioView): void {
     previewOpen.value = false
     previewExpanded.value = false
     mobileStudioView.value = view
-    if (view === 'components' || view === 'layers' || view === 'pages')
+    if (view === 'components' || view === 'layers' || view === 'pages' || view === 'theme')
       studioLeftView.value = view
   }
 
@@ -212,17 +202,14 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   return {
     appearanceDrawerOpen,
+    clearCreationOrigin,
     clearMessage,
     closeAppearanceDrawer,
     clearNotice,
     closeExportPreview,
-    closeFlowWorkspace,
-    closePageManager,
+    creationOrigin,
     exportDialogLoaded,
     exportPreviewMode,
-    flowDialogLoaded,
-    flowInitialTrigger,
-    flowWorkspaceOpen,
     localeId,
     message,
     mobileStudioView,
@@ -230,16 +217,13 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     notify,
     openAppearanceDrawer,
     openExportPreview,
-    openFlowWorkspace,
-    openPageManager,
-    pageManagerLoaded,
-    pageManagerOpen,
     paletteFamily,
     previewExpanded,
     previewOpen,
     previewViewport,
     resolvedTheme,
     selectMobileStudioView,
+    setCreationOrigin,
     setPaletteFamily,
     setThemePreference,
     showNotice,

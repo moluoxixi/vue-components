@@ -1,0 +1,120 @@
+@forward '../../../../../styles/foundation';
+
+.mx-config-form-designer__interaction-editor,
+.mx-config-form-designer__interaction-section,
+.mx-config-form-designer__interaction-rule,
+.mx-config-form-designer__interaction-bindings,
+.mx-config-form-designer__interaction-binding,
+.mx-config-form-designer__interaction-assignment,
+.mx-config-form-designer__expression-editor,
+.mx-config-form-designer__expression-advanced {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.mx-config-form-designer__interaction-editor {
+  gap: 14px;
+}
+
+.mx-config-form-designer__interaction-summary,
+.mx-config-form-designer__interaction-empty,
+.mx-config-form-designer__interaction-note,
+.mx-config-form-designer__interaction-error {
+  margin: 0;
+  color: var(--mx-designer-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mx-config-form-designer__interaction-heading,
+.mx-config-form-designer__interaction-rule-heading,
+.mx-config-form-designer__interaction-assignment-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__interaction-heading {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__interaction-rule {
+  padding: 9px;
+  background: var(--mx-designer-subtle);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 6px;
+}
+
+.mx-config-form-designer__interaction-rule-heading code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mx-designer-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__interaction-grid,
+.mx-config-form-designer__expression-simple {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mx-config-form-designer__expression-simple > :only-child,
+.mx-config-form-designer__expression-simple > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.mx-config-form-designer__interaction-binding {
+  padding: 7px;
+  border-left: 2px solid var(--mx-designer-accent-line);
+}
+
+.mx-config-form-designer__interaction-assignment {
+  padding-top: 7px;
+  border-top: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__interaction-assignment-heading > .el-select {
+  min-width: 0;
+  flex: 1;
+}
+
+.mx-config-form-designer__interaction-error {
+  color: var(--mx-designer-danger);
+}
+
+.mx-config-form-designer__interaction-command {
+  min-height: 30px;
+  padding: 5px 10px;
+  justify-self: end;
+  color: var(--mx-designer-accent);
+  font: inherit;
+  letter-spacing: 0;
+  background: var(--mx-designer-accent-soft);
+  border: 1px solid var(--mx-designer-accent-line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__interaction-command:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+@container config-form-inspector (max-width: 270px) {
+  .mx-config-form-designer__interaction-grid,
+  .mx-config-form-designer__expression-simple {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mx-config-form-designer__expression-simple > * {
+    grid-column: 1;
+  }
+}

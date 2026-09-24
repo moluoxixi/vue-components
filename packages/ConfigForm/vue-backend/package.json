@@ -38,6 +38,7 @@
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-compiler": "workspace:*",
     "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*",
     "@moluoxixi/zod3-to-rule": "workspace:*"
   },
   "devDependencies": {

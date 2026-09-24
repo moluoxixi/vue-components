@@ -1,16 +1,13 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type {
-  ProjectPage,
+  ProjectSurface,
   RegistryContractSnapshot,
   RegistryLock,
 } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapterId } from '../../../adapters'
-import type { RuntimeHostRuntimeStatePayload } from '../../../runtime-host'
-import type { ProjectIdentityFactory } from '../../types'
+import type { IsolatedProjectPreview, ProjectIdentityFactory } from '../../types'
 
 export type ProjectTemplateAdapter = WorkbenchAdapterId
-export type TemplateCreationTarget = 'page' | 'project'
+export type TemplateCreationTarget = 'surface' | 'project'
 export type ProjectTemplateCategory = 'blank' | 'starter'
 export type ProjectTemplateViewport = 'desktop' | 'mobile' | 'tablet'
 
@@ -35,13 +32,13 @@ export interface ProjectTemplateManifest {
   }
   preview: {
     preferredViewport: ProjectTemplateViewport
-    pageId: string
+    surfaceId: string
   }
 }
 
 export interface ProjectTemplateSeed {
   manifest: ProjectTemplateManifest
-  page: ProjectPage
+  surface: ProjectSurface
 }
 
 /** Providers return data only. Catalog parsing owns the unknown -> typed boundary. */
@@ -71,6 +68,7 @@ export type TemplateCatalogDiagnosticCode
     | 'TEMPLATE_REGISTRY_FINGERPRINT_MISMATCH'
     | 'TEMPLATE_REGISTRY_VERSION_MISMATCH'
     | 'TEMPLATE_SEED_INVALID'
+    | 'TEMPLATE_TARGET_KIND_INVALID'
     | 'TEMPLATE_UNSAFE_KEY'
     | 'TEMPLATE_VERSION_INVALID'
 
@@ -98,11 +96,11 @@ export interface TemplateEligibilityInput {
   targetLock?: RegistryLock
 }
 
-export interface InstantiateTemplatePageInput {
+export interface InstantiateTemplateSurfaceInput {
   id: string
   identityFactory?: ProjectIdentityFactory
   name: string
-  route: string
+  route?: string
 }
 
 export interface InstantiateTemplateProjectInput {
@@ -112,12 +110,4 @@ export interface InstantiateTemplateProjectInput {
   registryLock: RegistryLock
 }
 
-export interface PreparedTemplatePreview {
-  adapter: ProjectTemplateAdapter
-  compilation: PageCompilation
-  namespace: string
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
-  revision: string
-  runtimeSessionKey: string
-  runtimeState: RuntimeHostRuntimeStatePayload
-}
+export type PreparedTemplatePreview = IsolatedProjectPreview

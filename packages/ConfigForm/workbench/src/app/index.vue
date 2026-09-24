@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
+import type { DatasetReference, ProjectSurface } from '@moluoxixi/config-form-model'
+import type { CSSProperties } from 'vue'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { TemplateCreationTarget } from '../project'
-import type { WorkbenchShellEmits, WorkbenchShellProps } from './types'
-import type { MobileStudioView } from './types'
+import type { WorkbenchExportCommand, MobileStudioView } from './types'
 import {
   Blocks,
   Copy,
   Files,
   Layers3,
   Monitor,
+  Paintbrush,
   Redo2,
   RefreshCw,
   SlidersHorizontal,
@@ -18,11 +19,20 @@ import {
   Tablet,
   Trash2,
   Undo2,
+  X,
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
+import { useRouter } from 'vue-router'
+import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
+import {
+  pageCreatePath,
+  projectCreatePath,
+  projectPagesPath,
+  projectsPath,
+} from './router'
+import { DesignRuntimeHostFrame, PreviewDrawer, ProjectThemeEditor, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
   useWorkbenchDesignSession,
@@ -31,71 +41,65 @@ import {
   useWorkbenchUiStore,
 } from './composables'
 
-defineProps<WorkbenchShellProps>()
-
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
-const FlowDialog = defineAsyncComponent(() => import('../features/flow').then(module => module.FlowDialog))
-const PageManagerDialog = defineAsyncComponent(() => import('../features/pages').then(module => module.PageManagerDialog))
+const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
 
-const emit = defineEmits<WorkbenchShellEmits>()
-
+const router = useRouter()
 const controller = useWorkbenchController()
 const designSession = useWorkbenchDesignSession()
 const previewSession = useWorkbenchPreviewSession()
 const exportService = useWorkbenchExportService()
 const ui = useWorkbenchUiStore()
 const {
-  projects,
   busy,
   componentRegistry,
   configError,
   currentProject,
   currentGraph,
-  currentPage,
-  currentPageId,
-  flowEventTargets,
+  currentSurface,
+  currentSurfaceId,
   designerLayers,
   dirty,
-  executeFlowCommand,
   getCurrentAdapterId,
-  handlePageAction,
   localeOptions,
   previewState,
+  readEmbeddedResource,
   registry,
   repositoryRevision,
   recoveryDrafts,
-  requestOpenProject,
   reloadCurrentProject,
+  materializeOptionsSnapshot,
   saveProject,
   saveCurrentDraftAsProject,
-  selectPageFromDesigner,
+  saveOptionsAsDataset,
+  selectSurfaceFromDesigner,
+  setDatasetBinding,
+  setResourceBinding,
   statusLabel,
   workbenchLocale,
   workspaceRecoveryNotice,
+  updateProjectTheme,
 } = controller
 const persistenceDialogMode = ref<PersistenceDialogMode>()
+const assetManagerOpen = ref(false)
+const assetSelection = ref<{ id?: string, kind?: 'dataset' | 'resource' }>({})
 const {
   commandControl: designerCommandControl,
   getCompilation: getDesignRuntimeCompilation,
   historyControl: designerHistoryControl,
-  runtime: designRuntime,
   selectedIds: selectedDesignerIds,
 } = designSession
 const {
-  flowProjection: previewFlowProjection,
-  getCompilation: getPreviewCompilation,
-  handleFieldChange: handlePreviewFieldChange,
-  handleRuntimeEvent: handlePreviewRuntimeEvent,
+  compilation: previewCompilation,
+  handleInstanceState: handlePreviewInstanceState,
+  handleRuntimeError: handlePreviewRuntimeError,
   handleRuntimeMounted: handlePreviewRuntimeMounted,
   handleRuntimeReady: handlePreviewRuntimeReady,
-  handleRuntimeState: handlePreviewRuntimeState,
-  handleSubmitResult: handlePreviewSubmitResult,
-  handleSubmit: handlePreviewSubmit,
-  clearSubmission: clearPreviewSubmission,
-  lastSubmission: previewLastSubmission,
-  projection: previewProjection,
-  runtimeState: previewRuntimeState,
+  handleSession: handlePreviewSession,
+  revision: previewRevision,
+  session: previewPrototypeSession,
+  sessionId: previewSessionId,
 } = previewSession
 const {
   capture: captureExportSnapshotInput,
@@ -104,29 +108,21 @@ const {
 const {
   clearNotice,
   closeExportPreview,
-  closeFlowWorkspace,
-  closePageManager,
   exportDialogLoaded,
   exportPreviewMode,
-  flowDialogLoaded,
-  flowInitialTrigger,
-  flowWorkspaceOpen,
   localeId,
   message,
   mobileStudioView,
   notice,
   openExportPreview,
   openAppearanceDrawer,
-  openFlowWorkspace,
-  openPageManager,
-  pageManagerLoaded,
-  pageManagerOpen,
   paletteFamily,
   previewExpanded,
   previewOpen,
   previewViewport,
   resolvedTheme,
   selectMobileStudioView: selectMobileView,
+  setCreationOrigin,
   setPaletteFamily,
   setThemePreference,
   showNotice,
@@ -138,13 +134,39 @@ const {
 
 const designer = useTemplateRef<DesignSurfaceExpose>('designer')
 const mobileDock = useTemplateRef<HTMLElement>('mobileDock')
+const currentOverlaySurface = computed(() => {
+  const surface = currentSurface.value
+  return surface && surface.kind !== 'page' ? surface : undefined
+})
+const designerDatasets = computed(() => currentProject.value?.datasetOrder
+  .map(id => currentProject.value?.datasetsById[id])
+  .filter(dataset => dataset !== undefined) ?? [])
+const designerResources = computed(() => Object.values(currentProject.value?.resources ?? {})
+  .sort((left, right) => left.name.localeCompare(right.name)))
 const mobileStudioViews = computed(() => [
   { icon: Blocks, id: 'components' as const, label: workbenchLocale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: workbenchLocale.value.t('designer.view.layers', 'Layers') },
   { icon: Monitor, id: 'canvas' as const, label: workbenchLocale.value.t('designer.view.canvas', 'Canvas') },
   { icon: SlidersHorizontal, id: 'inspector' as const, label: workbenchLocale.value.t('designer.view.inspector', 'Inspector') },
-  { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Pages') },
+  { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Surfaces') },
+  { icon: Paintbrush, id: 'theme' as const, label: workbenchLocale.value.t('designer.view.theme', 'Theme') },
 ])
+
+function presentationLength(surface: Exclude<ProjectSurface, { kind: 'page' }>, breakpoint: string): string {
+  const responsive = surface.kind === 'dialog' ? surface.presentation.width : surface.presentation.size
+  const value = breakpoint === 'mobile'
+    ? responsive.mobile ?? responsive.tablet ?? responsive.desktop
+    : breakpoint === 'tablet'
+      ? responsive.tablet ?? responsive.desktop
+      : responsive.desktop
+  return `${value.value}${value.unit}`
+}
+
+function presentationStyle(surface: ProjectSurface | undefined, breakpoint: string): CSSProperties {
+  if (!surface || surface.kind === 'page')
+    return {}
+  return { '--surface-presentation-size': presentationLength(surface, breakpoint) } as CSSProperties
+}
 
 function selectMobileStudioView(view: MobileStudioView): void {
   selectMobileView(view)
@@ -213,24 +235,123 @@ function moveDesignerLayer(
   designer.value?.performNodeAction(action, nodeId)
 }
 
-function showExportDialog(mode: 'source' | 'config'): void {
-  openExportPreview(mode)
+async function handleExportCommand(command: WorkbenchExportCommand): Promise<void> {
+  if (command === 'source' || command === 'config') {
+    openExportPreview(command)
+    return
+  }
+
+  const project = currentProject.value
+  const surface = currentSurface.value
+  if (!project || (command === 'surface-json' && !surface)) {
+    showNotice({
+      message: workbenchLocale.value.t(
+        'export.transferUnavailable',
+        'The current project or Surface is unavailable for JSON export.',
+      ),
+      tone: 'error',
+    })
+    return
+  }
+
+  try {
+    const filename = command === 'project-json'
+      ? await downloadProjectTransfer({ document: project, readEmbedded: readEmbeddedResource })
+      : await downloadSurfaceTransfer({
+          document: project,
+          readEmbedded: readEmbeddedResource,
+          surfaceId: surface!.id,
+        })
+    showNotice({
+      message: workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
+      tone: 'success',
+    })
+  }
+  catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    showNotice({
+      message: workbenchLocale.value.t(
+        'export.transferFailed',
+        'Unable to export JSON: {reason}',
+        { reason },
+      ),
+      tone: 'error',
+    })
+  }
 }
 
-function showFlowDialog(trigger: ConfigFormFlowTrigger): void {
-  openFlowWorkspace(trigger)
+function handleDatasetBinding(
+  nodeId: string,
+  bindingKey: string,
+  reference: DatasetReference | undefined,
+): void {
+  const changed = setDatasetBinding(currentSurfaceId.value, nodeId, bindingKey, reference)
+  showNotice({
+    message: changed
+      ? workbenchLocale.value.t('data.dataset.saved', 'Dataset binding saved.')
+      : workbenchLocale.value.t('data.dataset.rejected', 'Dataset binding was rejected. Check its projection and query.'),
+    tone: changed ? 'success' : 'error',
+  })
 }
 
-function showComponentEventFlow(nodeId: string, eventName: string): void {
-  showFlowDialog({ kind: 'component.event', nodeId, event: eventName })
+function handleResourceBinding(nodeId: string, bindingKey: string, resourceId: string | undefined): void {
+  const changed = setResourceBinding(currentSurfaceId.value, nodeId, bindingKey, resourceId)
+  showNotice({
+    message: changed
+      ? workbenchLocale.value.t('data.resource.saved', 'Resource binding saved.')
+      : workbenchLocale.value.t('data.resource.rejected', 'Resource binding was rejected.'),
+    tone: changed ? 'success' : 'error',
+  })
 }
 
-function showPageManager(): void {
-  openPageManager()
+function handleSaveOptionsAsDataset(nodeId: string, bindingKey: string, name: string): void {
+  const datasetId = saveOptionsAsDataset(currentSurfaceId.value, nodeId, bindingKey, name)
+  showNotice({
+    message: datasetId
+      ? workbenchLocale.value.t('data.options.saved', 'Inline options were saved as a Dataset and bound to this component.')
+      : workbenchLocale.value.t('data.options.rejected', 'Inline options could not be saved as a Dataset.'),
+    tone: datasetId ? 'success' : 'error',
+  })
 }
 
+function handleMaterializeOptions(nodeId: string, bindingKey: string): void {
+  const changed = materializeOptionsSnapshot(currentSurfaceId.value, nodeId, bindingKey)
+  showNotice({
+    message: changed
+      ? workbenchLocale.value.t('data.options.materialized', 'Dataset options were detached as an inline snapshot.')
+      : workbenchLocale.value.t('data.options.materializeRejected', 'Dataset options could not be materialized.'),
+    tone: changed ? 'success' : 'error',
+  })
+}
+
+function showSurfaceManager(): void {
+  const projectId = currentProject.value?.id
+  if (projectId)
+    void router.push(projectPagesPath(projectId))
+}
+
+function showAssetManager(kind?: 'dataset' | 'resource', id?: string): void {
+  assetSelection.value = { ...(kind ? { kind } : {}), ...(id ? { id } : {}) }
+  assetManagerOpen.value = true
+}
+
+function exitToProjects(): void {
+  void router.push(projectsPath())
+}
+
+/**
+ * Creation is a routed workspace, so the command records where it came from and
+ * navigates; the creation screen returns here and restores trigger focus.
+ */
 function requestCreation(target: TemplateCreationTarget, focusKey: string): void {
-  emit('create', { focusKey, target })
+  const projectId = currentProject.value?.id
+  setCreationOrigin({ focusKey, path: router.currentRoute.value.fullPath })
+  if (target === 'project') {
+    void router.push(projectCreatePath('template'))
+    return
+  }
+  if (projectId)
+    void router.push(pageCreatePath(projectId))
 }
 
 function showPersistenceDialog(mode: PersistenceDialogMode): void {
@@ -268,7 +389,7 @@ watch(recoveryDrafts, (drafts) => {
       :project="currentProject"
       :busy="busy"
       :config-error="configError"
-      :current-page="currentPage"
+      :current-surface="currentSurface"
       :dirty="dirty"
       :locale="localeOptions"
       :locale-id="localeId"
@@ -277,11 +398,12 @@ watch(recoveryDrafts, (drafts) => {
       :repository-revision="repositoryRevision"
       :status-label="statusLabel"
       :theme-preference="themePreference"
-      @export="showExportDialog"
+      @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
-      @new-page="requestCreation('page', $event)"
+      @new-surface="requestCreation('surface', $event)"
+      @open-projects="exitToProjects"
       @open-appearance="openAppearanceDrawer"
-      @open-pages="showPageManager"
+      @open-surfaces="showSurfaceManager"
       @open-versions="showPersistenceDialog('versions')"
       @save="saveProject"
       @set-palette-family="setPaletteFamily"
@@ -309,26 +431,31 @@ watch(recoveryDrafts, (drafts) => {
       >
         <div class="provider-surface">
           <DesignSurface
-            v-if="currentGraph && designRuntime"
+            v-if="currentGraph"
             ref="designer"
-            :key="`${currentProject.registryLock.adapter}-${currentPageId}`"
+            :key="`${currentProject.registryLock.adapter}-${currentSurfaceId}`"
             class="embedded-designer"
             :graph="currentGraph"
-            :flows="currentPage?.flows ?? []"
-            :page-id="currentPageId"
+            :surface-id="currentSurfaceId"
             :component-registry="componentRegistry"
+            :datasets="designerDatasets"
             :command-hint="WorkbenchCommandHint"
             :command-control="designerCommandControl"
             :history-control="designerHistoryControl"
             :locale="localeOptions"
             :readonly="busy"
             :renderer="ConfigFormRenderer"
+            :resources="designerResources"
             :registry="registry"
+            :surface="currentSurface"
             workspace-navigation="external"
-            @configure-event="showComponentEventFlow"
-            @configure-flow="showFlowDialog"
+            :surfaces="Object.values(currentProject.surfacesById)"
             @notice="handleDesignerNotice"
             @selection-set-change="selectedDesignerIds = $event"
+            @update-dataset-binding="handleDatasetBinding"
+            @update-resource-binding="handleResourceBinding"
+            @save-options-as-dataset="handleSaveOptionsAsDataset"
+            @materialize-options-snapshot="handleMaterializeOptions"
            >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
               <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
@@ -378,7 +505,7 @@ watch(recoveryDrafts, (drafts) => {
               <StudioLeftPanel
                 v-model:active-view="studioLeftView"
                 :project="currentProject"
-                :current-page-id="currentPageId"
+                :current-surface-id="currentSurfaceId"
                 :form="form"
                 :history="designerHistoryControl.history"
                 :layers="designerLayers"
@@ -391,35 +518,82 @@ watch(recoveryDrafts, (drafts) => {
                 @arrange-layer="moveDesignerLayer"
                 @move-layer="(nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)"
                 @jump-history="jumpDesignerHistory"
-                @manage-pages="showPageManager"
+                @manage-assets="showAssetManager"
+                @manage-surfaces="showSurfaceManager"
                 @select-layer="selectDesignerLayer"
-                @select-page="selectPageFromDesigner"
-              />
+                @select-surface="selectSurfaceFromDesigner"
+              >
+                <template #theme>
+                  <ProjectThemeEditor
+                    :locale="localeOptions"
+                    :model-value="currentProject.theme"
+                    :readonly="busy"
+                    @apply="updateProjectTheme"
+                  />
+                </template>
+              </StudioLeftPanel>
             </template>
             <template #runtime="scope">
-              <DesignRuntimeHostFrame
-                :adapter="getCurrentAdapterId()"
-                :breakpoint="scope.breakpoint"
-                :camera-scale="scope.cameraScale"
-                :candidate-id="scope.candidateId"
-                :candidate-uses-fallback="scope.candidateUsesFallback"
-                :command="scope.command"
-                :locale="workbenchLocale.locale"
-                :model-value="scope.model"
-                :namespace="registry.rendererNamespace"
-                :reaction-props="scope.reactionProps"
-                :reaction-states="scope.reactionStates"
-                :resolve-compilation="getDesignRuntimeCompilation"
-                :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
-                variant="canvas"
-                @error="message = $event.message"
-                @geometry="scope.bridge.updateGeometry"
-                @context-menu="scope.bridge.contextMenu"
-                @pointer-cancel="scope.bridge.pointerCancel"
-                @pointer-down="scope.bridge.pointerDown"
-                @pointer-move="scope.bridge.pointerMove"
-                @pointer-up="scope.bridge.pointerUp"
-              />
+              <div
+                class="surface-presentation-shell"
+                :class="[
+                  `is-${currentSurface?.kind ?? 'page'}`,
+                  currentSurface?.kind === 'drawer' ? `is-${currentSurface.presentation.placement}` : '',
+                ]"
+                :data-surface-presentation="currentSurface?.kind"
+                :style="presentationStyle(currentSurface, scope.breakpoint)"
+              >
+                <div v-if="currentOverlaySurface?.presentation.mask" class="surface-presentation-mask" aria-hidden="true" />
+                <section v-if="currentOverlaySurface" class="surface-presentation-panel" :aria-label="currentOverlaySurface.presentation.title">
+                  <header class="surface-presentation-header">
+                    <strong>{{ currentOverlaySurface.presentation.title }}</strong>
+                    <button v-if="currentOverlaySurface.presentation.close.button" type="button" disabled aria-hidden="true"><X :size="16" /></button>
+                  </header>
+                  <DesignRuntimeHostFrame
+                    :adapter="getCurrentAdapterId()"
+                    :breakpoint="scope.breakpoint"
+                    :camera-scale="scope.cameraScale"
+                    :candidate-id="scope.candidateId"
+                    :candidate-uses-fallback="scope.candidateUsesFallback"
+                    :command="scope.command"
+                    :locale="workbenchLocale.locale"
+                    :model-value="scope.model"
+                    :namespace="registry.rendererNamespace"
+                    :resolve-compilation="getDesignRuntimeCompilation"
+                    :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
+                    variant="canvas"
+                    @error="message = $event.message"
+                    @geometry="scope.bridge.updateGeometry"
+                    @context-menu="scope.bridge.contextMenu"
+                    @pointer-cancel="scope.bridge.pointerCancel"
+                    @pointer-down="scope.bridge.pointerDown"
+                    @pointer-move="scope.bridge.pointerMove"
+                    @pointer-up="scope.bridge.pointerUp"
+                  />
+                </section>
+                <DesignRuntimeHostFrame
+                  v-else
+                  :adapter="getCurrentAdapterId()"
+                  :breakpoint="scope.breakpoint"
+                  :camera-scale="scope.cameraScale"
+                  :candidate-id="scope.candidateId"
+                  :candidate-uses-fallback="scope.candidateUsesFallback"
+                  :command="scope.command"
+                  :locale="workbenchLocale.locale"
+                  :model-value="scope.model"
+                  :namespace="registry.rendererNamespace"
+                  :resolve-compilation="getDesignRuntimeCompilation"
+                  :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
+                  variant="canvas"
+                  @error="message = $event.message"
+                  @geometry="scope.bridge.updateGeometry"
+                  @context-menu="scope.bridge.contextMenu"
+                  @pointer-cancel="scope.bridge.pointerCancel"
+                  @pointer-down="scope.bridge.pointerDown"
+                  @pointer-move="scope.bridge.pointerMove"
+                  @pointer-up="scope.bridge.pointerUp"
+                />
+              </div>
             </template>
             <template #dragVisual="scope">
               <DesignRuntimeHostFrame
@@ -433,8 +607,6 @@ watch(recoveryDrafts, (drafts) => {
                 :locale="workbenchLocale.locale"
                 :model-value="scope.model"
                 :namespace="registry.rendererNamespace"
-                :reaction-props="scope.reactionProps"
-                :reaction-states="scope.reactionStates"
                 :resolve-compilation="getDesignRuntimeCompilation"
                 :title="workbenchLocale.t('canvas.dragVisualFrame', 'Drag preview runtime')"
                 variant="drag-visual"
@@ -449,27 +621,20 @@ watch(recoveryDrafts, (drafts) => {
         v-model:expanded="previewExpanded"
         v-model:viewport="previewViewport"
         :adapter="getCurrentAdapterId()"
-        :compilation="getPreviewCompilation()"
-        :config-error="configError"
+        :compilation="previewCompilation"
         :locale="localeOptions"
-        :runtime-state="previewRuntimeState"
-        :last-submission="previewLastSubmission"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
-        :projection="previewProjection"
-        :reaction-projection="previewFlowProjection"
+        :revision="previewRevision"
+        :session="previewPrototypeSession"
+        :session-id="previewSessionId"
         :state="previewState"
         @close="togglePreview"
-        @error="message = $event instanceof Error ? $event.message : String($event)"
-        @field-change="handlePreviewFieldChange"
-        @runtime-event="handlePreviewRuntimeEvent"
-        @runtime-mounted="handlePreviewRuntimeMounted"
+        @error="handlePreviewRuntimeError"
+        @instance-state="handlePreviewInstanceState"
+        @mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
-        @runtime-state="handlePreviewRuntimeState"
-        @submit="handlePreviewSubmit"
-        @submit-result="handlePreviewSubmitResult"
-        @clear-submission="clearPreviewSubmission"
-        @message="message = $event"
+        @session="handlePreviewSession"
       />
     </section>
 
@@ -490,40 +655,19 @@ watch(recoveryDrafts, (drafts) => {
       </button>
     </nav>
 
-    <PageManagerDialog
-      v-if="pageManagerLoaded"
+    <AssetManagerDialog
+      v-if="currentProject"
+      v-model="assetManagerOpen"
+      :commands="controller"
+      :initial-id="assetSelection.id"
+      :initial-kind="assetSelection.kind"
       :project="currentProject"
-      :projects="projects"
-      :busy="busy"
-      :locale="localeOptions"
-      :open="pageManagerOpen"
-      :return-focus-key="creationReturnFocusKey"
-      @close="closePageManager"
-      @create-page="requestCreation('page', 'page-manager-new-page')"
-      @create-project="requestCreation('project', 'page-manager-new-project')"
-      @open-project="requestOpenProject($event)"
-      @action="handlePageAction"
-      @return-focus-restored="emit('creationFocusRestored')"
-    />
-
-    <FlowDialog
-      v-if="flowDialogLoaded && flowWorkspaceOpen && flowInitialTrigger"
-      :event-targets="flowEventTargets"
-      :flows="currentPage?.flows ?? []"
-      :initial-trigger="flowInitialTrigger"
-      :locale="localeOptions"
-      :open="flowWorkspaceOpen"
-      :page-id="currentPageId"
-      :readonly="busy"
-      @close="closeFlowWorkspace"
-      @command="executeFlowCommand"
     />
 
     <ExportDialog
       v-if="exportDialogLoaded"
       :capture="captureExportSnapshotInput"
       :current-compilation="getCurrentExportCompilation()"
-      :current-page-id="currentPageId"
       :locale="localeOptions"
       :mode="exportPreviewMode"
       :theme="resolvedTheme"

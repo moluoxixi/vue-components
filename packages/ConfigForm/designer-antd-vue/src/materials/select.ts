@@ -19,11 +19,10 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueChoiceReadonly,
       },
-      analyze: s.createAntdVueOptionDiagnostics(),
+      datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
       setters: [
-        s.choiceDefaultValueSetter('select'),
-        s.optionSourceSetter,
-        s.optionsSetter,
+        s.choiceDefaultValueSetter('select', s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
+        s.optionsSetter(s.DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES),
         s.placeholderSetter,
         s.allowClearSetter,
         s.propSetter('showSearch', 'Searchable', 'boolean'),
@@ -42,7 +41,6 @@ export default defineDesignerMaterialModule({
       category: '选择',
       setters: {
         defaultValue: '默认值',
-        optionSource: '选项来源',
         options: '静态选项',
         placeholder: '占位文本',
         allowClear: '可清空',

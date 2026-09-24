@@ -106,8 +106,8 @@ const BINARY_PRECEDENCE: Record<ConfigFormExpressionBinaryOperator, number> = {
 }
 
 /**
- * Parses the safe expression language shared by flow conditions, reaction
- * operands, and formula fields. Supported grammar: literals, identifier
+ * Parses the safe expression language shared by reaction conditions and
+ * formula fields. Supported grammar: literals, identifier
  * paths over the values scope, arrays, arithmetic/comparison/logical
  * operators, the ternary, and allow-listed function calls. No assignment,
  * no property writes, no arbitrary JavaScript.

@@ -1,10 +1,8 @@
-import { strFromU8, unzipSync } from 'fflate'
+import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
-import { normalizeProjectPath } from '..'
-import { createWorkspaceArchive } from '../export'
 import {
   getBuiltInTemplateSeed,
-  instantiateTemplatePage,
+  instantiateTemplateSurface,
   parseProjectTemplateSeed,
 } from '../templates'
 import { createBuiltInProjectFixture, createRegistryLockFixture } from './fixtures'
@@ -24,13 +22,13 @@ describe('project templates', () => {
     expect(element.registryLock.adapter).toBe('element-plus')
     expect(antd.registryLock.adapter).toBe('antd-vue')
     expect(element).toMatchObject({
-      version: 4,
+      version: PROJECT_DOCUMENT_VERSION,
       id: 'element-profile-fixture',
-      homePageId: 'home',
-      pageOrder: ['home'],
+      homeSurfaceId: 'home',
+      surfaceOrder: ['home'],
     })
-    expect(element.pagesById.home?.graph).toMatchObject({
-      version: 2,
+    expect(element.surfacesById.home?.graph).toMatchObject({
+      version: SURFACE_GRAPH_VERSION,
       form: {
         gap: '16px',
         labelWidth: 120,
@@ -40,21 +38,21 @@ describe('project templates', () => {
         },
       },
     })
-    expect(Object.values(element.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
+    expect(Object.values(element.surfacesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ component: 'element.input' }),
     ]))
-    expect(Object.keys(element.pagesById.home!.graph.nodesById)).toEqual([
+    expect(Object.keys(element.surfacesById.home!.graph.nodesById)).toEqual([
       'profile-name-node-1',
       'profile-role-node-2',
       'profile-active-node-3',
     ])
-    expect(Object.values(element.pagesById.home!.graph.nodesById).map(node =>
+    expect(Object.values(element.surfacesById.home!.graph.nodesById).map(node =>
       node.kind === 'field' ? node.field : undefined)).toEqual([
       'name-field-4',
       'role-field-5',
       'active-field-6',
     ])
-    expect(Object.values(antd.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
+    expect(Object.values(antd.surfacesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'antd.switch' }),
     ]))
   })
@@ -64,7 +62,7 @@ describe('project templates', () => {
     const parsed = seed && parseProjectTemplateSeed(seed, 'built-in')
     if (!parsed || 'code' in parsed)
       throw new Error(parsed?.message ?? 'Template not found.')
-    const page = instantiateTemplatePage({ providerId: 'built-in', ...parsed }, {
+    const page = instantiateTemplateSurface({ providerId: 'built-in', ...parsed }, {
       id: 'settings',
       identityFactory: { create: (_kind, source) => source },
       name: 'Settings',
@@ -76,18 +74,5 @@ describe('project templates', () => {
     expect(Object.values(page.graph.nodesById).map(node =>
       node.kind === 'field' ? node.field : undefined)).toEqual(['name', 'role', 'active'])
     expect(page).not.toHaveProperty('registryLock')
-  })
-
-  it('archives an explicit readonly generated file set under one safe root', async () => {
-    const entry = normalizeProjectPath('src/main.ts')
-    const archive = unzipSync(await createWorkspaceArchive({
-      name: 'Element profile fixture',
-      files: {
-        [entry]: { content: 'export {}\n', kind: 'text', language: 'typescript' },
-      },
-    }))
-
-    expect(Object.keys(archive)).toEqual(['element-profile-fixture/src/main.ts'])
-    expect(strFromU8(archive['element-profile-fixture/src/main.ts']!)).toBe('export {}\n')
   })
 })

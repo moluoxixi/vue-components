@@ -1,1 +1,1 @@
-export const RULE_SET_VERSION = 1 as const
+export const RULE_SET_VERSION = 2 as const

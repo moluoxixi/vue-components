@@ -1,14 +1,11 @@
-import type { PageCompilation } from '@moluoxixi/config-form-compiler'
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type { SurfaceCompilation } from '@moluoxixi/config-form-compiler'
+import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapterId } from '../../adapters'
-import type { RuntimeHostRuntimeStatePayload } from '../../runtime-host'
 
 export interface IsolatedProjectPreview {
   adapter: WorkbenchAdapterId
-  compilation: PageCompilation
+  compilation: SurfaceCompilation
   namespace: string
-  reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   revision: string
-  runtimeSessionKey: string
-  runtimeState: RuntimeHostRuntimeStatePayload
+  values: ModelJsonObject
 }

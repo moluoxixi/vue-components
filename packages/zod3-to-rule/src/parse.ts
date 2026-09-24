@@ -21,7 +21,6 @@ const baseSchema = z.discriminatedUnion('type', [
 ])
 
 const ruleSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('required') }).merge(messageSchema),
   z.object({ kind: z.literal('minLength'), value: z.number().int().nonnegative() }).merge(messageSchema),
   z.object({ kind: z.literal('maxLength'), value: z.number().int().nonnegative() }).merge(messageSchema),
   z.object({ kind: z.literal('length'), value: z.number().int().nonnegative() }).merge(messageSchema),

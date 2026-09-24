@@ -1,63 +1,81 @@
-import type { ProjectChangeSet, ProjectDraftSnapshot, ProjectNodeChange, ProjectSnapshot } from '@moluoxixi/config-form-model'
 import type {
-  CompileCanonicalPageResult,
+  ProjectChangeSet,
+  ProjectDraftSnapshot,
+  ProjectNodeChange,
+  ProjectSnapshot,
+  ReadonlyProjectDocument,
+  SurfaceId,
+} from '@moluoxixi/config-form-model'
+import type {
+  CompileCanonicalSurfaceResult,
   CompileCoordinator,
   CreateCompileCoordinatorOptions,
-  PageCompilation,
-  PageCompilationSnapshotIdentity,
+  SurfaceCompilation,
+  SurfaceCompilationSnapshotIdentity,
 } from '../../../types'
-import { deepFreeze } from '../../../utils'
+import { clone, deepFreeze } from '../../../utils'
 import { prepareCompilerContext } from './context'
-import { compileIncrementalPreparedPage, compilePreparedPage, pageSnapshotIdentity } from './page'
+import {
+  compileIncrementalPreparedSurface,
+  compilePreparedSurface,
+  surfaceSnapshotIdentity,
+} from './surface'
 
 export function createCompileCoordinator(
   options: CreateCompileCoordinatorOptions,
 ): CompileCoordinator {
-  const maxCachedPages = options.maxCachedPages ?? 32
-  if (!Number.isInteger(maxCachedPages) || maxCachedPages < 1)
-    throw new RangeError('CompileCoordinator maxCachedPages must be a positive integer.')
+  const maxCachedSurfaces = options.maxCachedSurfaces ?? 32
+  if (!Number.isInteger(maxCachedSurfaces) || maxCachedSurfaces < 1)
+    throw new RangeError('CompileCoordinator maxCachedSurfaces must be a positive integer.')
 
   const prepared = prepareCompilerContext(options.registry, options.environment)
   const context = prepared.success ? prepared.context : undefined
   const contextDiagnostics = prepared.success ? [] : prepared.diagnostics
-  const committedCache = new Map<string, PageCompilation>()
-  const draftCache = new Map<string, PageCompilation>()
-  const dirtyPages = new Set<string>()
-  const pendingNodeChanges = new Map<string, readonly ProjectNodeChange[]>()
+  const committedCache = new Map<SurfaceId, SurfaceCompilation>()
+  const draftCache = new Map<string, SurfaceCompilation>()
+  const dirtySurfaces = new Set<SurfaceId>()
+  const pendingNodeChanges = new Map<SurfaceId, readonly ProjectNodeChange[]>()
   let currentSnapshot: ProjectSnapshot | undefined
 
-  function invalidContextResult(): CompileCanonicalPageResult | undefined {
+  function invalidContextResult(): CompileCanonicalSurfaceResult | undefined {
     return context
       ? undefined
       : { success: false, diagnostics: structuredClone(contextDiagnostics) }
   }
 
   function touchCache(
-    cache: Map<string, PageCompilation>,
+    cache: Map<string, SurfaceCompilation>,
     key: string,
-    compilation: PageCompilation,
+    compilation: SurfaceCompilation,
   ): void {
     cache.delete(key)
     cache.set(key, compilation)
-    while (cache.size > maxCachedPages) {
+    while (cache.size > maxCachedSurfaces) {
       const oldest = cache.keys().next().value
       if (oldest === undefined)
         break
       cache.delete(oldest)
       if (cache === committedCache)
-        dirtyPages.delete(oldest)
+        dirtySurfaces.delete(oldest)
     }
   }
 
+  function markDirty(surfaceId: SurfaceId, nodeChanges?: readonly ProjectNodeChange[]): void {
+    if (!committedCache.has(surfaceId))
+      return
+    dirtySurfaces.add(surfaceId)
+    if (nodeChanges)
+      pendingNodeChanges.set(surfaceId, nodeChanges)
+    else
+      pendingNodeChanges.delete(surfaceId)
+  }
+
   function markAllCommittedDirty(): void {
-    committedCache.forEach((_compilation, pageId) => {
-      dirtyPages.add(pageId)
-      pendingNodeChanges.delete(pageId)
-    })
+    committedCache.forEach((_compilation, surfaceId) => markDirty(surfaceId))
   }
 
   function registryUsageMatchesSnapshot(
-    compilation: PageCompilation,
+    compilation: SurfaceCompilation,
     snapshot: ProjectSnapshot,
   ): boolean {
     if (!context || snapshot.document.registryLock.adapter !== context.registry.adapter)
@@ -82,42 +100,33 @@ export function createCompileCoordinator(
     if (!previous || previous.document.id !== snapshot.document.id) {
       committedCache.clear()
       draftCache.clear()
-      dirtyPages.clear()
+      dirtySurfaces.clear()
       pendingNodeChanges.clear()
     }
     else {
-      committedCache.forEach((_compilation, pageId) => {
-        if (!snapshot.document.pagesById[pageId]) {
-          committedCache.delete(pageId)
-          dirtyPages.delete(pageId)
-          pendingNodeChanges.delete(pageId)
+      committedCache.forEach((_compilation, surfaceId) => {
+        if (!snapshot.document.surfacesById[surfaceId]) {
+          committedCache.delete(surfaceId)
+          dirtySurfaces.delete(surfaceId)
+          pendingNodeChanges.delete(surfaceId)
         }
       })
 
       const adjacent = snapshot.editVersion === previous.editVersion + 1
-      const describesChange = !!changeSet
-        && (changeSet.project || changeSet.pageIds.length > 0 || changeSet.nodeIds.length > 0)
-      const pageAttributionMissing = !!changeSet
-        && !changeSet.project
-        && changeSet.pageIds.length === 0
-      const precise = !!changeSet && Array.isArray(changeSet.nodeChanges)
-      if (!adjacent || !describesChange || pageAttributionMissing || !precise) {
+      const describesChange = !!changeSet && hasChanges(changeSet)
+      if (!adjacent || !describesChange) {
         markAllCommittedDirty()
       }
       else {
-        changeSet.pageIds.forEach((pageId) => {
-          dirtyPages.add(pageId)
-          pendingNodeChanges.set(
-            pageId,
-            changeSet.nodeChanges.filter(change => change.pageId === pageId),
-          )
+        const affected = affectedSurfaceIds(previous.document, snapshot.document, changeSet)
+        affected.forEach((surfaceId) => {
+          const nodeChanges = changeSet.nodeChanges.filter(change => change.surfaceId === surfaceId)
+          markDirty(surfaceId, nodeChanges)
         })
         if (changeSet.project) {
-          committedCache.forEach((compilation, pageId) => {
-            if (!registryUsageMatchesSnapshot(compilation, snapshot)) {
-              dirtyPages.add(pageId)
-              pendingNodeChanges.delete(pageId)
-            }
+          committedCache.forEach((compilation, surfaceId) => {
+            if (!registryUsageMatchesSnapshot(compilation, snapshot))
+              markDirty(surfaceId)
           })
         }
       }
@@ -126,7 +135,7 @@ export function createCompileCoordinator(
     currentSnapshot = snapshot
   }
 
-  function compilePage(pageId: string): CompileCanonicalPageResult {
+  function compileSurface(surfaceId: SurfaceId): CompileCanonicalSurfaceResult {
     const contextFailure = invalidContextResult()
     if (contextFailure)
       return contextFailure
@@ -136,43 +145,43 @@ export function createCompileCoordinator(
         diagnostics: [{
           code: 'COMPILER_COORDINATOR_SNAPSHOT_REQUIRED',
           message: 'CompileCoordinator requires an accepted committed snapshot.',
-          pageId,
+          surfaceId,
         }],
       }
     }
 
-    const cached = committedCache.get(pageId)
-    if (cached && !dirtyPages.has(pageId)) {
-      const rebound = rebindPageCompilation(cached, currentSnapshot, pageId)
-      touchCache(committedCache, pageId, rebound)
+    const cached = committedCache.get(surfaceId)
+    if (cached && !dirtySurfaces.has(surfaceId)) {
+      const rebound = rebindSurfaceCompilation(cached, currentSnapshot, surfaceId)
+      touchCache(committedCache, surfaceId, rebound)
       return { success: true, compilation: rebound, diagnostics: [] }
     }
 
-    const result = cached && pendingNodeChanges.has(pageId)
-      ? compileIncrementalPreparedPage(
+    const result = cached && pendingNodeChanges.has(surfaceId)
+      ? compileIncrementalPreparedSurface(
           currentSnapshot,
-          pageId,
+          surfaceId,
           context!,
           cached,
-          pendingNodeChanges.get(pageId)!,
+          pendingNodeChanges.get(surfaceId)!,
         )
-      : compilePreparedPage(currentSnapshot, pageId, context!)
+      : compilePreparedSurface(currentSnapshot, surfaceId, context!)
     if (!result.success)
       return result
-    const compilation = cached && samePageCompilationKey(cached, result.compilation)
-      ? rebindPageCompilation(cached, currentSnapshot, pageId)
+    const compilation = cached && sameSurfaceCompilationKey(cached, result.compilation)
+      ? rebindSurfaceCompilation(cached, currentSnapshot, surfaceId)
       : result.compilation
-    dirtyPages.delete(pageId)
-    pendingNodeChanges.delete(pageId)
-    touchCache(committedCache, pageId, compilation)
+    dirtySurfaces.delete(surfaceId)
+    pendingNodeChanges.delete(surfaceId)
+    touchCache(committedCache, surfaceId, compilation)
     return { success: true, compilation, diagnostics: [] }
   }
 
-  function compileDraftPage(
+  function compileDraftSurface(
     snapshot: ProjectDraftSnapshot,
-    pageId: string,
+    surfaceId: SurfaceId,
     changeSet?: ProjectChangeSet,
-  ): CompileCanonicalPageResult {
+  ): CompileCanonicalSurfaceResult {
     const contextFailure = invalidContextResult()
     if (contextFailure)
       return contextFailure
@@ -185,32 +194,44 @@ export function createCompileCoordinator(
         diagnostics: [{
           code: 'COMPILER_DRAFT_BASE_STALE',
           message: 'Draft compilation requires the current committed snapshot as its base.',
-          pageId,
+          surfaceId,
         }],
       }
     }
 
-    const cacheKey = `${snapshot.base.projectId}:${snapshot.base.editVersion}:${pageId}:${snapshot.draftHash}`
+    const cacheKey = `${snapshot.base.projectId}:${snapshot.base.editVersion}:${surfaceId}:${snapshot.draftHash}`
     const cached = draftCache.get(cacheKey)
     if (cached) {
       touchCache(draftCache, cacheKey, cached)
       return { success: true, compilation: cached, diagnostics: [] }
     }
 
-    const committed = committedCache.get(pageId)
-    const precise = !!changeSet
-      && Array.isArray(changeSet.nodeChanges)
-      && changeSet.pageIds.includes(pageId)
-    const result = committed && precise
-      ? compileIncrementalPreparedPage(snapshot, pageId, context!, committed, changeSet.nodeChanges)
-      : compilePreparedPage(snapshot, pageId, context!)
+    const committed = committedCache.get(surfaceId)
+    const affected = changeSet
+      ? affectedSurfaceIds(currentSnapshot.document, snapshot.document, changeSet)
+      : undefined
+    const result = committed && affected && !affected.has(surfaceId)
+      ? {
+          success: true as const,
+          compilation: rebindSurfaceCompilation(committed, snapshot, surfaceId),
+          diagnostics: [] as [],
+        }
+      : committed && affected?.has(surfaceId)
+        ? compileIncrementalPreparedSurface(
+            snapshot,
+            surfaceId,
+            context!,
+            committed,
+            changeSet!.nodeChanges,
+          )
+        : compilePreparedSurface(snapshot, surfaceId, context!)
     if (!result.success)
       return result
     const semanticMatch = [...draftCache.values()].find(candidate => (
-      samePageCompilationKey(candidate, result.compilation)
+      sameSurfaceCompilationKey(candidate, result.compilation)
     ))
     const compilation = semanticMatch
-      ? rebindPageCompilation(semanticMatch, snapshot, pageId)
+      ? rebindSurfaceCompilation(semanticMatch, snapshot, surfaceId)
       : result.compilation
     touchCache(draftCache, cacheKey, compilation)
     return { success: true, compilation, diagnostics: [] }
@@ -222,20 +243,58 @@ export function createCompileCoordinator(
       currentSnapshot = undefined
       committedCache.clear()
       draftCache.clear()
-      dirtyPages.clear()
+      dirtySurfaces.clear()
       pendingNodeChanges.clear()
     },
-    compileDraftPage,
-    compilePage,
+    compileDraftSurface,
+    compileSurface,
   }
 }
 
-function samePageCompilationKey(left: PageCompilation, right: PageCompilation): boolean {
+function hasChanges(changeSet: ProjectChangeSet): boolean {
+  return changeSet.project
+    || changeSet.surfaceIds.length > 0
+    || changeSet.datasetIds.length > 0
+    || changeSet.resourceIds.length > 0
+    || changeSet.nodeChanges.length > 0
+}
+
+function affectedSurfaceIds(
+  before: ReadonlyProjectDocument,
+  after: ReadonlyProjectDocument,
+  changeSet: ProjectChangeSet,
+): Set<SurfaceId> {
+  const affected = new Set<SurfaceId>(changeSet.surfaceIds)
+  changeSet.nodeChanges.forEach(change => affected.add(change.surfaceId))
+  const datasetIds = new Set(changeSet.datasetIds)
+  const resourceIds = new Set(changeSet.resourceIds)
+  if (datasetIds.size === 0 && resourceIds.size === 0)
+    return affected
+
+  const visit = (document: ReadonlyProjectDocument): void => {
+    document.surfaceOrder.forEach((surfaceId) => {
+      const surface = document.surfacesById[surfaceId]
+      if (!surface)
+        return
+      const referencesChangedEntity = Object.values(surface.graph.nodesById).some(node => (
+        Object.values(node.datasetBindings ?? {}).some(binding => datasetIds.has(binding.datasetId))
+        || Object.values(node.resourceBindings ?? {}).some(binding => resourceIds.has(binding.resourceId))
+      ))
+      if (referencesChangedEntity)
+        affected.add(surfaceId)
+    })
+  }
+  visit(before)
+  visit(after)
+  return affected
+}
+
+function sameSurfaceCompilationKey(left: SurfaceCompilation, right: SurfaceCompilation): boolean {
   const leftKey = left.key
   const rightKey = right.key
   return leftKey.irVersion === rightKey.irVersion
     && leftKey.projectId === rightKey.projectId
-    && leftKey.pageId === rightKey.pageId
+    && leftKey.surfaceId === rightKey.surfaceId
     && leftKey.registryAdapter === rightKey.registryAdapter
     && leftKey.registryAdapterVersion === rightKey.registryAdapterVersion
     && leftKey.registryUsageHash === rightKey.registryUsageHash
@@ -244,30 +303,32 @@ function samePageCompilationKey(left: PageCompilation, right: PageCompilation): 
     && leftKey.semanticHash === rightKey.semanticHash
 }
 
-function rebindPageCompilation(
-  compilation: PageCompilation,
+function rebindSurfaceCompilation(
+  compilation: SurfaceCompilation,
   snapshot: ProjectSnapshot | ProjectDraftSnapshot,
-  pageId: string,
-): PageCompilation {
-  const snapshotIdentity = pageSnapshotIdentity(snapshot, pageId)
-  if (samePageSnapshotIdentity(compilation.snapshotIdentity, snapshotIdentity))
+  surfaceId: SurfaceId,
+): SurfaceCompilation {
+  const snapshotIdentity = surfaceSnapshotIdentity(snapshot, surfaceId)
+  if (sameSurfaceSnapshotIdentity(compilation.snapshotIdentity, snapshotIdentity))
     return compilation
   return deepFreeze({
     snapshotIdentity,
     registryUsage: compilation.registryUsage,
     key: compilation.key,
-    page: compilation.page,
-  }) as PageCompilation
+    surface: compilation.surface,
+    theme: clone(snapshot.document.theme),
+    datasetsById: compilation.datasetsById,
+  })
 }
 
-function samePageSnapshotIdentity(
-  left: PageCompilationSnapshotIdentity,
-  right: PageCompilationSnapshotIdentity,
+function sameSurfaceSnapshotIdentity(
+  left: SurfaceCompilationSnapshotIdentity,
+  right: SurfaceCompilationSnapshotIdentity,
 ): boolean {
   if (left.source !== right.source)
     return false
   if (left.projectId !== right.projectId
-    || left.pageId !== right.pageId
+    || left.surfaceId !== right.surfaceId
     || left.contentHash !== right.contentHash) {
     return false
   }

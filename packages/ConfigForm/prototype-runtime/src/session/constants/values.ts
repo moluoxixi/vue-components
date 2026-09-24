@@ -1,0 +1,5 @@
+export const PROTOTYPE_SESSION_VERSION = 1 as const
+export const SAFE_EXPRESSION_VERSION = 1 as const
+export const SAFE_EXPRESSION_MAX_DEPTH = 32
+export const SAFE_EXPRESSION_MAX_NODES = 256
+export const SAFE_EXPRESSION_MAX_PATH_SEGMENTS = 32

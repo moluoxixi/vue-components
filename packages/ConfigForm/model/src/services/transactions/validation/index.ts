@@ -1,3 +1,2 @@
-export { parseNodeCandidate, requireParsedValue } from './payload'
-export { collectValidationPlan, createValidationPlan, validateChangedDocument } from './plan'
+export { validateTrustedIncrementalTransaction } from './incremental'
 export { validateDocumentAgainstRegistry, validateRegistryLock } from './registry'

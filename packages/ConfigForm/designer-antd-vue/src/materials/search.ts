@@ -20,7 +20,6 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      events: [{ name: 'search', title: 'Search' }],
       value: { kind: 'text' },
       props: {
         placeholder: { label: 'Placeholder', control: 'text', default: '' },
