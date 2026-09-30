@@ -1,9 +1,10 @@
 {
   "name": "qiankun-router-kit",
+  "type": "module",
   "version": "0.4.0",
   "private": true,
-  "type": "module",
   "exports": {
+    ".": "./index.ts",
     "./main/core": "./src/main/core/index.ts",
     "./main/vue3": "./src/main/vue3/index.ts",
     "./main/vue2": "./src/main/vue2/index.ts",
@@ -13,6 +14,7 @@
     "./utils": "./src/utils/index.ts"
   },
   "scripts": {
+    "test": "vitest run --no-file-parallelism",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
@@ -44,13 +46,13 @@
     }
   },
   "devDependencies": {
-    "@types/react": "^18.3.12",
-    "qiankun": "^2.10.16",
-    "react": "^18.3.1",
-    "react-router-dom": "^6.30.0",
-    "typescript": "^5.6.3",
-    "vite-plugin-qiankun": "^1.0.15",
-    "vue": "^3.5.13",
-    "vue-router": "^5.3.1"
+    "@types/react": "catalog:",
+    "qiankun": "catalog:",
+    "react": "catalog:conflicts_build_h18_3_1",
+    "react-router-dom": "catalog:",
+    "typescript": "catalog:conflicts_dev_h5_6_3",
+    "vite-plugin-qiankun": "catalog:",
+    "vue": "catalog:conflicts_build_h3_5_13",
+    "vue-router": "catalog:conflicts_build_h5_3_1"
   }
 }

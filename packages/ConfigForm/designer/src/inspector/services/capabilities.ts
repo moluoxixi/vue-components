@@ -85,7 +85,11 @@ function compatibleSetter(
   return isDesignerSetterPathAllowed(right.path)
     && samePath(left.path, right.path)
     && left.control === right.control
+    && left.label === right.label
     && left.valueKind === right.valueKind
+    && left.integer === right.integer
+    && left.unit === right.unit
+    && samePath(left.optionValueTypes, right.optionValueTypes)
     && left.min === right.min
     && left.max === right.max
     && left.step === right.step

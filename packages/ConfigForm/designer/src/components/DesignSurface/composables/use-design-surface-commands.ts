@@ -176,24 +176,31 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
   }
 
   function announceMutationUndo(message: string, target: MutationUndoTarget): void {
+    const isCurrentCommand = (): boolean => target.entryId === undefined
+      || options.lastAcceptedCommandId() === target.entryId
     void nextTick(() => {
+      if (!isCurrentCommand() || target.transitionSequence !== historyTransitionSequence)
+        return
       const history = options.historyControl().history
       const acceptedEntry = history && history.position > 0
         ? history.entries[history.position - 1]
         : undefined
+      const acceptedEditVersion = acceptedEntry?.editVersion
       const acceptedTarget = acceptedEntry
         ? { ...target, entryId: acceptedEntry.id, position: history?.position }
         : target
       options.onNotice(message, () => {
-        if (acceptedTarget.transitionSequence !== historyTransitionSequence)
+        if (!isCurrentCommand() || acceptedTarget.transitionSequence !== historyTransitionSequence)
           return false
         const currentHistory = options.historyControl().history
         if (currentHistory && acceptedTarget.entryId) {
-          const currentEntryId = currentHistory.position > 0
-            ? currentHistory.entries[currentHistory.position - 1]?.id
+          const currentEntry = currentHistory.position > 0
+            ? currentHistory.entries[currentHistory.position - 1]
             : undefined
-          if (currentEntryId !== acceptedTarget.entryId)
+          if (currentEntry?.id !== acceptedTarget.entryId
+            || (acceptedEditVersion !== undefined && currentEntry.editVersion !== acceptedEditVersion)) {
             return false
+          }
         }
         else if (acceptedTarget.position !== undefined && currentHistory?.position !== acceptedTarget.position) {
           return false

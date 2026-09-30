@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { RuleDescriptor, RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerDefaultValueKind, DesignerSetterOption } from '@designer/registry'
+import type { RuleDescriptor, RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerEditableRuleKind } from '../../types'
-import { RULE_SET_VERSION } from '@moluoxixi/zod3-to-rule'
+import { useDesignerLocale } from '@designer/locale'
 import { Plus, Trash2 } from '@lucide/vue'
+import { RULE_SET_VERSION } from '@moluoxixi/zod3-to-rule'
 import {
   ElCheckbox,
   ElDatePicker,
@@ -14,7 +15,6 @@ import {
   ElSwitch,
 } from 'element-plus'
 import { computed, ref, watch } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
 import {
   resolveDesignerValidationBase,
   resolveDesignerValidationRuleKinds,
@@ -39,6 +39,7 @@ const enabled = ref(false)
 const optional = ref(false)
 const nullable = ref(false)
 const rules = ref<RuleDraft[]>([])
+const validationError = ref('')
 const base = computed(() => resolveDesignerValidationBase(props.valueKind, props.options))
 const allowedRuleKinds = computed(() => resolveDesignerValidationRuleKinds(base.value))
 
@@ -72,6 +73,7 @@ function isRuleSet(value: unknown): value is RuleSet {
 }
 
 function syncValue(): void {
+  validationError.value = ''
   if (!isRuleSet(props.modelValue) || !base.value) {
     enabled.value = false
     optional.value = false
@@ -99,8 +101,11 @@ function commit(): void {
   }
   const resolvedBase = base.value
   const serializedRules = serializeRules()
-  if (!resolvedBase || !serializedRules)
+  if (!resolvedBase || !serializedRules) {
+    validationError.value = locale.t('validation.invalidRule', 'Fix the invalid validation rule before applying it.')
     return
+  }
+  validationError.value = ''
   emit('update:modelValue', {
     version: RULE_SET_VERSION,
     base: structuredClone(resolvedBase),
@@ -240,7 +245,7 @@ function isRuleDraftValid(rule: RuleDraft): boolean {
     if (typeof rule.source !== 'string' || (rule.flags !== undefined && typeof rule.flags !== 'string'))
       return false
     try {
-      new RegExp(rule.source, rule.flags as string | undefined)
+      void new RegExp(rule.source, rule.flags as string | undefined)
       return true
     }
     catch {
@@ -313,6 +318,9 @@ function formatAdvancedRule(rule: RuleDraft): string {
           {{ locale.t('validation.addRule', 'Add rule') }}
         </button>
       </div>
+      <p v-if="validationError" role="alert">
+        {{ validationError }}
+      </p>
     </template>
   </div>
 </template>

@@ -2,7 +2,7 @@ import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { ConfigFormBreakpoint, DesignerRuntimePointerHandlers, DesignerRuntimeRect } from '../types'
 
 import type { DesignerCanvasEmits } from '../types/emits'
-import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
+import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from '@moluoxixi/config-form-core'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { findDesignNode } from '../../../graph'
 import { captureDesignerPointer } from '../services'
@@ -25,6 +25,28 @@ export function useDesignerCanvasResize(options: UseDesignerCanvasResizeOptions)
     return !options.readonly()
       && !graph.form.inline
       && findDesignNode(graph, nodeId)?.parentId === null
+  }
+
+  function resizeByKeyboard(nodeId: string, delta: number): void {
+    if (!canResize(nodeId))
+      return
+    const graph = options.graph()
+    const location = findDesignNode(graph, nodeId)
+    if (!location)
+      return
+    const layout = resolveConfigFormLayout(
+      graph.form.columns,
+      graph.form.fieldSpan,
+      graph.form.responsive,
+      options.breakpoint() ?? 'desktop',
+    )
+    const currentSpan = resolveConfigFormNodeSpan(
+      typeof location.placement.span === 'number' ? location.placement.span : undefined,
+      layout,
+    )
+    const nextSpan = Math.min(layout.columns, Math.max(1, currentSpan + delta))
+    if (nextSpan !== currentSpan)
+      options.onResize(nodeId, nextSpan)
   }
 
   function beginResize(event: PointerEvent, nodeId: string): void {
@@ -99,6 +121,7 @@ export function useDesignerCanvasResize(options: UseDesignerCanvasResizeOptions)
   return {
     beginResize,
     canResize,
+    resizeByKeyboard,
     resizingNodeId,
   }
 }

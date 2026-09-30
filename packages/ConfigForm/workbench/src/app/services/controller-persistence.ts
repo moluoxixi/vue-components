@@ -75,8 +75,12 @@ export function createWorkbenchPersistenceCommands(options: {
 
   async function saveProject(): Promise<void> {
     const activePersistence = getPersistenceSession()
-    if (!activePersistence || !repository.value || configError.value || busy.value)
+    if (!activePersistence || !repository.value || busy.value)
       return
+    if (configError.value) {
+      ui.notify(configError.value)
+      return
+    }
     busy.value = true
     ui.clearMessage()
     try {

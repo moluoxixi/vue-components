@@ -261,7 +261,11 @@ export function loadWorkbenchAdapter(id: WorkbenchAdapterId): Promise<WorkbenchA
   const current = adapterPromises.get(id)
   if (current)
     return current
-  const pending = createWorkbenchAdapter(id)
+  const pending = createWorkbenchAdapter(id).catch((error) => {
+    if (adapterPromises.get(id) === pending)
+      adapterPromises.delete(id)
+    throw error
+  })
   adapterPromises.set(id, pending)
   return pending
 }
@@ -270,7 +274,11 @@ export function loadWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<Wor
   const current = runtimeAdapterPromises.get(id)
   if (current)
     return current
-  const pending = createWorkbenchRuntimeAdapter(id)
+  const pending = createWorkbenchRuntimeAdapter(id).catch((error) => {
+    if (runtimeAdapterPromises.get(id) === pending)
+      runtimeAdapterPromises.delete(id)
+    throw error
+  })
   runtimeAdapterPromises.set(id, pending)
   return pending
 }

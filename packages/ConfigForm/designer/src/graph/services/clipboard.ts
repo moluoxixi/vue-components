@@ -1,14 +1,8 @@
 import type { NodeSubgraph, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
-import { collectDesignSubtreeIds, findDesignNode, walkDesignGraph } from '../utils'
+import { cloneDesignerJson, collectDesignSubtreeIds, findDesignNode, walkDesignGraph } from '../utils'
 import { createDesignBusinessKeyAllocator } from './business-keys'
 import { createDesignerNodeId } from './commands'
-
-// Graphs arrive as reactive proxies, which structuredClone rejects; nodes are
-// JSON-safe by schema, so a JSON round-trip is the reliable deep clone here.
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
-}
 
 /**
  * Extracts the given top-level nodes (with their subtrees and placements)
@@ -32,11 +26,11 @@ export function extractDesignSubgraph(graph: SurfaceGraph, nodeIds: readonly str
     for (const subtreeId of collectDesignSubtreeIds(graph, location.node.id)) {
       const node = graph.nodesById[subtreeId]
       if (node)
-        nodesById[subtreeId] = cloneJson(node)
+        nodesById[subtreeId] = cloneDesignerJson(node)
     }
   }
   return {
-    root: roots.map(location => cloneJson(location.item)),
+    root: roots.map(location => cloneDesignerJson(location.item)),
     nodesById,
   }
 }
@@ -57,7 +51,7 @@ export function remapDesignSubgraph(
 
   const nodesById: Record<string, SurfaceNode> = {}
   for (const [sourceId, sourceNode] of Object.entries(subgraph.nodesById)) {
-    const node = cloneJson(sourceNode)
+    const node = cloneDesignerJson(sourceNode)
     node.id = idMap.get(sourceId)!
     if (node.kind === 'layout') {
       node.slots = Object.fromEntries(Object.entries(node.slots).map(([slot, items]) => [
@@ -68,7 +62,7 @@ export function remapDesignSubgraph(
     nodesById[node.id] = node
   }
   const remapped = {
-    root: subgraph.root.map(item => ({ ...cloneJson(item), nodeId: idMap.get(item.nodeId) ?? item.nodeId })),
+    root: subgraph.root.map(item => ({ ...cloneDesignerJson(item), nodeId: idMap.get(item.nodeId) ?? item.nodeId })),
     nodesById,
   }
   createDesignBusinessKeyAllocator(graph).assign(remapped, target, true)

@@ -439,7 +439,6 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('authors, persists, restores, and executes a primary interaction through Studio', async ({ page }) => {
-  await page.getByRole('button', { name: 'New project', exact: true }).first().click()
   await createProject(page, 'element')
 
   const inspector = page.locator('.mx-config-form-designer__properties')

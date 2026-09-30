@@ -6,14 +6,15 @@ import type {
   ProjectRepositoryCommitResult,
 } from '@moluoxixi/config-form-model'
 import {
+  createComponentContractRegistry,
   createMemoryProjectRepository,
   PROJECT_DOCUMENT_VERSION,
   ProjectRepositoryError,
   registryLockFingerprint,
   SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
-import { describe, expect, it } from 'vitest'
-import { createProjectEditorSession, openProjectEditorSession } from '..'
+import { describe, expect, it, vi } from 'vitest'
+import { createMemoryProjectRecoveryDraftStore, createProjectEditorSession, createProjectPersistenceSession, openProjectEditorSession } from '..'
 
 function projectDocument(): ProjectDocument {
   return {
@@ -237,5 +238,54 @@ describe('projectEditorSession', () => {
     await expect(openProjectEditorSession({ projectId: 'missing', repository }))
       .rejects
       .toBeInstanceOf(ProjectRepositoryError)
+  })
+
+  it('preserves the saved cursor and persistence on a failed history jump', async () => {
+    const repository = createMemoryProjectRepository()
+    const contracts = createComponentContractRegistry([], { adapter: 'element-plus', version: '2.9.1' })
+    const analyzeLock = vi.fn(contracts.analyzeLock)
+    const project = await repository.create({ document: { ...projectDocument(), registryLock: contracts.lock }, embeddedContents: [] })
+    const session = createProjectEditorSession({ project, repository, registry: { ...contracts, analyzeLock } })
+    for (const name of ['First', 'Second', 'Third'])
+      expect(session.execute(renameCommand(name, name)).changed).toBe(true)
+    expect((await session.save({ source: 'manual', sealHistoryGroup: true })).success).toBe(true)
+    const before = session.snapshot
+    const stored = await repository.get(project.document.id)
+    const clock = { now: () => 0, setTimeout: vi.fn(), clearTimeout: vi.fn() }
+    const persistence = createProjectPersistenceSession({
+      editor: session,
+      draftStore: createMemoryProjectRecoveryDraftStore(),
+      readEmbedded: repository.readEmbedded,
+      clock,
+    })
+    const persistenceBefore = persistence.snapshot
+    const listener = vi.fn()
+    session.subscribe(listener)
+    listener.mockClear()
+    clock.setTimeout.mockClear()
+    analyzeLock.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([{
+      code: 'TEST_HISTORY_VALIDATION_FAILED',
+      message: 'Registry validation failed.',
+    }])
+
+    const result = session.jump(0)
+    expect(result.changed).toBe(false)
+    expect(result.snapshot.document).toBe(before.document)
+    expect(result.snapshot).toMatchObject({
+      dirty: false,
+      editVersion: before.editVersion,
+      contentHash: before.contentHash,
+      history: before.history,
+      repositoryRevision: before.repositoryRevision,
+      saving: false,
+      updatedAt: before.updatedAt,
+    })
+    expect(listener).not.toHaveBeenCalled()
+    expect(clock.setTimeout).not.toHaveBeenCalled()
+    expect(persistence.snapshot).toEqual(persistenceBefore)
+    expect(await repository.get(project.document.id)).toEqual(stored)
+    expect(session.jump(0).snapshot.dirty).toBe(true)
+    expect(session.jump(3).snapshot.dirty).toBe(false)
+    await persistence.dispose()
   })
 })

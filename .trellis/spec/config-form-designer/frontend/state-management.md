@@ -52,6 +52,7 @@ interface ProjectDomainEngine {
   execute(command: ProjectCommand): ProjectDomainDispatchResult
   undo(): ProjectDomainDispatchResult
   redo(): ProjectDomainDispatchResult
+  jump(position: number): ProjectDomainDispatchResult
   sealHistoryGroup(): void
 }
 
@@ -60,6 +61,7 @@ interface ProjectEditorSession {
   execute(command: ProjectCommand): ProjectEditorSessionDispatchResult
   undo(): ProjectEditorSessionDispatchResult
   redo(): ProjectEditorSessionDispatchResult
+  jump(position: number): ProjectEditorSessionDispatchResult
   save(options: {
     source: 'autosave' | 'manual'
     label?: string
@@ -95,6 +97,8 @@ createNodePathCommand(
   path: readonly string[],
   value: ModelJsonValue | undefined,
 ): ProjectCommand
+
+cloneDesignerJson<T>(value: T): T
 
 interface ProjectTransaction {
   id: string
@@ -164,6 +168,12 @@ interface SlotItem {
 - One accepted Command produces at most one editVersion and one history
   entry. Merge keys may combine adjacent history entries without changing
   transaction atomicity.
+- History jumps are atomic inside `ProjectDomainEngine.jump(position)`. Stage
+  every undo/redo against private immutable history, validate the entire walk,
+  and publish the final state once. Invalid positions, no-ops, validation
+  failures, and exceptions must not publish partial documents, history, cursor,
+  or editVersion changes; failed jumps preserve saved-cursor and dirty state.
+  Session `batch()` coalesces notifications only and is not a transaction.
 - A static Select options edit (`path = ['props', 'options']`) is one semantic
   Command. For every affected field, command expansion derives the next typed
   option values before publication, clears a default that no longer refers to
@@ -183,6 +193,15 @@ interface SlotItem {
 - Semantic commands are JSON-safe. Node property removal uses explicit
   `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
   postMessage, Worker, and persisted command logs discard it.
+- Designer property, form, option-reconciliation, interaction, and clipboard
+  boundaries detach JSON through `cloneDesignerJson`. Graphs and input values
+  may be Vue reactive or readonly proxies, including proxies nested inside
+  otherwise plain containers. Unwrap recursively; root-only `toRaw` followed
+  by native `structuredClone` is insufficient. Commands must share no mutable
+  payload with the caller. Consume top-level `undefined` removal intent before
+  cloning; reject nested `undefined`, non-finite numbers, functions, symbols,
+  class instances, and cycles rather than silently normalizing them through
+  `JSON.stringify`. Model still owns schema and domain validation.
 - Registry-stale stored configuration uses the narrower
   `node.config.remove` repair operation. `bindings` and `conditions` require one
   safe non-empty `key`; `validation`, `validateOn`, `optionSource`, and
@@ -272,6 +291,16 @@ interface SlotItem {
   a bounded attempt count, and never creates a second model or history entry.
   Register keyboard targets during setup so a fast Space press has a resolver;
   do not hide this race by adding waits to browser tests.
+  Exhaustion shows one localized, visible `role="status"` notice without moving
+  focus or inserting a node. A fresh attempt, successful start, Escape,
+  readonly transition, or unmount clears stale feedback and cancels retries.
+- Pointer target resolution builds one invocation-local graph-location index
+  and reuses one geometry snapshot. Do not call a full graph search per measured
+  node or reuse an index across externally mutated graph versions. Collapsed
+  candidates are filtered and ranked by geometry before command validation.
+  Keyboard navigation enumerates structural positions separately from candidate
+  validation: validate in navigation order only until the first legal target,
+  retaining rejection handling and bidirectional wraparound.
 - Palette specimen styling must target Designer-owned wrapper classes. Broad
   descendant selectors such as `label`, `input`, or `button` are forbidden
   because the specimen is a real adapter Runtime and owns its internal DOM.
@@ -330,6 +359,12 @@ interface SlotItem {
   an unexplained empty `provider-surface` is forbidden. Transient invalid drag
   candidates may still remain silent because the committed Runtime stays
   visible and final command execution owns the user-facing diagnostic.
+- Unexpected candidate resolver/compiler failures have a separate transient
+  `candidateDiagnostic`, shown by the Workbench with localized retry guidance.
+  Ordinary invalid/no-op candidates remain silent. Never route candidate-only
+  failures through `configError` or persistence gates, and never cache a failed
+  computation as an invalid target. A successful retry, accepted publication,
+  reconfiguration, or disposal clears the transient diagnostic.
 - Workbench Design diagnostics have separate command and compile slots. Command
   execution, Undo, Redo, and History jump may update only the command slot;
   compilation may update only the compile slot. Display combines them with the
@@ -458,6 +493,8 @@ interface SlotItem {
 | Reused command ID with identical payload | Idempotent no-op |
 | Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
 | Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
+| Designer command receives reactive JSON, including nested proxies | Detach the full payload; preserve caller state and normal command semantics |
+| Designer clone receives nested `undefined`, non-finite numbers, non-JSON objects, or cycles | Throw `DESIGN_JSON_INVALID`; never silently drop or rewrite values |
 | Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
 | Time Material opens Validation | Show Required and `validateOn`; omit the general RuleSet editor and never synthesize a `date` base |
 | Select options remove a referenced default and change an existing enum/literal base | Commit options, default removal, and the re-derived base atomically in one history entry |
@@ -477,6 +514,10 @@ interface SlotItem {
 - Model unit tests cover current schema invariants, every Operation, semantic
   inverse, command expansion, multi-action final validation, merge, undo/redo,
   no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
+- Designer target regressions cover 100/500/2000-node graphs, bounded graph
+  reads, one validation for a legal keyboard destination, collapsed-slot
+  rejection fallback, and in-place graph changes. Geometry-only p95 timings
+  do not substitute for Runtime rendering or full browser interaction budgets.
 - Model repair tests start from a schema-valid document with multiple unrelated
   Registry-stale binding/condition keys, prove an ordinary record rewrite fails,
   remove only the named target, preserve every sibling key, and prove one
@@ -515,6 +556,11 @@ interface SlotItem {
   contract. Repeated pointer moves within the
   same normalized drop target call that projection once, while a target change
   creates a new projection.
+- Reactive command tests cover deep reactive graphs, independently nested
+  proxies, readonly input values, property/form removal, option default and
+  validation reconciliation, interaction payloads, and clipboard copies.
+  Mutating either source or copied payload must leave the other unchanged;
+  invalid non-JSON values must be rejected without lossy normalization.
 - Designer validation tests prove `time` resolves no RuleSet base and renders
   only Required/Required message plus `validateOn`, while `date` retains its
   date rules. Select command tests cover reordered/replaced/removed options,
@@ -821,9 +867,9 @@ type DesignerNotice = {
 - The editor cursor at `position === 0` identifies that retained base state.
   After limit truncation it must not alias the original document cursor or make
   a still-modified editor session appear clean.
-- A History jump validates an integer position in the retained range and reaches
-  it only by repeated `ProjectEditorSession.undo()` or `redo()` calls. It never
-  writes a captured UI document back into the Engine.
+- A History jump validates an integer position in the retained range and calls
+  `ProjectEditorSession.jump(position)`, which delegates one atomic staged walk
+  to the Engine. It never writes a captured UI document back into the Engine.
 - A command accepted after jumping backward uses the Engine's normal branch
   semantics: the redo suffix is removed deterministically. Selection, hover,
   camera, active panel, and drag intermediate frames do not create entries.
@@ -845,7 +891,7 @@ type DesignerNotice = {
 | Condition | Required result |
 | --- | --- |
 | Jump target is fractional, negative, or beyond `entries.length` | Return `false`; preserve document and history. |
-| Undo or redo fails during a jump | Stop at the reached position and publish the Engine diagnostic. |
+| Undo or redo fails during a jump | Preserve the original document, history, cursor, and dirty state; publish the Engine diagnostic. |
 | Shortcut originates in a text editing target | Preserve native editing behavior; do not submit a Project Command. |
 | Designer is readonly or an IME composition is active | Ignore the editing shortcut. |
 | Deletion Undo notice no longer matches the expected position | Return `false`; do not undo an unrelated command. |
@@ -858,8 +904,8 @@ type DesignerNotice = {
 
 - Good: select five nodes, press Delete, create one command, show one Undo
   notice, and restore all five nodes with one Engine undo.
-- Base: click an older retained history row and move through Engine undo/redo
-  until that position becomes current.
+- Base: click an older retained history row and atomically publish the Engine's
+  staged result at that position.
 - Bad: store full `ProjectDocument` copies in the History panel, mutate
   `history.entries`, or let Backspace delete a node while an Inspector input is
   focused.
@@ -873,8 +919,9 @@ type DesignerNotice = {
   duplicate/delete command cardinality, readonly mode, composition, and every
   text-editing target boundary.
 - Workbench session tests jump backward and forward exclusively through
-  `ProjectEditorSession`, reject invalid positions, stop on diagnostics, and
-  produce a new branch after editing an older position.
+  `ProjectEditorSession`, reject invalid positions without state changes,
+  preserve the starting state on diagnostics, and produce a new branch after
+  editing an older position.
 - Notice-store tests prove single use, timeout/replace cleanup, and stale
   deletion callbacks cannot undo a later command.
 - Element Plus and Ant Design Vue browser tests cover Layers multi-selection,

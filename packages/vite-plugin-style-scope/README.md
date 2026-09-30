@@ -24,6 +24,13 @@
 
 ## 使用
 
+安装：`pnpm add -D vite-plugin-style-scope`。根入口提供 Vite 插件；
+`vite-plugin-style-scope/runtime` 提供显式调用的 DOM 作用域工厂，导入模块时不会修改 DOM。
+两者分别输出到 `dist/index.js` 和 `dist/runtime.js`，工作区 source 条件与发布包共享同一组公开入口。
+
+包级验证：`pnpm --filter vite-plugin-style-scope test`（包含构建与公开入口回归），
+以及 `pnpm --filter vite-plugin-style-scope typecheck`。
+
 ```ts
 // vite.config.ts
 import { styleScope } from 'vite-plugin-style-scope'
@@ -39,8 +46,8 @@ export default defineConfig({
 // 子应用入口
 import { applyStyleScope } from 'virtual:style-scope'
 
-const scope = applyStyleScope(rootEl)   // mount 时打标记 + 开启 DOM 劫持
-scope.dispose()                          // unmount 时还原劫持并清理
+const scope = applyStyleScope(rootEl) // mount 时打标记 + 开启 DOM 劫持
+scope.dispose() // unmount 时还原劫持并清理
 ```
 
 弹窗组件无需任何特殊配置：`append-to-body` / Teleport 到 body 的弹窗会被
@@ -49,14 +56,15 @@ scope.dispose()                          // unmount 时还原劫持并清理
 完整的 qiankun 子应用入口（配合 vite-plugin-qiankun）：
 
 ```js
+import { applyStyleScope } from 'virtual:style-scope'
+import { qiankunWindow, renderWithQiankun } from 'vite-plugin-qiankun/dist/helper'
 // main.js
 import { createApp } from 'vue'
-import { qiankunWindow, renderWithQiankun } from 'vite-plugin-qiankun/dist/helper'
-import { applyStyleScope } from 'virtual:style-scope'
 import App from './App.vue'
 
 let app = null
 let scope = null
+const runningInQiankun = qiankunWindow.__POWERED_BY_QIANKUN__
 
 function render(container) {
   const root = container ? container.querySelector('#app') : document.getElementById('app')
@@ -65,10 +73,16 @@ function render(container) {
   app.mount(root)
 }
 
-if (qiankunWindow.__POWERED_BY_QIANKUN__) {
+if (!runningInQiankun) {
+  render()
+}
+
+if (runningInQiankun) {
   renderWithQiankun({
     bootstrap() {},
-    mount(props) { render(props.container) },
+    mount(props) {
+      render(props.container)
+    },
     update() {},
     unmount() {
       app?.unmount()
@@ -76,9 +90,6 @@ if (qiankunWindow.__POWERED_BY_QIANKUN__) {
       app = scope = null
     },
   })
-}
-else {
-  render()
 }
 ```
 
@@ -119,10 +130,14 @@ TypeScript 项目在 `env.d.ts` 中补一行即可获得虚拟模块类型：
 
 ```css
 /* scoped 块：前缀权重为 0，.title[data-v-xxx] 的优先级不受影响 */
-:where([data-qiankun="sub-b"]) .title[data-v-7ba5bd90] { color: #409eff; }
+:where([data-qiankun='sub-b']) .title[data-v-7ba5bd90] {
+  color: #409eff;
+}
 
 /* 全局块：只在子应用容器内命中，不再泄漏到主应用 */
-:where([data-qiankun="sub-b"]) .demo-card { border-radius: 8px; }
+:where([data-qiankun='sub-b']) .demo-card {
+  border-radius: 8px;
+}
 ```
 
 关键点：前缀是 `:where()` 包裹的，权重恒为 0——即使全局块和 scoped 块
@@ -131,23 +146,23 @@ TypeScript 项目在 `env.d.ts` 中补一行即可获得虚拟模块类型：
 
 ## Vite 兼容性
 
-| 场景 | 是否支持 | 说明 |
-| --- | --- | --- |
-| Vite 4 / 5 / 6 / 7 | ✅ | 只用 `config` / `resolveId` / `load` 三个稳定钩子与 `css.postcss` 注入 |
-| `vite dev`（开发态） | ✅ | PostCSS 在 serve 阶段同样生效；HMR 更新的样式已带前缀 |
-| `vite build`（生产态） | ✅ | 抽取出的 CSS 文件同样带前缀 |
-| vite-plugin-qiankun | ✅ | 插件顺序无要求；`useDevMode: true` 下动态注入的 `<style>` 会被劫持进 `<qiankun-head>` |
-| 子应用独立运行 | ✅ | 检测不到 `<qiankun-head>` 时自动跳过 DOM 劫持，改为给 body 兜底打标记，前缀样式正常命中 |
+| 场景                   | 是否支持 | 说明                                                                                    |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------- |
+| Vite 4 / 5 / 6 / 7     | ✅       | 只用 `config` / `resolveId` / `load` 三个稳定钩子与 `css.postcss` 注入                  |
+| `vite dev`（开发态）   | ✅       | PostCSS 在 serve 阶段同样生效；HMR 更新的样式已带前缀                                   |
+| `vite build`（生产态） | ✅       | 抽取出的 CSS 文件同样带前缀                                                             |
+| vite-plugin-qiankun    | ✅       | 插件顺序无要求；`useDevMode: true` 下动态注入的 `<style>` 会被劫持进 `<qiankun-head>`   |
+| 子应用独立运行         | ✅       | 检测不到 `<qiankun-head>` 时自动跳过 DOM 劫持，改为给 body 兜底打标记，前缀样式正常命中 |
 
 ## DOM 动态插入劫持（patchDom）
 
 vite-plugin-qiankun 的 ESM 脚本不经过 import-html-entry，qiankun 沙箱
 对动态样式/弹窗的接管打不到它们。本插件在 `applyStyleScope()` 时补上同款劫持：
 
-| 原本挂载位置 | 劫持后挂载位置 | 收益 |
-| --- | --- | --- |
+| 原本挂载位置                                                  | 劫持后挂载位置          | 收益                                                             |
+| ------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
 | `document.head`（动态 `<style>` / `<link rel="stylesheet">`） | 子应用 `<qiankun-head>` | 挂载期间归属清晰；卸载时搬回 head 并被前缀中和，二次挂载直接复用 |
-| `document.body`（Teleport 弹窗等元素） | 子应用根容器 `div#app` | 弹窗 DOM 落在作用域标记内，前缀样式直接命中 |
+| `document.body`（Teleport 弹窗等元素）                        | 子应用根容器 `div#app`  | 弹窗 DOM 落在作用域标记内，前缀样式直接命中                      |
 
 - 存量收编：`applyStyleScope()` 之前由模块求值注入的本应用前缀样式
   （凭样式文本里的 `[data-qiankun="<appName>"]` 识别）会被一并搬进
@@ -167,12 +182,12 @@ vite-plugin-qiankun 的 ESM 脚本不经过 import-html-entry，qiankun 沙箱
 
 ## 选项
 
-| 选项 | 类型 | 默认 | 说明 |
-| --- | --- | --- | --- |
-| `appName` | `string` | 必填 | 子应用名，作为作用域属性的值，需与 qiankun 注册的 name 一致 |
-| `includeDeps` | `boolean` | `false` | 是否给 node_modules 里的样式也加前缀（组件库冲突建议用 namespace / prefixCls 根治） |
-| `patchDom` | `boolean` | `true` | qiankun 环境下是否劫持 head / body 动态插入（详见上文） |
-| `scopeAttr` | `string` | `'data-qiankun'` | 扩展选项：自定义作用域属性名。默认复用 qiankun `experimentalStyleIsolation` 打在包裹节点上的 `data-qiankun` 属性，仅在需要避开 qiankun 语义时才自定义 |
+| 选项          | 类型      | 默认             | 说明                                                                                                                                                  |
+| ------------- | --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appName`     | `string`  | 必填             | 子应用名，作为作用域属性的值，需与 qiankun 注册的 name 一致                                                                                           |
+| `includeDeps` | `boolean` | `false`          | 是否给 node_modules 里的样式也加前缀（组件库冲突建议用 namespace / prefixCls 根治）                                                                   |
+| `patchDom`    | `boolean` | `true`           | qiankun 环境下是否劫持 head / body 动态插入（详见上文）                                                                                               |
+| `scopeAttr`   | `string`  | `'data-qiankun'` | 扩展选项：自定义作用域属性名。默认复用 qiankun `experimentalStyleIsolation` 打在包裹节点上的 `data-qiankun` 属性，仅在需要避开 qiankun 语义时才自定义 |
 
 > 本插件不提供逃逸出口（如 `:global` / 跳过前缀的注释）：它的定位是
 > 兜住子应用**全部**全局样式不外泄。真正需要全局生效的样式（如引导层、

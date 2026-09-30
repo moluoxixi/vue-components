@@ -1,3 +1,11 @@
+.mx-config-form-designer__palette {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.mx-config-form-designer__palette.has-search {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
 .mx-config-form-designer__search {
   position: relative;
   display: flex;
@@ -30,6 +38,23 @@
 }
 .mx-config-form-designer__palette-list {
   padding-bottom: 16px;
+}
+
+.mx-config-form-designer__palette-status {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  align-self: start;
+  margin: 0;
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-surface);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.mx-config-form-designer__palette-status:not(:empty) {
+  padding: 8px 12px;
 }
 
 .mx-config-form-designer__palette-group h2,

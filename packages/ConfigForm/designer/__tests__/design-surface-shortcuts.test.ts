@@ -99,6 +99,35 @@ function mountSurface() {
 }
 
 describe('design surface editing shortcuts', () => {
+  it('passes changing Dataset context into visible default-value diagnostics', async () => {
+    const { execute, wrapper } = mountSurface()
+    const nextGraph = structuredClone(graph)
+    const first = nextGraph.nodesById.first!
+    if (first.kind !== 'field')
+      throw new Error('Expected a field fixture')
+    first.defaultValue = 2
+    first.props.options = [{ label: 'Stale', value: 'stale' }]
+    first.datasetBindings = { options: { datasetId: 'choices', projection: { kind: 'options', valuePath: ['id'], labelPath: ['name'] } } }
+    const dataset = { id: 'choices', name: 'Choices', rows: [{ id: 2, name: 'Two' }] }
+    await wrapper.setProps({
+      graph: nextGraph,
+      registry: createDesignerRegistry({ materials: registry.listMaterials().map(material => ({
+        ...material,
+        setters: [{ key: 'initialValue', label: 'Default', path: ['defaultValue'], control: 'defaultValue', valueKind: 'select', optionsPath: ['props', 'options'] }],
+      })) }),
+      datasets: [dataset],
+    })
+    expect(wrapper.emitted('diagnostics')?.at(-1)).toEqual([[]])
+    await wrapper.setProps({ datasets: [{ ...dataset, rows: [] }] })
+    expect(wrapper.emitted('diagnostics')?.at(-1)).toEqual([[expect.objectContaining({ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'first' })]])
+    expect(wrapper.get('.mx-config-form-designer__status').text()).toContain('Default value is not present in the current options')
+    await wrapper.setProps({ datasets: [dataset] })
+    expect(wrapper.emitted('diagnostics')?.at(-1)).toEqual([[]])
+    expect(wrapper.get('.mx-config-form-designer__status').text()).not.toContain('Default value is not present')
+    expect(execute).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('routes multi-selection duplicate and delete through one command each', async () => {
     const { execute, undo, wrapper } = mountSurface()
     const surface = wrapper.vm as unknown as DesignSurfaceExpose

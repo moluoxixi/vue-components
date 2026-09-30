@@ -2,6 +2,7 @@
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { PrototypeSurfaceHost } from '@moluoxixi/config-form-prototype-runtime/vue'
 import { computed, markRaw } from 'vue'
+import { WORKBENCH_MESSAGES } from '../locale'
 import { ExperienceSurfaceRenderer } from './components'
 import { useRuntimeHostDesignGeometry, useRuntimeHostProtocol } from './composables'
 import { projectThemeStyle } from './services/theme'
@@ -29,11 +30,15 @@ const {
   prototypeHost,
   renderer,
   runtimeError,
+  runtimeLocale,
   runtimeMode,
   runtimeSessionKey,
   updateModel,
 } = protocol
 const model = { read: () => modelValue.value, write: updateModel }
+const runtimeErrorTitle = computed(() => WORKBENCH_MESSAGES[
+  runtimeLocale.value === 'zh-CN' ? 'zh-CN' : 'en-US'
+]['preview.runtimeError'])
 const prototypeArtifacts = computed(() => Object.fromEntries(
   Object.keys(experienceArtifacts.value).map(surfaceId => [surfaceId, {
     surfaceId,
@@ -69,7 +74,7 @@ const {
     @pointercancel.capture="postDesignPointer('design.pointerCancel', $event)"
   >
     <div v-if="runtimeError" class="runtime-host-error" role="alert">
-      <strong>Preview Runtime error</strong>
+      <strong>{{ runtimeErrorTitle }}</strong>
       <p>{{ runtimeError }}</p>
     </div>
     <div

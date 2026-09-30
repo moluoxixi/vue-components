@@ -170,6 +170,50 @@ export function createProjectDomainEngine(
     return acceptHistoryResult(redoProjectHistory(history, transactionOptions))
   }
 
+  function jump(position: number): ProjectDomainDispatchResult {
+    if (!Number.isSafeInteger(position) || position < 0
+      || position > history.past.length + history.future.length) {
+      return unchanged([{
+        code: 'PROJECT_HISTORY_POSITION_INVALID',
+        message: 'History position must identify a retained history state.',
+      }])
+    }
+    if (position === history.past.length)
+      return unchanged()
+
+    // History helpers return new immutable state. Keep every intermediate
+    // document/version private until all replayed transactions validate; a
+    // failed traversal must not leak a cursor, notification, or partial save.
+    let staged = history
+    let changeSet = EMPTY_CHANGE_SET
+    let steps = 0
+    try {
+      while (staged.past.length !== position) {
+        const result = staged.past.length > position
+          ? undoProjectHistory(staged, transactionOptions)
+          : redoProjectHistory(staged, transactionOptions)
+        if (!result.changed) {
+          return unchanged(result.diagnostics.length > 0
+            ? result.diagnostics
+            : [{
+                code: 'PROJECT_HISTORY_JUMP_BLOCKED',
+                message: 'History traversal could not reach the requested state.',
+              }])
+        }
+        staged = result.history
+        changeSet = ++steps === 1 ? result.changeSet : EMPTY_CHANGE_SET
+      }
+    }
+    catch (error) {
+      return unchanged([{
+        code: 'PROJECT_HISTORY_JUMP_FAILED',
+        message: error instanceof Error ? error.message : String(error),
+        context: { position },
+      }])
+    }
+    return acceptHistoryResult({ changed: true, history: staged, changeSet, diagnostics: [] })
+  }
+
   function sealHistoryGroup(): void {
     const previous = history.past.at(-1)
     if (!previous?.transaction.mergeKey)
@@ -195,6 +239,7 @@ export function createProjectDomainEngine(
       return currentSnapshot()
     },
     execute,
+    jump,
     redo,
     sealHistoryGroup,
     subscribe(listener) {

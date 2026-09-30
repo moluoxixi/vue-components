@@ -14,7 +14,7 @@ import { computed } from 'vue'
 import { areDesignerJsonValuesEqual, findDesignNode } from '../../../graph'
 import { resolveInspectorCapabilities, resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
-import { DESIGNER_OPTION_VALUE_TYPES } from '../../../options'
+import { resolveDesignerSetterOptions } from '../../../registry'
 import { resolveDesignerValidationBase } from '../services'
 
 type PropertyTab = InspectorSectionId
@@ -162,30 +162,7 @@ export function useDesignerPropertyEntries(
     node: SurfaceNode,
     setter: DesignerPropertySetterDefinition,
   ): DesignerSetterOption[] | undefined {
-    if (!setter.optionsPath)
-      return setter.options?.filter(option => isAllowedOptionValue(setter, option.value))
-    const value = readNodePath(node, setter.optionsPath)
-    if (!Array.isArray(value))
-      return []
-    return value.flatMap((option) => {
-      if (typeof option !== 'object' || option === null || Array.isArray(option))
-        return []
-      const record = option as Record<string, unknown>
-      const optionValue = record.value
-      if (typeof record.label !== 'string'
-        || !Object.hasOwn(record, 'value')
-        || !['string', 'number', 'boolean'].includes(typeof optionValue)
-        || (typeof optionValue === 'number' && !Number.isFinite(optionValue))
-        || !isAllowedOptionValue(setter, optionValue)) {
-        return []
-      }
-      return [{ label: record.label, value: optionValue as string | number | boolean }]
-    })
-  }
-
-  function isAllowedOptionValue(setter: DesignerPropertySetterDefinition, value: unknown): boolean {
-    const allowedTypes = setter.optionValueTypes ?? DESIGNER_OPTION_VALUE_TYPES
-    return allowedTypes.includes(typeof value as DesignerOptionValueType)
+    return resolveDesignerSetterOptions(node, setter, props.datasets)
   }
 
   function resolveSetterOptions(setter: DesignerPropertySetterDefinition): DesignerSetterOption[] | undefined {

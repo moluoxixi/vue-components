@@ -11,7 +11,7 @@ import {
   Scissors,
   Trash2,
 } from '@lucide/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useDesignerLocale } from '../../../../locale'
 
 const props = defineProps<{
@@ -23,11 +23,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   action: [action: DesignerNodeAction, nodeId: string]
-  close: []
+  close: [restoreFocus: boolean]
 }>()
 
 const locale = useDesignerLocale()
 const menuRef = useTemplateRef<HTMLElement>('menu')
+const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
 
 interface ContextMenuItem {
   action: DesignerNodeAction
@@ -52,9 +53,13 @@ const items = computed<ContextMenuItem[]>(() => [
 
 // Clamp against the viewport so the menu never opens half off-screen.
 const menuStyle = computed(() => ({
-  left: `${Math.min(props.x, Math.max(8, window.innerWidth - 200))}px`,
-  top: `${Math.min(props.y, Math.max(8, window.innerHeight - items.value.length * 34 - 16))}px`,
+  left: `${Math.min(props.x, Math.max(8, viewport.value.width - 200))}px`,
+  top: `${Math.min(props.y, Math.max(8, viewport.value.height - items.value.length * 34 - 16))}px`,
 }))
+
+function updateViewport(): void {
+  viewport.value = { width: window.innerWidth, height: window.innerHeight }
+}
 
 function runItem(item: ContextMenuItem): void {
   if (item.disabled)
@@ -66,7 +71,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
-    emit('close')
+    emit('close', true)
     return
   }
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
@@ -89,14 +94,18 @@ function handleKeydown(event: KeyboardEvent): void {
 function handleDocumentPointerDown(event: PointerEvent): void {
   if (event.target instanceof Node && menuRef.value?.contains(event.target))
     return
-  emit('close')
+  emit('close', false)
 }
 
 onMounted(() => {
   document.addEventListener('pointerdown', handleDocumentPointerDown, true)
+  window.addEventListener('resize', updateViewport)
   void nextTick(() => menuRef.value?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true }))
 })
-onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocumentPointerDown, true))
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
+  window.removeEventListener('resize', updateViewport)
+})
 </script>
 
 <template>
@@ -111,7 +120,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
     @contextmenu.prevent
   >
     <template v-for="item in items" :key="item.action">
-      <hr v-if="item.divider" class="mx-config-form-designer__context-menu-divider" aria-hidden="true">
+      <hr v-if="item.divider" class="mx-config-form-designer__context-menu-divider" role="separator">
       <button
         type="button"
         role="menuitem"

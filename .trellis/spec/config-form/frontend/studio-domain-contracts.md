@@ -799,6 +799,12 @@ Dataset page indexes are zero-based and page size is a positive integer.
 in declaration order and rows equal under all rules keep source order. Query
 evaluation never mutates source rows or their nested values.
 
+Table projection column keys must be unique at the shared `DatasetProjection`
+schema boundary. Apply the same check to Dataset `defaultProjection` and node
+`datasetBindings`; a project Reader must reject duplicate binding columns even
+when the Dataset has no rows. UI validation and runtime query rejection are
+additional feedback, not substitutes for the persisted-document check.
+
 For an `options` projection, every `valuePath` result must exist, be a unique
 `string | number`, and remain stable for the evaluated Dataset snapshot. Missing
 paths, duplicates, and `null`/boolean/object/array values emit

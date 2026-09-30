@@ -1,10 +1,10 @@
-import type { SurfaceGraph, SurfaceNode, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
 import type { DesignerDropTarget, DesignNodeLocation } from '../../../graph'
 import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry, DesignerRuntimeRect } from '../types'
 import { hitTestDesignNodes } from '@moluoxixi/config-form-model'
 import { onBeforeUnmount } from 'vue'
-import { findDesignNode } from '../../../graph'
+import { walkDesignGraph } from '../../../graph'
 import {
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
@@ -45,14 +45,11 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     ))
   }
 
-  function hitNodeElements(point: DesignerPointerPosition, candidateId: string): DesignerRuntimeNodeGeometry[] {
-    return hitTestDesignNodes(point, options.runtimeNodeGeometry().filter(geometry => geometry.nodeId !== candidateId))
+  function hitNodeElements(point: DesignerPointerPosition, candidateId: string, geometry = options.runtimeNodeGeometry()): DesignerRuntimeNodeGeometry[] {
+    return hitTestDesignNodes(point, geometry.filter(node => node.nodeId !== candidateId))
   }
 
-  function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {
-    const location = findDesignNode(options.graph(), nodeId)
-    if (!location)
-      return undefined
+  function siblingTarget(location: DesignNodeLocation, after: boolean): DesignerDropTarget {
     const index = location.index + (after ? 1 : 0)
     return location.parentId !== null && location.slot
       ? { parentId: location.parentId, slot: location.slot, index }
@@ -105,7 +102,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
       }
     }
     visit(graph.root)
-    return targets.filter(target => isValidTarget(target, source))
+    return targets
   }
 
   function scheduleCanvasAutoScroll(point: DesignerPointerPosition): void {
@@ -161,16 +158,25 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (point.x < sheetRect.left || point.x > sheetRect.right || point.y < sheetRect.top || point.y > sheetRect.bottom)
       return undefined
 
-    const hits = hitNodeElements(point, source.candidateId)
+    const geometry = options.runtimeNodeGeometry()
+    const hits = hitNodeElements(point, source.candidateId, geometry)
     const hit = hits[0]
     const hitId = hit?.nodeId
-    const rectById = new Map(options.runtimeNodeGeometry().map(geometry => [geometry.nodeId, geometry.rect]))
+    const rectById = new Map(geometry.map(item => [item.nodeId, item.rect]))
+    // Keep the index local to one resolution: controlled graphs may change in
+    // place, and a geometry item must not trigger another full graph walk.
+    const graph = options.graph()
+    const locations = new Map<string, DesignNodeLocation>()
+    walkDesignGraph(graph, (visit) => {
+      const sequence = visit.parent && visit.slot ? visit.parent.slots[visit.slot]! : graph.root
+      locations.set(visit.node.id, { ...visit, sequence })
+    })
     const collapsedTarget = resolveDesignerCollapsedDropTarget(
       point,
-      options.runtimeNodeGeometry().flatMap((geometry) => {
-        if (geometry.nodeId === source.candidateId)
+      geometry.flatMap((item) => {
+        if (item.nodeId === source.candidateId)
           return []
-        const location = findDesignNode(options.graph(), geometry.nodeId)
+        const location = locations.get(item.nodeId)
         if (!location)
           return []
         const slot = acceptedSlot(location.node, node)
@@ -181,26 +187,26 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
           slot: slot.name,
           index: location.node.kind === 'layout' ? (location.node.slots[slot.name]?.length ?? 0) : 0,
         } satisfies DesignerDropTarget
-        if (!isValidTarget(target))
-          return []
         return [{
           depth: location.path.length,
-          rect: geometry.rect,
+          rect: item.rect,
           specificity: slot.materials?.includes(node.component) ? 1 : 0,
           target,
         }]
       }),
+      undefined,
+      isValidTarget,
     )
     if (collapsedTarget)
       return collapsedTarget
 
     if (!hitId) {
-      const target = { parentId: null, index: options.graph().root.length } satisfies DesignerDropTarget
+      const target = { parentId: null, index: graph.root.length } satisfies DesignerDropTarget
       return isValidTarget(target) ? target : previous
     }
 
     const insideTargets = hits.flatMap((geometry, depth) => {
-      const location = findDesignNode(options.graph(), geometry.nodeId)
+      const location = locations.get(geometry.nodeId)
       if (!location)
         return []
       const slot = acceptedSlot(location.node, node)
@@ -243,10 +249,10 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
 
     // First entry next to a node: insert before/after the deepest hit along
     // its rendered flow axis (row for side-by-side siblings, column otherwise).
-    const location = findDesignNode(options.graph(), hitId)
+    const location = locations.get(hitId)
     if (location) {
       const ratio = resolveDesignerFlowRatio(point, hit.rect, siblingFlowAxis(location, rectById))
-      const target = siblingTarget(hitId, ratio > 0.5)
+      const target = siblingTarget(location, ratio > 0.5)
       if (target && isValidTarget(target))
         return target
     }
@@ -258,6 +264,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
 
   return {
     hitNodeElements,
+    isValidTarget,
     keyboardDropTargets,
     resolveDropTarget,
     stopCanvasAutoScroll,

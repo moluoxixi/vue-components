@@ -29,11 +29,20 @@ const emit = defineEmits<{
   dragKeydown: [event: KeyboardEvent, nodeId: string]
   menuAction: [action: DesignerNodeAction, nodeId: string]
   menuKeydown: [event: KeyboardEvent]
+  resizeByKeyboard: [nodeId: string, delta: number]
   toggleMenu: [nodeId: string]
   toolbarKeydown: [event: KeyboardEvent]
 }>()
 
 const locale = useDesignerLocale()
+
+function handleResizeKeydown(event: KeyboardEvent, nodeId: string): void {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')
+    return
+  event.preventDefault()
+  event.stopPropagation()
+  emit('resizeByKeyboard', nodeId, event.key === 'ArrowRight' ? 1 : -1)
+}
 </script>
 
 <template>
@@ -76,9 +85,11 @@ const locale = useDesignerLocale()
           class="mx-config-form-designer__resize-handle"
           :aria-label="locale.t('node.resize', 'Resize node')"
           :title="locale.t('node.resize', 'Resize node')"
+          aria-keyshortcuts="ArrowLeft ArrowRight"
           aria-hidden="false"
           data-designer-editor-control
           @pointerdown="emit('beginResize', $event, box.id)"
+          @keydown="handleResizeKeydown($event, box.id)"
         />
       </DesignerCommandHint>
     </div>
@@ -91,7 +102,6 @@ const locale = useDesignerLocale()
       :aria-label="spot.message"
       data-designer-editor-control
       role="img"
-      tabindex="0"
     >
       <TriangleAlert :size="13" aria-hidden="true" />
     </span>

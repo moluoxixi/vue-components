@@ -725,7 +725,7 @@ describe('workbench production architecture boundary', () => {
     const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
-    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/services/router.ts', import.meta.url), 'utf8')
     const routeSync = readFileSync(new URL('../composables/use-workbench-route-sync.ts', import.meta.url), 'utf8')
     const featureRouterImports = collectProductionTextFiles(join(configFormRoot, 'workbench/src/features'))
       .filter(path => /from 'vue-router'/.test(readFileSync(path, 'utf8')))
@@ -750,11 +750,11 @@ describe('workbench production architecture boundary', () => {
 
   it('keeps template browsing in the App-level creation workspace', () => {
     const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
-    const creationView = readFileSync(new URL('../components/CreationView.vue', import.meta.url), 'utf8')
+    const creationView = readFileSync(new URL('../router/components/CreationView.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
     const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
-    const routerSource = readFileSync(new URL('../router/index.ts', import.meta.url), 'utf8')
+    const routerSource = readFileSync(new URL('../router/services/router.ts', import.meta.url), 'utf8')
 
     expect(app).toContain('<RouterView')
     expect(creationView).toContain('TemplateCreationWorkspace')

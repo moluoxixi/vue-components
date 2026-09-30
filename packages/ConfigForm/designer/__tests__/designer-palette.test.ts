@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
-import { createDesignerDragController } from '../src/components/DesignerCanvas/services'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick } from 'vue'
+import { createDesignerDragController, DESIGNER_SESSION_KEY } from '../src/components/DesignerCanvas/services'
 import DesignerPalette from '../src/components/DesignerPalette'
 import { useDesignerPaletteDrag } from '../src/components/DesignerPalette/composables'
 import { createDesignerRegistry } from '../src/registry'
@@ -127,5 +127,112 @@ describe('designer palette presentation', () => {
     await command.trigger('click')
     expect(onAddMaterial).toHaveBeenCalledWith('test.input')
     wrapper.unmount()
+  })
+})
+
+describe('palette keyboard drag startup feedback', () => {
+  const wrappers: Array<ReturnType<typeof mount>> = []
+
+  function setup() {
+    vi.useFakeTimers()
+    const commitMaterial = vi.fn()
+    const drag = createDesignerDragController({ commitMaterial, commitNode: vi.fn() })
+    const begin = vi.spyOn(drag, 'beginMaterialKeyboard')
+    const wrapper = mount(DesignerPalette, {
+      attachTo: document.body,
+      props: { materials: registry.listMaterials(), registry },
+      global: { provide: { [DESIGNER_SESSION_KEY as symbol]: { drag } } },
+    })
+    wrappers.push(wrapper)
+    const button = wrapper.get<HTMLButtonElement>('[data-material-key="test.input"]')
+    button.element.focus()
+    return { begin, button, commitMaterial, drag, wrapper }
+  }
+
+  afterEach(() => {
+    wrappers.splice(0).forEach(wrapper => wrapper.unmount())
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('announces one visible timeout without inserting or moving focus and allows a successful retry', async () => {
+    const { begin, button, commitMaterial, drag, wrapper } = setup()
+    await button.trigger('keydown', { key: ' ' })
+    await vi.runAllTimersAsync()
+    expect(begin).toHaveBeenCalledTimes(31)
+    expect(new Set(begin.mock.calls.map(([, id]) => id)).size).toBe(1)
+    expect(wrapper.get('[role="status"]').text()).toContain('no available position')
+    expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite')
+    expect(commitMaterial).not.toHaveBeenCalled()
+    expect(wrapper.emitted('addMaterial')).toBeUndefined()
+    expect(document.activeElement).toBe(button.element)
+
+    drag.registerKeyboardTargets(() => [{ parentId: null, index: 0 }])
+    await button.trigger('keydown', { key: ' ' })
+    await vi.runAllTimersAsync()
+    expect(wrapper.get('[role="status"]').text()).toBe('')
+    expect(button.attributes('aria-pressed')).toBe('true')
+    expect(commitMaterial).not.toHaveBeenCalled()
+    expect(begin).toHaveBeenCalledTimes(32)
+    await button.trigger('keydown', { key: ' ' })
+    expect(commitMaterial).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(button.element)
+  })
+
+  it('succeeds when target registration arrives during retries and stops all later retries', async () => {
+    const { begin, button, drag, wrapper } = setup()
+    await button.trigger('keydown', { key: ' ' })
+    await vi.advanceTimersByTimeAsync(32)
+    expect(begin.mock.calls.length).toBeGreaterThan(1)
+    drag.registerKeyboardTargets(() => [{ parentId: null, index: 0 }])
+    await vi.runAllTimersAsync()
+    const count = begin.mock.calls.length
+    expect(new Set(begin.mock.calls.map(([, id]) => id)).size).toBe(1)
+    expect(drag.session.value?.input).toBe('keyboard')
+    expect(wrapper.get('[role="status"]').text()).toBe('')
+    await button.trigger('keydown', { key: 'Escape' })
+    await vi.runAllTimersAsync()
+    expect(begin).toHaveBeenCalledTimes(count)
+    expect(drag.session.value).toBeUndefined()
+  })
+
+  it.each(['escape', 'enter', 'pointer', 'readonly', 'unmount'] as const)(
+    'stops pending retries on %s without a later timeout or accidental insert',
+    async (action) => {
+      const { begin, button, commitMaterial, wrapper } = setup()
+      await button.trigger('keydown', { key: ' ' })
+      await vi.advanceTimersByTimeAsync(32)
+      const count = begin.mock.calls.length
+      if (action === 'escape')
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      else if (action === 'enter')
+        await button.trigger('keydown', { key: 'Enter' })
+      else if (action === 'pointer')
+        button.element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 15 }))
+      else if (action === 'readonly')
+        await wrapper.setProps({ readonly: true })
+      else
+        wrapper.unmount()
+      await vi.runAllTimersAsync()
+      expect(begin).toHaveBeenCalledTimes(count)
+      expect(commitMaterial).not.toHaveBeenCalled()
+      expect(wrapper.emitted('addMaterial')).toEqual(action === 'enter' ? [['test.input']] : undefined)
+      if (action !== 'unmount')
+        expect(wrapper.get('[role="status"]').text()).toBe('')
+    },
+  )
+
+  it('cancels startup before nextTick and clears obsolete failure when readonly changes', async () => {
+    const { begin, button, wrapper } = setup()
+    button.element.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    await vi.runAllTimersAsync()
+    expect(begin).not.toHaveBeenCalled()
+    await button.trigger('keydown', { key: ' ' })
+    await vi.runAllTimersAsync()
+    expect(wrapper.get('[role="status"]').text()).not.toBe('')
+    await wrapper.setProps({ readonly: true })
+    expect(wrapper.get('[role="status"]').text()).toBe('')
   })
 })

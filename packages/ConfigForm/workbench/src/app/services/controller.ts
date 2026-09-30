@@ -217,6 +217,8 @@ export function createWorkbenchController(
   const statusLabel = computed(() => {
     if (!repository.value)
       return workbenchLocale.value.t('status.loading', 'Loading')
+    if (configError.value)
+      return workbenchLocale.value.t('status.configError', 'Configuration error')
     switch (persistenceSnapshot.value?.status) {
       case 'saving': return workbenchLocale.value.t('status.saving', 'Autosaving')
       case 'pending': return workbenchLocale.value.t('status.pending', 'Changes pending')

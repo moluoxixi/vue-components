@@ -17,11 +17,10 @@ const props = withDefaults(defineProps<{
 }>(), {
   showSearch: true,
 })
-const locale = useDesignerLocale()
-
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
 }>()
+
 defineSlots<{
   content?: (scope: {
     getMaterialBindings: (material: DesignerMaterialDefinition) => DesignerPaletteMaterialBindings
@@ -29,9 +28,12 @@ defineSlots<{
     materialTitle: (material: DesignerMaterialDefinition) => string
   }) => unknown
 }>()
+
+const locale = useDesignerLocale()
+
 const designSession = inject(DESIGNER_SESSION_KEY, undefined)
 const query = ref('')
-const { getMaterialBindings, isMaterialKeyboardDragging } = useDesignerPaletteDrag({
+const { getMaterialBindings, isMaterialKeyboardDragging, keyboardStartFailure } = useDesignerPaletteDrag({
   dragController: designSession?.drag,
   materialTitle: locale.materialTitle,
   onAddMaterial: materialKey => emit('addMaterial', materialKey),
@@ -55,7 +57,12 @@ const groups = computed(() => {
 </script>
 
 <template>
-  <aside class="mx-config-form-designer__palette" :aria-label="locale.t('palette.materials', 'Materials')">
+  <aside class="mx-config-form-designer__palette" :class="{ 'has-search': showSearch }" :aria-label="locale.t('palette.materials', 'Materials')">
+    <p class="mx-config-form-designer__palette-status" role="status" aria-live="polite" aria-atomic="true">
+      <template v-if="keyboardStartFailure">
+        {{ locale.t('drag.startUnavailable', 'Cannot start dragging {item}: no available position. Press Space to retry or Enter to add.', { item: locale.materialTitle(keyboardStartFailure) }) }}
+      </template>
+    </p>
     <div v-if="showSearch" class="mx-config-form-designer__search">
       <Search :size="16" aria-hidden="true" />
       <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
@@ -66,38 +73,40 @@ const groups = computed(() => {
       :get-material-bindings="getMaterialBindings"
       :material-title="locale.materialTitle"
     >
-    <div class="mx-config-form-designer__palette-list">
-      <section v-for="[category, entries] in groups" :key="category" class="mx-config-form-designer__palette-group">
-        <h2>{{ category }}</h2>
-        <div class="mx-config-form-designer__palette-items">
-          <div
-            v-for="material in entries"
-            :key="material.key"
-            class="mx-config-form-designer__palette-item"
-            :class="{
-              'is-disabled': readonly,
-              'is-keyboard-dragging': isMaterialKeyboardDragging(material.key),
-            }"
-            :data-material-row-key="material.key"
-            :data-material-kind="material.kind"
-          >
-            <button
-              v-bind="getMaterialBindings(material)"
-              type="button"
-              class="mx-config-form-designer__palette-item-action"
-            />
-            <span class="mx-config-form-designer__palette-item-summary" aria-hidden="true">
-              <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
-              <span class="mx-config-form-designer__palette-icon" v-else aria-hidden="true">
-                {{ material.kind === 'field' ? 'F' : 'L' }}
+      <div class="mx-config-form-designer__palette-list">
+        <section v-for="[category, entries] in groups" :key="category" class="mx-config-form-designer__palette-group">
+          <h2>{{ category }}</h2>
+          <div class="mx-config-form-designer__palette-items">
+            <div
+              v-for="material in entries"
+              :key="material.key"
+              class="mx-config-form-designer__palette-item"
+              :class="{
+                'is-disabled': readonly,
+                'is-keyboard-dragging': isMaterialKeyboardDragging(material.key),
+              }"
+              :data-material-row-key="material.key"
+              :data-material-kind="material.kind"
+            >
+              <button
+                v-bind="getMaterialBindings(material)"
+                type="button"
+                class="mx-config-form-designer__palette-item-action"
+              />
+              <span class="mx-config-form-designer__palette-item-summary" aria-hidden="true">
+                <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
+                <span v-else class="mx-config-form-designer__palette-icon" aria-hidden="true">
+                  {{ material.kind === 'field' ? 'F' : 'L' }}
+                </span>
+                <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
               </span>
-              <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
-            </span>
+            </div>
           </div>
-        </div>
-      </section>
-      <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">{{ locale.t('palette.empty', 'No materials') }}</p>
-    </div>
+        </section>
+        <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">
+          {{ locale.t('palette.empty', 'No materials') }}
+        </p>
+      </div>
     </slot>
   </aside>
 </template>

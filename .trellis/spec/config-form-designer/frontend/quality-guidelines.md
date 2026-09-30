@@ -3,6 +3,22 @@
 These contracts apply to Designer rendering, responsive workspace behavior,
 focus migration, theme isolation, and runtime preview boundaries.
 
+## Material Diagnostics And Mutation Undo Notices
+
+- Designer `material.analyze` callbacks must be published by the controller for
+  field, layout, and element materials. Model registration and Compiler checks
+  cannot replace these callbacks: the serializable Registry contract does not
+  carry them. Keep command rejection and structural validation in their existing
+  owners; do not suppress authoring callbacks as presumed duplicate validation.
+- A mutation notice must keep the identity of the command that requested it.
+  Before publishing a deferred notice, ensure that another accepted command or
+  history transition has not superseded it. At action time, compare the captured
+  history entry's ID and editVersion as well as the local transition sequence;
+  an unchanged entry ID alone is insufficient after a merge.
+- Regression coverage must include all three material kinds, diagnostic refresh
+  after a graph update, a later command before/after `nextTick`, and an edit
+  merged into the same history entry.
+
 ## Designer Drag Preview And Panel Visibility
 
 The Design canvas must project a drag candidate into a `ProjectDraftSnapshot`, then pass it to the required Runtime Host
