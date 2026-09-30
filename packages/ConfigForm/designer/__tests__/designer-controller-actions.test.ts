@@ -211,7 +211,7 @@ describe('designer controller batch actions', () => {
       .toThrow(/DESIGNER_SETTER_PATH_FORBIDDEN/)
   })
 
-  it('clears an invalid option default atomically and exposes one guarded undo notice', async () => {
+  it.each(['immediate', 'supersededBeforeNotice', 'supersededAfterNotice', 'mergedAfterNotice', 'externalMergeAfterNotice'])('clears an invalid option default atomically and guards its undo notice (%s)', async (scenario) => {
     const optionsGraph: SurfaceGraph = {
       ...graph,
       nodesById: {
@@ -305,12 +305,37 @@ describe('designer controller batch actions', () => {
       ],
     }])
 
+    if (scenario === 'supersededBeforeNotice') {
+      acceptedCommandId = 'subsequent-command'
+      history = {
+        ...history,
+        entries: [...history.entries, { id: acceptedCommandId, label: 'Later edit', editVersion: 2, timestamp: 2 }],
+        position: 2,
+      }
+    }
     await nextTick()
+    if (scenario === 'supersededBeforeNotice') {
+      expect(onNotice).not.toHaveBeenCalled()
+      expect(undo).not.toHaveBeenCalled()
+      return
+    }
     expect(onNotice).toHaveBeenCalledOnce()
     expect(onNotice.mock.calls[0]?.[0]).toBe('1 default cleared')
     const undoNotice = onNotice.mock.calls[0]?.[1] as () => boolean
-    expect(undoNotice()).toBe(true)
-    expect(undo).toHaveBeenCalledOnce()
+    if (scenario !== 'immediate') {
+      if (scenario !== 'externalMergeAfterNotice')
+        acceptedCommandId = 'subsequent-command'
+      history = {
+        ...history,
+        entries: [{
+          ...history.entries[0]!,
+          id: scenario.endsWith('MergeAfterNotice') || scenario === 'mergedAfterNotice' ? history.entries[0]!.id : acceptedCommandId!,
+          editVersion: 2,
+        }],
+      }
+    }
+    expect(undoNotice()).toBe(scenario === 'immediate')
+    expect(undo).toHaveBeenCalledTimes(scenario === 'immediate' ? 1 : 0)
   })
 
   it('commits option, default, and enum validation changes as one undoable history entry', () => {

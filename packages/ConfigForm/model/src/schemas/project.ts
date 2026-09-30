@@ -175,7 +175,10 @@ const datasetProjectionSchema = z.discriminatedUnion('kind', [
     titlePath: safePathSchema.optional(),
     descriptionPath: safePathSchema.optional(),
   }).strict(),
-])
+]).superRefine((projection, context) => {
+  if (projection.kind === 'table')
+    reportDuplicateValues(projection.columns, column => column.key, context, ['columns'], 'table column key')
+})
 
 const datasetViewQuerySchema: z.ZodType<DatasetViewQuery> = z.object({
   filter: z.lazy(() => safeExpressionSchema).optional(),
@@ -395,11 +398,7 @@ export const projectDatasetSchema: z.ZodType<ProjectDataset> = z.object({
   description: z.string().max(2_000).optional(),
   rows: z.array(modelJsonObjectSchema),
   defaultProjection: datasetProjectionSchema.optional(),
-}).strict().superRefine((dataset, context) => {
-  if (dataset.defaultProjection?.kind === 'table') {
-    reportDuplicateValues(dataset.defaultProjection.columns, column => column.key, context, ['defaultProjection', 'columns'], 'table column key')
-  }
-}) as z.ZodType<ProjectDataset>
+}).strict() as z.ZodType<ProjectDataset>
 
 const embeddedResourceSchema = z.object({
   id: identifierSchema,

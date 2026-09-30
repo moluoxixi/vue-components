@@ -282,7 +282,7 @@ describe('designer property panel lite Inspector', () => {
       { key: 'clearable', label: 'Clearable', path: ['props', 'clearable'], control: 'boolean' },
     ])
     const secondMaterial = fieldMaterial('test.second', [
-      { ...placeholderSetter, label: 'Hint' },
+      { ...placeholderSetter },
       { key: 'clearable', label: 'Clear mode', path: ['props', 'clearable'], control: 'select', options: [] },
     ])
     const firstContract = contract('test.first')

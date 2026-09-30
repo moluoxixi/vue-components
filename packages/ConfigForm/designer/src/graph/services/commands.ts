@@ -12,6 +12,7 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../types'
 import { resolveDesignerOptionValidationBase } from '../../options'
+import { cloneDesignerJson } from '../utils'
 import { assertDesignerSetterPathAllowed } from './setter-path'
 
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -80,13 +81,13 @@ export function createResizeCommand(surfaceId: string, nodeId: string, span: num
 }
 
 function cloneRecord(value: ModelJsonObject | undefined): ModelJsonObject {
-  return structuredClone(value ?? {})
+  return cloneDesignerJson(value ?? {})
 }
 
 function assignPath(root: ModelJsonObject, path: string[], value: unknown): ModelJsonObject {
   if (path.length === 0 || path.some(segment => !segment || UNSAFE_PATH_SEGMENTS.has(segment)))
     throw new TypeError('DESIGN_PROPERTY_PATH_INVALID: Property paths must contain safe non-empty segments.')
-  const next = structuredClone(root)
+  const next = cloneDesignerJson(root)
   let target = next as Record<string, unknown>
   for (const segment of path.slice(0, -1)) {
     const current = target[segment]
@@ -104,7 +105,7 @@ function assignPath(root: ModelJsonObject, path: string[], value: unknown): Mode
   if (value === undefined)
     delete target[key]
   else
-    target[key] = structuredClone(value)
+    target[key] = cloneDesignerJson(value)
   return next
 }
 
@@ -177,13 +178,13 @@ function fieldSettingsForOptionUpdate(
     props: _props,
     ...settings
   } = node
-  const next = structuredClone(settings)
+  const next = cloneDesignerJson(settings)
   if (clearDefaultValue)
     delete next.defaultValue
   if (updateValidation) {
     const base = resolveDesignerOptionValidationBase(value)
     if (base)
-      next.validation = { ...structuredClone(node.validation!), base }
+      next.validation = { ...cloneDesignerJson(node.validation!), base }
     else
       delete next.validation
   }
@@ -241,7 +242,7 @@ export function createNodePathCommand(
       nodeId,
       patch: value === undefined
         ? { unset: [writableRoot as ProjectNodePatchKey] }
-        : { set: { [writableRoot]: structuredClone(value) } },
+        : { set: { [writableRoot]: cloneDesignerJson(value) } },
     }
   })
 
@@ -258,12 +259,12 @@ export function createFormCommand(
   surfaceId: string,
   changes: Record<string, unknown>,
 ): ProjectCommand {
-  const form = structuredClone(graph.form) as Record<string, unknown>
+  const form = cloneDesignerJson(graph.form) as Record<string, unknown>
   Object.entries(changes).forEach(([key, value]) => {
     if (value === undefined)
       delete form[key]
     else
-      form[key] = structuredClone(value)
+      form[key] = cloneDesignerJson(value)
   })
   return createOperationCommand('Update form', [{
     type: 'surface.form',
@@ -279,6 +280,6 @@ export function createSurfaceInteractionsCommand(
   return createOperationCommand('Update interactions', [{
     type: 'surface.interactions',
     surfaceId,
-    interactions: structuredClone(interactions) as PrototypeInteraction[],
+    interactions: cloneDesignerJson(interactions) as PrototypeInteraction[],
   }])
 }

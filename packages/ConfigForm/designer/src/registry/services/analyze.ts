@@ -191,8 +191,11 @@ export function analyzeDesignGraph(
       return
     }
 
-    if (node.kind === 'element')
+    if (node.kind === 'element') {
+      if (includeMaterialDiagnostics && material.kind === 'element')
+        diagnostics.push(...(material.analyze?.(node, path) ?? []))
       return
+    }
 
     if (material.kind !== 'layout')
       return

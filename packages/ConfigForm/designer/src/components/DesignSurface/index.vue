@@ -23,10 +23,10 @@ import {
 } from '../../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../../locale'
 import { DesignerCanvas } from '../DesignerCanvas'
+import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
 import { DesignerCommandHint } from '../DesignerCommandHint'
 import DesignerPalette from '../DesignerPalette'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
-import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
 import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<DesignSurfaceProps>(), {
   workspaceNavigation: 'internal',
 })
 const emit = defineEmits<DesignSurfaceEmits>()
-const slots = defineSlots<DesignSurfaceSlots>()
+defineSlots<DesignSurfaceSlots>()
 
 const locale = reactive(createDesignerLocale(props.locale))
 provide(DESIGNER_LOCALE_KEY, locale)
@@ -96,15 +96,16 @@ const designSession = createDesignerDesignSession(controller, {
           target,
         }],
       }],
-    }))
+    })) {
       return
+    }
     controller.select(candidate.node.id)
     if (workspaceMode.value === 'narrow')
       activeWorkspaceView.value = 'canvas'
     else if (workspaceMode.value === 'medium')
       mediumPanel.value = 'properties'
   },
-  commitNode: (nodeId, target) => handleMove(nodeId, target),
+  commitNode: commitNodeMove,
 })
 const dragController = designSession.drag
 provide(DESIGNER_SESSION_KEY, designSession)
@@ -170,6 +171,19 @@ const dragAnnouncement = computed(() => {
   const announcement = dragController.announcement.value
   return announcement ? formatDragAnnouncement(announcement) : ''
 })
+const selectionAnnouncement = computed(() => {
+  const ids = controller.selectedIds.value
+  if (ids.length > 1)
+    return locale.t('property.selectedCount', '{count} selected', { count: ids.length })
+  if (!ids.length)
+    return ''
+  const node = findDesignNode(controller.graph.value, ids[0]!)?.node
+  const material = node ? props.registry.getMaterial(node.component) : undefined
+  const label = node?.kind === 'field'
+    ? node.label || node.field
+    : material ? locale.materialTitle(material) : node?.component ?? ids[0]!
+  return locale.t('node.selected', 'Selected {label}', { label })
+})
 const runtimeProjection = computed(() => ({
   values: createDesignPreviewModel(controller.graph.value),
 }))
@@ -230,6 +244,11 @@ const {
   selectBreakpoint,
   workspaceMode,
 })
+
+function commitNodeMove(nodeId: string, target: DesignerDropTarget): void {
+  handleMove(nodeId, target)
+}
+
 defineExpose<DesignSurfaceExpose>({
   moveNodeRelative,
   performNodeAction: controller.performNodeAction,
@@ -362,6 +381,7 @@ defineExpose<DesignSurfaceExpose>({
     </div>
 
     <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{ dragAnnouncement }}</span>
+    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{ selectionAnnouncement }}</span>
     <footer class="mx-config-form-designer__status" aria-live="polite">
       <span v-if="controller.diagnostics.value.length">{{ locale.t('status.issues', '{count} issues', { count: controller.diagnostics.value.length }) }} · {{ controller.diagnostics.value[0]?.message }}</span>
       <span v-else>{{ locale.t('status.ready', 'Ready') }}</span>

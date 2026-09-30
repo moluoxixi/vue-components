@@ -1,4 +1,4 @@
-import type { SurfaceGraph, SurfaceNode, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
 import type { DesignerDropTarget, DesignNodeLocation } from '../../../graph'
 import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry, DesignerRuntimeRect } from '../types'
@@ -45,8 +45,8 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     ))
   }
 
-  function hitNodeElements(point: DesignerPointerPosition, candidateId: string): DesignerRuntimeNodeGeometry[] {
-    return hitTestDesignNodes(point, options.runtimeNodeGeometry().filter(geometry => geometry.nodeId !== candidateId))
+  function hitNodeElements(point: DesignerPointerPosition, candidateId: string, geometry = options.runtimeNodeGeometry()): DesignerRuntimeNodeGeometry[] {
+    return hitTestDesignNodes(point, geometry.filter(node => node.nodeId !== candidateId))
   }
 
   function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {
@@ -161,16 +161,17 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (point.x < sheetRect.left || point.x > sheetRect.right || point.y < sheetRect.top || point.y > sheetRect.bottom)
       return undefined
 
-    const hits = hitNodeElements(point, source.candidateId)
+    const geometry = options.runtimeNodeGeometry()
+    const hits = hitNodeElements(point, source.candidateId, geometry)
     const hit = hits[0]
     const hitId = hit?.nodeId
-    const rectById = new Map(options.runtimeNodeGeometry().map(geometry => [geometry.nodeId, geometry.rect]))
+    const rectById = new Map(geometry.map(item => [item.nodeId, item.rect]))
     const collapsedTarget = resolveDesignerCollapsedDropTarget(
       point,
-      options.runtimeNodeGeometry().flatMap((geometry) => {
-        if (geometry.nodeId === source.candidateId)
+      geometry.flatMap((item) => {
+        if (item.nodeId === source.candidateId)
           return []
-        const location = findDesignNode(options.graph(), geometry.nodeId)
+        const location = findDesignNode(options.graph(), item.nodeId)
         if (!location)
           return []
         const slot = acceptedSlot(location.node, node)
@@ -185,7 +186,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
           return []
         return [{
           depth: location.path.length,
-          rect: geometry.rect,
+          rect: item.rect,
           specificity: slot.materials?.includes(node.component) ? 1 : 0,
           target,
         }]

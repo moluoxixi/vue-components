@@ -132,7 +132,7 @@ describe('resolveInspectorCapabilities', () => {
       {
         node: field('second', 'test.second'),
         material: material('test.second', [
-          { ...placeholder, label: 'Hint' },
+          placeholder,
           { key: 'condition', label: 'Condition', path: ['conditions', 'required'], control: 'custom' },
           { key: 'dynamicOptions', label: 'Dynamic options', path: ['props', 'optionSource'], control: 'custom' },
         ]),
@@ -142,6 +142,28 @@ describe('resolveInspectorCapabilities', () => {
 
     expect(projection.commonSetters.map(setter => setter.path)).toEqual([['props', 'placeholder']])
     expect(projection.sections.map(section => section.id)).toEqual(['properties', 'validation', 'interactions'])
+  })
+
+  it.each([
+    { label: 'Other size' },
+    { integer: false },
+    { unit: undefined },
+    { optionValueTypes: ['string'] as const },
+  ])('does not merge setters with different presentation constraints: %j', (difference) => {
+    const size: DesignerPropertySetterDefinition = {
+      key: 'size',
+      label: 'Size',
+      path: ['props', 'size'],
+      control: 'number',
+      integer: true,
+      unit: 'px',
+      optionValueTypes: ['number'],
+    }
+    const projection = resolveInspectorCapabilities([
+      { node: field('first', 'test.first'), material: material('test.first', [size]), contract: contract('test.first', 'field') },
+      { node: field('second', 'test.second'), material: material('test.second', [{ ...size, ...difference }]), contract: contract('test.second', 'field') },
+    ])
+    expect(projection.commonSetters).toEqual([])
   })
 
   it('keeps field-level validation editable for mixed rules without exposing a shared rule editor', () => {

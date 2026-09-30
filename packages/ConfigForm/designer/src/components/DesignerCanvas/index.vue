@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SurfaceNode, ProjectCommand } from '@moluoxixi/config-form-model'
+import type { ProjectCommand, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerNodeAction } from '../DesignSurface/types'
 import type {
@@ -14,8 +14,6 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, wat
 import { createInsertCommand, createMoveCommand, findDesignNode } from '../../graph'
 import { useDesignerLocale } from '../../locale'
 import { DesignerCommandHint } from '../DesignerCommandHint'
-import { createDesignerMaterialCandidate } from './services'
-import { DESIGNER_SESSION_KEY } from './services'
 import { DesignerCanvasCameraControls, DesignerCanvasContextMenu, DesignerCanvasDragVisual, DesignerCanvasOverlay } from './components'
 import {
   useDesignerCanvasCamera,
@@ -27,11 +25,12 @@ import {
   useDesignerCanvasResize,
   useDesignerCanvasRuntime,
 } from './composables'
+import { createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from './services'
 import { createDesignerCanvasSelection } from './services/canvas-selection'
 
-defineSlots<DesignerCanvasSlots>()
 const props = defineProps<DesignerCanvasProps>()
 const emit = defineEmits<DesignerCanvasEmits>()
+defineSlots<DesignerCanvasSlots>()
 
 const locale = useDesignerLocale()
 const designSession = inject(DESIGNER_SESSION_KEY, undefined)
@@ -42,7 +41,6 @@ const sheetRef = ref<HTMLElement>()
 const emptyCanvasDescriptionId = useId()
 const elementVersion = ref(0)
 let unregisterDropResolver: (() => void) | undefined
-let unregisterKeyboardTargets: (() => void) | undefined
 
 const activeSession = computed(() => dragController?.session.value)
 const candidateActive = computed(() => Boolean(activeSession.value?.active))
@@ -110,12 +108,7 @@ function nodeForDragSource(source: DesignerDragSource | undefined): SurfaceNode 
 
 const candidateNode = computed<SurfaceNode | undefined>(() => nodeForDragSource(dragSource.value))
 
-const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
-  const source = candidateSource.value
-  if (!candidateActive.value || candidateInput.value !== 'pointer' || source?.type !== 'material' || candidateTarget.value)
-    return undefined
-  return keyboardDropTargets(source)[0]
-})
+const candidateFallbackTarget = computed(resolveCandidateFallbackTarget)
 
 const candidateProjectionTarget = computed(() => candidateTarget.value ?? candidateFallbackTarget.value)
 const candidateUsesFallback = computed(() => !!candidateFallbackTarget.value && !candidateTarget.value)
@@ -225,6 +218,14 @@ const {
   runtimeNodeGeometry,
   sheetRef,
 })
+
+function resolveCandidateFallbackTarget(): DesignerDropTarget | undefined {
+  const source = candidateSource.value
+  if (!candidateActive.value || candidateInput.value !== 'pointer' || source?.type !== 'material' || candidateTarget.value)
+    return undefined
+  return keyboardDropTargets(source)[0]
+}
+
 const {
   closeNodeActionMenu,
   handleNodeActionMenuKeydown,
@@ -282,6 +283,7 @@ const {
 const {
   beginResize,
   canResize,
+  resizeByKeyboard,
   resizingNodeId,
 } = useDesignerCanvasResize({
   breakpoint: () => props.breakpoint,
@@ -349,6 +351,13 @@ function runContextMenuAction(action: DesignerNodeAction, nodeId: string): void 
   emit('action', action, nodeId)
 }
 
+function closeRuntimeContextMenu(restoreFocus: boolean): void {
+  const nodeId = runtimeContextMenu.value?.nodeId
+  runtimeContextMenu.value = undefined
+  if (restoreFocus && nodeId)
+    void focusEditorNode(nodeId)
+}
+
 // Soft hover outline over the runtime node under the pointer; suppressed
 // while dragging, resizing, or hovering the current selection.
 const hoverBoxStyle = computed(() => {
@@ -372,7 +381,7 @@ onMounted(() => {
 
 // Keyboard destinations only depend on the graph and registry, so register them
 // before the first paint. This keeps a fast Space press from racing Canvas mount.
-unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
+const unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
 
 onBeforeUnmount(() => {
   unregisterDropResolver?.()
@@ -456,6 +465,7 @@ onBeforeUnmount(() => {
             @drag-keydown="handleNodeDragHandleKeydown"
             @menu-action="runNodeAction"
             @menu-keydown="handleNodeActionMenuKeydown"
+            @resize-by-keyboard="resizeByKeyboard"
             @toggle-menu="toggleNodeActionMenu"
             @toolbar-keydown="handleNodeToolbarKeydown"
           />
@@ -496,7 +506,7 @@ onBeforeUnmount(() => {
       :x="runtimeContextMenu.x"
       :y="runtimeContextMenu.y"
       @action="runContextMenuAction"
-      @close="runtimeContextMenu = undefined"
+      @close="closeRuntimeContextMenu"
     />
   </main>
 </template>

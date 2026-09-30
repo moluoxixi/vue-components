@@ -96,6 +96,8 @@ createNodePathCommand(
   value: ModelJsonValue | undefined,
 ): ProjectCommand
 
+cloneDesignerJson<T>(value: T): T
+
 interface ProjectTransaction {
   id: string
   label: string
@@ -183,6 +185,15 @@ interface SlotItem {
 - Semantic commands are JSON-safe. Node property removal uses explicit
   `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
   postMessage, Worker, and persisted command logs discard it.
+- Designer property, form, option-reconciliation, interaction, and clipboard
+  boundaries detach JSON through `cloneDesignerJson`. Graphs and input values
+  may be Vue reactive or readonly proxies, including proxies nested inside
+  otherwise plain containers. Unwrap recursively; root-only `toRaw` followed
+  by native `structuredClone` is insufficient. Commands must share no mutable
+  payload with the caller. Consume top-level `undefined` removal intent before
+  cloning; reject nested `undefined`, non-finite numbers, functions, symbols,
+  class instances, and cycles rather than silently normalizing them through
+  `JSON.stringify`. Model still owns schema and domain validation.
 - Registry-stale stored configuration uses the narrower
   `node.config.remove` repair operation. `bindings` and `conditions` require one
   safe non-empty `key`; `validation`, `validateOn`, `optionSource`, and
@@ -458,6 +469,8 @@ interface SlotItem {
 | Reused command ID with identical payload | Idempotent no-op |
 | Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
 | Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
+| Designer command receives reactive JSON, including nested proxies | Detach the full payload; preserve caller state and normal command semantics |
+| Designer clone receives nested `undefined`, non-finite numbers, non-JSON objects, or cycles | Throw `DESIGN_JSON_INVALID`; never silently drop or rewrite values |
 | Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
 | Time Material opens Validation | Show Required and `validateOn`; omit the general RuleSet editor and never synthesize a `date` base |
 | Select options remove a referenced default and change an existing enum/literal base | Commit options, default removal, and the re-derived base atomically in one history entry |
@@ -515,6 +528,11 @@ interface SlotItem {
   contract. Repeated pointer moves within the
   same normalized drop target call that projection once, while a target change
   creates a new projection.
+- Reactive command tests cover deep reactive graphs, independently nested
+  proxies, readonly input values, property/form removal, option default and
+  validation reconciliation, interaction payloads, and clipboard copies.
+  Mutating either source or copied payload must leave the other unchanged;
+  invalid non-JSON values must be rejected without lossy normalization.
 - Designer validation tests prove `time` resolves no RuleSet base and renders
   only Required/Required message plus `validateOn`, while `date` retains its
   date rules. Select command tests cover reordered/replaced/removed options,

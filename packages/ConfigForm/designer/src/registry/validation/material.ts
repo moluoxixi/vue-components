@@ -32,6 +32,7 @@ function assertDesignPolicy(definition: DesignerMaterialDefinition, layerName: s
   const adapterRequired = policy.render === 'adapter'
     || policy.async === 'adapter'
     || policy.sideEffects === 'adapter'
+    || policy.adapter !== undefined
   if (adapterRequired && !isControlledAdapter(policy.adapter)) {
     throw new DesignerRegistryError(
       'DESIGNER_DESIGN_POLICY_ADAPTER_REQUIRED',

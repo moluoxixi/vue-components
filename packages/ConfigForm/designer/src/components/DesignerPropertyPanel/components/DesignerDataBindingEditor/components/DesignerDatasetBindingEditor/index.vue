@@ -12,17 +12,18 @@ import type {
   SurfaceNode,
 } from '@moluoxixi/config-form-model'
 import { Plus, Trash2 } from '@lucide/vue'
+import { safeExpressionSchema } from '@moluoxixi/config-form-model'
 import {
   ElButton,
-  ElCascader,
   ElInput,
   ElInputNumber,
   ElOption,
   ElSelect,
   ElSwitch,
 } from 'element-plus'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import { useDesignerLocale } from '../../../../../../locale'
+import { DesignerDatasetPathEditor } from './components'
 
 interface DatasetPathOption {
   [key: string]: unknown
@@ -48,7 +49,9 @@ const emit = defineEmits<{
 }>()
 
 const locale = useDesignerLocale()
-const cascaderProps = { checkStrictly: true, emitPath: true } as const
+const invalidPathEditors = new Set<string>()
+const pathRowKeys = new WeakMap<object, number>()
+let nextPathRowKey = 0
 const datasetId = ref('')
 const projection = ref<DatasetProjection>({ kind: 'options', labelPath: ['label'], valuePath: ['value'] })
 const filterJson = ref('')
@@ -64,9 +67,17 @@ const pathOptions = computed(() => createPathOptions(selectedDataset.value?.rows
 const pathCandidates = computed(() => collectDatasetPaths(selectedDataset.value?.rows ?? []).leafPaths)
 
 watch(
-  [() => props.binding, () => props.datasets],
+  () => props.binding,
   () => syncBinding(),
   { deep: true, immediate: true },
+)
+watch(
+  () => props.datasets,
+  () => {
+    if (!props.datasets.some(dataset => dataset.id === datasetId.value))
+      syncBinding()
+  },
+  { deep: true },
 )
 watch(
   () => props.node.id,
@@ -262,9 +273,13 @@ function updateColumn(index: number, changes: { key?: string, valuePath?: string
     return
   projection.value = {
     ...projection.value,
-    columns: projection.value.columns.map((column, columnIndex) => columnIndex === index
-      ? { ...column, ...changes }
-      : column),
+    columns: projection.value.columns.map((column, columnIndex) => {
+      if (columnIndex !== index)
+        return column
+      const updated = { ...column, ...changes }
+      pathRowKeys.set(updated, pathRowKey(column))
+      return updated
+    }),
   }
 }
 
@@ -285,9 +300,23 @@ function addSortRule(): void {
 }
 
 function updateSortRule(index: number, changes: Partial<DatasetViewSortRule>): void {
-  sortRules.value = sortRules.value.map((rule, ruleIndex) => ruleIndex === index
-    ? { ...rule, ...changes }
-    : rule)
+  sortRules.value = sortRules.value.map((rule, ruleIndex) => {
+    if (ruleIndex !== index)
+      return rule
+    const updated = { ...rule, ...changes }
+    pathRowKeys.set(updated, pathRowKey(rule))
+    return updated
+  })
+}
+
+function pathRowKey(row: object): number {
+  const source = toRaw(row)
+  const existing = pathRowKeys.get(source)
+  if (existing !== undefined)
+    return existing
+  const key = nextPathRowKey++
+  pathRowKeys.set(source, key)
+  return key
 }
 
 function removeSortRule(index: number): void {
@@ -295,6 +324,12 @@ function removeSortRule(index: number): void {
 }
 
 function apply(): void {
+  if (props.readonly)
+    return
+  if (invalidPathEditors.size) {
+    error.value = locale.t('data.path.fixInvalid', 'Fix the invalid path before applying the binding.')
+    return
+  }
   if (!datasetId.value) {
     error.value = locale.t('data.dataset.required', 'Select a Dataset first.')
     return
@@ -306,9 +341,14 @@ function apply(): void {
   }
   let filter: SafeExpression | undefined
   try {
-    filter = filterJson.value.trim()
-      ? JSON.parse(filterJson.value) as SafeExpression
-      : undefined
+    if (filterJson.value.trim()) {
+      const parsed = safeExpressionSchema.safeParse(JSON.parse(filterJson.value))
+      if (!parsed.success) {
+        error.value = locale.t('data.query.filterInvalid', 'Filter expression JSON is invalid.')
+        return
+      }
+      filter = parsed.data
+    }
   }
   catch {
     error.value = locale.t('data.query.filterInvalid', 'Filter expression JSON is invalid.')
@@ -327,6 +367,13 @@ function apply(): void {
     projection: cloneProjection(projection.value),
     ...(Object.keys(query).length ? { query } : {}),
   })
+}
+
+function updatePathValidity(id: string, valid: boolean): void {
+  if (valid)
+    invalidPathEditors.delete(id)
+  else
+    invalidPathEditors.add(id)
 }
 
 function validateProjection(value: DatasetProjection): string | undefined {
@@ -449,41 +496,49 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
         </ElSelect>
       </div>
 
+      <p v-if="!pathOptions.length" class="mx-config-form-designer__data-binding-empty" data-manual-dataset-path-help>
+        {{ locale.t('data.path.manualHint', 'No fields can be inferred. Enter each path as a JSON string array, e.g. ["address","city"]. Dots are literal field-name characters. Clear optional paths to omit them.') }}
+      </p>
+
       <div v-if="projection.kind === 'options'" class="mx-config-form-designer__data-binding-fields" data-options-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.labelPath', 'Label path') }}</label>
-          <ElCascader :model-value="projection.labelPath" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.projection.labelPath', 'Label path')" @change="updateOptionsPath('labelPath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.labelPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.labelPath', 'Label path')" @change="updateOptionsPath('labelPath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.valuePath', 'Value path') }}</label>
-          <ElCascader :model-value="projection.valuePath" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.projection.valuePath', 'Value path')" @change="updateOptionsPath('valuePath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.valuePath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.valuePath', 'Value path')" @change="updateOptionsPath('valuePath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.disabledPath', 'Disabled path') }}</label>
-          <ElCascader :model-value="projection.disabledPath" :options="pathOptions" :props="cascaderProps" filterable clearable :disabled="readonly" :aria-label="locale.t('data.projection.disabledPath', 'Disabled path')" @change="updateOptionsPath('disabledPath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.disabledPath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.disabledPath', 'Disabled path')" @change="updateOptionsPath('disabledPath', $event)" @validation="updatePathValidity" />
         </div>
       </div>
 
       <div v-else-if="projection.kind === 'table'" class="mx-config-form-designer__data-binding-fields" data-table-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.rowKeyPath', 'Row key path') }}</label>
-          <ElCascader :model-value="projection.rowKeyPath" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.projection.rowKeyPath', 'Row key path')" @change="updateTableRowKey" />
+          <DesignerDatasetPathEditor :model-value="projection.rowKeyPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.rowKeyPath', 'Row key path')" @change="updateTableRowKey" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-list">
           <div class="mx-config-form-designer__data-binding-row-heading">
             <label>{{ locale.t('data.projection.columns', 'Columns') }}</label>
-            <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.projection.addColumn', 'Add column')" @click="addColumn"><Plus :size="14" aria-hidden="true" /></ElButton>
+            <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.projection.addColumn', 'Add column')" @click="addColumn">
+              <Plus :size="14" aria-hidden="true" />
+            </ElButton>
           </div>
-          <div v-for="(column, index) in projection.columns" :key="index" class="mx-config-form-designer__data-binding-row">
+          <div v-for="(column, index) in projection.columns" :key="pathRowKey(column)" class="mx-config-form-designer__data-binding-row">
             <div class="mx-config-form-designer__data-binding-field">
               <label>{{ locale.t('data.projection.columnKey', 'Column key') }}</label>
               <ElInput :model-value="column.key" :disabled="readonly" :aria-label="locale.t('data.projection.columnKey', 'Column key')" @update:model-value="updateColumn(index, { key: $event })" />
             </div>
             <div class="mx-config-form-designer__data-binding-field">
               <label>{{ locale.t('data.projection.columnPath', 'Value path') }}</label>
-              <ElCascader :model-value="column.valuePath" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.projection.columnPath', 'Value path')" @change="updateColumn(index, { valuePath: normalizePath($event) ?? column.valuePath })" />
+              <DesignerDatasetPathEditor :model-value="column.valuePath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.columnPath', 'Value path')" @change="updateColumn(index, { valuePath: normalizePath($event) ?? column.valuePath })" @validation="updatePathValidity" />
             </div>
-            <ElButton text circle :disabled="readonly || projection.columns.length === 1" :aria-label="locale.t('data.projection.removeColumn', 'Remove column')" @click="removeColumn(index)"><Trash2 :size="14" aria-hidden="true" /></ElButton>
+            <ElButton text circle :disabled="readonly || projection.columns.length === 1" :aria-label="locale.t('data.projection.removeColumn', 'Remove column')" @click="removeColumn(index)">
+              <Trash2 :size="14" aria-hidden="true" />
+            </ElButton>
           </div>
         </div>
       </div>
@@ -491,15 +546,15 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
       <div v-else class="mx-config-form-designer__data-binding-fields" data-list-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.itemKeyPath', 'Item key path') }}</label>
-          <ElCascader :model-value="projection.itemKeyPath" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.projection.itemKeyPath', 'Item key path')" @change="updateListPath('itemKeyPath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.itemKeyPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.itemKeyPath', 'Item key path')" @change="updateListPath('itemKeyPath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.titlePath', 'Title path') }}</label>
-          <ElCascader :model-value="projection.titlePath" :options="pathOptions" :props="cascaderProps" filterable clearable :disabled="readonly" :aria-label="locale.t('data.projection.titlePath', 'Title path')" @change="updateListPath('titlePath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.titlePath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.titlePath', 'Title path')" @change="updateListPath('titlePath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.descriptionPath', 'Description path') }}</label>
-          <ElCascader :model-value="projection.descriptionPath" :options="pathOptions" :props="cascaderProps" filterable clearable :disabled="readonly" :aria-label="locale.t('data.projection.descriptionPath', 'Description path')" @change="updateListPath('descriptionPath', $event)" />
+          <DesignerDatasetPathEditor :model-value="projection.descriptionPath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.descriptionPath', 'Description path')" @change="updateListPath('descriptionPath', $event)" @validation="updatePathValidity" />
         </div>
       </div>
 
@@ -511,12 +566,14 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
       <div class="mx-config-form-designer__data-binding-list" data-query-sort>
         <div class="mx-config-form-designer__data-binding-row-heading">
           <label>{{ locale.t('data.query.sort', 'Local sort') }}</label>
-          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.addSort', 'Add sort rule')" @click="addSortRule"><Plus :size="14" aria-hidden="true" /></ElButton>
+          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.addSort', 'Add sort rule')" @click="addSortRule">
+            <Plus :size="14" aria-hidden="true" />
+          </ElButton>
         </div>
-        <div v-for="(rule, index) in sortRules" :key="index" class="mx-config-form-designer__data-binding-row">
+        <div v-for="(rule, index) in sortRules" :key="pathRowKey(rule)" class="mx-config-form-designer__data-binding-row">
           <div class="mx-config-form-designer__data-binding-field">
             <label>{{ locale.t('data.query.sortPath', 'Sort path') }}</label>
-            <ElCascader :model-value="rule.path" :options="pathOptions" :props="cascaderProps" filterable :disabled="readonly" :aria-label="locale.t('data.query.sortPath', 'Sort path')" @change="updateSortRule(index, { path: normalizePath($event) ?? rule.path })" />
+            <DesignerDatasetPathEditor :model-value="rule.path" :options="pathOptions" :readonly="readonly" :label="locale.t('data.query.sortPath', 'Sort path')" @change="updateSortRule(index, { path: normalizePath($event) ?? rule.path })" @validation="updatePathValidity" />
           </div>
           <div class="mx-config-form-designer__data-binding-field">
             <label>{{ locale.t('data.query.direction', 'Direction') }}</label>
@@ -525,7 +582,9 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
               <ElOption value="desc" :label="locale.t('data.query.desc', 'Descending')" />
             </ElSelect>
           </div>
-          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.removeSort', 'Remove sort rule')" @click="removeSortRule(index)"><Trash2 :size="14" aria-hidden="true" /></ElButton>
+          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.removeSort', 'Remove sort rule')" @click="removeSortRule(index)">
+            <Trash2 :size="14" aria-hidden="true" />
+          </ElButton>
         </div>
       </div>
 
@@ -560,6 +619,8 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
       {{ locale.t('data.dataset.empty', 'No Dataset is available.') }}
     </p>
 
-    <p v-if="error" class="mx-config-form-designer__data-binding-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="mx-config-form-designer__data-binding-error" role="alert">
+      {{ error }}
+    </p>
   </section>
 </template>

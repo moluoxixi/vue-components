@@ -1,11 +1,11 @@
 import type {
   ModelDiagnostic,
   NodeSubgraph,
-  SurfaceGraph,
-  SurfaceNode,
   ProjectCommand,
   ProjectCommandAction,
   ProjectOperation,
+  SurfaceGraph,
+  SurfaceNode,
 } from '@moluoxixi/config-form-model'
 import type {
   DesignerDiagnostic,
@@ -80,7 +80,6 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const graph = computed(options.graph)
   const graphDiagnostics = computed(() => analyzeDesignGraph(graph.value, options.registry(), {
     includeDefaultDiagnostics: false,
-    includeMaterialDiagnostics: false,
   }))
   const diagnostics = computed(() => commandDiagnostics.value.length > 0
     ? commandDiagnostics.value

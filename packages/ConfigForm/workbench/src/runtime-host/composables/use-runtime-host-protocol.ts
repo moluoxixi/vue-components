@@ -61,6 +61,7 @@ export function useRuntimeHostProtocol() {
   const namespace = ref<string>()
   const runtimeSessionKey = ref('')
   const runtimeError = ref('')
+  const runtimeLocale = ref('en-US')
   const runtimeMode = ref<'design' | 'experience'>('design')
   const design = shallowRef<RuntimeHostDesignSyncPayloadV7>()
   const surfaceId = ref('')
@@ -258,6 +259,7 @@ export function useRuntimeHostProtocol() {
     instanceRevisions.clear()
     geometryPort.reset()
     runtimeError.value = ''
+    runtimeLocale.value = message.payload.locale
     if (message.type === 'design.sync') {
       runtimeMode.value = 'design'
       surfaceId.value = message.surfaceId
@@ -351,7 +353,10 @@ export function useRuntimeHostProtocol() {
       return
     if (message.type === 'design.sync' || message.type === 'experience.sync') {
       lastParentSequence = message.sequence
-      void acceptSync(message)
+      void acceptSync(message).catch((error) => {
+        if (message.sequence === latestSyncSequence)
+          reportError('RUNTIME_SYNC_FAILED', error)
+      })
       return
     }
     if (!acceptedSync || message.projectId !== currentProjectId || message.revision !== currentRevision)
@@ -362,7 +367,10 @@ export function useRuntimeHostProtocol() {
       lastParentSequence = message.sequence
       latestStateSequence = message.sequence
       runtimeState.value = cloneWorkbenchJson(message.payload)
-      void applyDesignState(message.payload, message.sequence)
+      void applyDesignState(message.payload, message.sequence).catch((error) => {
+        if (message.sequence === latestStateSequence && runtimeMode.value === 'design')
+          reportError('RUNTIME_STATE_FAILED', error)
+      })
       return
     }
     if (message.type === 'experience.command') {
@@ -451,6 +459,7 @@ export function useRuntimeHostProtocol() {
     prototypeHost,
     reportExperienceError,
     runtimeError,
+    runtimeLocale,
     runtimeMode,
     runtimeSessionKey,
     setGeometryPort,

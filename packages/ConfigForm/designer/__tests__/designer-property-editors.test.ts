@@ -5,6 +5,7 @@ import { mount } from '@vue/test-utils'
 import { ElOption } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
+import DesignerDatasetBindingEditor from '../src/components/DesignerPropertyPanel/components/DesignerDataBindingEditor/components/DesignerDatasetBindingEditor/index.vue'
 import DesignerDefaultValueSetter from '../src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter/index.vue'
 import DesignerOptionsSetter from '../src/components/DesignerPropertyPanel/components/DesignerOptionsSetter/index.vue'
 import DesignerPropertyForm from '../src/components/DesignerPropertyPanel/components/DesignerPropertyForm/index.vue'
@@ -74,12 +75,36 @@ describe('designer property editors', () => {
     await pattern.setValue('[')
     await pattern.trigger('blur')
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(wrapper.text()).toContain('Fix the invalid validation rule before applying it.')
 
     await pattern.setValue('^after$')
     await pattern.trigger('blur')
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual({
       ...validation,
       rules: [{ kind: 'regex', source: '^after$' }],
+    })
+  })
+
+  it('rejects a syntactically valid but unsafe Dataset filter before apply', async () => {
+    const wrapper = mount(DesignerDatasetBindingEditor, {
+      props: {
+        capability: { key: 'options', projectionKinds: ['options'] },
+        datasets: [{ id: 'items', name: 'Items', rows: [{ label: 'One', value: 'one' }] }],
+        hasInlineOptions: false,
+        node: { id: 'choice', kind: 'field', component: 'test.choice', field: 'choice', props: {} },
+        readonly: false,
+      },
+    })
+    await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue('{"version":1,"ast":{"kind":"call","name":"eval"}}')
+    await wrapper.get('[data-apply-dataset-binding]').trigger('click')
+    expect(wrapper.emitted('apply')).toBeUndefined()
+    expect(wrapper.text()).toContain('Filter expression JSON is invalid.')
+
+    await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue('{"version":1,"ast":{"kind":"literal","value":true}}')
+    await wrapper.get('[data-apply-dataset-binding]').trigger('click')
+    expect(wrapper.emitted('apply')?.at(-1)?.[0]).toMatchObject({
+      datasetId: 'items',
+      query: { filter: { version: 1, ast: { kind: 'literal', value: true } } },
     })
   })
 

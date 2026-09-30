@@ -206,6 +206,20 @@ describe('designer canvas interactions', () => {
     context.wrapper.unmount()
   })
 
+  it('resizes by one grid column from the keyboard and respects readonly', async () => {
+    const context = mountInteractions()
+    context.interactions.resizeByKeyboard('field', 1)
+    context.interactions.resizeByKeyboard('field', -1)
+    expect(context.onResize).toHaveBeenNthCalledWith(1, 'field', 13)
+    expect(context.onResize).toHaveBeenNthCalledWith(2, 'field', 11)
+
+    context.readonly.value = true
+    await nextTick()
+    context.interactions.resizeByKeyboard('field', 1)
+    expect(context.onResize).toHaveBeenCalledTimes(2)
+    context.wrapper.unmount()
+  })
+
   it('cancels node drag on lost pointer capture and readonly transition', async () => {
     const context = mountInteractions()
     const handle = document.createElement('button')

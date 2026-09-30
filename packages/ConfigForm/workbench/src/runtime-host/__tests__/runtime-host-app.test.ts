@@ -7,12 +7,13 @@ import {
   initializePrototypeProjectSession,
   reducePrototypeSession,
 } from '@moluoxixi/config-form-prototype-runtime/session'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION, RuntimeHostApp } from '..'
 import { createCompilerFixture, createExperienceCompilerFixture } from './compiler-fixture'
 
 const adapter = vi.hoisted(() => ({ load: vi.fn().mockResolvedValue({ runtimeResolver: {} }) }))
+const renderer = vi.hoisted(() => ({ setValues: vi.fn() }))
 vi.mock('../../adapters', () => ({ loadWorkbenchRuntimeAdapter: adapter.load }))
 vi.mock('@moluoxixi/config-form-vue-backend', () => ({
   compileCanonicalSurfaceRuntime: vi.fn((input: {
@@ -81,7 +82,7 @@ vi.mock('@moluoxixi/config-form', async () => {
           listFieldInstances: () => [],
           setErrors: vi.fn(),
           setInstanceTouched: vi.fn(),
-          setValues: vi.fn(),
+          setValues: renderer.setValues,
           validate: () => true,
           validateInstance: () => true,
         })
@@ -185,6 +186,74 @@ function nestedExperienceSession(project: ReturnType<typeof experienceCompilatio
 }
 
 describe('runtime host app v7', () => {
+  it('ignores a superseded adapter rejection after a newer sync succeeds', async () => {
+    const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    let rejectFirst!: (error: Error) => void
+    adapter.load.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectFirst = reject
+    }))
+    const wrapper = mount(RuntimeHostApp)
+    const state = { fields: [], touched: [], validation: {}, values: {} }
+    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'en-US', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 2)
+    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
+      (message as { type?: string }).type === 'ready'
+    ))).toBe(true))
+    rejectFirst(new Error('Outdated adapter failure'))
+    await flushPromises()
+    expect(post.mock.calls.some(([message]) => (message as { type?: string }).type === 'error')).toBe(false)
+    expect(wrapper.find('.runtime-host-error').exists()).toBe(false)
+    wrapper.unmount()
+    post.mockRestore()
+  })
+
+  it('reports state application failures and recovers on a later sync', async () => {
+    const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const wrapper = mount(RuntimeHostApp)
+    const state = { fields: [], touched: [], validation: {}, values: {} }
+    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'en-US', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
+    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
+      (message as { type?: string }).type === 'ready'
+    ))).toBe(true))
+    renderer.setValues.mockImplementationOnce(() => {
+      throw new Error('Cannot apply values')
+    })
+    dispatch({ type: 'design.state', surfaceId: 'home', payload: state }, 2)
+    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
+      (message as { code?: string }).code === 'RUNTIME_STATE_FAILED'
+    ))).toBe(true))
+    expect(wrapper.get('.runtime-host-error').text()).toContain('Cannot apply values')
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 3)
+    await vi.waitFor(() => expect(post.mock.calls.filter(([message]) => (
+      (message as { type?: string }).type === 'ready'
+    ))).toHaveLength(2))
+    expect(wrapper.find('.runtime-host-error').exists()).toBe(false)
+    wrapper.unmount()
+    post.mockRestore()
+  })
+
+  it('reports adapter load failures and accepts a later sync', async () => {
+    const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    adapter.load.mockRejectedValueOnce(new Error('Adapter unavailable'))
+    const wrapper = mount(RuntimeHostApp)
+    const state = { fields: [], touched: [], validation: {}, values: {} }
+    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'zh-CN', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
+    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
+      (message as { type?: string, code?: string }).type === 'error'
+      && (message as { code?: string }).code === 'RUNTIME_SYNC_FAILED'
+    ))).toBe(true))
+    expect(wrapper.get('.runtime-host-error strong').text()).toBe('预览运行时错误')
+    dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 2)
+    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
+      (message as { type?: string }).type === 'ready'
+    ))).toBe(true))
+    wrapper.unmount()
+    post.mockRestore()
+  })
+
   it('applies only the newest design.state after design.sync', async () => {
     const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
     const wrapper = mount(RuntimeHostApp)
