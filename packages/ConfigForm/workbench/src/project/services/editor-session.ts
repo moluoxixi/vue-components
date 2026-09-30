@@ -194,6 +194,10 @@ export function createProjectEditorSession(
     return acceptDomainResult(engine.redo())
   }
 
+  function jump(position: number): ProjectEditorSessionDispatchResult {
+    return acceptDomainResult(engine.jump(position))
+  }
+
   function sessionSaveResult(
     result: ProjectSaveCoordinatorResult,
   ): ProjectEditorSessionSaveResult {
@@ -248,6 +252,7 @@ export function createProjectEditorSession(
     },
     batch,
     execute,
+    jump,
     readEmbedded,
     redo,
     save,

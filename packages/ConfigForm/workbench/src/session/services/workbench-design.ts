@@ -4,6 +4,7 @@ import type {
 } from '@moluoxixi/config-form-compiler'
 import type { DesignCommandPreview } from '@moluoxixi/config-form-designer'
 import type {
+  ModelDiagnostic,
   ProjectChangeSet,
   ProjectCommand,
   ProjectCompilationSnapshot,
@@ -15,7 +16,7 @@ import type {
 } from '@moluoxixi/config-form-vue-backend'
 import type { WorkbenchAdapter } from '../../adapters'
 import type { ProjectEditorSessionSnapshot } from '../../project'
-import type { CandidateProjection, WorkbenchDesignPublication, WorkbenchDesignSession, WorkbenchDesignSessionOptions } from '../types'
+import type { CandidateProjection, CandidateProjectionResult, WorkbenchDesignPublication, WorkbenchDesignSession, WorkbenchDesignSessionOptions } from '../types'
 import { createCompileCoordinator } from '@moluoxixi/config-form-compiler'
 import {
   applyProjectDraftTransaction,
@@ -54,6 +55,7 @@ export function createWorkbenchDesignSession(
 ): WorkbenchDesignSession {
   const compilation = shallowRef<SurfaceCompilation>()
   const runtime = shallowRef<VueRuntimeCompileSuccess>()
+  const candidateDiagnostic = shallowRef<ModelDiagnostic>()
   const selectedIds = ref<string[]>([])
   const artifactCache = createSurfaceRuntimeArtifactCache()
   // Drop-target validation previews the same candidate commands many times per
@@ -78,6 +80,18 @@ export function createWorkbenchDesignSession(
     publishDiagnostic()
   }
 
+  function setCandidateDiagnostic(diagnostic: ModelDiagnostic): void {
+    const previous = candidateDiagnostic.value
+    if (previous?.code === diagnostic.code && previous.message === diagnostic.message
+      && previous.surfaceId === diagnostic.surfaceId
+      && previous.context?.commandId === diagnostic.context?.commandId) {
+      return
+    }
+    // Candidate compilation can run while rendering the host. Publishing a
+    // new equal object on every failed retry would recursively render it.
+    candidateDiagnostic.value = diagnostic
+  }
+
   function candidateCacheKey(command: ProjectCommand): string | undefined {
     const snapshot = options.getSnapshot()
     if (!snapshot)
@@ -94,6 +108,7 @@ export function createWorkbenchDesignSession(
     coordinator?.clear()
     artifactCache.clear()
     candidateCache.clear()
+    candidateDiagnostic.value = undefined
     coordinator = createCompileCoordinator({ registry: adapter.registrySnapshot })
     compilation.value = undefined
     runtime.value = undefined
@@ -141,6 +156,8 @@ export function createWorkbenchDesignSession(
     surfaceId: string,
     changeSet?: ProjectChangeSet,
   ): WorkbenchDesignPublication {
+    candidateCache.clear()
+    candidateDiagnostic.value = undefined
     const publication = compile(projectSnapshotFromEditorSession(snapshot), surfaceId, changeSet)
     if (publication.compilation)
       compilation.value = publication.compilation
@@ -165,11 +182,22 @@ export function createWorkbenchDesignSession(
       if (cached !== undefined) {
         candidateCache.delete(cacheKey)
         candidateCache.set(cacheKey, cached)
+        if (cached)
+          candidateDiagnostic.value = undefined
         return cached ?? undefined
       }
     }
 
-    const projection = computeCandidate(snapshot, adapter, surfaceId, command)
+    const result = computeCandidate(snapshot, adapter, surfaceId, command)
+    if (result.status === 'failed') {
+      setCandidateDiagnostic(result.diagnostic)
+      // A resolver/compiler may recover without a new document revision. Do
+      // not turn a transient failure into a permanently memoized invalid drop.
+      return undefined
+    }
+    const projection = result.status === 'accepted' ? result.projection : undefined
+    if (projection)
+      candidateDiagnostic.value = undefined
     if (cacheKey !== undefined) {
       candidateCache.set(cacheKey, projection ?? null)
       while (candidateCache.size > CANDIDATE_CACHE_LIMIT) {
@@ -187,17 +215,17 @@ export function createWorkbenchDesignSession(
     adapter: WorkbenchAdapter,
     surfaceId: string,
     command: ProjectCommand,
-  ): CandidateProjection | undefined {
+  ): CandidateProjectionResult {
     try {
       const base = snapshot.document as ProjectDocument
       const resolution = resolveProjectCommand(base, command, { registry: adapter.componentRegistry })
       if (!resolution.success || resolution.transaction.operations.length === 0)
-        return undefined
+        return { status: 'invalid' }
       const draft = applyProjectDraftTransaction(base, resolution.transaction, {
         registry: adapter.componentRegistry,
       })
       if (!draft.success || !draft.changed)
-        return undefined
+        return { status: 'invalid' }
       const publication = compile(
         createProjectDraftSnapshotFromTransaction(
           projectSnapshotFromEditorSession(snapshot),
@@ -208,12 +236,34 @@ export function createWorkbenchDesignSession(
         draft.changeSet,
       )
       const graph = draft.document.surfacesById[surfaceId]?.graph
-      return publication.compilation && graph
-        ? { compilation: publication.compilation, graph, runtime: publication.runtime }
-        : undefined
+      if (!publication.runtime.success) {
+        return {
+          status: 'failed',
+          diagnostic: {
+            code: 'WORKBENCH_CANDIDATE_COMPILE_FAILED',
+            message: publication.runtime.diagnostics[0]?.message ?? 'Candidate compilation failed.',
+            surfaceId,
+            context: { commandId: command.id },
+          },
+        }
+      }
+      if (!publication.compilation || !graph)
+        throw new Error('Candidate compilation did not produce its requested Surface.')
+      return {
+        status: 'accepted',
+        projection: { compilation: publication.compilation, graph, runtime: publication.runtime },
+      }
     }
-    catch {
-      return undefined
+    catch (error) {
+      return {
+        status: 'failed',
+        diagnostic: {
+          code: 'WORKBENCH_CANDIDATE_FAILED',
+          message: error instanceof Error ? error.message : String(error),
+          surfaceId,
+          context: { commandId: command.id },
+        },
+      }
     }
   }
 
@@ -250,38 +300,11 @@ export function createWorkbenchDesignSession(
 
   function jump(position: number): boolean {
     const session = options.getProjectSession()
-    const snapshot = options.getSnapshot()
-    if (!session || !snapshot || !Number.isSafeInteger(position)
-      || position < 0 || position > snapshot.history.entries.length) {
+    if (!session)
       return false
-    }
-    // Batch the undo/redo walk so subscribers (design/preview compilation,
-    // autosave) receive one snapshot at the landing point instead of
-    // recompiling once per traversed history entry.
-    return session.batch(() => {
-      let current = snapshot.history.position
-      let changed = false
-      while (current > position) {
-        const result = session.undo()
-        if (!result.changed) {
-          setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
-          return changed
-        }
-        changed = true
-        current -= 1
-      }
-      while (current < position) {
-        const result = session.redo()
-        if (!result.changed) {
-          setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
-          return changed
-        }
-        changed = true
-        current += 1
-      }
-      setCommandDiagnostic('')
-      return changed
-    })
+    const result = session.jump(position)
+    setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
+    return result.changed
   }
 
   const historyControl = computed(() => ({
@@ -297,6 +320,7 @@ export function createWorkbenchDesignSession(
     coordinator?.clear()
     artifactCache.clear()
     candidateCache.clear()
+    candidateDiagnostic.value = undefined
     compilation.value = undefined
     runtime.value = undefined
     selectedIds.value = []
@@ -306,6 +330,7 @@ export function createWorkbenchDesignSession(
   }
 
   return {
+    candidateDiagnostic,
     commandControl: { execute, preview },
     compilation,
     historyControl,

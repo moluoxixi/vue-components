@@ -1,16 +1,23 @@
 {
   "name": "vite-plugin-style-scope",
+  "type": "module",
   "version": "0.1.0",
   "description": "构建期给 qiankun 子应用的全局样式添加 :where([data-qiankun=\"<appName>\"]) 作用域前缀的 Vite 插件",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "keywords": [
+    "vite-plugin",
+    "qiankun",
+    "css",
+    "style-isolation"
+  ],
+  "sideEffects": false,
   "exports": {
     ".": {
+      "source": "./index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./runtime": {
+      "source": "./src/runtime.ts",
       "types": "./dist/runtime.d.ts",
       "import": "./dist/runtime.js"
     },
@@ -18,29 +25,29 @@
       "types": "./client.d.ts"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
+    "client.d.ts",
     "dist",
-    "client.d.ts"
+    "index.ts",
+    "src"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepare": "npm run build"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.runtime.json",
+    "test": "pnpm build && vitest run --no-file-parallelism",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.runtime.json --noEmit"
   },
-  "keywords": [
-    "vite-plugin",
-    "qiankun",
-    "css",
-    "style-isolation"
-  ],
   "peerDependencies": {
     "vite": "^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0"
   },
   "dependencies": {
-    "postcss-prefix-selector": "^2.2.0"
+    "postcss-prefix-selector": "catalog:"
   },
   "devDependencies": {
-    "postcss": "^8.5.26",
-    "typescript": "^5.7.2",
-    "vite": "^5.4.11"
+    "postcss": "catalog:conflicts_build_h8_5_26",
+    "typescript": "catalog:conflicts_dev_h5_7_2",
+    "vite": "catalog:conflicts_conflicts_dev_h7_3_1_h5_4_11"
   }
 }

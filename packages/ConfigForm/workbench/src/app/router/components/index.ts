@@ -1,0 +1,5 @@
+export { default as CreationView } from './CreationView.vue'
+export { default as DesignView } from './DesignView.vue'
+export { default as ManagementShell } from './ManagementShell.vue'
+export { default as PagesView } from './PagesView.vue'
+export { default as ProjectsView } from './ProjectsView.vue'

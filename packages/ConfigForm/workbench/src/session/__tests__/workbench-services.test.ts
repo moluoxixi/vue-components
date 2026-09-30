@@ -202,7 +202,7 @@ describe('workbench service boundaries', () => {
     expect(recomputed).not.toBe(first)
   })
 
-  it('jumps through the engine history with undo and redo instead of replacing snapshots', async () => {
+  it('delegates history traversal to the atomic editor-session operation', async () => {
     const { adapter, snapshot } = await fixture()
     const surfaceId = snapshot.document.homeSurfaceId
     let current: ProjectEditorSessionSnapshot = {
@@ -217,18 +217,16 @@ describe('workbench service boundaries', () => {
         position: 3,
       },
     }
-    const undo = vi.fn(() => {
-      current = { ...current, history: { ...current.history, position: current.history.position - 1 } }
+    const jump = vi.fn((position: number) => {
+      current = { ...current, history: { ...current.history, position } }
       return sessionResult(current)
     })
-    const redo = vi.fn(() => {
-      current = { ...current, history: { ...current.history, position: current.history.position + 1 } }
-      return sessionResult(current)
-    })
+    const undo = vi.fn()
+    const redo = vi.fn()
     const projectSession = {
       get snapshot() { return current },
-      batch: <T>(work: () => T) => work(),
       execute: vi.fn(),
+      jump,
       undo,
       redo,
     } as unknown as ProjectEditorSession
@@ -242,36 +240,29 @@ describe('workbench service boundaries', () => {
     })
 
     expect(design.historyControl.value.jump(1)).toBe(true)
-    expect(undo).toHaveBeenCalledTimes(2)
+    expect(jump).toHaveBeenLastCalledWith(1)
     expect(current.history.position).toBe(1)
     expect(design.historyControl.value.jump(3)).toBe(true)
-    expect(redo).toHaveBeenCalledTimes(2)
+    expect(jump).toHaveBeenLastCalledWith(3)
     expect(current.history.position).toBe(3)
-    expect(design.historyControl.value.jump(4)).toBe(false)
-    expect(design.historyControl.value.jump(1.5)).toBe(false)
-    expect(undo).toHaveBeenCalledTimes(2)
-    expect(redo).toHaveBeenCalledTimes(2)
 
-    undo
-      .mockImplementationOnce(() => {
-        current = { ...current, history: { ...current.history, position: current.history.position - 1 } }
-        return sessionResult(current)
-      })
-      .mockImplementationOnce(() => ({
-        changed: false,
-        changeSet: {
-          project: false,
-          surfaceIds: [],
-          datasetIds: [],
-          resourceIds: [],
-          nodeChanges: [],
-        },
-        diagnostics: [{ code: 'HISTORY_BLOCKED', message: 'History jump blocked.' }],
-        snapshot: current,
-      }))
-    expect(design.historyControl.value.jump(1)).toBe(true)
-    expect(current.history.position).toBe(2)
+    jump.mockImplementationOnce(() => ({
+      changed: false,
+      changeSet: {
+        project: false,
+        surfaceIds: [],
+        datasetIds: [],
+        resourceIds: [],
+        nodeChanges: [],
+      },
+      diagnostics: [{ code: 'HISTORY_BLOCKED', message: 'History jump blocked.' }],
+      snapshot: current,
+    }))
+    expect(design.historyControl.value.jump(1)).toBe(false)
+    expect(current.history.position).toBe(3)
     expect(setDiagnostic).toHaveBeenLastCalledWith('History jump blocked.')
+    expect(undo).not.toHaveBeenCalled()
+    expect(redo).not.toHaveBeenCalled()
   })
 
   it('keeps full-project compilation lazy and snapshot-scoped in Export Service', async () => {

@@ -68,6 +68,11 @@ export type DesignerKeyboardDropTargetsResolver = (
   source: DesignerDragSource,
 ) => DesignerDropTarget[]
 
+export type DesignerKeyboardDropTargetValidator = (
+  target: DesignerDropTarget,
+  source: DesignerDragSource,
+) => boolean
+
 export interface DesignerDragController {
   session: ShallowRef<DesignerDragSession | undefined>
   announcement: ShallowRef<DesignerDragAnnouncement | undefined>
@@ -81,7 +86,7 @@ export interface DesignerDragController {
   finishKeyboard: () => boolean
   cancel: () => void
   registerResolver: (resolver: DesignerDropTargetResolver) => () => void
-  registerKeyboardTargets: (resolver: DesignerKeyboardDropTargetsResolver) => () => void
+  registerKeyboardTargets: (resolver: DesignerKeyboardDropTargetsResolver, isValid?: DesignerKeyboardDropTargetValidator) => () => void
 }
 
 export interface CreateDesignerDragControllerOptions {

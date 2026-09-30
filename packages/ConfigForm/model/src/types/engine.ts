@@ -51,6 +51,8 @@ export interface ProjectDomainEngineOptions {
 export interface ProjectDomainEngine {
   readonly snapshot: ProjectDomainSnapshot
   execute: (command: ProjectCommand) => ProjectDomainDispatchResult
+  /** Validate the complete history traversal before publishing its landing state. */
+  jump: (position: number) => ProjectDomainDispatchResult
   redo: () => ProjectDomainDispatchResult
   sealHistoryGroup: () => void
   subscribe: (

@@ -14,6 +14,7 @@ import type {
   DesignerFlowAxis,
   DesignerFlowRect,
   DesignerKeyboardDropTargetsResolver,
+  DesignerKeyboardDropTargetValidator,
   DesignerPointerPosition,
 } from '../types'
 import { shallowRef } from 'vue'
@@ -112,6 +113,7 @@ export function resolveDesignerCollapsedDropTarget(
   point: DesignerPointerPosition,
   candidates: readonly DesignerDropGeometryCandidate[],
   minimumHeight = 36,
+  isValid?: (target: DesignerDropTarget) => boolean,
 ): DesignerDropTarget | undefined {
   return candidates
     .filter(({ rect }) => {
@@ -123,7 +125,8 @@ export function resolveDesignerCollapsedDropTarget(
         && point.y >= rect.top - verticalInset
         && point.y <= rect.bottom + verticalInset
     })
-    .sort((left, right) => right.specificity - left.specificity || right.depth - left.depth)[0]
+    .sort((left, right) => right.specificity - left.specificity || right.depth - left.depth)
+    .find(candidate => !isValid || isValid(candidate.target))
     ?.target
 }
 
@@ -152,6 +155,7 @@ export function createDesignerDragController(
   const announcement = shallowRef<DesignerDragAnnouncement>()
   let resolver: DesignerDropTargetResolver | undefined
   let keyboardTargetsResolver: DesignerKeyboardDropTargetsResolver | undefined
+  let keyboardTargetValidator: DesignerKeyboardDropTargetValidator | undefined
 
   function applyResolvedTarget(current: DesignerDragSession, point: DesignerPointerPosition): boolean {
     const target = resolver?.(point, current.source, current.target)
@@ -174,11 +178,12 @@ export function createDesignerDragController(
 
   function beginKeyboard(source: DesignerDragSource): boolean {
     const targets = keyboardTargetsResolver?.(source) ?? []
-    if (!targets[0])
+    const target = targets.find(target => !keyboardTargetValidator || keyboardTargetValidator(target, source))
+    if (!target)
       return false
     begin(source, { x: 0, y: 0 }, 'keyboard')
-    session.value = { ...session.value!, target: targets[0] }
-    announcement.value = { type: 'picked-up', source, target: targets[0] }
+    session.value = { ...session.value!, target }
+    announcement.value = { type: 'picked-up', source, target }
     return true
   }
 
@@ -212,10 +217,17 @@ export function createDesignerDragController(
     const nextIndex = currentIndex < 0
       ? 0
       : (currentIndex + delta + targets.length) % targets.length
-    const target = targets[nextIndex]!
-    session.value = { ...current, target }
-    announcement.value = { type: 'target', source: current.source, target }
-    return true
+    // Validate in navigation order and stop at the first legal destination.
+    // Eager filtering compiles every candidate on every arrow key press.
+    for (let attempt = 0; attempt < targets.length; attempt += 1) {
+      const target = targets[(nextIndex + attempt * delta + targets.length) % targets.length]!
+      if (keyboardTargetValidator && !keyboardTargetValidator(target, current.source))
+        continue
+      session.value = { ...current, target }
+      announcement.value = { type: 'target', source: current.source, target }
+      return true
+    }
+    return false
   }
 
   function commitCurrent(): boolean {
@@ -268,11 +280,14 @@ export function createDesignerDragController(
           resolver = undefined
       }
     },
-    registerKeyboardTargets: (nextResolver) => {
+    registerKeyboardTargets: (nextResolver, isValid) => {
       keyboardTargetsResolver = nextResolver
+      keyboardTargetValidator = isValid
       return () => {
-        if (keyboardTargetsResolver === nextResolver)
+        if (keyboardTargetsResolver === nextResolver && keyboardTargetValidator === isValid) {
           keyboardTargetsResolver = undefined
+          keyboardTargetValidator = undefined
+        }
       }
     },
   }

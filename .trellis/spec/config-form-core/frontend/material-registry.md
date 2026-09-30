@@ -88,6 +88,8 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 - Core `createDesignerRegistry()` directly owns consumer material precedence. Its order is direct `materials`, then advanced `layers` in declaration order; Provider adapters append their default layer last and must not duplicate anonymous consumer-layer assembly.
 - Provider material leaf files stay atomic, but cross-material utilities are separated by responsibility. A `shared.ts` file must not combine icons, Vue components, source binding, setters, defaults, and binding constants.
 - Registry/module/source/setter construction is pure service or utility code. Use a composable only when the implementation actually owns Vue reactive state, injection, or lifecycle.
+- Designer graph diagnostics own `material.analyze` callbacks for field, layout, and element materials, plus setter-only default-value constraints that the Model compiler cannot infer. Keep graph diagnostics visible alongside a rejected command diagnostic, including after external graph changes.
+- Default-value analysis validates value kind, finite/integer/min/max number constraints, allowed option types, and membership in a resolved option source. Inspector and diagnostics share `resolveDesignerSetterOptions`; Dataset-backed options use the Model `queryDatasetView` projection and query rather than falling back to absent static `props.options`. An unresolved Dataset source is not an empty option list and must not generate a false unknown-option error.
 
 ## 4. Validation & Error Matrix
 

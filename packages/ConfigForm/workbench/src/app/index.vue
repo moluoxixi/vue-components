@@ -4,7 +4,7 @@ import type { DatasetReference, ProjectSurface } from '@moluoxixi/config-form-mo
 import type { CSSProperties } from 'vue'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { TemplateCreationTarget } from '../project'
-import type { WorkbenchExportCommand, MobileStudioView } from './types'
+import type { MobileStudioView, WorkbenchExportCommand } from './types'
 import {
   Blocks,
   Copy,
@@ -21,17 +21,11 @@ import {
   Undo2,
   X,
 } from '@lucide/vue'
-import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
-import {
-  pageCreatePath,
-  projectCreatePath,
-  projectPagesPath,
-  projectsPath,
-} from './router'
 import { DesignRuntimeHostFrame, PreviewDrawer, ProjectThemeEditor, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
@@ -40,6 +34,12 @@ import {
   useWorkbenchPreviewSession,
   useWorkbenchUiStore,
 } from './composables'
+import {
+  pageCreatePath,
+  projectCreatePath,
+  projectPagesPath,
+  projectsPath,
+} from './navigation'
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
 const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog))
@@ -85,6 +85,7 @@ const persistenceDialogMode = ref<PersistenceDialogMode>()
 const assetManagerOpen = ref(false)
 const assetSelection = ref<{ id?: string, kind?: 'dataset' | 'resource' }>({})
 const {
+  candidateDiagnostic,
   commandControl: designerCommandControl,
   getCompilation: getDesignRuntimeCompilation,
   historyControl: designerHistoryControl,
@@ -374,7 +375,6 @@ watch(recoveryDrafts, (drafts) => {
   if (drafts.length > 0 && !persistenceDialogMode.value)
     persistenceDialogMode.value = 'recovery'
 }, { immediate: true })
-
 </script>
 
 <template>
@@ -456,7 +456,7 @@ watch(recoveryDrafts, (drafts) => {
             @update-resource-binding="handleResourceBinding"
             @save-options-as-dataset="handleSaveOptionsAsDataset"
             @materialize-options-snapshot="handleMaterializeOptions"
-           >
+          >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
               <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
                 <WorkbenchCommandHint :label="workbenchLocale.t('action.undo', 'Undo')" shortcut="Ctrl/Cmd+Z" :disabled-reason="!canUndo ? workbenchLocale.t('action.undoUnavailable', 'No operation to undo') : undefined">
@@ -547,7 +547,9 @@ watch(recoveryDrafts, (drafts) => {
                 <section v-if="currentOverlaySurface" class="surface-presentation-panel" :aria-label="currentOverlaySurface.presentation.title">
                   <header class="surface-presentation-header">
                     <strong>{{ currentOverlaySurface.presentation.title }}</strong>
-                    <button v-if="currentOverlaySurface.presentation.close.button" type="button" disabled aria-hidden="true"><X :size="16" /></button>
+                    <button v-if="currentOverlaySurface.presentation.close.button" type="button" disabled aria-hidden="true">
+                      <X :size="16" />
+                    </button>
                   </header>
                   <DesignRuntimeHostFrame
                     :adapter="getCurrentAdapterId()"
@@ -728,11 +730,12 @@ watch(recoveryDrafts, (drafts) => {
       </ElAlert>
 
       <ElAlert
-        v-if="message"
+        v-if="candidateDiagnostic || message"
         class="workbench-message"
-        type="info"
+        :type="candidateDiagnostic ? 'warning' : 'info'"
         :closable="false"
-        :title="message"
+        :title="candidateDiagnostic ? workbenchLocale.t('canvas.candidateFailed', 'Preview could not be calculated. Try again; your project can still be saved.') : message"
+        :description="candidateDiagnostic?.message"
         role="status"
         aria-live="polite"
       />

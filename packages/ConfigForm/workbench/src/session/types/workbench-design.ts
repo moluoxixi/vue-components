@@ -1,6 +1,7 @@
 import type { SurfaceCompilation } from '@moluoxixi/config-form-compiler'
 import type { DesignCommandPreview } from '@moluoxixi/config-form-designer'
 import type {
+  ModelDiagnostic,
   ProjectChangeSet,
   ProjectCommand,
   ProjectHistorySummary,
@@ -31,6 +32,8 @@ export interface WorkbenchDesignPublication {
 }
 
 export interface WorkbenchDesignSession {
+  /** Transient preview failures never block saving the committed document. */
+  readonly candidateDiagnostic: ShallowRef<ModelDiagnostic | undefined>
   readonly commandControl: {
     execute: (command: ProjectCommand) => { changed: boolean, diagnostics: ReturnType<ProjectEditorSession['execute']>['diagnostics'] }
     preview: (command: ProjectCommand) => DesignCommandPreview | undefined
@@ -62,3 +65,8 @@ export interface CandidateProjection {
   graph: SurfaceGraph
   runtime: VueRuntimeCompileResult
 }
+
+export type CandidateProjectionResult
+  = | { status: 'accepted', projection: CandidateProjection }
+    | { status: 'invalid' }
+    | { status: 'failed', diagnostic: ModelDiagnostic }

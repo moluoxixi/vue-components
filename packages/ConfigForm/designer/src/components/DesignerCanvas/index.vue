@@ -199,6 +199,7 @@ const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
 
 const {
   hitNodeElements,
+  isValidTarget,
   keyboardDropTargets,
   resolveDropTarget,
   stopCanvasAutoScroll,
@@ -223,7 +224,7 @@ function resolveCandidateFallbackTarget(): DesignerDropTarget | undefined {
   const source = candidateSource.value
   if (!candidateActive.value || candidateInput.value !== 'pointer' || source?.type !== 'material' || candidateTarget.value)
     return undefined
-  return keyboardDropTargets(source)[0]
+  return keyboardDropTargets(source).find(target => isValidTarget(target, source))
 }
 
 const {
@@ -381,7 +382,7 @@ onMounted(() => {
 
 // Keyboard destinations only depend on the graph and registry, so register them
 // before the first paint. This keeps a fast Space press from racing Canvas mount.
-const unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
+const unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets, isValidTarget)
 
 onBeforeUnmount(() => {
   unregisterDropResolver?.()

@@ -60,6 +60,7 @@ export const DESIGNER_ZH_CN_MESSAGES: Record<string, string> = {
   'drag.targetChanged': '{item}将放置在{target}。',
   'drag.dropped': '已将{item}放置在{target}。',
   'drag.cancelled': '已取消拖动{item}。',
+  'drag.startUnavailable': '暂时无法拖动{item}：没有可用落点。按空格键重试，或按 Enter 添加。',
   'property.properties': '属性',
   'property.views': '属性视图',
   'property.validation': '校验',

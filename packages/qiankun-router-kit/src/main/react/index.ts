@@ -5,7 +5,6 @@
 // 只要框架无关的清单校验和挂载控制器就引 'qiankun-router-kit/main/core'。
 //
 // 本层没有守卫：坑 B 的镜像守卫只有 vue-router 4/5 需要，原因见 ./main-routes 头部。
-export * from '../core/index'
-export * from './routes'
-export * from './main-routes'
-export * from './micro-app'
+export * from '../core'
+export * from './components'
+export * from './services'

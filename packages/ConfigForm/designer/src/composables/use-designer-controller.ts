@@ -79,11 +79,9 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const commandDiagnostics = ref<DesignerDiagnostic[]>([])
   const graph = computed(options.graph)
   const graphDiagnostics = computed(() => analyzeDesignGraph(graph.value, options.registry(), {
-    includeDefaultDiagnostics: false,
+    datasets: options.datasets?.(),
   }))
-  const diagnostics = computed(() => commandDiagnostics.value.length > 0
-    ? commandDiagnostics.value
-    : graphDiagnostics.value)
+  const diagnostics = computed(() => [...commandDiagnostics.value, ...graphDiagnostics.value])
   const selectedNode = computed(() => selectedId.value
     ? findDesignNode(graph.value, selectedId.value)?.node
     : undefined)

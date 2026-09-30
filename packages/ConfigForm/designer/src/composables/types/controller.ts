@@ -1,8 +1,10 @@
 import type {
+  DeepReadonly,
   ModelDiagnostic,
+  ProjectCommand,
+  ProjectDataset,
   SurfaceGraph,
   SurfaceNode,
-  ProjectCommand,
 } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref } from 'vue'
 import type {
@@ -17,6 +19,7 @@ export interface DesignCommandResult {
 }
 
 export interface UseDesignerControllerOptions {
+  datasets?: () => readonly DeepReadonly<ProjectDataset>[]
   execute: (command: ProjectCommand) => DesignCommandResult
   graph: () => SurfaceGraph
   onDiagnostics: (diagnostics: DesignerDiagnostic[]) => void

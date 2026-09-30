@@ -2,7 +2,7 @@ import type { ComputedRef } from 'vue'
 import type { WorkbenchManagementTarget } from '../types'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { projectPagesPath, projectsPath } from '../router'
+import { projectPagesPath, projectsPath } from '../navigation'
 import { useWorkbenchController, useWorkbenchUiStore } from './context'
 
 /**

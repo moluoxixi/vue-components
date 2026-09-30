@@ -71,6 +71,7 @@ const controller = useDesignerController({
     return result
   },
   graph: () => props.graph,
+  datasets: () => props.datasets,
   surfaceId: () => props.surfaceId,
   registry: () => props.registry,
   readonly: () => props.readonly,
@@ -302,7 +303,9 @@ defineExpose<DesignSurfaceExpose>({
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
           <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
-            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')"><X :size="17" aria-hidden="true" /></button>
+            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')">
+              <X :size="17" aria-hidden="true" />
+            </button>
           </DesignerCommandHint>
         </div>
         <slot name="palette" :materials="registry.listMaterials()" :add-material="addMaterial" :readonly="readonly" :form="controller.graph.value.form">
@@ -344,7 +347,9 @@ defineExpose<DesignSurfaceExpose>({
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
           <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
-            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
+            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')">
+              <X :size="17" aria-hidden="true" />
+            </button>
           </DesignerCommandHint>
         </div>
         <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">

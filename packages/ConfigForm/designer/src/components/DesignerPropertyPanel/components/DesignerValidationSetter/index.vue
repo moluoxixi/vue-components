@@ -318,7 +318,9 @@ function formatAdvancedRule(rule: RuleDraft): string {
           {{ locale.t('validation.addRule', 'Add rule') }}
         </button>
       </div>
-      <p v-if="validationError" role="alert">{{ validationError }}</p>
+      <p v-if="validationError" role="alert">
+        {{ validationError }}
+      </p>
     </template>
   </div>
 </template>

@@ -3,7 +3,7 @@ import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } fro
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
-import { ElSelect } from 'element-plus'
+import { ElOption, ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
@@ -128,6 +128,31 @@ afterEach(() => {
 })
 
 describe('designer property panel lite Inspector', () => {
+  it('renders and refreshes Dataset options for the default setter without publishing an edit', async () => {
+    const node = field('choice', 'test.select', {
+      defaultValue: 2,
+      props: { options: [{ label: 'Stale', value: 'stale' }] },
+      datasetBindings: { options: { datasetId: 'choices', projection: { kind: 'options', valuePath: ['id'], labelPath: ['name'] } } },
+    })
+    const wrapper = mount(DesignerPropertyPanel, { props: {
+      renderer: ConfigFormRenderer,
+      graph: graph([node]),
+      node,
+      material: fieldMaterial('test.select', [{ key: 'defaultValue', label: 'Default', path: ['defaultValue'], control: 'defaultValue', valueKind: 'select', optionsPath: ['props', 'options'] }]),
+      componentDefinition: contract('test.select'),
+      datasets: [{ id: 'choices', name: 'Choices', rows: [{ id: 2, name: 'Two' }] }],
+      diagnostics: [],
+    } })
+    const control = wrapper.getComponent(ElSelect)
+    expect(control.props('modelValue')).toBe(2)
+    expect(control.findAllComponents(ElOption).map(option => option.props())).toEqual([expect.objectContaining({ label: 'Two', value: 2 })])
+    await wrapper.setProps({ datasets: [{ id: 'choices', name: 'Choices', rows: [{ id: 3, name: 'Three' }] }] })
+    expect(control.findAllComponents(ElOption).map(option => option.props())).toEqual([expect.objectContaining({ label: 'Three', value: 3 })])
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+    expect(wrapper.emitted('updatePaths')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('renders default values through the adapter control when registered', async () => {
     const node = field('name', 'test.input', { defaultValue: 'before' })
     const setter: DesignerPropertySetterDefinition = {

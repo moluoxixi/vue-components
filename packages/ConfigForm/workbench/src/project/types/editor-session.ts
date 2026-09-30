@@ -70,6 +70,8 @@ export interface ProjectEditorSession {
     command: ProjectCommand,
     options?: ProjectEditorSessionExecuteOptions,
   ) => ProjectEditorSessionDispatchResult
+  /** Atomically validate and publish a retained history state. */
+  jump: (position: number) => ProjectEditorSessionDispatchResult
   readEmbedded: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>
   redo: () => ProjectEditorSessionDispatchResult
   save: (options: ProjectEditorSessionSaveOptions) => Promise<ProjectEditorSessionSaveResult>

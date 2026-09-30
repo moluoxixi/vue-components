@@ -1,7 +1,7 @@
 import type { DesignerMaterialDefinition } from '../../../registry'
 import type { DesignerDragController } from '../../DesignerCanvas/types'
 import type { DesignerPaletteMaterialBindings } from '../types'
-import { computed, nextTick, onBeforeUnmount, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { createDesignerNodeId } from '../../../graph'
 import { captureDesignerPointer } from '../../DesignerCanvas/services'
 
@@ -19,30 +19,54 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
   let suppressClick = false
   let keyboardStartFrame: number | undefined
   let keyboardStartToken = 0
+  let keyboardStartPending = false
+  const keyboardStartFailure = shallowRef<DesignerMaterialDefinition>()
 
   function cancelKeyboardStart(): void {
     keyboardStartToken += 1
+    keyboardStartPending = false
+    keyboardStartFailure.value = undefined
+    window.removeEventListener('keydown', handleKeyboardStartEscape, true)
     if (keyboardStartFrame !== undefined)
       window.cancelAnimationFrame(keyboardStartFrame)
     keyboardStartFrame = undefined
   }
 
-  function beginMaterialKeyboardDrag(materialKey: string): void {
+  function handleKeyboardStartEscape(event: KeyboardEvent): void {
+    if (event.key !== 'Escape')
+      return
+    event.preventDefault()
+    event.stopPropagation()
+    cancelKeyboardStart()
+  }
+
+  function beginMaterialKeyboardDrag(material: DesignerMaterialDefinition): void {
     const dragController = options.dragController
     if (!dragController)
       return
     cancelKeyboardStart()
+    keyboardStartPending = true
+    window.addEventListener('keydown', handleKeyboardStartEscape, true)
     const candidateId = createDesignerNodeId('candidate')
     const token = keyboardStartToken
     let attempts = 0
     const attempt = (): void => {
       keyboardStartFrame = undefined
-      if (token !== keyboardStartToken || options.readonly() || dragController.session.value)
+      if (token !== keyboardStartToken)
         return
-      if (dragController.beginMaterialKeyboard(materialKey, candidateId))
+      if (options.readonly() || dragController.session.value) {
+        cancelKeyboardStart()
         return
-      if (attempts >= 30)
+      }
+      if (dragController.beginMaterialKeyboard(material.key, candidateId)) {
+        cancelKeyboardStart()
         return
+      }
+      if (attempts >= 30) {
+        cancelKeyboardStart()
+        keyboardStartFailure.value = material
+        return
+      }
       attempts += 1
       keyboardStartFrame = window.requestAnimationFrame(attempt)
     }
@@ -128,6 +152,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
   function prepareMaterialDrag(material: DesignerMaterialDefinition, event: PointerEvent): void {
     if (options.readonly() || event.button !== 0 || !options.dragController)
       return
+    cancelKeyboardStart()
     if (event.pointerType !== 'touch')
       event.preventDefault()
     options.dragController.cancel()
@@ -149,6 +174,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
   function addMaterial(materialKey: string): void {
     if (options.readonly() || suppressClick)
       return
+    cancelKeyboardStart()
     options.onAddMaterial(materialKey)
   }
 
@@ -170,7 +196,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     }
 
     const keyboardSession = keyboardDragSession.value
-    if (event.key === 'Escape' && keyboardSession) {
+    if (event.key === 'Escape' && (keyboardSession || keyboardStartPending || keyboardStartFailure.value)) {
       event.preventDefault()
       event.stopPropagation()
       cancelKeyboardStart()
@@ -191,7 +217,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     if (keyboardSession)
       options.dragController.finishKeyboard()
     else
-      beginMaterialKeyboardDrag(material.key)
+      beginMaterialKeyboardDrag(material)
   }
 
   function getMaterialBindings(material: DesignerMaterialDefinition): DesignerPaletteMaterialBindings {
@@ -233,9 +259,14 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     cleanupPointerDrag()
     dragActivated = false
   })
+  watch(() => options.dragController?.session.value, (session) => {
+    if (session)
+      cancelKeyboardStart()
+  }, { flush: 'sync' })
 
   return {
     getMaterialBindings,
     isMaterialKeyboardDragging,
+    keyboardStartFailure,
   }
 }

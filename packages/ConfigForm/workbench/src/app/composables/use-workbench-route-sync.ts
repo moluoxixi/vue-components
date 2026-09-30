@@ -9,7 +9,7 @@ import {
   projectsPath,
   readWorkbenchRouteTarget,
   shouldBlockProjectSwitch,
-} from '../router'
+} from '../navigation'
 
 /**
  * Makes the URL the single owner of "which project and which page are open".
