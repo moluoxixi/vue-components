@@ -1,3 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"逐项复核目标完成标准与架构门禁覆盖。"}
-{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"复核 AI 文档包级验证和 lazy/public 边界。"}
-{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"复核 ConfigForm Workbench 全量验证。"}

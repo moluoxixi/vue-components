@@ -1,3 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"复核 owner、domain/responsibility、纯 barrel与旧路径清理。"}
-{"file":".trellis/spec/i18n-tool/backend/local-service-safety.md","reason":"复核 wire、path containment、preview/apply、rollback与browser隔离。"}
-{"file":".trellis/tasks/09-03-i18n-tool-structure-governance/research/contract-map.md","reason":"对照CLI/unit/E2E/packed契约与错误矩阵。"}

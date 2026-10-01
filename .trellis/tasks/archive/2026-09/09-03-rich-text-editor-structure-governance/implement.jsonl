@@ -1,2 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"包根入口、组件所有权、责任 barrel 与发布 source files 合同。"}
-{"file":".trellis/spec/rich-text-editor/frontend/index.md","reason":"Rich Text Editor 前端包级开发与验证入口。"}

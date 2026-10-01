@@ -1,3 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"责任目录、纯导出 barrel、类型与包根入口合同。"}
-{"file":".trellis/spec/vite-config/backend/index.md","reason":"Vite Config Node 配置工厂、动态加载与验证入口。"}
-{"file":".trellis/spec/vite-config/frontend/index.md","reason":"公开 addon 类型与 browser/fixture 验证入口。"}

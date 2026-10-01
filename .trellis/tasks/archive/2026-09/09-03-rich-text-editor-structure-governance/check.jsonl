@@ -1,2 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"复核组件归位、barrel、source files 与 architecture 门禁。"}
-{"file":".trellis/spec/rich-text-editor/frontend/index.md","reason":"复核包级 test、typecheck 与 build 要求。"}

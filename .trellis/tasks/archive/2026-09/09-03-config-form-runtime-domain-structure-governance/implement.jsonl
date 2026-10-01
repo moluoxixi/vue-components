@@ -1,4 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"全仓责任目录、barrel、组件 owner、巨型文件与 production build 合同。"}
-{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"ConfigForm current-contract-only、公开边界、README 与 package smoke 合同。"}
-{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"Runtime Design inertness、editor bridge、geometry owner 与 Workbench consumer 行为。"}
-{"file":".trellis/tasks/09-03-config-form-runtime-domain-structure-governance/research/runtime-domain-boundaries.md","reason":"本任务的债务、热点、调用链与不可变语义摘要。"}

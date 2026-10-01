@@ -1,2 +1,0 @@
-{"file":".trellis/spec/directory-structure.md","reason":"约束 discovery feature 的 services owner、私有模块与公共入口。"}
-{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"约束组件发现循环检测、默认/命名导出、构建与包级验证。"}
