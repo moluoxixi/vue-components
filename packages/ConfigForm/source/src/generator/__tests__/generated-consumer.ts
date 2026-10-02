@@ -53,8 +53,6 @@ function packageNameFromSpecifier(specifier: string): string | undefined {
 function isForbiddenRawPackage(name: string): boolean {
   return name.startsWith('@moluoxixi/')
     || name.startsWith('@config-form/')
-    || name === 'zod'
-    || name.startsWith('zod/')
 }
 
 function moduleSpecifiers(source: string, fileName: string): string[] {
@@ -234,13 +232,15 @@ export function assertGeneratedRuntimeBoundary(fileSet: SourceFileSetV1): void {
     )
   }
   if (fileSet.kind === 'raw-source') {
-    const providerDependencies = dependencyNames.filter(name => name !== 'vue' && name !== 'vue-router')
+    const providerDependencies = dependencyNames.filter(name => (
+      name !== 'vue' && name !== 'vue-router' && name !== 'zod'
+    ))
     if (providerDependencies.length > 1) {
       throw new Error(
         `raw-source emitted more than one provider dependency: ${providerDependencies.join(', ')}.`,
       )
     }
-    const allowed = new Set(['vue', 'vue-router', ...providerDependencies])
+    const allowed = new Set(['vue', 'vue-router', 'zod', ...providerDependencies])
     const unexpected = dependencyNames.filter(name => !allowed.has(name))
     if (unexpected.length > 0)
       throw new Error(`raw-source emitted unexpected runtime dependencies: ${unexpected.join(', ')}.`)

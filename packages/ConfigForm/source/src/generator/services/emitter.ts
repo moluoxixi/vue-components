@@ -79,6 +79,7 @@ interface EmittedInteraction {
 }
 
 const demoValueImport = 'import { calculateDemoNumber, compareDemoValues, demoIncludes, demoLength, demoValuesEqual, mergeDemoNodeProps, readDemoPath, requireDemoBoolean, requireDemoNumber, requireDemoString, requireDemoValue } from \'../../demo-values.ts\''
+const RAW_ZOD_DEPENDENCY = { zod: '^3.24.2' } as const
 
 function textFile(path: string, language: SourceLanguage, content: string): SourceTextFile {
   return { kind: 'text', path, language, content: content.endsWith('\n') ? content : `${content}\n` }
@@ -387,6 +388,51 @@ function resourcesSource(resources: CollectedSourceResources): string {
 ${lines.join('\n')}
 } as const
 `
+}
+
+/**
+ * The raw Tailwind project owns its field shell. Keeping this small component
+ * in the generated project makes labels, required markers, and validation
+ * messages editable without coupling the exported page to ConfigForm Runtime.
+ */
+function configFormItemComponentSource(): string {
+  return `<script setup lang="ts">
+withDefaults(defineProps<{
+  label?: string
+  required?: boolean
+  errors?: readonly string[]
+  controlId?: string
+  errorId?: string
+}>(), {
+  errors: () => [],
+})
+</script>
+
+<template>
+  <div class="grid min-w-0 gap-1.5" data-config-form-item>
+    <label v-if="label" :for="controlId" class="text-[13px] font-semibold" data-config-form-label :data-required="required || undefined">
+      {{ label }}<span v-if="required" class="ml-1 text-[var(--demo-color-danger,#dc2626)]" aria-hidden="true">*</span>
+    </label>
+    <div class="min-w-0" data-config-form-control data-config-form-item-control>
+      <slot />
+    </div>
+    <p v-for="(message, index) in errors" :id="index === 0 ? errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" data-config-form-error role="alert">
+      {{ message }}
+    </p>
+  </div>
+</template>
+`
+}
+
+function rawFieldControlId(
+  node: SourceFieldNode,
+  resolution: SourceComponentResolution,
+): string {
+  const configured = [
+    node.props.id,
+    resolution.staticProps?.id,
+  ].find((value): value is string => typeof value === 'string' && value.length > 0)
+  return configured ?? `demo-${safeSlug(node.id, 'field')}-control`
 }
 
 function componentForNode(
@@ -1042,10 +1088,33 @@ function renderRawNode(
   const projected = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id)
   const visible = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
     && interaction.target.kind === 'state' && interaction.target.key === 'visible')
+  const fieldControlId = node.kind === 'field' ? rawFieldControlId(node, resolution) : undefined
+  const fieldErrorId = fieldControlId ? `${fieldControlId}-error` : undefined
+  const requiredBaseline = node.kind === 'field' && fieldRequired(node).required === true
+  const projectedRequired = node.kind === 'field' && stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
+    && interaction.target.kind === 'state' && interaction.target.key === 'required')
+  const requiredExpression = node.kind === 'field'
+    ? projectedRequired
+      ? `reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}`
+      : String(requiredBaseline)
+    : undefined
   const attributes = [
     ` data-node-id="${escapeHtml(node.id)}"`,
     bindExpression(nodeProperties(surface, node, resolution, context.style, valueSource), projected ? node.id : undefined),
   ]
+  if (fieldControlId) {
+    const configuredId = (
+      (typeof node.props.id === 'string' && node.props.id.length > 0)
+      || (typeof resolution.staticProps?.id === 'string' && resolution.staticProps.id.length > 0)
+    )
+    if (!configuredId)
+      attributes.push(` id="${escapeHtml(fieldControlId)}"`)
+    attributes.push(` :aria-required="${requiredExpression}"`)
+    if (rawNeedsValidation(surface, context)) {
+      attributes.push(` :aria-invalid="validationErrors[${sourceAttributeString(node.id)}]?.length ? true : undefined"`)
+      attributes.push(` :aria-describedby="validationErrors[${sourceAttributeString(node.id)}]?.length ? ${sourceAttributeString(fieldErrorId!)} : undefined"`)
+    }
+  }
   if (visible && node.kind !== 'field')
     attributes.push(` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`)
   if (node.kind === 'field' && resolution.trigger) {
@@ -1105,9 +1174,22 @@ function renderRawNode(
     : [`${indent}<${tag}${attributes.join('')}>`, ...children, `${indent}</${tag}>`]
   if (node.kind !== 'field')
     return componentLines
-  const requiredBaseline = fieldRequired(node).required === true
-  const projectedRequired = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
-    && interaction.target.kind === 'state' && interaction.target.key === 'required')
+  if (context.style.target === 'tailwind-v4') {
+    const itemAttributes = [
+      ...(node.label ? [` label="${escapeHtml(node.label)}"`] : []),
+      ` :required="${requiredExpression}"`,
+      ` control-id="${escapeHtml(fieldControlId!)}"`,
+      ` error-id="${escapeHtml(fieldErrorId!)}"`,
+      ...(rawNeedsValidation(surface, context)
+        ? [` :errors="validationErrors[${sourceAttributeString(node.id)}] ?? []"`]
+        : []),
+    ]
+    return [
+      `${indent}<ConfigFormItem${itemAttributes.join('')}${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
+      ...componentLines.map(line => `  ${line}`),
+      `${indent}</ConfigFormItem>`,
+    ]
+  }
   const classes = context.style.classes
   const requiredMarker = node.label && (requiredBaseline || projectedRequired)
     ? projectedRequired
@@ -1306,6 +1388,8 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     }
   }
   const interactions = emittedInteractions(surface, context)
+  const usesFieldItem = context.style.target === 'tailwind-v4'
+    && Object.values(surface.nodesById).some(node => node.kind === 'field')
   const stateRules = stateInteractions(surface)
   const valueRules = valueInteractions(surface)
   const needsValidation = rawNeedsValidation(surface, context)
@@ -1323,6 +1407,7 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     ...(surfaceUsesRender(surface, context, 'dataset-list')
       ? ['import DemoDatasetList from \'../../components/DemoDatasetList.vue\'']
       : []),
+    ...(usesFieldItem ? ['import ConfigFormItem from \'../../components/ConfigFormItem.vue\''] : []),
     ...(needsValidation
       ? ['import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'']
       : []),
@@ -2394,6 +2479,8 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
   const needsDemoNavigation = surfaces.some(surface => surface.kind !== 'page' || emittedInteractions(surface, context).length > 0)
   const needsDatasetTable = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-table'))
   const needsDatasetList = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-list'))
+  const needsFieldItem = context.style.target === 'tailwind-v4'
+    && surfaces.some(surface => Object.values(surface.nodesById).some(node => node.kind === 'field'))
   return [
     textFile('index.html', 'text', htmlSource(compilation.ir.name, favicon.href)),
     textFile('src/App.vue', 'vue', appSource(context)),
@@ -2402,6 +2489,9 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
       : []),
     ...(needsDatasetList
       ? [textFile('src/components/DemoDatasetList.vue', 'vue', datasetListComponentSource(context.style))]
+      : []),
+    ...(needsFieldItem
+      ? [textFile('src/components/ConfigFormItem.vue', 'vue', configFormItemComponentSource())]
       : []),
     textFile('src/data/datasets.ts', 'typescript', datasetsSource(context.datasets)),
     textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources)),
@@ -2463,7 +2553,9 @@ export function emitRawProject(
       textFile(
         `src/surfaces/${directory}/validation.ts`,
         'typescript',
-        rawValidationModuleSource(surface, validationFields(surface, context)),
+        rawValidationModuleSource(surface, validationFields(surface, context), {
+          includeZod: style.target === 'tailwind-v4',
+        }),
       ),
     ]
   })
@@ -2472,7 +2564,12 @@ export function emitRawProject(
     ...surfaceFiles,
     ...resources.files,
     ...projectFavicon(context).files,
-    textFile('package.json', 'json', packageManifest(compilation.ir.name, dependencies, true, style)),
+    textFile('package.json', 'json', packageManifest(compilation.ir.name, {
+      ...dependencies,
+      ...(style.target === 'tailwind-v4' && validation.surfaces.some(surface => surface.fields.length > 0)
+        ? RAW_ZOD_DEPENDENCY
+        : {}),
+    }, true, style)),
     textFile('src/main.ts', 'typescript', rawMainSource(components, style)),
   ])
 }

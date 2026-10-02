@@ -59,7 +59,10 @@ function freezeFileSet<TFileSet extends SourceFileSetV1>(fileSet: TFileSet): TFi
 }
 
 export async function buildExportSnapshot(input: BuildExportSnapshotInput): Promise<ExportSnapshot> {
-  const styleTarget = input.styleTarget ?? 'css'
+  // Workbench exports are copy-ready application projects. Tailwind is the
+  // default presentation contract while the source generator still accepts
+  // an explicit CSS target for callers that need the alternate output.
+  const styleTarget = input.styleTarget ?? 'tailwind-v4'
   const rawInput = {
     compilation: input.compilation,
     componentResolver: input.componentResolver,

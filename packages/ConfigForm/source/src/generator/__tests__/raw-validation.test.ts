@@ -39,7 +39,7 @@ function ruleSet(base: RuleSet['base'], rules: RuleSet['rules'], options: {
   return { version: 2, base, rules, ...options }
 }
 
-async function generatedValidators(): Promise<{
+async function generatedValidators(includeZod = false): Promise<{
   source: string
   validators: Readonly<Record<string, GeneratedValidator>>
 }> {
@@ -89,7 +89,7 @@ async function generatedValidators(): Promise<{
   const plan = compileSourceValidationPlan(compilation)
   if (!plan.success)
     throw new Error(plan.diagnostics.map(diagnostic => diagnostic.message).join('; '))
-  const source = rawValidationModuleSource(surface, plan.data.surfaces[0]!.fields)
+  const source = rawValidationModuleSource(surface, plan.data.surfaces[0]!.fields, { includeZod })
   const root = await mkdtemp(join(packageRoot, '.raw-validation-'))
   temporaryRoots.push(root)
   const path = join(root, 'validation.ts')
@@ -106,6 +106,18 @@ afterAll(async () => {
 })
 
 describe('generated Raw validators', () => {
+  it('emits executable Zod schemas for Tailwind Raw output', async () => {
+    const { source, validators } = await generatedValidators(true)
+    expect(source).toContain('import { z } from \'zod\'')
+    expect(source).toContain('demoFieldRuleSets')
+    expect(source).toContain('demoFieldSchemas')
+    expect(source).toContain('.safeParse(value)')
+    expect(validators.stringRules!('ABC', {})).toEqual([])
+    expect(validators.stringRules!('AB', {})).toContain('minLength')
+    expect(validators.date!('2024-06-01T00:00:00.000Z', {})).toEqual([])
+    expect(validators.date!('not-a-date', {})).toEqual(['Invalid date'])
+  })
+
   it('executes field-level Required and every serializable base', async () => {
     const { validators } = await generatedValidators()
     const validate = (id: string, value: unknown, values: Record<string, unknown> = {}, required?: boolean) => (

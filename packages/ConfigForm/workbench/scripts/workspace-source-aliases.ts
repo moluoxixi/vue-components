@@ -24,10 +24,26 @@ export const configFormSourceAliases: Alias[] = readdirSync(packagesDirectory, {
       || typeof source !== 'string') {
       return []
     }
+    const packageNamePattern = manifest.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const aliases: Alias[] = [{
-      find: new RegExp(`^${manifest.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+      find: new RegExp(`^${packageNamePattern}$`),
       replacement: resolve(directory, source),
     }]
+    // Workspace package subpath exports otherwise resolve to stale dist files
+    // during Workbench development. Prefer each declared source entry so the
+    // generator and viewer stay in lockstep with the checked-out sources.
+    for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
+      const subpathSource = entry && typeof entry === 'object' && 'source' in entry
+        ? (entry as { source?: unknown }).source
+        : undefined
+      if (subpath === '.' || typeof subpathSource !== 'string')
+        continue
+      const normalizedSubpath = subpath.replace(/^\.\//u, '')
+      aliases.push({
+        find: new RegExp(`^${packageNamePattern}/${normalizedSubpath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+        replacement: resolve(directory, subpathSource),
+      })
+    }
     // Packages whose sources declare internal path aliases in tsconfig.app.json need the
     // same mapping here: workbench compiles their sources in place through the entry alias.
     const internalAliases = INTERNAL_SOURCE_ALIASES[manifest.name]

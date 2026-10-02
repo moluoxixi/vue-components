@@ -31,6 +31,7 @@ export function createProjectSourceInput(
       compilation: result.compilation,
       componentResolver: input.componentResolver,
       resourceReader: { readEmbedded: input.readEmbedded },
+      styleTarget: 'tailwind-v4',
     },
   }
 }

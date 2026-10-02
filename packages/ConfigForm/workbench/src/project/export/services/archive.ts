@@ -82,6 +82,27 @@ function structuredPath(path: string): string {
   return path
 }
 
+/** Keep generated relative imports valid after projecting `src` into folders. */
+function rewriteStructuredText(path: string, content: string): string {
+  let rewritten = content
+  if (path === 'index.html') {
+    rewritten = rewritten
+      .replaceAll('src/main.ts', 'shared/main.ts')
+      .replace(/href="\.\/favicon\.([a-z0-9]+)"/giu, 'href="./assets/favicon.$1"')
+  }
+  if (path === 'src/router.ts' || path === 'src/App.vue' || path === 'src/bindings.ts')
+    rewritten = rewritten.replaceAll('./surfaces/', '../views/')
+  if (path.startsWith('src/surfaces/')) {
+    rewritten = rewritten
+      .replaceAll('../../demo-values.ts', '../../shared/demo-values.ts')
+      .replaceAll('../../demo-navigation.ts', '../../shared/demo-navigation.ts')
+      .replaceAll('../../data/', '../../shared/data/')
+  }
+  if (path === 'src/data/resources.ts')
+    rewritten = rewritten.replaceAll('../assets/', '../../assets/')
+  return rewritten
+}
+
 function shouldIncludeStructuredFile(
   path: string,
   input: StructuredSourceArchiveInput,
@@ -124,6 +145,7 @@ function sourceExportManifest(
       views: 'views',
       components: 'components',
       assets: 'assets',
+      shared: 'shared',
     },
     files,
   }, null, 2)}\n`
@@ -136,7 +158,12 @@ export async function createStructuredSourceArchive(
   const root = safeProjectSlug(input.name)
   const projected = input.files
     .filter(file => shouldIncludeStructuredFile(file.path, input))
-    .map(file => ({ file, path: structuredPath(file.path) }))
+    .map(file => ({
+      file: file.kind === 'text'
+        ? { ...file, content: rewriteStructuredText(file.path, file.content) }
+        : file,
+      path: structuredPath(file.path),
+    }))
     .sort((left, right) => left.path.localeCompare(right.path))
   const seen = new Set<string>()
   projected.forEach(({ path }) => {

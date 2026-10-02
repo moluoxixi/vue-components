@@ -14,6 +14,7 @@ import {
   resolveConfigFormReadonlyRender,
 } from '@moluoxixi/config-form-headless'
 import { camelize, h, toHandlerKey } from 'vue'
+import { ConfigFormItem } from '../components'
 import { resolveConfigFormFieldLayout } from '../utils'
 import {
   getNodeKey,
@@ -61,44 +62,36 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     const hasLabel = typeof field.label === 'string'
     const labelPosition = props.labelPosition ?? 'left'
     const layout = resolveConfigFormFieldLayout(labelPosition, hasLabel)
-    const label = hasLabel
-      ? h('label', {
-          'class': bem('label'),
-          'data-config-form-label': '',
-          'for': controlId,
-        }, field.label)
-      : null
+    const required = reactionState.required ?? resolveConfigFormCondition(field.required, controller.model.value, false)
     const metadataAttrs = registerElement ? editorBridge.nodeMetadataAttrs(metadata) : {}
 
-    return h('div', {
+    return h(ConfigFormItem, {
       ...fieldAttrs,
       ...metadataAttrs,
       'class': [bem('field'), bem('field', `label-${labelPosition}`), fieldAttrs?.class, metadataAttrs.class],
+      'control-class': bem('control'),
+      'control-id': controlId,
+      'control-style': layout.control,
       'data-dirty': fieldMeta.dirty,
       'data-field': field.field,
       'data-instance-key': controller.getInstanceKey(address),
       'data-label-position': labelPosition,
-      'data-required': reactionState.required ?? resolveConfigFormCondition(field.required, controller.model.value, false),
+      'data-required': required,
       'data-touched': fieldMeta.touched,
       'data-validating': controller.isInstanceValidating(address),
+      'error-class': bem('error'),
+      'error-id': errorId,
+      'error-style': layout.error,
+      'errors': fieldErrors,
       'key': getNodeKey(field, path),
+      'label': field.label,
+      'label-class': bem('label'),
+      required,
       ...(registerElement ? { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) } : {}),
       'style': [layout.field, fieldAttrs?.style],
-    }, [
-      label,
-      h('div', {
-        'class': bem('control'),
-        'data-config-form-control': '',
-        'style': layout.control,
-      }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, address, fieldErrors)]),
-      ...fieldErrors.map((message, index) => h('p', {
-        'class': bem('error'),
-        'data-config-form-error': '',
-        'id': index === 0 ? errorId : undefined,
-        'key': `${message}-${index}`,
-        'style': layout.error,
-      }, message)),
-    ])
+    }, {
+      default: () => renderControl(field, path, controlId, errorId, readonly, ancestors, registration, address, fieldErrors),
+    })
   }
 
   function renderControl(

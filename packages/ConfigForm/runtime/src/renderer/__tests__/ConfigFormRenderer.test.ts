@@ -372,6 +372,8 @@ describe('config form renderer', () => {
     expect(field.attributes('data-label-position')).toBe('left')
     expect(field.attributes('style')).toContain('grid-template-columns: var(--mx-config-form-active-label-width, max-content) minmax(0, 1fr)')
     expect(field.get('.layout-form__label').text()).toBe('Name')
+    expect(wrapper.find('[data-config-form-item]').exists()).toBe(true)
+    expect(field.get('.layout-form__label').attributes('for')).toBe(field.get('[data-testid="renderer-input"]').attributes('id'))
     expect(field.get('.layout-form__control').attributes('style')).toContain('grid-column: 2')
 
     await wrapper.setProps({ labelPosition: 'top' })

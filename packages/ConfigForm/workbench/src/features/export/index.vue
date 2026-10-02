@@ -20,7 +20,7 @@ const emit = defineEmits<ExportDialogEmits>()
 const locale = computed(() => createDesignerLocale(props.locale))
 const rawSelectedPath = ref('src/main.ts')
 const bindingSelectedPath = ref('src/bindings.ts')
-const styleTarget = ref<SourceStyleTarget>('css')
+const styleTarget = ref<SourceStyleTarget>('tailwind-v4')
 const refreshing = ref(false)
 const styleTargetOptions = computed(() => [
   { label: locale.value.t('export.style.css', 'CSS'), value: 'css' },

@@ -61,19 +61,21 @@ Raw 输入只接收这个 resolver，不感知 ConfigForm binding。`SourceConfi
 
 resolver 返回的组件、Binding 与样式裸包导入都必须在对应 `dependencies` 中声明可发布
 版本；缺失声明会在生成阶段 fail closed，而不是把错误推迟到导出工程安装时。Raw 项目
-的运行依赖严格限制为 `vue`、`vue-router` 和当前 resolver 的一个目标 UI 包，全部生成
-源码与清单都禁止 `@moluoxixi/*`、`@config-form/*` 和 Zod。
+的运行依赖严格限制为 `vue`、`vue-router`、当前 resolver 的一个目标 UI 包，以及
+Tailwind Raw 校验需要的 `zod`。生成源码与清单仍禁止 `@moluoxixi/*` 和
+`@config-form/*`，因此导出工程可以脱离 Studio 独立维护。
 `SourceResourceReader` 只读取指定 project/resource/hash 的 embedded bytes。Generator
 自己校验长度与 SHA-256，并以 canonical base64 输出 binary 文件。URL Resource 保持
 静态引用，不读取 bytes，也不发起网络请求。
 
 Generator 会在组装文件前严格解析并预编译每个 Canonical RuleSet v2。Raw 为每个
-Surface 生成一个可读的 `validation.ts`，其中是字段级直接校验函数，不包含 RuleSet
-解释器、Zod、ConfigForm Runtime 或内部包 import。Required/Required message 来自字段
-一级合同，动态 Required 在 Surface 中覆盖静态基线；`validateOn` 继续控制 change、blur
-和 submit 调度。非法规则、非法正则/日期/类型或 custom validator 会让对应 API fail
-closed，不返回部分文件集。ConfigForm binding 则保留 RuleSet v2 配置编译以及字段级
-Required，不复制运行核心。初始值只从
+Surface 生成一个可读的 `validation.ts`，其中保留 `demoFieldRuleSets` 和可编辑的
+`demoFieldSchemas`；Tailwind Raw 通过 `zod.safeParse` 执行基础规则，跨字段 compare
+仍在字段 validator 中使用当前 values 执行。CSS Raw 保留零运行时依赖的直接校验函数。
+Required/Required message 来自字段一级合同，动态 Required 在 Surface 中覆盖静态基线；
+`validateOn` 继续控制 change、blur 和 submit 调度。非法规则、非法正则/日期/类型或
+custom validator 会让对应 API fail closed，不返回部分文件集。ConfigForm binding 则保留
+RuleSet v2 配置编译以及字段级 Required，不复制运行核心。初始值只从
 Canonical scoped fields/value scopes 建立，不猜测空值或 provider 默认值。嵌套 scope 的
 初始值和字段渲染会保留；如果交互需要当前生成器尚未提供的 address-scoped 联动、投影或
 结果写回，生成同样 fail closed，避免把不同数组行错误地合并到 root values。

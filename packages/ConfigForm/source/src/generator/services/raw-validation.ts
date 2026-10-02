@@ -65,6 +65,83 @@ function message(label: string, rule: RuleDescriptor): string {
   return sourceString(rule.message ?? defaultRuleMessage(label, rule))
 }
 
+function zodMessage(label: string, rule: RuleDescriptor): string {
+  return `{ message: ${message(label, rule)} }`
+}
+
+function zodBaseSource(base: RuleBase): string {
+  switch (base.type) {
+    case 'string': return 'z.string()'
+    case 'number': return 'z.number()'
+    case 'boolean': return 'z.boolean()'
+    case 'date': return 'z.date()'
+    case 'enum': return `z.enum(${sourceJson(base.values)} as [string, ...string[]])`
+    case 'literal': return `z.literal(${sourceJson(base.value)})`
+  }
+}
+
+/** Emit the serializable part of a RuleSet as an editable Zod expression. */
+function zodSchemaSource(label: string, ruleSet: RuleSet): string {
+  let schema = zodBaseSource(ruleSet.base)
+  for (const rule of ruleSet.rules) {
+    switch (rule.kind) {
+      case 'minLength':
+        schema += `.min(${rule.value}, ${zodMessage(label, rule)})`
+        break
+      case 'maxLength':
+        schema += `.max(${rule.value}, ${zodMessage(label, rule)})`
+        break
+      case 'length':
+        schema += `.length(${rule.value}, ${zodMessage(label, rule)})`
+        break
+      case 'regex':
+        schema += `.regex(new RegExp(${sourceString(rule.source)}, ${sourceString(rule.flags ?? '')}), ${zodMessage(label, rule)})`
+        break
+      case 'email':
+        schema += `.email(${zodMessage(label, rule)})`
+        break
+      case 'url':
+        schema += `.url(${zodMessage(label, rule)})`
+        break
+      case 'uuid':
+        schema += `.uuid(${zodMessage(label, rule)})`
+        break
+      case 'min':
+        schema += `${rule.inclusive === false ? '.gt' : '.gte'}(${sourceJson(rule.value)}, ${zodMessage(label, rule)})`
+        break
+      case 'max':
+        schema += `${rule.inclusive === false ? '.lt' : '.lte'}(${sourceJson(rule.value)}, ${zodMessage(label, rule)})`
+        break
+      case 'integer':
+        schema += `.int(${zodMessage(label, rule)})`
+        break
+      case 'finite':
+        schema += `.finite(${zodMessage(label, rule)})`
+        break
+      case 'multipleOf':
+        schema += `.multipleOf(${sourceJson(rule.value)}, ${zodMessage(label, rule)})`
+        break
+      case 'dateMin':
+        schema += `.min(new Date(${sourceString(rule.value)}), ${zodMessage(label, rule)})`
+        break
+      case 'dateMax':
+        schema += `.max(new Date(${sourceString(rule.value)}), ${zodMessage(label, rule)})`
+        break
+      case 'compare':
+      case 'custom':
+        // Cross-field and custom rules remain in the generated validator below.
+        break
+    }
+  }
+  if (ruleSet.base.type === 'date')
+    schema = `z.preprocess(value => typeof value === 'string' ? new Date(value) : value, ${schema})`
+  if (ruleSet.nullable)
+    schema += '.nullable()'
+  if (ruleSet.optional)
+    schema += '.optional()'
+  return schema
+}
+
 function baseValidationLines(label: string, ruleSet: RuleSet): string[] {
   const error = sourceString(baseMessage(label, ruleSet.base))
   const optional = ruleSet.optional === true
@@ -120,6 +197,7 @@ function fieldValidatorSource(
   node: SourceFieldNode,
   validation: SourceValidationFieldEmission | undefined,
   functionName: string,
+  useZod = false,
 ): string {
   const label = node.label ?? node.field
   const requiredMessage = node.requiredMessage ?? `${label} is required.`
@@ -133,6 +211,27 @@ function fieldValidatorSource(
   ]
   if (!validation) {
     lines.push('  void values', '  return []', '}')
+    return lines.join('\n')
+  }
+
+  if (useZod) {
+    lines.push(
+      `  const zodResult = demoFieldSchemas[${sourceString(node.id)}].safeParse(value)`,
+      '  if (!zodResult.success) return zodResult.error.issues.map(issue => issue.message)',
+    )
+    const compareRules = validation.ruleSet.rules.filter((rule): rule is Extract<RuleDescriptor, { kind: 'compare' }> => rule.kind === 'compare')
+    if (compareRules.length === 0) {
+      lines.push('  void values', '  return []', '}')
+      return lines.join('\n')
+    }
+    lines.push('  const errors: string[] = []')
+    for (const rule of compareRules) {
+      lines.push(
+        `  if (!compareDemoFieldValues(value, values[${sourceString(rule.field)}], ${sourceString(rule.operator)}, ${sourceString(validation.ruleSet.base.type)}))`,
+        `    errors.push(${message(label, rule)})`,
+      )
+    }
+    lines.push('  return errors', '}')
     return lines.join('\n')
   }
 
@@ -233,6 +332,7 @@ const compareHelper = `function compareDemoFieldValues(
 export function rawValidationModuleSource(
   surface: SourceSurface,
   validations: readonly SourceValidationFieldEmission[],
+  options: { includeZod?: boolean } = {},
 ): string {
   const fields = Object.values(surface.nodesById)
     .filter((node): node is SourceFieldNode => node.kind === 'field')
@@ -252,9 +352,31 @@ export function rawValidationModuleSource(
     ...(usesCompare ? [compareHelper] : []),
   ]
   const names = uniqueValidatorNames(fields)
-  const validators = fields.map(field => fieldValidatorSource(field, byNodeId.get(field.id), names.get(field.id)!))
+  const validators = fields.map(field => fieldValidatorSource(
+    field,
+    byNodeId.get(field.id),
+    names.get(field.id)!,
+    options.includeZod === true,
+  ))
   const entries = fields.map(field => `  ${sourceString(field.id)}: ${names.get(field.id)},`)
-  return `${helpers.join('\n\n')}
+  const zodHeader = options.includeZod && validations.length > 0
+    ? `import { z } from 'zod'
+
+export const demoFieldRuleSets = {
+${validations.map(validation => `  ${sourceString(validation.nodeId)}: ${sourceJson(validation.ruleSet)},`).join('\n')}
+} as const
+
+export const demoFieldSchemas = {
+${validations.map((validation) => {
+  const field = fields.find(item => item.id === validation.nodeId)
+  const label = field?.label ?? field?.field ?? validation.nodeId
+  return `  ${sourceString(validation.nodeId)}: ${zodSchemaSource(label, validation.ruleSet)},`
+}).join('\n')}
+} as const
+
+`
+    : ''
+  return `${zodHeader}${helpers.join('\n\n')}
 
 export type DemoFieldValidator = (
   value: unknown,

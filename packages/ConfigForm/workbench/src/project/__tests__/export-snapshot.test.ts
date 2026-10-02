@@ -53,7 +53,7 @@ describe('export snapshot', () => {
     const snapshot = await buildExportSnapshot(input)
 
     expect(snapshot.compilation).toBe(input.compilation)
-    expect(snapshot.styleTarget).toBe('css')
+    expect(snapshot.styleTarget).toBe('tailwind-v4')
     expect(input.componentResolver).not.toHaveProperty('resolveConfigFormBinding')
     expect(input.bindingResolver).not.toHaveProperty('resolveComponent')
     const rawSource = expectReady(snapshot.rawSource)

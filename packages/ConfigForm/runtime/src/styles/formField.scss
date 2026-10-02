@@ -12,6 +12,11 @@
   line-height: $label-line-height;
 }
 
+[data-config-form-label][data-required]::after {
+  color: $error-color;
+  content: ' *';
+}
+
 [data-config-form-control] {
   position: relative;
 }

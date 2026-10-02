@@ -61,8 +61,32 @@ describe('export downloads', () => {
     expect(JSON.parse(strFromU8(archive['customer-portal/export-manifest.json']!))).toMatchObject({
       scope: 'project',
       project: { id: 'customer-portal', name: 'Customer Portal' },
-      directories: { views: 'views', components: 'components', assets: 'assets' },
+      directories: { views: 'views', components: 'components', assets: 'assets', shared: 'shared' },
     })
+  })
+
+  it('rewrites generated relative imports for the projected directory layout', async () => {
+    const archive = unzipSync(await createStructuredSourceArchive({
+      name: 'Customer Portal',
+      files: [
+        { kind: 'text', path: 'index.html', language: 'text', content: '<script src="/src/main.ts"></script><link href="./favicon.png">' },
+        { kind: 'text', path: 'src/main.ts', language: 'typescript', content: 'import App from \'./App.vue\'' },
+        { kind: 'text', path: 'src/App.vue', language: 'vue', content: 'import \'./surfaces/home/Surface.vue\'' },
+        { kind: 'text', path: 'src/router.ts', language: 'typescript', content: 'import Surface from \'./surfaces/home/Surface.vue\'' },
+        { kind: 'text', path: 'src/data/resources.ts', language: 'typescript', content: 'new URL(\'../assets/logo.png\', import.meta.url)' },
+        { kind: 'text', path: 'src/surfaces/home/Surface.vue', language: 'vue', content: 'import { resources } from \'../../data/resources.ts\'\nimport values from \'../../demo-values.ts\'' },
+        { kind: 'binary', path: 'src/assets/logo.png', mediaType: 'image/png', encoding: 'base64', contentBase64: 'iVBORw0KGgo=' },
+        { kind: 'binary', path: 'public/favicon.png', mediaType: 'image/png', encoding: 'base64', contentBase64: 'iVBORw0KGgo=' },
+      ],
+    }))
+
+    expect(strFromU8(archive['customer-portal/index.html']!)).toContain('/shared/main.ts')
+    expect(strFromU8(archive['customer-portal/index.html']!)).toContain('./assets/favicon.png')
+    expect(strFromU8(archive['customer-portal/shared/App.vue']!)).toContain('../views/home/Surface.vue')
+    expect(strFromU8(archive['customer-portal/shared/router.ts']!)).toContain('../views/home/Surface.vue')
+    expect(strFromU8(archive['customer-portal/shared/data/resources.ts']!)).toContain('../../assets/logo.png')
+    expect(strFromU8(archive['customer-portal/views/home/Surface.vue']!)).toContain('../../shared/data/resources.ts')
+    expect(strFromU8(archive['customer-portal/views/home/Surface.vue']!)).toContain('../../shared/demo-values.ts')
   })
 
   it('keeps a page source archive self-contained while excluding sibling views', async () => {
