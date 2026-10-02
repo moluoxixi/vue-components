@@ -43,13 +43,19 @@ function close(): void {
 }
 
 /**
- * A created project opens its home page's designer; a created page was already
+ * A created project opens its page workspace; a created page was already
  * selected by the Surface command, so its own designer becomes the destination.
  *
- * Focus lands on the designer entry instead of the (now unmounted) creation
- * trigger, which keeps the workspace reachable by keyboard after either target.
+ * Page creation focuses the designer entry instead of the (now unmounted)
+ * creation trigger, which keeps the page workspace reachable by keyboard.
  */
 async function created(): Promise<void> {
+  if (props.target === 'project') {
+    const projectId = controller.currentProject.value?.id
+    ui.clearCreationOrigin()
+    await router.push(projectId ? projectPagesPath(projectId) : projectsPath())
+    return
+  }
   const path = workspacePath()
   if (!path) {
     close()

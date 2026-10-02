@@ -167,6 +167,10 @@ describe('page manager', () => {
   it('links each row to its form designer and links back to project management', async () => {
     const wrapper = mountPage(createProjectDocumentFixture())
 
+    expect(wrapper.get('.page-manager__preview').attributes('src')).toMatch(/^data:image\/svg\+xml/)
+    await wrapper.get('button[aria-label="Export Fixture project"]').trigger('click')
+    expect(wrapper.emitted('export')?.[0]).toEqual(['home'])
+
     await wrapper.get('button[aria-label="Open Fixture project in the designer"]').trigger('click')
     expect(wrapper.emitted('openPage')?.[0]).toEqual(['home'])
 

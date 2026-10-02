@@ -3,7 +3,6 @@ import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/conf
 import type { DatasetReference, ProjectSurface } from '@moluoxixi/config-form-model'
 import type { CSSProperties } from 'vue'
 import type { PersistenceDialogMode } from '../features/persistence'
-import type { TemplateCreationTarget } from '../project'
 import type { MobileStudioView, WorkbenchExportCommand } from './types'
 import {
   Blocks,
@@ -36,7 +35,6 @@ import {
 } from './composables'
 import {
   pageCreatePath,
-  projectCreatePath,
   projectPagesPath,
   projectsPath,
 } from './navigation'
@@ -344,13 +342,9 @@ function exitToProjects(): void {
  * Creation is a routed workspace, so the command records where it came from and
  * navigates; the creation screen returns here and restores trigger focus.
  */
-function requestCreation(target: TemplateCreationTarget, focusKey: string): void {
+function requestPageCreation(focusKey: string): void {
   const projectId = currentProject.value?.id
   setCreationOrigin({ focusKey, path: router.currentRoute.value.fullPath })
-  if (target === 'project') {
-    void router.push(projectCreatePath('template'))
-    return
-  }
   if (projectId)
     void router.push(pageCreatePath(projectId))
 }
@@ -400,7 +394,7 @@ watch(recoveryDrafts, (drafts) => {
       :theme-preference="themePreference"
       @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
-      @new-surface="requestCreation('surface', $event)"
+      @new-surface="requestPageCreation($event)"
       @open-projects="exitToProjects"
       @open-appearance="openAppearanceDrawer"
       @open-surfaces="showSurfaceManager"

@@ -656,8 +656,16 @@
 }
 
 .designer-pages button > span {
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: 14px minmax(84px, 1fr) minmax(0, auto);
   gap: 6px;
+}
+
+.designer-pages button > span > span,
+.designer-pages button > span > small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .designer-layers .designer-layer-select,

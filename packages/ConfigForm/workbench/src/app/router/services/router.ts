@@ -23,8 +23,7 @@ export const WORKBENCH_ROUTES: readonly RouteRecordRaw[] = [
   {
     path: WORKBENCH_PATHS.projectCreate,
     name: 'project-create',
-    component: () => import('../components/CreationView.vue'),
-    props: { mode: 'template' as const, target: 'project' as const },
+    component: () => import('../components/ProjectCreationView.vue'),
   },
   {
     path: WORKBENCH_PATHS.projectImport,

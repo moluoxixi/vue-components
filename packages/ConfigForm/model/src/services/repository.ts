@@ -22,6 +22,7 @@ import type {
   RegistryLock,
 } from '../types'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
+import { readProjectImageResourceId } from '../constants'
 import { assertProjectDocument } from '../schemas'
 
 const CONTENT_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/
@@ -463,6 +464,8 @@ export function getProjectRepositoryCommitChecksum(input: ProjectRepositoryCommi
 export function summarizePersistedProject(
   project: Pick<PersistedProjectEnvelope, 'document' | 'repositoryRevision' | 'updatedAt'>,
 ): ProjectSummary {
+  const projectImageId = readProjectImageResourceId(project.document.settings)
+  const projectImage = projectImageId ? project.document.resources[projectImageId] : undefined
   return {
     id: project.document.id,
     name: project.document.name,
@@ -471,6 +474,7 @@ export function summarizePersistedProject(
     surfaceCount: project.document.surfaceOrder.length,
     datasetCount: project.document.datasetOrder.length,
     resourceCount: Object.keys(project.document.resources).length,
+    ...(projectImage ? { projectImage: structuredClone(projectImage) } : {}),
     registryLock: structuredClone(project.document.registryLock),
     updatedAt: project.updatedAt,
   }

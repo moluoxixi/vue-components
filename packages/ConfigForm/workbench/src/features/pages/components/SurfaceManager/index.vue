@@ -6,7 +6,10 @@ import {
   ArrowUpRight,
   Check,
   Copy,
+  Download,
   FilePlus2,
+  FolderKanban,
+  Files,
   Home,
   Pencil,
   Search,
@@ -15,8 +18,9 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { SurfacePresentationEditor } from './components'
+import { createPagePreviewDataUrl } from '../../services'
 
 const props = defineProps<SurfaceManagerProps>()
 
@@ -28,6 +32,7 @@ const routes = ref<Record<string, string>>({})
 const pendingDeleteId = ref<string>()
 const editingPresentationId = ref<string>()
 const editingId = ref<string>()
+const nameInputRefs = new Map<string, { focus?: () => void }>()
 const locale = computed(() => createDesignerLocale(props.locale))
 
 const surfaces = computed(() => props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean))
@@ -49,6 +54,14 @@ function beginEdit(surfaceId: string): void {
   if (editingId.value && editingId.value !== surfaceId)
     finishEdit()
   editingId.value = surfaceId
+  void nextTick(() => nameInputRefs.get(surfaceId)?.focus?.())
+}
+
+function setNameInputRef(surfaceId: string, instance: unknown): void {
+  if (instance && typeof instance === 'object' && 'focus' in instance && typeof instance.focus === 'function')
+    nameInputRefs.set(surfaceId, instance as { focus: () => void })
+  else
+    nameInputRefs.delete(surfaceId)
 }
 
 function finishEdit(): void {
@@ -77,6 +90,20 @@ const filteredSurfaces = computed(() => {
     return surfaces.value
   return surfaces.value.filter(surface => `${surface.name} ${surface.kind === 'page' ? surface.route : surface.kind}`.toLocaleLowerCase().includes(query))
 })
+
+const pageStats = computed(() => ({
+  pages: surfaces.value.filter(surface => surface.kind === 'page').length,
+  overlays: surfaces.value.filter(surface => surface.kind !== 'page').length,
+  total: surfaces.value.length,
+}))
+
+function surfaceKindLabel(kind: 'page' | 'dialog' | 'drawer'): string {
+  if (kind === 'dialog')
+    return locale.value.t('surface.kind.dialog', 'Dialog')
+  if (kind === 'drawer')
+    return locale.value.t('surface.kind.drawer', 'Drawer')
+  return locale.value.t('surface.kind.page', 'Page')
+}
 
 const pendingDeleteSurface = computed(() => surfaces.value.find(surface => surface.id === pendingDeleteId.value))
 
@@ -124,12 +151,20 @@ function confirmDelete(): void {
   emit('action', { type: 'surface.remove', surfaceId: pendingDeleteId.value })
   pendingDeleteId.value = undefined
 }
+
+function previewImage(page: typeof surfaces.value[number]): string {
+  return createPagePreviewDataUrl(page)
+}
+
+function exportPage(surfaceId: string): void {
+  emit('export', surfaceId)
+}
 </script>
 
 <template>
   <section class="page-manager" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
-      <div>
+      <div class="page-manager__header-copy">
         <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
           <ElButton link type="primary" class="page-manager__breadcrumb-link" @click="emit('openProjects')">
             {{ locale.t('pageManager.projects', 'Projects') }}
@@ -137,7 +172,15 @@ function confirmDelete(): void {
           <span aria-hidden="true">/</span>
           <span class="page-manager__breadcrumb-current">{{ project.name }}</span>
         </nav>
-        <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page management') }}</h2>
+        <div class="page-manager__title-row">
+          <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page orchestration') }}</h2>
+          <span class="page-manager__project-chip"><FolderKanban :size="13" aria-hidden="true" />{{ locale.t('pageManager.projectBadge', 'Engineering project') }}</span>
+        </div>
+        <p>{{ locale.t('pageManager.subtitle', 'Arrange pages and overlays for this project.') }}</p>
+      </div>
+      <div class="page-manager__header-summary" :aria-label="locale.t('pageManager.summary', 'Page summary')">
+        <span><strong>{{ pageStats.total }}</strong>{{ locale.t('pageManager.pageCountShort', 'pages') }}</span>
+        <span><strong>{{ pageStats.overlays }}</strong>{{ locale.t('pageManager.overlayCountShort', 'overlays') }}</span>
       </div>
       <ElButton native-type="button" text circle :title="locale.t('pageManager.back', 'Back to designer')" :aria-label="locale.t('pageManager.back', 'Back to designer')" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
@@ -146,8 +189,8 @@ function confirmDelete(): void {
 
     <div class="page-manager__toolbar">
       <label>
-        <span>{{ locale.t('pageManager.project', 'Project') }}</span>
-        <ElSelect :model-value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Project')" append-to="#workbench-overlays" @change="selectProject">
+        <span>{{ locale.t('pageManager.project', 'Engineering project') }}</span>
+        <ElSelect :model-value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Engineering project')" append-to="#workbench-overlays" @change="selectProject">
           <ElOption v-for="item in projects" :key="item.id" :value="item.id" :label="`${item.name} · ${locale.t('pageManager.pageCount', '{count} pages', { count: item.surfaceCount })}`" />
         </ElSelect>
       </label>
@@ -169,7 +212,7 @@ function confirmDelete(): void {
 
     <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
       <div class="page-manager__table-header" role="row">
-        <span role="columnheader">{{ locale.t('pageManager.page', 'Surface') }}</span>
+        <span role="columnheader">{{ locale.t('pageManager.page', 'Page') }}</span>
         <span role="columnheader">{{ locale.t('pageManager.actions', 'Actions') }}</span>
       </div>
       <div
@@ -180,44 +223,51 @@ function confirmDelete(): void {
         @keydown.esc="cancelEdit"
       >
         <div class="page-manager__name-cell" role="cell">
-          <span class="sr-only">{{ locale.t('pageManager.pageName', 'Surface name') }}</span>
-          <template v-if="editingId === page.id">
-            <ElInput
-              v-model="names[page.id]"
-              size="small"
-              autofocus
+          <img class="page-manager__preview" :src="previewImage(page)" :alt="locale.t('pageManager.previewAlt', 'Preview of {name}', { name: page.name })" />
+          <div class="page-manager__name-content">
+            <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
+            <template v-if="editingId === page.id">
+              <ElInput
+                :ref="(instance: unknown) => setNameInputRef(page.id, instance)"
+                v-model="names[page.id]"
+                size="small"
+                :disabled="busy"
+                :aria-label="locale.t('pageManager.pageNameAria', 'Page name for {name}', { name: page.name })"
+                @blur="commitName(page.id)"
+                @keydown.enter="handleTextKeydown"
+                @keydown.esc="cancelEdit"
+              />
+              <ElInput
+                v-if="page.kind === 'page'"
+                v-model="routes[page.id]"
+                class="page-manager__route-input"
+                size="small"
+                :disabled="busy"
+                :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
+                @blur="commitRoute(page.id)"
+                @keydown.enter="handleTextKeydown"
+                @keydown.esc="cancelEdit"
+              />
+            </template>
+            <ElButton
+              v-else
+              link
+              type="primary"
+              class="page-manager__link"
+              :title="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
+              :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
               :disabled="busy"
-              :aria-label="locale.t('pageManager.pageNameAria', 'Surface name for {name}', { name: page.name })"
-              @blur="commitName(page.id)"
-              @keydown.enter="handleTextKeydown"
-              @keydown.esc="cancelEdit"
-            />
-            <ElInput
-              v-if="page.kind === 'page'"
-              v-model="routes[page.id]"
-              class="page-manager__route-input"
-              size="small"
-              :disabled="busy"
-              :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
-              @blur="commitRoute(page.id)"
-              @keydown.enter="handleTextKeydown"
-              @keydown.esc="cancelEdit"
-            />
-          </template>
-          <ElButton
-            v-else
-            link
-            type="primary"
-            class="page-manager__link"
-            :title="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
-            :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
-            :disabled="busy"
-            @click="emit('openPage', page.id)"
-          >
-            <span class="page-manager__link-label">{{ page.name }}</span>
-            <ArrowUpRight :size="13" aria-hidden="true" />
-          </ElButton>
-          <small>{{ page.id }} · {{ page.kind }}{{ page.kind === 'page' ? ` · ${page.route}` : '' }}</small>
+              @click="emit('openPage', page.id)"
+            >
+              <span class="page-manager__link-label">{{ page.name }}</span>
+              <ArrowUpRight :size="13" aria-hidden="true" />
+            </ElButton>
+            <div class="page-manager__meta">
+              <span class="page-manager__kind"><Files :size="12" aria-hidden="true" />{{ surfaceKindLabel(page.kind) }}</span>
+              <code v-if="page.kind === 'page'">{{ page.route }}</code>
+              <small>{{ page.id }}</small>
+            </div>
+          </div>
         </div>
         <div class="page-manager__actions" role="cell">
           <ElButton
@@ -263,10 +313,13 @@ function confirmDelete(): void {
           <ElButton native-type="button" text circle :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || project.surfaceOrder.at(-1) === page.id" @click="moveSurface(page.id, 1)">
             <ArrowDown :size="15" aria-hidden="true" />
           </ElButton>
-          <ElButton native-type="button" text circle :title="locale.t('pageManager.duplicate', 'Duplicate surface')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'surface.duplicate', surfaceId: page.id })">
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'surface.duplicate', surfaceId: page.id })">
             <Copy :size="15" aria-hidden="true" />
           </ElButton>
-          <ElButton v-if="page.kind !== 'page'" native-type="button" text circle :title="locale.t('surface.presentation', 'Surface presentation')" :aria-label="locale.t('surface.presentationFor', 'Edit presentation for {name}', { name: page.name })" :aria-expanded="editingPresentationId === page.id" :disabled="busy" @click="editingPresentationId = editingPresentationId === page.id ? undefined : page.id">
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.export', 'Export page')" :aria-label="locale.t('pageManager.exportAria', 'Export {name}', { name: page.name })" :disabled="busy" @click="exportPage(page.id)">
+            <Download :size="15" aria-hidden="true" />
+          </ElButton>
+          <ElButton v-if="page.kind !== 'page'" native-type="button" text circle :title="locale.t('surface.presentation', 'Page overlay presentation')" :aria-label="locale.t('surface.presentationFor', 'Edit presentation for {name}', { name: page.name })" :aria-expanded="editingPresentationId === page.id" :disabled="busy" @click="editingPresentationId = editingPresentationId === page.id ? undefined : page.id">
             <SlidersHorizontal :size="15" aria-hidden="true" />
           </ElButton>
           <ElButton native-type="button" text circle type="danger" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.surfaceOrder.length === 1" @click="pendingDeleteId = page.id">
@@ -329,10 +382,12 @@ function confirmDelete(): void {
 }
 
 .page-manager__header {
-  min-height: 64px;
-  padding: 10px 14px 10px 18px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 78px;
+  padding: 12px 14px 12px 18px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 18px;
   border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
 }
 
 .page-manager__header span,
@@ -363,6 +418,62 @@ function confirmDelete(): void {
   font-size: 11px;
 }
 
+.page-manager__header-copy {
+  min-width: 0;
+}
+
+.page-manager__title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.page-manager__project-chip {
+  display: inline-flex;
+  min-width: max-content;
+  padding: 3px 7px;
+  align-items: center;
+  gap: 4px;
+  color: var(--wb-accent-text);
+  border: 1px solid var(--wb-accent-line);
+  border-radius: 999px;
+  background: var(--wb-accent-soft);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.page-manager__header .page-manager__project-chip {
+  color: var(--wb-accent-text);
+}
+
+.page-manager__header-copy > p {
+  margin: 4px 0 0;
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.page-manager__header-summary {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-manager__header-summary span {
+  display: grid;
+  padding-left: 12px;
+  gap: 1px;
+  border-left: 1px solid var(--wb-separator);
+  font-size: 10px;
+}
+
+.page-manager__header-summary strong {
+  color: var(--wb-text-strong);
+  font-size: 16px;
+  line-height: 1;
+}
+
 .page-manager__header h2 {
   margin: 2px 0 0;
   color: var(--wb-text-strong);
@@ -376,7 +487,7 @@ function confirmDelete(): void {
 }
 
 .page-manager__toolbar {
-  padding: 10px 14px;
+  padding: 12px 14px;
   grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
   gap: 10px;
   border-bottom: 1px solid var(--wb-separator);
@@ -433,9 +544,14 @@ function confirmDelete(): void {
 }
 
 .page-manager__row {
-  min-height: 58px;
-  padding: 8px 16px;
+  min-height: 64px;
+  padding: 9px 16px;
   border-bottom: 1px solid var(--wb-separator);
+  transition: background 120ms ease;
+}
+
+.page-manager__row:hover {
+  background: color-mix(in srgb, var(--wb-hover) 62%, transparent);
 }
 
 .page-manager__row label {
@@ -444,6 +560,29 @@ function confirmDelete(): void {
 
 .page-manager__row > [role="cell"] {
   min-width: 0;
+}
+
+.page-manager__name-cell {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 148px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.page-manager__name-content {
+  min-width: 0;
+}
+
+.page-manager__preview {
+  display: block;
+  width: 148px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--wb-control-border);
+  border-radius: 7px;
+  background: var(--wb-surface);
+  box-shadow: 0 3px 10px rgb(15 23 42 / 8%);
 }
 
 .page-manager__name-cell .page-manager__link.el-button {
@@ -488,13 +627,10 @@ function confirmDelete(): void {
   color: var(--wb-muted);
 }
 
-.page-manager__row small {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.page-manager__meta { display: flex; min-width: 0; margin-top: 4px; align-items: center; gap: 7px; }
+.page-manager__meta small { min-width: 0; margin: 0; overflow: hidden; color: var(--wb-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.page-manager__kind { display: inline-flex; min-width: max-content; align-items: center; gap: 4px; color: var(--wb-accent-text); font-size: 10px; font-weight: 650; }
+.page-manager__meta code { min-width: 0; overflow: hidden; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 
 .page-manager__actions {
   display: flex;
@@ -574,6 +710,28 @@ function confirmDelete(): void {
   .page-manager__row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .page-manager__name-cell {
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  .page-manager__preview { width: 112px; }
+
+  .page-manager__header-summary {
+    display: none;
+  }
+
+  .page-manager__title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .page-manager__project-chip {
+    font-size: 10px;
   }
 
   .page-manager__actions {

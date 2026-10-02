@@ -7,6 +7,7 @@ import type {
 import type {
   ConfigBindingFileSetV1,
   RawSourceFileSetV1,
+  SourceBinaryFile,
   SourceComponentResolution,
   SourceConfigFormBindingResolution,
   SourceFile,
@@ -20,6 +21,7 @@ import type {
   SourceValidationEmissionPlan,
   SourceValidationFieldEmission,
 } from '../types/internal'
+import { readProjectImageResourceId } from '@moluoxixi/config-form-model'
 import { readSourceFileSet } from '../validation'
 import { sourceDatasetViewKey as datasetViewKey } from './datasets'
 import { createSourceInitialValues } from './initial-values'
@@ -141,13 +143,14 @@ const tsconfig = `${sourceJson({
   include: ['src/**/*.ts', 'src/**/*.vue'],
 })}\n`
 
-function htmlSource(title: string): string {
+function htmlSource(title: string, faviconHref?: string): string {
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${escapeHtml(title)}</title>
+${faviconHref ? `    <link rel="icon" href="${escapeHtml(faviconHref)}">\n` : ''}
   </head>
   <body>
     <div id="app"></div>
@@ -155,6 +158,29 @@ function htmlSource(title: string): string {
   </body>
 </html>
 `
+}
+
+function projectFavicon(context: EmitContext): { files: SourceBinaryFile[], href?: string } {
+  const resourceId = readProjectImageResourceId(context.compilation.ir.settings)
+  if (!resourceId)
+    return { files: [] }
+  const resource = context.compilation.ir.resources[resourceId]
+  const collected = context.resources.values.get(resourceId)
+  if (!resource || !collected)
+    return { files: [] }
+  if (resource.kind === 'url' && collected.kind === 'url')
+    return { files: [], href: collected.url }
+  if (resource.kind !== 'embedded' || collected.kind !== 'embedded')
+    return { files: [] }
+  const source = context.resources.files.find(file => file.path === `src/assets/${collected.fileName}`)
+  if (!source || source.kind !== 'binary')
+    return { files: [] }
+  const extension = /\.([a-z0-9]{1,16})$/iu.exec(collected.fileName)?.[1]?.toLowerCase() ?? 'png'
+  const fileName = `favicon.${extension}`
+  return {
+    files: [{ ...source, path: `public/${fileName}` }],
+    href: `./${fileName}`,
+  }
 }
 
 function datasetsSource(collected: CollectedSourceDatasets): string {
@@ -2364,11 +2390,12 @@ function demoValueFiles(context: EmitContext): SourceTextFile[] {
 function rawCommonFiles(context: EmitContext): SourceTextFile[] {
   const { compilation } = context
   const surfaces = sourceSurfaces(context)
+  const favicon = projectFavicon(context)
   const needsDemoNavigation = surfaces.some(surface => surface.kind !== 'page' || emittedInteractions(surface, context).length > 0)
   const needsDatasetTable = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-table'))
   const needsDatasetList = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-list'))
   return [
-    textFile('index.html', 'text', htmlSource(compilation.ir.name)),
+    textFile('index.html', 'text', htmlSource(compilation.ir.name, favicon.href)),
     textFile('src/App.vue', 'vue', appSource(context)),
     ...(needsDatasetTable
       ? [textFile('src/components/DemoDatasetTable.vue', 'vue', datasetTableComponentSource(context.style))]
@@ -2444,6 +2471,7 @@ export function emitRawProject(
     ...rawCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,
+    ...projectFavicon(context).files,
     textFile('package.json', 'json', packageManifest(compilation.ir.name, dependencies, true, style)),
     textFile('src/main.ts', 'typescript', rawMainSource(components, style)),
   ])

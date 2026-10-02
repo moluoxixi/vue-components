@@ -316,8 +316,13 @@ async function loadCatalog(): Promise<void> {
     templates.value = result.templates
     eligibilityCache.value = {}
     catalogDiagnostics.value = result.diagnostics.map(diagnostic => diagnostic.message)
-    if (!result.templates.some(template => template.manifest.id === selectedId.value))
-      selectedId.value = result.templates[0]?.manifest.id ?? ''
+    if (!result.templates.some(template => template.manifest.id === selectedId.value)) {
+      const preferredAdapter = props.target === 'surface'
+        ? controller.currentProject.value?.registryLock.adapter
+        : undefined
+      selectedId.value = (result.templates.find(template => template.manifest.adapter === preferredAdapter)
+        ?? result.templates[0])?.manifest.id ?? ''
+    }
   }
   catch (error) {
     if (!disposed) {

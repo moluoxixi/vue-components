@@ -3,6 +3,7 @@ import type {
   ProjectDocument,
   ProjectEmbeddedResourceRead,
   ProjectId,
+  ProjectResource,
   RegistryLock,
   ResourceId,
   SurfaceId,
@@ -49,6 +50,7 @@ export interface ProjectSummary {
   surfaceCount: number
   datasetCount: number
   resourceCount: number
+  projectImage?: ProjectResource
   registryLock: RegistryLock
   updatedAt: string
 }

@@ -860,6 +860,19 @@ describe('source generators', () => {
     expect(router).not.toContain('{ path: "/", redirect:')
   })
 
+  it('publishes the project image as a generated favicon', async () => {
+    const imageCompilation = compilationWithValue(['ir', 'settings'], { projectImageResourceId: 'brand.logo' })
+    const raw = await generateVueSource(rawInput({ compilation: imageCompilation }))
+    expect(raw.success).toBe(true)
+    if (!raw.success)
+      return
+    expect(textAt(raw.data, 'index.html')).toContain('<link rel="icon" href="./favicon.png">')
+    expect(raw.data.files.find(file => file.path === 'public/favicon.png')).toMatchObject({
+      kind: 'binary',
+      contentBase64: 'aGVsbG8=',
+    })
+  })
+
   it('builds standalone Ant Design Vue source with the same dependency boundary', async () => {
     const result = await generateVueSource(rawInput({
       compilation: compilation('antd-vue'),
@@ -904,7 +917,6 @@ describe('source generators', () => {
       'src/surfaces/home/config.ts',
     ]))
     expect(result.data.files.map(file => file.path)).not.toEqual(expect.arrayContaining([
-      'index.html',
       'src/App.vue',
       'src/demo-navigation.ts',
       'src/main.ts',

@@ -38,6 +38,11 @@ const items = computed<Array<{ icon: Component, id: WorkbenchManagementTarget, l
     label: locale.value.t('pageManager.title', 'Page management'),
   },
 ])
+
+function selectTarget(index: string): void {
+  if (index === 'projects' || index === 'pages')
+    emit('select', index)
+}
 </script>
 
 <template>
@@ -47,18 +52,31 @@ const items = computed<Array<{ icon: Component, id: WorkbenchManagementTarget, l
     :data-theme="props.theme"
   >
     <nav class="management-shell__nav" :aria-label="locale.t('nav.management', 'Management')">
-      <ElButton
+      <ElMenu
+        class="management-shell__menu"
+        :default-active="props.active ?? ''"
+        :collapse-transition="false"
+        mode="vertical"
+        @select="selectTarget"
+      >
+        <ElMenuItem
         v-for="item in items"
         :key="item.id"
-        class="management-shell__tab"
-        :class="{ 'is-active': item.id === props.active }"
+        class="management-shell__item"
+        :index="item.id"
         :aria-current="item.id === props.active ? 'page' : undefined"
         :data-management-target="item.id"
-        @click="emit('select', item.id)"
       >
-        <component :is="item.icon" :size="17" aria-hidden="true" />
-        <span class="management-shell__label">{{ item.label }}</span>
-      </ElButton>
+        <button
+          type="button"
+          class="management-shell__item-button"
+          :aria-current="item.id === props.active ? 'page' : undefined"
+        >
+          <component :is="item.icon" :size="17" aria-hidden="true" />
+          <span>{{ item.label }}</span>
+        </button>
+        </ElMenuItem>
+      </ElMenu>
     </nav>
     <div class="management-shell__screen">
       <slot />

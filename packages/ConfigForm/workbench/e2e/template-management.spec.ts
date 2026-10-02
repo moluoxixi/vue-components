@@ -14,12 +14,11 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 async function openProjectCreation(page: Page): Promise<Locator> {
-  const projects = page.getByRole('region', { name: 'Projects', exact: true })
-  await expect(projects).toBeVisible()
-  const trigger = projects.getByRole('button', { name: 'New project', exact: true })
-  await expect(trigger).toBeVisible()
-  await trigger.click()
-  const workspace = page.getByRole('main', { name: 'Create project', exact: true })
+  // Template catalog coverage now belongs to page creation. A project is
+  // created through the project console first, then its page workspace opens.
+  await createProject(page, 'antd')
+  await openPageCreation(page)
+  const workspace = page.getByRole('main', { name: 'Create page', exact: true })
   await expect(workspace).toBeVisible()
   return workspace
 }
@@ -38,6 +37,39 @@ async function openPageCreation(page: Page): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
+})
+
+test('keeps project creation separate from the page template workspace', async ({ page }) => {
+  const trigger = page.locator('[data-project-create]').first()
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+
+  const dialog = page.locator('.project-creation-dialog:visible')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator('.project-creation-workspace')).toBeVisible()
+  await expect(dialog.locator('.template-creation-workspace')).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Create page', exact: true })).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/projects$/)
+
+  await dialog.getByRole('textbox', { name: 'Project name', exact: true }).fill('Project flow contract')
+  await dialog.locator('.project-creation-adapter').filter({ hasText: 'Element Plus' }).click()
+  await dialog.locator('[data-project-create-submit]').click()
+
+  await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages$/)
+  await expect(page.locator('.page-manager')).toBeVisible()
+  await page.locator('.page-manager__create-actions').getByRole('button', { name: 'New page', exact: true }).click()
+  await expect(page.getByRole('main', { name: 'Create page', exact: true })).toBeVisible()
+  await expect(page.locator('.template-creation-workspace')).toBeVisible()
+})
+
+test('keeps the direct project creation route separate from page creation', async ({ page }) => {
+  await expect(page.locator('.project-manager')).toBeVisible()
+  await page.goto('/#/projects/new')
+
+  await expect(page.locator('.project-creation-workspace')).toBeVisible()
+  await expect(page.locator('.template-creation-workspace')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Create page', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'Project name', exact: true })).toBeVisible()
 })
 
 test('browses, filters, keyboard-selects, and previews the built-in catalog', async ({ page }) => {
@@ -81,7 +113,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   expect(lightResults.violations).toEqual([])
 
   await page.getByRole('button', { name: 'Switch language' }).click()
-  const localizedWorkspace = page.getByRole('main', { name: '创建项目' })
+  const localizedWorkspace = page.getByRole('main', { name: '创建页面' })
   await expect(localizedWorkspace.getByRole('option', { name: /Ant Design Vue 资料表单/ })).toBeVisible()
   await expect(localizedWorkspace.getByText('Registry 要求已满足', { exact: true })).toBeVisible()
   await expectNoHorizontalOverflow(page)
@@ -93,7 +125,6 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
 })
 
 test('creates unique pages through one explicit page workspace and blocks cross-adapter templates', async ({ page }) => {
-  await openProjectCreation(page)
   await createProject(page, 'element')
   const firstPageId = await page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id]')
@@ -118,7 +149,6 @@ test('creates unique pages through one explicit page workspace and blocks cross-
 })
 
 test('creates an Ant Design Vue page as one undoable Project Command', async ({ page }) => {
-  await openProjectCreation(page)
   await createProject(page, 'antd')
   const runtime = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
   const firstPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
@@ -137,14 +167,13 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await expect(runtime.locator('[data-config-node-id]').first()).toHaveAttribute('data-config-node-id', firstPageNodeId!)
 
   await page.getByRole('button', { name: 'Redo', exact: true }).click()
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const pages = page.getByRole('main', { name: 'Page orchestration', exact: true })
   await expect(pages.locator('.page-manager__row')).toHaveCount(2)
 })
 
 test('restores Topbar and Pages triggers on cancel and leaves page management after success', async ({ page }) => {
-  await openProjectCreation(page)
   await createProject(page, 'element')
   const topbarNewSurface = page.locator('[data-create-trigger="topbar-new-surface"]')
   await topbarNewSurface.click()
@@ -152,9 +181,9 @@ test('restores Topbar and Pages triggers on cancel and leaves page management af
   await workspace.getByRole('button', { name: 'Back to Designer' }).click()
   await expect(topbarNewSurface).toBeFocused()
 
-  await page.getByRole('tab', { name: 'Surfaces' }).click()
+  await page.getByRole('tab', { name: 'Pages' }).click()
   await page.getByRole('button', { name: 'Manage pages' }).click()
-  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const pages = page.getByRole('main', { name: 'Page orchestration', exact: true })
   const newSurface = pages.getByRole('button', { name: 'New page', exact: true })
   await newSurface.click()
 
@@ -172,7 +201,6 @@ test('restores Topbar and Pages triggers on cancel and leaves page management af
 })
 
 test('walks the project, page, and design hierarchy through the URLs', async ({ page }) => {
-  await openProjectCreation(page)
   await createProject(page, 'element')
 
   // Creating a project opens the form designer of its home page.
@@ -180,27 +208,27 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   const projectId = page.url().match(/#\/projects\/([^/]+)\//)![1]
 
   // The designer links up to page management (the desktop entry lives in the
-  // Surfaces panel; the topbar button is the mobile variant).
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  // Pages panel; the topbar button is the mobile variant).
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const pages = page.getByRole('main', { name: 'Page orchestration', exact: true })
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
   // Rows browse first: the page name links to its designer, there is no route
   // column, and no field is editable until the row's edit command is used.
-  await expect(pages.locator('[role="columnheader"]')).toHaveText(['Surface', 'Actions'])
+  await expect(pages.locator('[role="columnheader"]')).toHaveText(['Page', 'Actions'])
   await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
   await expect(pages.locator('.page-manager__link').first()).toBeVisible()
   await pages.getByRole('button', { name: /^Edit / }).first().click()
   await expect(pages.locator('.page-manager__row input').first()).toBeVisible()
-  await expect(pages.locator('input[aria-label^="Surface name"]')).toBeFocused()
+  await expect(pages.locator('input[aria-label^="Page name"]')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
 
   // Both management consoles are one click apart, and the rail marks the active one.
   const rail = page.getByRole('navigation', { name: 'Management' })
-  await expect(rail.getByRole('button', { name: 'Page management', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(rail.getByRole('button', { name: 'Page orchestration', exact: true })).toHaveAttribute('aria-current', 'page')
   await rail.getByRole('button', { name: 'Projects', exact: true }).click()
   const projects = page.getByRole('region', { name: 'Projects', exact: true })
   await expect(projects).toBeVisible()
@@ -208,7 +236,7 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await expect(rail.getByRole('button', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
 
   // The rail reaches page management again without reopening the project by hand.
-  await rail.getByRole('button', { name: 'Page management', exact: true }).click()
+  await rail.getByRole('button', { name: 'Page orchestration', exact: true }).click()
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
@@ -228,7 +256,6 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
 })
 
 test('keeps long Registry diagnostics and the create action visible at 390px', async ({ page }) => {
-  await openProjectCreation(page)
   await createProject(page, 'element')
   await page.setViewportSize({ width: 390, height: 844 })
   await openPageCreation(page)
@@ -369,7 +396,7 @@ for (const visualCase of templateVisualCases) {
         await workspace.getByRole('button', { name: 'More actions', exact: true }).click()
         await page.getByRole('menuitem', { name: 'Switch language', exact: true }).click()
       }
-      workspace = page.getByRole('main', { name: '创建项目' })
+      workspace = page.getByRole('main', { name: '创建页面' })
     }
 
     if (overlay) {
@@ -382,6 +409,7 @@ for (const visualCase of templateVisualCases) {
     }
 
     await expectNoHorizontalOverflow(page)
+    await expect(page.locator('.template-catalog-item[aria-selected="true"] .template-catalog-status').first()).toHaveAttribute('data-status', 'eligible', { timeout: 15_000 })
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     await expect(page).toHaveScreenshot(
       `template-${width}-${palette}-${theme}-${locale}${overlay ? '-drawer' : ''}.png`,
@@ -401,7 +429,7 @@ for (const viewport of [
     if (viewport.width === 390) {
       await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
       await expect(workspace.getByRole('button', { name: 'Catalog', exact: true })).toBeVisible()
-      await expect(workspace.getByRole('button', { name: 'Create project', exact: true })).toBeVisible()
+      await expect(workspace.getByRole('button', { name: 'Create page', exact: true })).toBeVisible()
     }
     else if (viewport.width === 900) {
       await expect(workspace.locator('.template-category-rail')).toBeVisible()

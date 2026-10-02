@@ -44,4 +44,14 @@ describe('management shell', () => {
     expect(wrapper.emitted('select')?.[1]).toEqual(['projects'])
     wrapper.unmount()
   })
+
+  it('uses Element Plus menu selection state for the active console', async () => {
+    const wrapper = mountShell('projects')
+
+    expect(wrapper.get('.management-shell__menu').classes()).toContain('el-menu--vertical')
+    expect(wrapper.get('[data-management-target="projects"]').classes()).toContain('is-active')
+    await wrapper.get('[data-management-target="pages"]').trigger('click')
+    expect(wrapper.get('[data-management-target="pages"]').classes()).toContain('is-active')
+    wrapper.unmount()
+  })
 })

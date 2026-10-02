@@ -12,11 +12,11 @@ async function openAssetManager(page: import('@playwright/test').Page): Promise<
 }
 
 async function openProjectCreation(page: import('@playwright/test').Page): Promise<void> {
-  const workspace = page.getByRole('main', { name: 'Create project', exact: true })
-  if (await workspace.isVisible())
+  const dialog = page.locator('.project-creation-dialog:visible')
+  if (await dialog.isVisible())
     return
-  await page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).first().click()
-  await expect(workspace).toBeVisible()
+  await page.locator('[data-project-create]').first().click()
+  await expect(dialog).toBeVisible()
 }
 
 async function runtimeThemeFontSize(page: import('@playwright/test').Page, selector: string): Promise<string> {

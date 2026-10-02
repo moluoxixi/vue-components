@@ -6,6 +6,11 @@ export type WorkbenchAdapter = 'antd' | 'element'
 export type WorkbenchPalette = 'cyber' | 'glass' | 'ink' | 'morandi'
 export type WorkbenchThemeMode = 'dark' | 'light' | 'system'
 
+const templateNames: Record<WorkbenchAdapter, string> = {
+  antd: 'Ant Design Vue profile form',
+  element: 'Element Plus profile form',
+}
+
 export async function readDownloadText(download: Download): Promise<string> {
   const path = await download.path()
   if (!path)
@@ -13,34 +18,80 @@ export async function readDownloadText(download: Download): Promise<string> {
   return readFile(path, 'utf8')
 }
 
-const templateNames: Record<WorkbenchAdapter, RegExp> = {
-  antd: /Ant Design Vue profile/,
-  element: /Element Plus profile/,
-}
-
 export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
-  const workspace = page.getByRole('main', { name: 'Create project' })
-  const newProject = page.getByRole('button', { name: 'New project', exact: true }).first()
-  // The creation workspace is a lazy route, so a caller may still be on the
-  // projects list when this runs. Wait for either entry point instead of
-  // sampling visibility once.
-  await expect(workspace.or(newProject)).toBeVisible({ timeout: 15_000 })
-  if (!await workspace.isVisible())
+  const dialog = page.locator('.project-creation-dialog:visible')
+  const newProject = page.locator('[data-project-create]').first()
+  if (!await dialog.isVisible()) {
+    await expect(newProject).toBeVisible({ timeout: 15_000 })
     await newProject.click()
-  await expect(workspace).toBeVisible({ timeout: 15_000 })
-  const catalogOpener = workspace.locator('[data-template-catalog-open]')
+  }
+  await expect(dialog).toBeVisible({ timeout: 15_000 })
+
+  await dialog.getByRole('textbox', { name: 'Project name', exact: true }).fill(templateNames[adapter])
+  await dialog.locator('.project-creation-adapter').filter({ hasText: adapter === 'antd' ? 'Ant Design Vue' : 'Element Plus' }).click()
+  const submit = dialog.locator('[data-project-create-submit]')
+  await expect(submit).toBeEnabled({ timeout: 15_000 })
+  await submit.click()
+  await expect(page.locator('.page-manager')).toBeVisible({ timeout: 20_000 })
+
+  // The project starts with a blank home page. Seed a profile page for the
+  // designer-focused scenarios, promote it to home, and remove the seed page
+  // so the helper still exposes one predictable page to each test.
+  await page.locator('.page-manager__create-actions').getByRole('button').click()
+  const pageCreation = page.getByRole('main', { name: 'Create page', exact: true })
+  await pageCreation.locator('.template-workspace-layout').waitFor({ state: 'visible' })
+  await page.waitForFunction(() => {
+    const root = document.querySelector('.template-creation-workspace')
+    if (!root)
+      return false
+    return [root.querySelector('[data-template-catalog-open]'), root.querySelector('.template-catalog-pane')]
+      .some(element => element instanceof HTMLElement && element.offsetParent !== null)
+  })
+  const templateName = adapter === 'antd' ? /Ant Design Vue profile/ : /Element Plus profile/
+  const catalogOpener = pageCreation.locator('[data-template-catalog-open]')
   if (await catalogOpener.isVisible()) {
+    await expect(catalogOpener).toBeVisible()
     await catalogOpener.click()
-    const catalog = page.getByRole('dialog', { name: 'Catalog' })
+    const catalog = page.getByRole('dialog', { name: 'Catalog', exact: true })
     await expect(catalog).toBeVisible()
-    await catalog.getByRole('option', { name: templateNames[adapter] }).click()
+    await catalog.getByRole('option', { name: templateName }).click()
     await expect(catalog).not.toBeVisible()
   }
   else {
-    await workspace.getByRole('option', { name: templateNames[adapter] }).click()
+    await pageCreation.getByRole('option', { name: templateName }).click()
+    const mobileDetails = pageCreation.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' })
+    if (await mobileDetails.isVisible())
+      await mobileDetails.click()
   }
-  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible({ timeout: 15_000 })
-  await workspace.getByRole('button', { name: 'Create project', exact: true }).click()
+  await expect(pageCreation.getByText('Registry requirements met', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await pageCreation.getByRole('button', { name: 'Create page', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+
+  const managePages = page.getByRole('button', { name: 'Manage pages', exact: true })
+  if (await managePages.isVisible()) {
+    await managePages.click()
+  }
+  else {
+    await page.getByRole('tab', { name: 'Pages', exact: true }).click()
+    await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
+  }
+  const pages = page.locator('.page-manager')
+  await expect(pages.locator('.page-manager__row')).toHaveCount(2)
+  const profileRow = pages.locator('.page-manager__row').nth(1)
+  const blankRow = pages.locator('.page-manager__row').nth(0)
+  await profileRow.locator('button[aria-pressed="false"]').click()
+  await expect(profileRow.locator('button[aria-pressed="true"]')).toBeVisible()
+  await blankRow.locator('button.is-danger').click()
+  await pages.getByRole('alert').getByRole('button', { name: /Delete page|删除页面/ }).click()
+  await expect(pages.locator('.page-manager__row')).toHaveCount(1)
+
+  await pages.locator('.page-manager__link').click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+  await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 15_000 })
+
+  // Reopen the persisted project so setup operations do not become part of the
+  // local designer history observed by the interaction scenarios.
+  await page.reload()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 15_000 })
   await expect(page

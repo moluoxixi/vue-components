@@ -3,6 +3,7 @@ import type { ProjectSurfaceAction } from '../../../project'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { SurfaceManagerPage } from '../../../features/pages'
+import { downloadSurfaceTransfer } from '../../../project'
 import {
   useCreationReturnFocus,
   useWorkbenchController,
@@ -72,6 +73,26 @@ function openProjects(): void {
 function runAction(action: ProjectSurfaceAction): void {
   void controller.handleSurfaceAction(action)
 }
+
+async function exportPage(surfaceId: string): Promise<void> {
+  const document = project.value
+  if (!document)
+    return
+  try {
+    const filename = await downloadSurfaceTransfer({
+      document,
+      readEmbedded: input => controller.readEmbeddedResource(input),
+      surfaceId,
+    })
+    ui.showNotice({
+      message: controller.workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
+      tone: 'success',
+    })
+  }
+  catch (error) {
+    ui.notify(error)
+  }
+}
 </script>
 
 <template>
@@ -93,6 +114,7 @@ function runAction(action: ProjectSurfaceAction): void {
       @action="runAction"
       @close="closePages"
       @create-surface="createSurface"
+      @export="exportPage"
       @open-page="openPage"
       @open-project="openProject"
       @open-projects="openProjects"

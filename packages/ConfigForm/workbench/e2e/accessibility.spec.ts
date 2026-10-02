@@ -53,13 +53,14 @@ async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promi
 }
 
 async function openProjectCreation(page: Page): Promise<void> {
-  const workspace = page.getByRole('main', { name: 'Create project', exact: true })
-  if (!await workspace.isVisible()) {
-    const newProject = page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).first()
+  const dialog = page.locator('.project-creation-dialog:visible')
+  if (!await dialog.isVisible()) {
+    const newProject = page.locator('[data-project-create]').first()
     await expect(newProject).toBeVisible({ timeout: 15_000 })
     await newProject.click()
   }
-  await expect(workspace).toBeVisible({ timeout: 15_000 })
+  await expect(dialog).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.el-overlay-dialog').last()).toHaveCSS('opacity', '1')
 }
 
 test.beforeEach(async ({ page }) => {
@@ -68,9 +69,9 @@ test.beforeEach(async ({ page }) => {
 
 test('keeps all palette and resolved-theme combinations accessible', async ({ page }) => {
   await openProjectCreation(page)
-  const creationWorkspace = page.getByRole('main', { name: 'Create project' })
-  await expect(creationWorkspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
-  await expect(creationWorkspace).toHaveAttribute('data-palette', 'ink')
+  const creationDialog = page.locator('.project-creation-dialog:visible')
+  await expect(creationDialog.getByLabel('Project name')).toBeVisible()
+  await expect(creationDialog.locator('.project-creation-workspace')).toHaveAttribute('data-palette', 'ink')
   await expectNoAccessibilityViolations(page, 'new project workspace')
   await createProject(page, 'element')
 

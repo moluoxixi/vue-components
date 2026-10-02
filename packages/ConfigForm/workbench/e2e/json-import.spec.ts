@@ -31,12 +31,11 @@ async function exportJson(
 }
 
 async function openProjectCreation(page: import('@playwright/test').Page): Promise<void> {
-  // Project creation is a project-management action: page management only creates pages.
+  // Import is a project-management action: page management only creates pages.
   await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Projects', exact: true })).toBeVisible()
-  // The command lives in the project-management topbar, not in the list region.
-  await page.getByRole('main').getByRole('button', { name: 'New project', exact: true }).click()
-  await expect(page.getByRole('main', { name: 'Create project' })).toBeVisible()
+  await page.locator('[data-create-trigger="project-manager-import"]').click()
+  await expect(page.locator('.template-creation-workspace')).toBeVisible()
 }
 
 async function openSurfaceCreation(page: import('@playwright/test').Page): Promise<void> {
@@ -69,7 +68,7 @@ test.beforeEach(async ({ page }) => {
 test('round-trips an Element Plus Project JSON export through paste and isolated preview', async ({ page }) => {
   await createProject(page, 'element')
   await setAppearance(page, 'dark', 'ink')
-  await expect(page.locator('.workbench-topbar .revision-state')).toContainText(/v0 · /)
+  await expect(page.locator('.workbench-topbar .revision-state')).toContainText(/v\d+ · /)
   const source = await exportJson(page, 'project')
   const exportedProject = JSON.parse(source)
   expect(exportedProject).toMatchObject({
@@ -99,6 +98,8 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
   expect(axe.violations).toEqual([])
 
   await workspace.getByRole('button', { name: 'Create imported project' }).click()
+  await expect(page.locator('.page-manager')).toBeVisible()
+  await page.locator('.page-manager__link').first().click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await page.getByRole('tab', { name: 'Components', exact: true }).click()
   await expect(page.locator('[data-material-key="element.input"]')).toBeEnabled()
