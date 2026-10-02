@@ -19,6 +19,7 @@ export interface ProjectManagerController {
   deleteProject: (projectId: string) => Promise<boolean>
   duplicateProject: (projectId: string) => Promise<boolean>
   exportProject: (projectId: string) => Promise<string | undefined>
+  exportProjectSource: (projectId: string) => Promise<string | undefined>
   removeProjectImage: (projectId: string) => Promise<boolean>
   renameProject: (projectId: string, name: string) => Promise<boolean>
   setProjectImage: (projectId: string, input: ProjectImageInput) => Promise<boolean>

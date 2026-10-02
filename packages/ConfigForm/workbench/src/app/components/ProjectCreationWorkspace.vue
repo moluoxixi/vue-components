@@ -2,11 +2,9 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { InputInstance } from 'element-plus'
 import type { WorkbenchAdapterId } from '../../adapters'
-import type { ProjectTemplateCatalogEntry } from '../../project'
 import { ArrowLeft, Boxes, FolderKanban, Languages, PanelsTopLeft } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
-import { builtInTemplateCatalogProvider, createTemplateCatalogService } from '../../project'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useWorkbenchController, useWorkbenchUiStore } from '../composables'
 import WorkbenchAppearancePopover from './WorkbenchAppearancePopover.vue'
 
@@ -25,12 +23,9 @@ const emit = defineEmits<{
 const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
 const locale = computed(() => createDesignerLocale(props.locale))
-const catalogService = createTemplateCatalogService([builtInTemplateCatalogProvider])
 const nameInput = useTemplateRef<InputInstance>('nameInput')
 const projectName = ref('')
 const selectedAdapter = ref<WorkbenchAdapterId>('element-plus')
-const templates = shallowRef<ProjectTemplateCatalogEntry[]>([])
-const loading = ref(true)
 const submitting = ref(false)
 let disposed = false
 
@@ -41,41 +36,19 @@ const adapterOptions = [
 
 const normalizedName = computed(() => projectName.value.trim())
 const pending = computed(() => submitting.value || controller.busy.value)
-const canCreate = computed(() => Boolean(normalizedName.value) && !loading.value && !pending.value)
+const canCreate = computed(() => Boolean(normalizedName.value) && !pending.value)
 
 function focusName(): void {
   nameInput.value?.focus()
 }
 
-async function loadBlankTemplates(): Promise<void> {
-  loading.value = true
-  try {
-    const result = await catalogService.load()
-    if (!disposed)
-      templates.value = result.templates.filter(template => template.manifest.category === 'blank' && template.surface.kind === 'page')
-  }
-  catch (error) {
-    if (!disposed)
-      ui.notify(error)
-  }
-  finally {
-    if (!disposed)
-      loading.value = false
-  }
-}
-
 async function createProject(): Promise<void> {
   if (!canCreate.value)
     return
-  const template = templates.value.find(candidate => candidate.manifest.adapter === selectedAdapter.value)
-  if (!template) {
-    ui.notify(locale.value.t('projectCreate.templateUnavailable', 'The selected adapter is unavailable.'))
-    return
-  }
   submitting.value = true
   ui.clearMessage()
   try {
-    const created = await controller.createProjectFromTemplate(template, normalizedName.value)
+    const created = await controller.createProject(normalizedName.value, selectedAdapter.value)
     if (created && !disposed)
       emit('created')
   }
@@ -86,7 +59,6 @@ async function createProject(): Promise<void> {
 }
 
 onMounted(() => {
-  void loadBlankTemplates()
   if (!props.embedded)
     focusName()
 })

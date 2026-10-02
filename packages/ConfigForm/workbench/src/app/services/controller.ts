@@ -11,6 +11,7 @@ import type {
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
   ProjectPersistenceSnapshot,
+  ProjectSourceInput,
 } from '../../project'
 import type { StudioLayerEntry } from '../../studio'
 import type {
@@ -26,10 +27,15 @@ import {
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef } from 'vue'
+import { loadWorkbenchAdapter } from '../../adapters'
+
 import {
   createWorkbenchLocaleOptions,
 } from '../../locale'
-
+import {
+  createProjectSourceInput,
+  downloadGeneratedSourceArchive,
+} from '../../project'
 import {
   createWorkbenchDesignSession,
   createWorkbenchExportService,
@@ -166,6 +172,107 @@ export function createWorkbenchController(
     return projectSession.value?.readEmbedded(input)
       ?? await repository.value?.readEmbedded(input)
   }
+
+  async function sourceInputForProject(
+    projectId: string,
+    surfaceId?: string,
+  ): Promise<ProjectSourceInput> {
+    const activeRepository = repository.value
+    if (!activeRepository)
+      throw new TypeError('Project repository is unavailable.')
+    const current = currentProject.value?.id === projectId ? currentProject.value : undefined
+    if (current && currentAdapter.value) {
+      const source = createProjectSourceInput({
+        document: current,
+        editVersion: projectSessionSnapshot.value?.editVersion,
+        registry: currentAdapter.value.registrySnapshot,
+        componentResolver: currentAdapter.value.sourceComponentResolver,
+        surfaceId,
+        readEmbedded: async (request) => {
+          const bytes = await readEmbeddedResource(request)
+          return bytes
+            ? { success: true, data: Uint8Array.from(bytes), diagnostics: [] }
+            : {
+                success: false,
+                diagnostics: [{
+                  code: 'resource_missing',
+                  message: `Embedded Resource "${request.resourceId}" is unavailable.`,
+                  resourceId: request.resourceId,
+                }],
+              }
+        },
+      })
+      return source
+    }
+    const persisted = await activeRepository.get(projectId)
+    if (!persisted)
+      throw new TypeError(`Project does not exist: ${projectId}`)
+    const adapterId = persisted.document.registryLock.adapter
+    if (adapterId !== 'antd-vue' && adapterId !== 'element-plus')
+      throw new TypeError(`Unsupported Workbench adapter: ${adapterId}`)
+    const adapter = await loadWorkbenchAdapter(adapterId)
+    return createProjectSourceInput({
+      document: persisted.document,
+      editVersion: persisted.repositoryRevision,
+      registry: adapter.registrySnapshot,
+      componentResolver: adapter.sourceComponentResolver,
+      surfaceId,
+      readEmbedded: async (request) => {
+        const bytes = await activeRepository.readEmbedded(request)
+        return bytes
+          ? { success: true, data: Uint8Array.from(bytes), diagnostics: [] }
+          : {
+              success: false,
+              diagnostics: [{
+                code: 'resource_missing',
+                message: `Embedded Resource "${request.resourceId}" is unavailable.`,
+                resourceId: request.resourceId,
+              }],
+            }
+      },
+    })
+  }
+
+  async function exportSource(
+    projectId: string,
+    surfaceId?: string,
+  ): Promise<string | undefined> {
+    const activeRepository = repository.value
+    if (!activeRepository || busy.value)
+      return undefined
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const source = await sourceInputForProject(projectId, surfaceId)
+      const filename = await downloadGeneratedSourceArchive({
+        document: source.document,
+        source: source.source,
+        ...(surfaceId ? { surfaceId } : {}),
+      })
+      ui.showNotice({
+        message: workbenchLocale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
+        tone: 'success',
+      })
+      return filename
+    }
+    catch (error) {
+      ui.notify(error)
+      return undefined
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function exportProjectSource(projectId: string): Promise<string | undefined> {
+    return await exportSource(projectId)
+  }
+
+  async function exportSurfaceSource(surfaceId: string): Promise<string | undefined> {
+    const projectId = currentProject.value?.id
+    return projectId ? await exportSource(projectId, surfaceId) : undefined
+  }
+
   const previewState = computed(() => {
     if (configError.value || previewSession.error.value) {
       return {
@@ -344,6 +451,7 @@ export function createWorkbenchController(
     createFromJsonImport: creationCommands.createFromJsonImport,
     createNamedCheckpoint: persistenceCommands.createNamedCheckpoint,
     createSurfaceFromTemplate: creationCommands.createSurfaceFromTemplate,
+    createProject: creationCommands.createProject,
     createProjectFromTemplate: creationCommands.createProjectFromTemplate,
     deleteProject: projectCommands.deleteProject,
     duplicateProject: creationCommands.duplicateProject,
@@ -368,6 +476,8 @@ export function createWorkbenchController(
     readEmbeddedResource,
     prepareJsonImport: creationCommands.prepareJsonImport,
     exportProject: creationCommands.exportProject,
+    exportProjectSource,
+    exportSurfaceSource,
     registry,
     repositoryRevision,
     recoveryDrafts,

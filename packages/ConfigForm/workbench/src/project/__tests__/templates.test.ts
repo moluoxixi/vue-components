@@ -2,6 +2,7 @@ import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/conf
 import { describe, expect, it } from 'vitest'
 import {
   getBuiltInTemplateSeed,
+  instantiateEmptyProject,
   instantiateTemplateSurface,
   parseProjectTemplateSeed,
 } from '../templates'
@@ -16,6 +17,22 @@ function createProject(templateId: 'antd-profile' | 'element-profile') {
 }
 
 describe('project templates', () => {
+  it('creates a project shell without fabricating a first Page', () => {
+    const empty = instantiateEmptyProject({
+      id: 'empty-project',
+      name: 'Empty project',
+      registryLock: createRegistryLockFixture(),
+    })
+
+    expect(empty).toMatchObject({
+      id: 'empty-project',
+      name: 'Empty project',
+      homeSurfaceId: '',
+      surfaceOrder: [],
+      surfacesById: {},
+    })
+  })
+
   it('creates deterministic Element Plus and Ant Design Vue template fixtures', () => {
     const element = createProject('element-profile')
     const antd = createProject('antd-profile')

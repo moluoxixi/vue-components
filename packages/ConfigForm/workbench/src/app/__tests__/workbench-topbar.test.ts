@@ -38,11 +38,12 @@ describe('workbench topbar', () => {
     await trigger.trigger('click')
     const overlays = overlayRoot()
     const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
-    expect(items).toHaveLength(4)
+    expect(items).toHaveLength(5)
     expect(overlays.find('[data-export-menu]').exists()).toBe(true)
     expect(items.map(item => item.text())).toEqual([
-      'Export raw Vue source',
+      'Export project source',
       'Export ConfigForm bindings',
+      'Export current page source',
       'Export project JSON',
       'Export current Surface JSON',
     ])
@@ -54,12 +55,12 @@ describe('workbench topbar', () => {
     expect(document.activeElement).toBe(trigger.element)
 
     await trigger.trigger('click')
-    await overlays.findAll('[data-export-menu] [role="menuitem"]')[2]!.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[3]!.trigger('click')
     expect(wrapper.emitted('export')).toEqual([['config'], ['project-json']])
     expect(document.activeElement).toBe(trigger.element)
 
     await trigger.trigger('click')
-    await overlays.findAll('[data-export-menu] [role="menuitem"]')[3]!.trigger('click')
+    await overlays.findAll('[data-export-menu] [role="menuitem"]')[4]!.trigger('click')
     expect(wrapper.emitted('export')).toEqual([['config'], ['project-json'], ['surface-json']])
     expect(document.activeElement).toBe(trigger.element)
 

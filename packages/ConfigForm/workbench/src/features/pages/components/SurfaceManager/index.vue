@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ArrowUpRight,
   Check,
+  Code2,
   Copy,
   Download,
   FilePlus2,
@@ -158,6 +159,10 @@ function previewImage(page: typeof surfaces.value[number]): string {
 
 function exportPage(surfaceId: string): void {
   emit('export', surfaceId)
+}
+
+function exportPageSource(surfaceId: string): void {
+  emit('exportSource', surfaceId)
 }
 </script>
 
@@ -318,6 +323,9 @@ function exportPage(surfaceId: string): void {
           </ElButton>
           <ElButton native-type="button" text circle :title="locale.t('pageManager.export', 'Export page')" :aria-label="locale.t('pageManager.exportAria', 'Export {name}', { name: page.name })" :disabled="busy" @click="exportPage(page.id)">
             <Download :size="15" aria-hidden="true" />
+          </ElButton>
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.exportSource', 'Export page source')" :aria-label="locale.t('pageManager.exportSourceAria', 'Export source for {name}', { name: page.name })" :disabled="busy" @click="exportPageSource(page.id)">
+            <Code2 :size="15" aria-hidden="true" />
           </ElButton>
           <ElButton v-if="page.kind !== 'page'" native-type="button" text circle :title="locale.t('surface.presentation', 'Page overlay presentation')" :aria-label="locale.t('surface.presentationFor', 'Edit presentation for {name}', { name: page.name })" :aria-expanded="editingPresentationId === page.id" :disabled="busy" @click="editingPresentationId = editingPresentationId === page.id ? undefined : page.id">
             <SlidersHorizontal :size="15" aria-hidden="true" />

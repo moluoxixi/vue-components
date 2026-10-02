@@ -163,8 +163,9 @@ function chooseExport(command: WorkbenchExportCommand): void {
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="export-menu-popover" data-export-menu>
-              <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export raw Vue source') }}</span></ElDropdownItem>
+              <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export project source') }}</span></ElDropdownItem>
               <ElDropdownItem command="config"><Braces :size="15" aria-hidden="true" /><span>{{ locale.t('export.config', 'Export ConfigForm bindings') }}</span></ElDropdownItem>
+              <ElDropdownItem command="surface-source"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('export.surfaceSource', 'Export current page source') }}</span></ElDropdownItem>
               <ElDropdownItem command="project-json" divided><FileJson2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.projectJson', 'Export project JSON') }}</span></ElDropdownItem>
               <ElDropdownItem command="surface-json"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('export.surfaceJson', 'Export current Surface JSON') }}</span></ElDropdownItem>
             </ElDropdownMenu>

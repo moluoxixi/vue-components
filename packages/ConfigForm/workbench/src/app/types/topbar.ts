@@ -4,7 +4,7 @@ import type { WorkbenchLocaleId } from '../../locale'
 import type { WorkbenchPaletteFamily, WorkbenchThemePreference } from './appearance'
 
 export type WorkbenchExportMode = 'source' | 'config'
-export type WorkbenchExportCommand = WorkbenchExportMode | 'project-json' | 'surface-json'
+export type WorkbenchExportCommand = WorkbenchExportMode | 'project-json' | 'surface-json' | 'surface-source'
 
 export interface WorkbenchTopbarProps {
   project?: ReadonlyProjectDocument

@@ -8,12 +8,14 @@ import type {
 
 /** The single deterministic walker for persisted cross-asset and node references. */
 export function findProjectReferences(document: Readonly<ProjectDocument>): ProjectReference[] {
-  const references: ProjectReference[] = [{
-    sourceKind: 'project-home',
-    targetKind: 'surface',
-    targetId: document.homeSurfaceId,
-    path: ['homeSurfaceId'],
-  }]
+  const references: ProjectReference[] = document.homeSurfaceId
+    ? [{
+        sourceKind: 'project-home',
+        targetKind: 'surface',
+        targetId: document.homeSurfaceId,
+        path: ['homeSurfaceId'],
+      }]
+    : []
   document.surfaceOrder.forEach((surfaceId) => {
     const surface = document.surfacesById[surfaceId]
     if (surface)

@@ -84,9 +84,7 @@ export function createWorkbenchProjectBinding(options: {
     const page = (preferredId ? document.surfacesById[preferredId] : undefined)
       ?? document.surfacesById[document.homeSurfaceId]
       ?? document.surfacesById[document.surfaceOrder[0]!]
-    if (!page)
-      throw new TypeError('PROJECT_PAGE_UNKNOWN: An editor session requires at least one page.')
-    return page.id
+    return page?.id ?? ''
   }
 
   function acceptProjectSnapshot(
@@ -104,6 +102,12 @@ export function createWorkbenchProjectBinding(options: {
     currentSurfaceId.value = nextSurfaceId
     projectedSurfaceId = nextSurfaceId
     exportService.sync(snapshot)
+    if (!nextSurfaceId) {
+      configError.value = ''
+      designSession.clear()
+      previewSession.clear()
+      return
+    }
     if (!modelChanged)
       return
 
@@ -290,14 +294,12 @@ export function createWorkbenchProjectBinding(options: {
     const page = (surfaceId ? document.surfacesById[surfaceId] : undefined)
       ?? document.surfacesById[document.homeSurfaceId]
       ?? document.surfacesById[document.surfaceOrder[0]!]
-    if (!page)
-      return
     const session = createProjectEditorSession({
       project,
       registry: adapter.componentRegistry,
       repository: activeRepository,
     })
-    await bindProjectSession(session, page.id, activeRepository, () => {
+    await bindProjectSession(session, page?.id ?? '', activeRepository, () => {
       previewSession.clear()
       configError.value = ''
       currentAdapter.value = adapter

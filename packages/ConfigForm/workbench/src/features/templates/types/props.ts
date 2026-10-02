@@ -10,5 +10,7 @@ export interface TemplateCreationWorkspaceProps {
   canClose: boolean
   initialMode?: 'json' | 'template'
   locale?: DesignerLocaleOptions
+  /** User-facing page kind filter; `page` is presented as a Form. */
+  surfaceKind?: 'page' | 'dialog' | 'drawer'
   target: TemplateCreationTarget
 }

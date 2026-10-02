@@ -8,13 +8,14 @@ import type {
   DownloadSourceFileInput,
   DownloadSurfaceTransferInput,
   SourceArchiveInput,
+  StructuredSourceArchiveInput,
 } from '../types'
 import {
   createProjectTransferDocument,
   createSurfaceTransferDocument,
 } from '../../import'
 import { safeProjectSlug } from '../../utils'
-import { createSourceArchive } from './archive'
+import { createSourceArchive, createStructuredSourceArchive } from './archive'
 import { sourceFileBytes } from './file-content'
 
 function downloadBlob(blob: Blob, filename: string): string {
@@ -82,4 +83,11 @@ async function downloadArchive(input: SourceArchiveInput, data: Uint8Array): Pro
 
 export async function downloadSourceArchive(input: SourceArchiveInput): Promise<string> {
   return downloadArchive(input, await createSourceArchive(input))
+}
+
+/** Download the copy-friendly project/page directory layout. */
+export async function downloadStructuredSourceArchive(
+  input: StructuredSourceArchiveInput,
+): Promise<string> {
+  return downloadArchive(input, await createStructuredSourceArchive(input))
 }

@@ -1,7 +1,7 @@
 import type { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import type { ProjectDocument, ProjectEmbeddedResourceWrite, ProjectRepository } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
-import type { WorkbenchAdapter } from '../../adapters'
+import type { WorkbenchAdapter, WorkbenchAdapterId } from '../../adapters'
 import type {
   ConfigImportTarget,
   PrepareConfigImportResult,
@@ -15,6 +15,7 @@ import {
   analyzeTemplateEligibility,
   createProjectTransferDocument,
   downloadProjectTransfer,
+  instantiateEmptyProject,
   instantiateTemplateProject,
   instantiateTemplateSurface,
   nextProjectSurfaceId,
@@ -124,6 +125,49 @@ export function createWorkbenchCreationCommands(options: {
         throw new TypeError(eligibility.diagnostics[0]?.message ?? 'Template requirements do not match this Registry.')
       const project = instantiateTemplateProject(template, {
         name,
+        registryLock: adapter.componentRegistry.lock,
+      })
+      return await persistPreparedProject(project, adapter, activeRepository)
+    }
+    catch (error) {
+      ui.notify(error)
+      return false
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function createProject(
+    name: string,
+    adapterId: WorkbenchAdapterId,
+  ): Promise<boolean> {
+    const activeRepository = repository.value
+    const capturedProjectId = currentProject.value?.id
+    const capturedContentHash = projectSessionSnapshot.value?.contentHash
+    if (!activeRepository || busy.value)
+      return false
+    if (currentProject.value && hasUnsavedChanges.value) {
+      ui.notify(workbenchLocale.value.t(
+        'projectCreate.blocked',
+        'Save or resolve the current project before creating another project.',
+      ))
+      return false
+    }
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const adapter = await loadWorkbenchAdapter(adapterId)
+      if (
+        isDisposed()
+        || repository.value !== activeRepository
+        || currentProject.value?.id !== capturedProjectId
+        || projectSessionSnapshot.value?.contentHash !== capturedContentHash
+      ) {
+        return false
+      }
+      const project = instantiateEmptyProject({
+        name: name.trim(),
         registryLock: adapter.componentRegistry.lock,
       })
       return await persistPreparedProject(project, adapter, activeRepository)
@@ -342,6 +386,7 @@ export function createWorkbenchCreationCommands(options: {
 
   return {
     createFromJsonImport,
+    createProject,
     duplicateProject,
     exportProject,
     createSurfaceFromTemplate,

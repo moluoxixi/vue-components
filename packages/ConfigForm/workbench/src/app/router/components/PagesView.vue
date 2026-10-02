@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ProjectSurfaceAction } from '../../../project'
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { TemplateCreationWorkspace } from '../../components'
 import { SurfaceManagerPage } from '../../../features/pages'
 import { downloadSurfaceTransfer } from '../../../project'
 import {
@@ -11,7 +12,6 @@ import {
   useWorkbenchUiStore,
 } from '../../composables'
 import {
-  pageCreatePath,
   pageDesignPath,
   projectPagesPath,
   projectsPath,
@@ -23,6 +23,8 @@ const ui = useWorkbenchUiStore()
 const router = useRouter()
 const nav = useWorkbenchManagementNav()
 const project = computed(() => controller.currentProject.value)
+const pageCreationOpen = ref(false)
+const pageCreationKind = ref<'page' | 'dialog' | 'drawer'>('page')
 
 useCreationReturnFocus()
 
@@ -49,11 +51,22 @@ function createSurface(): void {
   const projectId = project.value?.id
   if (!projectId)
     return
+  pageCreationKind.value = 'page'
+  pageCreationOpen.value = true
   ui.setCreationOrigin({
     focusKey: 'page-manager-new-surface',
     path: router.currentRoute.value.fullPath,
   })
-  void router.push(pageCreatePath(projectId))
+}
+
+async function createdPage(): Promise<void> {
+  pageCreationOpen.value = false
+  ui.clearCreationOrigin()
+  await nextTick()
+  const projectId = project.value?.id
+  const surfaceId = controller.currentSurfaceId.value
+  if (projectId && surfaceId)
+    await router.push(pageDesignPath(projectId, surfaceId))
 }
 
 /**
@@ -93,6 +106,10 @@ async function exportPage(surfaceId: string): Promise<void> {
     ui.notify(error)
   }
 }
+
+async function exportPageSource(surfaceId: string): Promise<void> {
+  await controller.exportSurfaceSource(surfaceId)
+}
 </script>
 
 <template>
@@ -115,6 +132,7 @@ async function exportPage(surfaceId: string): Promise<void> {
       @close="closePages"
       @create-surface="createSurface"
       @export="exportPage"
+      @export-source="exportPageSource"
       @open-page="openPage"
       @open-project="openProject"
       @open-projects="openProjects"
@@ -129,5 +147,41 @@ async function exportPage(surfaceId: string): Promise<void> {
         {{ controller.workbenchLocale.value.t('status.loading', 'Loading') }}
       </p>
     </main>
+    <ElDialog
+      v-model="pageCreationOpen"
+      class="page-creation-dialog"
+      width="min(1180px, calc(100vw - 28px))"
+      top="3vh"
+      append-to="#workbench-overlays"
+      destroy-on-close
+      :close-on-click-modal="false"
+      :close-on-press-escape="!controller.busy.value"
+      :show-close="!controller.busy.value"
+      :title="controller.workbenchLocale.value.t('pages.createTitle', 'Create page')"
+    >
+      <div class="page-creation-dialog__toolbar">
+        <span>{{ controller.workbenchLocale.value.t('pages.kindLabel', 'Page type') }}</span>
+        <ElSegmented
+          v-model="pageCreationKind"
+          :disabled="controller.busy.value"
+          :options="[
+            { label: controller.workbenchLocale.value.t('pages.kind.form', 'Form'), value: 'page' },
+            { label: controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog'), value: 'dialog' },
+            { label: controller.workbenchLocale.value.t('pages.kind.drawer', 'Drawer'), value: 'drawer' },
+          ]"
+          :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')"
+        />
+      </div>
+      <TemplateCreationWorkspace
+        :can-close="true"
+        :initial-mode="'template'"
+        :locale="controller.localeOptions.value"
+        :surface-kind="pageCreationKind"
+        :target="'surface'"
+        @close="pageCreationOpen = false"
+        @created="createdPage"
+        @toggle-locale="ui.toggleLocale"
+      />
+    </ElDialog>
   </ManagementShell>
 </template>

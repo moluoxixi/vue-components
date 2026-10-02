@@ -80,6 +80,30 @@ export function instantiateTemplateProject(
   })
 }
 
+/** Build the project shell used by the project manager before its first page exists. */
+export function instantiateEmptyProject(input: {
+  id?: string
+  name: string
+  registryLock: RegistryLock
+  identityFactory?: ProjectIdentityFactory
+}): ProjectDocument {
+  const factory = input.identityFactory ?? DEFAULT_PROJECT_IDENTITY_FACTORY
+  return assertProjectDocument({
+    version: PROJECT_DOCUMENT_VERSION,
+    id: input.id ?? factory.create('project', input.name),
+    name: input.name,
+    homeSurfaceId: '',
+    surfaceOrder: [],
+    surfacesById: {},
+    datasetOrder: [],
+    datasetsById: {},
+    resources: {},
+    theme: { version: PROJECT_THEME_VERSION },
+    registryLock: structuredClone(input.registryLock),
+    settings: {},
+  })
+}
+
 function instantiateTemplateSurfacePreviewProject(
   template: ProjectTemplateCatalogEntry,
   registryLock: RegistryLock,

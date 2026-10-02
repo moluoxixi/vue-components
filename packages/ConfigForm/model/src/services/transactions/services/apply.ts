@@ -200,6 +200,8 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       assertInsertIndex(index, document.surfaceOrder.length, 'PROJECT_SURFACE_INDEX_INVALID')
       document.surfacesById[surface.id] = surface
       document.surfaceOrder.splice(index, 0, surface.id)
+      if (!document.homeSurfaceId && surface.kind === 'page')
+        document.homeSurfaceId = surface.id
       return {
         inverse: [{ type: 'surface.remove', surfaceId: surface.id }],
         change: { project: true, surfaceIds: new Set([surface.id]), nodeChanges: insertedGraphChanges(surface) },
@@ -223,6 +225,12 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       const index = document.surfaceOrder.indexOf(operation.surfaceId)
       document.surfaceOrder.splice(index, 1)
       delete document.surfacesById[operation.surfaceId]
+      if (document.homeSurfaceId === operation.surfaceId) {
+        document.homeSurfaceId = document.surfaceOrder
+          .map(surfaceId => document.surfacesById[surfaceId])
+          .find(surface => surface?.kind === 'page')
+          ?.id ?? ''
+      }
       return {
         inverse: [{ type: 'surface.add', surface: clone(surface), index }],
         change: { project: true, surfaceIds: new Set([operation.surfaceId]), nodeChanges: removedGraphChanges(surface) },

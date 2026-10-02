@@ -487,8 +487,10 @@ export const projectDocumentSchema: z.ZodType<ProjectDocument> = z.object({
   version: z.literal(PROJECT_DOCUMENT_VERSION),
   id: identifierSchema,
   name: displayNameSchema,
-  homeSurfaceId: identifierSchema,
-  surfaceOrder: z.array(identifierSchema).min(1),
+  // An empty project is valid while the user is choosing its first page.
+  // `''` is the persisted sentinel for a project without a home page.
+  homeSurfaceId: z.union([identifierSchema, z.literal('')]),
+  surfaceOrder: z.array(identifierSchema),
   surfacesById: z.record(identifierSchema, projectSurfaceSchema),
   datasetOrder: z.array(identifierSchema),
   datasetsById: z.record(identifierSchema, projectDatasetSchema),
@@ -1057,17 +1059,22 @@ function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.Refi
 }
 
 function validateProjectDocumentInvariants(document: ProjectDocument, context: z.RefinementCtx): void {
-  validateOrderMapBijection(document.surfaceOrder, document.surfacesById, context, 'surfaceOrder', 'surfacesById', true)
+  validateOrderMapBijection(document.surfaceOrder, document.surfacesById, context, 'surfaceOrder', 'surfacesById', false)
   validateOrderMapBijection(document.datasetOrder, document.datasetsById, context, 'datasetOrder', 'datasetsById', false)
   Object.entries(document.resources).forEach(([key, resource]) => {
     if (key !== resource.id)
       issue(context, `Resource map key must equal resource id: ${key} != ${resource.id}.`, ['resources', key, 'id'])
   })
-  const home = document.surfacesById[document.homeSurfaceId]
-  if (!home) {
+  const home = document.homeSurfaceId ? document.surfacesById[document.homeSurfaceId] : undefined
+  const pageCount = document.surfaceOrder.filter(id => document.surfacesById[id]?.kind === 'page').length
+  if (document.surfaceOrder.length === 0) {
+    if (document.homeSurfaceId)
+      issue(context, 'An empty project cannot declare a home Surface.', ['homeSurfaceId'])
+  }
+  else if (document.homeSurfaceId && !home) {
     issue(context, `Home Surface does not exist: ${document.homeSurfaceId}.`, ['homeSurfaceId'])
   }
-  else if (home.kind !== 'page') {
+  else if (home && home.kind !== 'page') {
     issue(context, 'Home Surface must be a Page.', ['homeSurfaceId'], {
       code: 'invalid_surface_kind',
       surfaceId: home.id,
@@ -1075,9 +1082,8 @@ function validateProjectDocumentInvariants(document: ProjectDocument, context: z
     })
   }
 
-  const pageCount = document.surfaceOrder.filter(id => document.surfacesById[id]?.kind === 'page').length
-  if (pageCount === 0)
-    issue(context, 'Project must contain at least one Page Surface.', ['surfaceOrder'])
+  if (pageCount === 0 && document.homeSurfaceId)
+    issue(context, 'A project home Surface must be a Page.', ['homeSurfaceId'])
   const routes = new Set<string>()
   document.surfaceOrder.forEach((surfaceId) => {
     const surface = document.surfacesById[surfaceId]

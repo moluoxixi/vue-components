@@ -49,6 +49,8 @@ export function createWorkbenchSurfaceCommands(options: {
     if (!Object.hasOwn(candidate.surfacesById, surface.id)) {
       candidate.surfaceOrder.push(surface.id)
       candidate.surfacesById[surface.id] = structuredClone(surface)
+      if (!candidate.homeSurfaceId && surface.kind === 'page')
+        candidate.homeSurfaceId = surface.id
     }
     preflightPreparedProject(candidate, adapter.registrySnapshot)
     const currentProjection = structuredClone(candidate) as ProjectDocument
@@ -57,6 +59,7 @@ export function createWorkbenchSurfaceCommands(options: {
       id,
       candidate.surfacesById[id],
     ]))
+    currentProjection.homeSurfaceId = current.homeSurfaceId
     currentProjection.datasetOrder = [...current.datasetOrder]
     currentProjection.datasetsById = Object.fromEntries(current.datasetOrder.map(id => [
       id,

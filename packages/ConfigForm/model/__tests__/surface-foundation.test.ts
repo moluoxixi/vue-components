@@ -172,6 +172,25 @@ describe('projectDocument v8 and SurfaceGraph v3', () => {
     expect(parseProjectDocument(removed)).toMatchObject({ success: false })
   })
 
+  it('accepts an empty project shell and assigns its first Page as home', () => {
+    const empty = documentFixture({ homeSurfaceId: '', surfaceOrder: [], surfacesById: {} })
+    expect(parseProjectDocument(empty)).toMatchObject({ success: true })
+    expect(createProjectDomainEngine({ document: createProjectSnapshot(empty) }).snapshot.document.homeSurfaceId).toBe('')
+
+    const engine = createProjectDomainEngine({ document: createProjectSnapshot(empty) })
+    const result = engine.execute({
+      id: 'add-first-page',
+      label: 'Add first Page',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{ type: 'surface.add', surface: pageSurface() }],
+      }],
+    })
+
+    expect(result.changed).toBe(true)
+    expect(result.snapshot.document).toMatchObject({ homeSurfaceId: 'home', surfaceOrder: ['home'] })
+  })
+
   it('round-trips field-level required and rejects stale or mixed validation contracts', () => {
     const current = documentFixture({
       surfacesById: {

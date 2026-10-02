@@ -235,6 +235,12 @@ function moveDesignerLayer(
 }
 
 async function handleExportCommand(command: WorkbenchExportCommand): Promise<void> {
+  if (command === 'surface-source') {
+    const surfaceId = currentSurface.value?.id
+    if (surfaceId)
+      await controller.exportSurfaceSource(surfaceId)
+    return
+  }
   if (command === 'source' || command === 'config') {
     openExportPreview(command)
     return

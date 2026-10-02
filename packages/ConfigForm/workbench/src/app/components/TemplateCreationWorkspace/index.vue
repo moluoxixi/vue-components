@@ -94,6 +94,8 @@ function templateDescription(template: ProjectTemplateCatalogEntry): string {
 const filteredTemplates = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase()
   return templates.value.filter((template) => {
+    if (props.surfaceKind && template.surface.kind !== props.surfaceKind)
+      return false
     if (category.value !== 'all' && template.manifest.category !== category.value)
       return false
     if (providerId.value !== 'all' && template.providerId !== providerId.value)
@@ -109,10 +111,18 @@ const filteredTemplates = computed(() => {
 
 const creationTitle = computed(() => props.target === 'project'
   ? locale.value.t('template.createProject', 'Create project')
-  : locale.value.t('template.createSurface', 'Create page'))
+  : props.surfaceKind === 'dialog'
+    ? locale.value.t('pages.createDialog', 'Create dialog')
+    : props.surfaceKind === 'drawer'
+      ? locale.value.t('pages.createDrawer', 'Create drawer')
+      : locale.value.t('pages.createForm', 'Create form page'))
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('template.createProjectAction', 'Create project')
-  : locale.value.t('template.createSurfaceAction', 'Create page'))
+  : props.surfaceKind === 'dialog'
+    ? locale.value.t('pages.createDialogAction', 'Create dialog')
+    : props.surfaceKind === 'drawer'
+      ? locale.value.t('pages.createDrawerAction', 'Create drawer')
+      : locale.value.t('pages.createFormAction', 'Create form page'))
 const createUnavailableReason = computed(() => {
   if (loadingPreview.value)
     return locale.value.t('template.checkingEligibility', 'Checking Registry requirements')
@@ -338,7 +348,7 @@ async function loadCatalog(): Promise<void> {
 }
 
 watch(
-  () => [selectedId.value, props.target, controller.currentProject.value?.registryLock.fingerprint],
+  () => [selectedId.value, props.target, props.surfaceKind, controller.currentProject.value?.registryLock.fingerprint],
   () => void prepareSelectedTemplate(),
 )
 

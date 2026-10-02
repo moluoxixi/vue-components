@@ -4,6 +4,7 @@ import type { ProjectSummary } from '@moluoxixi/config-form-model'
 import type { ProjectImageInput, ProjectManagerEmits, ProjectManagerProps } from './types'
 import {
   Copy,
+  Code2,
   Database,
   Download,
   FileJson2,
@@ -178,6 +179,10 @@ async function runAction(command: string, project: ProjectSummary): Promise<void
     await controller.exportProject(project.id)
     return
   }
+  if (command === 'export-source') {
+    await controller.exportProjectSource(project.id)
+    return
+  }
   if (command === 'remove-image') {
     await controller.removeProjectImage(project.id)
     return
@@ -306,6 +311,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
                   <ElDropdownItem command="rename"><Pencil :size="15" aria-hidden="true" />{{ locale.t('projects.rename', 'Rename') }}</ElDropdownItem>
                   <ElDropdownItem command="duplicate"><Copy :size="15" aria-hidden="true" />{{ locale.t('projects.duplicate', 'Duplicate') }}</ElDropdownItem>
                   <ElDropdownItem command="export"><Download :size="15" aria-hidden="true" />{{ locale.t('projects.export', 'Export project') }}</ElDropdownItem>
+                  <ElDropdownItem command="export-source"><Code2 :size="15" aria-hidden="true" />{{ locale.t('projects.exportSource', 'Export project source') }}</ElDropdownItem>
                   <ElDropdownItem v-if="project.projectImage" command="remove-image"><Image :size="15" aria-hidden="true" />{{ locale.t('projects.removeImage', 'Remove image') }}</ElDropdownItem>
                   <ElDropdownItem command="delete" divided><Trash2 :size="15" aria-hidden="true" />{{ locale.t('projects.delete', 'Delete') }}</ElDropdownItem>
                 </ElDropdownMenu>

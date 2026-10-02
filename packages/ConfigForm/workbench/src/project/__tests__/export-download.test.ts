@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
 
+import { strFromU8, unzipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  createStructuredSourceArchive,
   downloadProjectTransfer,
   downloadSourceFile,
+  downloadStructuredSourceArchive,
   downloadSurfaceTransfer,
   sourceFileBlob,
+  sourceSurfaceDirectory,
 } from '../export'
 import { createProjectDocumentFixture } from './fixtures'
 
@@ -32,6 +36,66 @@ afterEach(() => {
 })
 
 describe('export downloads', () => {
+  it('downloads a project source archive with views, components, and assets', async () => {
+    const download = stubBlobDownload()
+    await expect(downloadStructuredSourceArchive({
+      name: 'Customer Portal',
+      projectId: 'customer-portal',
+      files: [
+        { kind: 'text', path: 'src/surfaces/home/Surface.vue', language: 'vue', content: '<template />' },
+        { kind: 'text', path: 'src/surfaces/settings/config.ts', language: 'typescript', content: 'export {}' },
+        { kind: 'text', path: 'src/components/Brand.vue', language: 'vue', content: '<template />' },
+        { kind: 'binary', path: 'src/assets/logo.png', mediaType: 'image/png', encoding: 'base64', contentBase64: 'iVBORw0KGgo=' },
+        { kind: 'binary', path: 'public/favicon.png', mediaType: 'image/png', encoding: 'base64', contentBase64: 'iVBORw0KGgo=' },
+      ],
+    })).resolves.toBe('customer-portal.zip')
+    const archive = unzipSync(new Uint8Array(await download.blobs[0]!.arrayBuffer()))
+    expect(Object.keys(archive).sort()).toEqual([
+      'customer-portal/assets/favicon.png',
+      'customer-portal/assets/logo.png',
+      'customer-portal/components/Brand.vue',
+      'customer-portal/export-manifest.json',
+      'customer-portal/views/home/Surface.vue',
+      'customer-portal/views/settings/config.ts',
+    ])
+    expect(JSON.parse(strFromU8(archive['customer-portal/export-manifest.json']!))).toMatchObject({
+      scope: 'project',
+      project: { id: 'customer-portal', name: 'Customer Portal' },
+      directories: { views: 'views', components: 'components', assets: 'assets' },
+    })
+  })
+
+  it('keeps a page source archive self-contained while excluding sibling views', async () => {
+    const archive = unzipSync(await createStructuredSourceArchive({
+      name: 'Customer Portal-Profile Entry',
+      projectId: 'customer-portal',
+      scope: 'surface',
+      surfaceId: 'profile',
+      surfaceName: 'Profile Entry',
+      surfaceDirectory: 'profile',
+      files: [
+        { kind: 'text', path: 'src/surfaces/profile/Surface.vue', language: 'vue', content: '<template />' },
+        { kind: 'text', path: 'src/surfaces/settings/Surface.vue', language: 'vue', content: '<template />' },
+        { kind: 'text', path: 'src/components/Brand.vue', language: 'vue', content: '<template />' },
+        { kind: 'text', path: 'src/main.ts', language: 'typescript', content: 'export {}' },
+      ],
+    }))
+    expect(Object.keys(archive).sort()).toEqual([
+      'customer-portal-profile-entry/components/Brand.vue',
+      'customer-portal-profile-entry/export-manifest.json',
+      'customer-portal-profile-entry/shared/main.ts',
+      'customer-portal-profile-entry/views/profile/Surface.vue',
+    ])
+    expect(Object.keys(archive).some(path => path.includes('/views/settings/'))).toBe(false)
+  })
+
+  it('resolves generated directories for non-ascii surface ids', () => {
+    expect(sourceSurfaceDirectory([
+      { path: 'src/surfaces/surface/Surface.vue' },
+      { path: 'src/surfaces/surface-2/Surface.vue' },
+    ], '设置', ['表单', '设置'])).toBe('surface-2')
+  })
+
   it('creates exact text and binary blobs from Source files', async () => {
     const text = sourceFileBlob({
       kind: 'text',

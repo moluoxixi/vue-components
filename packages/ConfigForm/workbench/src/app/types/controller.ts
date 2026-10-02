@@ -46,7 +46,7 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
 }
 
 export interface WorkbenchController extends
-  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
+  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProject' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
   Pick<ProjectCommands, 'deleteProject' | 'removeProjectImage' | 'renameProject' | 'setProjectImage'>,
   AssetCommands,
   ThemeCommands,
@@ -87,6 +87,8 @@ export interface WorkbenchController extends
   statusLabel: ComputedRef<string>
   workbenchLocale: ComputedRef<ReturnType<typeof createDesignerLocale>>
   workspaceRecoveryNotice: ComputedRef<WorkbenchRecoveryNotice | undefined>
+  exportProjectSource: (projectId: string) => Promise<string | undefined>
+  exportSurfaceSource: (surfaceId: string) => Promise<string | undefined>
   designSession: ReturnType<typeof createWorkbenchDesignSession>
   exportService: ReturnType<typeof createWorkbenchExportService>
   previewSession: PreviewSession
