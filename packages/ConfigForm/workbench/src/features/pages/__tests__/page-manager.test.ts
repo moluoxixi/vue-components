@@ -61,8 +61,8 @@ describe('page manager', () => {
     // Browsing state: the page name is the link, there is no route column, and no
     // field is editable.
     expect(wrapper.findAll('[role="columnheader"]').map(header => header.text()))
-      .toEqual(['Surface', 'Actions'])
-    expect(wrapper.find('input[aria-label^="Surface name"]').exists()).toBe(false)
+      .toEqual(['Page', 'Actions'])
+    expect(wrapper.find('input[aria-label^="Page name"]').exists()).toBe(false)
     expect(wrapper.find('input[aria-label^="Route for"]').exists()).toBe(false)
 
     const openLink = wrapper.get('button[aria-label="Open Fixture project in the designer"]')
@@ -71,15 +71,15 @@ describe('page manager', () => {
     expect(wrapper.emitted('openPage')?.[0]).toEqual(['home'])
 
     await wrapper.get('button[aria-label="Edit Fixture project"]').trigger('click')
-    expect(wrapper.find('input[aria-label^="Surface name"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label^="Page name"]').exists()).toBe(true)
     expect(wrapper.find('input[aria-label^="Route for"]').exists()).toBe(true)
-    await wrapper.get<HTMLInputElement>('input[aria-label^="Surface name"]').setValue('Home page')
+    await wrapper.get<HTMLInputElement>('input[aria-label^="Page name"]').setValue('Home page')
     await wrapper.get('button[aria-label="Finish editing Fixture project"]').trigger('click')
 
     expect(wrapper.emitted('action')?.[0]).toEqual([
       { type: 'surface.rename', surfaceId: 'home', name: 'Home page' },
     ])
-    expect(wrapper.find('input[aria-label^="Surface name"]').exists()).toBe(false)
+    expect(wrapper.find('input[aria-label^="Page name"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -87,7 +87,7 @@ describe('page manager', () => {
     const wrapper = mountManager(createProjectDocumentFixture())
 
     await wrapper.get('button[aria-label="Edit Fixture project"]').trigger('click')
-    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Surface name"]')
+    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Page name"]')
     await name.setValue('Discarded name')
     await name.trigger('keydown', { key: 'Escape' })
 
@@ -102,7 +102,7 @@ describe('page manager', () => {
     const wrapper = mountManager(project)
 
     await wrapper.get('button[aria-label="Edit Fixture project"]').trigger('click')
-    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Surface name"]')
+    const name = wrapper.get<HTMLInputElement>('input[aria-label^="Page name"]')
     await name.setValue('Home page')
     await name.trigger('blur')
 
