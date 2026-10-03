@@ -4,7 +4,9 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
-import { rawValidationModuleSource } from '../services/raw-validation'
+import { reactive } from 'vue'
+import { rawValidationModuleSource, rawValidatorNames } from '../services/raw-validation'
+import { rawValidationComposableSource } from '../services/raw-validation-runtime'
 import { compileSourceValidationPlan } from '../services/validation'
 
 type GeneratedValidator = (
@@ -95,10 +97,42 @@ async function generatedValidators(includeZod = false): Promise<{
   const path = join(root, 'validation.ts')
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, source)
-  const generated = await import(`${pathToFileURL(path).href}?generated=${Date.now()}`) as {
-    demoFieldValidators: Readonly<Record<string, GeneratedValidator>>
+  const generated = await import(`${pathToFileURL(path).href}?generated=${Date.now()}`) as Readonly<Record<string, unknown>>
+  const validators = Object.fromEntries(
+    [...rawValidatorNames(surface)].map(([nodeId, functionName]) => {
+      const validator = generated[functionName]
+      if (typeof validator !== 'function')
+        throw new Error(`Generated validator ${functionName} is missing.`)
+      return [nodeId, validator as GeneratedValidator]
+    }),
+  )
+  return { source, validators }
+}
+
+interface GeneratedFormValidation {
+  validationErrors: Record<string, string[]>
+  validateFields: (fieldIds?: readonly string[], requireInstance?: boolean) => boolean
+  validation: { validate: (request: { surfaceId: string, scope: 'surface' | 'fields', fieldIds: readonly string[] }) => boolean }
+}
+
+async function generatedFormValidation(surface: ProjectCompilation['ir']['surfacesById'][string], projected = false) {
+  const plan = compileSourceValidationPlan({
+    ir: { surfaceOrder: [surface.id], surfacesById: { [surface.id]: surface } },
+  } as unknown as ProjectCompilation)
+  if (!plan.success)
+    throw new Error(plan.diagnostics.map(diagnostic => diagnostic.message).join('; '))
+  const root = await mkdtemp(join(packageRoot, '.raw-validation-'))
+  temporaryRoots.push(root)
+  const path = join(root, 'composables/useFormValidation.ts')
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(join(root, 'validation.ts'), rawValidationModuleSource(surface, plan.data.surfaces[0]!.fields, { includeZod: true }))
+  await writeFile(path, rawValidationComposableSource(surface, projected))
+  return await import(pathToFileURL(path).href) as {
+    useFormValidation: (
+      values: Record<string, unknown>,
+      states?: () => Readonly<Record<string, { required?: boolean }>>,
+    ) => GeneratedFormValidation
   }
-  return { source, validators: generated.demoFieldValidators }
 }
 
 afterAll(async () => {
@@ -109,8 +143,9 @@ describe('generated Raw validators', () => {
   it('emits executable Zod schemas for Tailwind Raw output', async () => {
     const { source, validators } = await generatedValidators(true)
     expect(source).toContain('import { z } from \'zod\'')
-    expect(source).toContain('demoFieldRuleSets')
-    expect(source).toContain('demoFieldSchemas')
+    expect(source).toContain('export const stringRulesSchema')
+    expect(source).toContain('export const dateSchema')
+    expect(source).not.toContain('demoFieldValidators')
     expect(source).toContain('.safeParse(value)')
     expect(validators.stringRules!('ABC', {})).toEqual([])
     expect(validators.stringRules!('AB', {})).toContain('minLength')
@@ -197,5 +232,66 @@ describe('generated Raw validators', () => {
     expect(validators.compareDate!('2023-01-01T00:00:00.000Z', {
       other: '2024-01-01T00:00:00.000Z',
     })).toContain('dateCompare')
+  })
+})
+
+describe('generated page validation', () => {
+  it('revalidates reactive business values and honors dynamic required state', async () => {
+    const surface = {
+      id: 'profile',
+      nodesById: {
+        name: field('name', ruleSet({ type: 'string' }, [{ kind: 'minLength', value: 2, message: 'Too short' }])),
+        optionalNote: field('optionalNote'),
+      },
+      scopedFields: [],
+      valueScopes: [],
+      interactions: [{ kind: 'stateProjection', target: { kind: 'state', nodeId: 'optionalNote', key: 'required' } }],
+    } as unknown as ProjectCompilation['ir']['surfacesById'][string]
+    const { useFormValidation } = await generatedFormValidation(surface, true)
+    const values = reactive({ name: 'A', optionalNote: '' })
+    const states = reactive({ optionalNote: { required: true } })
+    const result = useFormValidation(values, () => states)
+
+    expect(result.validateFields(['name'])).toBe(false)
+    expect(result.validationErrors.name).toEqual(['Too short'])
+    values.name = 'Ada'
+    expect(result.validateFields(['name'])).toBe(true)
+    expect(result.validationErrors.name).toEqual([])
+    expect(result.validateFields(['optionalNote'])).toBe(false)
+    states.optionalNote.required = false
+    expect(result.validateFields(['optionalNote'])).toBe(true)
+    expect(result.validation.validate({ surfaceId: 'other', scope: 'surface', fieldIds: [] })).toBe(false)
+    expect(result.validation.validate({ surfaceId: 'profile', scope: 'fields', fieldIds: [] })).toBe(false)
+    expect(result.validateFields(['missing'])).toBe(false)
+  })
+
+  it('validates nested rows against their sibling values and rejects absent requested instances', async () => {
+    const surface = {
+      id: 'order',
+      nodesById: {
+        price: field('price', ruleSet({ type: 'number' }, [{ kind: 'compare', field: 'limit', operator: 'lte', message: 'Exceeds limit' }])),
+        note: field('note'),
+      },
+      scopedFields: [{ nodeId: 'price', scopeId: 'rows' }, { nodeId: 'note', scopeId: 'rows' }],
+      valueScopes: [
+        { nodeId: 'details', kind: 'object', field: 'details' },
+        { nodeId: 'rows', parentId: 'details', kind: 'array', field: 'items' },
+      ],
+      interactions: [],
+    } as unknown as ProjectCompilation['ir']['surfacesById'][string]
+    const { useFormValidation } = await generatedFormValidation(surface)
+    const values = reactive({ details: { items: [{ price: 3, limit: 4 }, { price: 6, limit: 5 }] } })
+    const result = useFormValidation(values)
+
+    expect(result.validateFields(['price'])).toBe(false)
+    expect(result.validationErrors.price).toEqual(['Exceeds limit'])
+    values.details.items[1]!.price = 4
+    expect(result.validateFields(['price'])).toBe(true)
+    values.details.items = []
+    expect(result.validation.validate({ surfaceId: 'order', scope: 'fields', fieldIds: ['price'] })).toBe(false)
+    expect(result.validationErrors.price).toEqual(['No live field instance exists for price.'])
+    expect(result.validation.validate({ surfaceId: 'order', scope: 'fields', fieldIds: ['note'] })).toBe(false)
+    expect(result.validation.validate({ surfaceId: 'order', scope: 'surface', fieldIds: [] })).toBe(true)
+    expect(result.validationErrors.price).toEqual([])
   })
 })

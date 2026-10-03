@@ -212,16 +212,9 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
 <template>
   <main class="project-manager" :data-theme="ui.resolvedTheme.value" :data-palette="ui.paletteFamily.value">
     <header class="project-manager__topbar">
-      <div class="brand-lockup">
-        <span class="brand-lockup__mark" aria-hidden="true">C</span>
-        <div class="brand-lockup__copy">
-          <span>ConfigForm</span>
-          <strong>Studio</strong>
-        </div>
-      </div>
       <div class="project-manager__topbar-context">
+        <FolderOpen :size="16" aria-hidden="true" />
         <span>{{ locale.t('projects.workspaceLabel', 'Engineering workspace') }}</span>
-        <strong>{{ locale.t('projects.title', 'Projects') }}</strong>
       </div>
       <div class="project-manager__commands">
         <ElButton v-if="controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
@@ -238,7 +231,6 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
     <section class="project-manager__content" :aria-label="locale.t('projects.title', 'Projects')">
       <div class="project-manager__heading">
         <div>
-          <span class="project-manager__eyebrow">{{ locale.t('projects.eyebrow', 'PROJECT SPACE') }}</span>
           <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
           <p>{{ locale.t('projects.subtitle', 'Engineering projects with their pages, data, and resources.') }}</p>
         </div>
@@ -250,7 +242,6 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
       <section class="project-manager__overview" :aria-label="locale.t('projects.overview', 'Project overview')">
         <div class="project-manager__overview-intro">
           <span class="project-manager__overview-kicker">{{ locale.t('projects.overviewKicker', 'Workspace inventory') }}</span>
-          <strong>{{ locale.t('projects.overviewTitle', 'Everything your Studio can open') }}</strong>
         </div>
         <div class="project-manager__stats">
           <span class="project-manager__stat"><strong>{{ projectStats.projects }}</strong><small>{{ locale.t('projects.count', 'projects') }}</small></span>
@@ -274,15 +265,18 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
           <button type="button" class="project-row__main project-card__main" :aria-label="project.name" data-project-open @click="openProject(project)">
             <span class="project-card__preview" aria-hidden="true">
               <img v-if="projectImageSource(project)" :src="projectImageSource(project)" alt="" />
-              <span v-else class="project-card__preview-placeholder"><FolderOpen :size="28" /></span>
-              <span class="project-card__preview-sheen" />
+              <span v-else class="project-card__preview-placeholder">
+                <FolderOpen :size="21" />
+                <strong>{{ project.name.trim().slice(0, 2).toUpperCase() }}</strong>
+                <small>{{ adapterLabel(project.registryLock.adapter) }}</small>
+              </span>
             </span>
             <span class="project-card__body">
               <span class="project-card__title-row">
                 <strong>{{ project.name }}</strong>
                 <span v-if="project.homeSurfaceId" class="project-card__status">{{ locale.t('projects.ready', 'Ready') }}</span>
               </span>
-              <small class="project-card__meta"><span class="project-row__adapter">{{ adapterLabel(project.registryLock.adapter) }}</span><span aria-hidden="true"> · </span>{{ formatUpdatedAt(project.updatedAt) }}</small>
+              <small class="project-card__meta">{{ formatUpdatedAt(project.updatedAt) }}</small>
               <span class="project-row__counts project-card__counts">
                 <span><Layers3 :size="13" aria-hidden="true" />{{ project.surfaceCount }} {{ locale.t('projects.surfaces', 'pages') }}</span>
                 <span><Database :size="13" aria-hidden="true" />{{ project.datasetCount }} {{ locale.t('projects.datasets', 'datasets') }}</span>

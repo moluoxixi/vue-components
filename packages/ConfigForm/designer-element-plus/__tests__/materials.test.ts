@@ -130,6 +130,12 @@ describe('element plus designer materials', () => {
         component: entry.contract.key,
         contractVersion: entry.contract.version,
       })
+      if (entry.contract.kind === 'field') {
+        expect(entry.source).toMatchObject({
+          valueProp: entry.contract.bindings[0]!.valueProp,
+          trigger: entry.contract.bindings[0]!.trigger,
+        })
+      }
       expect(() => structuredClone(entry.contract)).not.toThrow()
       expect(JSON.stringify(entry.contract)).not.toContain('component:')
       expect(Object.values(entry.contract).some(value => typeof value === 'function')).toBe(false)

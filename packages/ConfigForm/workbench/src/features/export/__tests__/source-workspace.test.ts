@@ -6,7 +6,7 @@ import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { ExportDialog } from '..'
+import { SourceWorkspace } from '..'
 import { loadWorkbenchAdapter } from '../../../adapters'
 import { createBuiltInProjectFixture } from '../../../project/__tests__/fixtures'
 
@@ -34,7 +34,7 @@ async function createInput(): Promise<BuildExportSnapshotInput> {
   }
 }
 
-describe('export dialog', () => {
+describe('source workspace', () => {
   it('captures one complete Source and Config snapshot in source mode', async () => {
     const input = await createInput()
     const target = document.createElement('main')
@@ -42,11 +42,13 @@ describe('export dialog', () => {
     target.className = 'workbench-overlays'
     target.dataset.theme = 'light'
     document.body.append(target)
-    const wrapper = mount(ExportDialog, {
+    const wrapper = mount(SourceWorkspace, {
+      attachTo: target,
       props: {
         capture: () => input,
         currentCompilation: input.compilation,
         mode: 'source',
+        surfaceId: input.compilation.ir.surfaceOrder[0],
         theme: 'light',
       },
       global: {
@@ -58,17 +60,38 @@ describe('export dialog', () => {
     await flushPromises()
 
     expect(root.get('[role="tree"]').text()).toContain('package.json')
-    expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
-    expect(root.get('.export-dialog-heading h2').text()).toBe('Raw Vue source')
-    expect(root.findAll('.export-style-target .el-segmented__item')).toHaveLength(2)
-    expect(root.get('.export-style-target').text()).toContain('CSS')
-    expect(root.get('.export-style-target').text()).toContain('Tailwind v4')
+    expect(root.get('[role="tree"]').text()).toContain('index.vue')
+    expect(root.get('.source-workspace__heading h2').text()).toBe('Raw Vue source')
+    expect(root.get('.source-workspace__project').text()).toContain('Export dialog project')
+    const viewer = wrapper.findComponent(ConfigFormSourceViewer)
+    expect(viewer.props('wrapLines')).toBe(true)
+    await root.get('button[aria-label="Wrap long lines"]').trigger('click')
+    expect(viewer.props('wrapLines')).toBe(false)
+    const rawFiles = viewer.props('files') as { entry: string, files: readonly { path: string, content?: string }[] }
+    expect(rawFiles.entry).toBe('src/main.ts')
+    expect(viewer.props('selectedPath')).toBe('src/views/home/index.vue')
+    expect(rawFiles.files.some(file => file.path === 'src/router/index.ts')).toBe(true)
+    expect(rawFiles.files.some(file => file.path.startsWith('src/views/') && file.path.endsWith('/index.vue'))).toBe(true)
+    expect(rawFiles.files.some(file => file.path.startsWith('shared/') || file.path.startsWith('views/'))).toBe(false)
+    expect(rawFiles.files.find(file => file.path === 'src/main.ts')?.content).toContain('@/router')
+    expect(rawFiles.files.some(file => file.path === 'export-manifest.json')).toBe(false)
+    expect(root.find('button.source-workspace__refresh').exists()).toBe(true)
+    expect(root.findAll('.source-workspace__style-target .el-segmented__item')).toHaveLength(2)
+    expect(root.get('.source-workspace__style-target').text()).toContain('CSS')
+    expect(root.get('.source-workspace__style-target').text()).toContain('Tailwind v4')
     expect(root.text()).toContain('Snapshot model revision 7')
-    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
+    expect(root.get('button.source-workspace__download-project').attributes('disabled')).toBeUndefined()
+
+    await viewer.vm.$emit('update:selectedPath', 'src/router/index.ts')
+    await flushPromises()
+    await root.get('button.source-workspace__refresh').trigger('click')
+    await flushPromises()
+    expect(viewer.props('selectedPath')).toBe('src/router/index.ts')
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(root.get('.export-dialog-heading h2').text()).toBe('ConfigForm binding source')
+    expect(root.get('.source-workspace__heading h2').text()).toBe('ConfigForm binding source')
+    expect(viewer.props('selectedPath')).toBe('src/bindings.ts')
     expect(root.get('[role="tree"]').text()).toContain('config.ts')
     expect(root.get('[role="tree"]').text()).toContain('package.json')
     expect(root.find('.config-json-view').exists()).toBe(false)
@@ -85,7 +108,8 @@ describe('export dialog', () => {
     const target = document.createElement('main')
     target.id = 'workbench-overlays'
     document.body.append(target)
-    const wrapper = mount(ExportDialog, {
+    const wrapper = mount(SourceWorkspace, {
+      attachTo: target,
       props: {
         capture: () => {
           captureCalls += 1
@@ -101,7 +125,7 @@ describe('export dialog', () => {
     await flushPromises()
     expect(captureCalls).toBe(1)
 
-    const targetOptions = root.findAll('.export-style-target .el-segmented__item')
+    const targetOptions = root.findAll('.source-workspace__style-target .el-segmented__item')
     await targetOptions[1]!.trigger('click')
     await flushPromises()
     expect(captureCalls).toBe(1)
@@ -137,7 +161,8 @@ describe('export dialog', () => {
     const target = document.createElement('main')
     target.id = 'workbench-overlays'
     document.body.append(target)
-    const wrapper = mount(ExportDialog, {
+    const wrapper = mount(SourceWorkspace, {
+      attachTo: target,
       props: {
         capture: () => capture,
         currentCompilation: input.compilation,
@@ -149,21 +174,21 @@ describe('export dialog', () => {
     const root = new DOMWrapper(target)
 
     await flushPromises()
-    expect(root.find('.export-diagnostic').exists()).toBe(false)
-    expect(root.get('[role="tree"]').text()).toContain('Surface.vue')
+    expect(root.find('.source-workspace__diagnostic').exists()).toBe(false)
+    expect(root.get('[role="tree"]').text()).toContain('index.vue')
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(root.get('.export-diagnostic').text()).toContain('binding unavailable')
+    expect(root.get('.source-workspace__diagnostic').text()).toContain('binding unavailable')
     expect(root.find('[role="tree"]').exists()).toBe(false)
-    expect(root.findAll('button.dialog-action').every(button => button.attributes('disabled') !== undefined)).toBe(true)
+    expect(root.findAll('button.source-workspace__download-project').every(button => button.attributes('disabled') !== undefined)).toBe(true)
 
     bindingAvailable = true
-    await root.get('button.export-diagnostic-refresh').trigger('click')
+    await root.get('button.source-workspace__retry').trigger('click')
     await flushPromises()
-    expect(root.find('.export-diagnostic').exists()).toBe(false)
+    expect(root.find('.source-workspace__diagnostic').exists()).toBe(false)
     expect(root.get('[role="tree"]').text()).toContain('config.ts')
-    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
+    expect(root.get('button.source-workspace__download-project').attributes('disabled')).toBeUndefined()
 
     wrapper.unmount()
     target.remove()
@@ -189,7 +214,8 @@ describe('export dialog', () => {
     const target = document.createElement('main')
     target.id = 'workbench-overlays'
     document.body.append(target)
-    const wrapper = mount(ExportDialog, {
+    const wrapper = mount(SourceWorkspace, {
+      attachTo: target,
       props: {
         capture: () => capture,
         currentCompilation: input.compilation,
@@ -201,15 +227,15 @@ describe('export dialog', () => {
     const root = new DOMWrapper(target)
 
     await flushPromises()
-    expect(root.get('.export-diagnostic').text()).toContain('raw component unavailable')
+    expect(root.get('.source-workspace__diagnostic').text()).toContain('raw component unavailable')
     expect(root.find('[role="tree"]').exists()).toBe(false)
-    expect(root.findAll('button.dialog-action').every(button => button.attributes('disabled') !== undefined)).toBe(true)
+    expect(root.findAll('button.source-workspace__download-project').every(button => button.attributes('disabled') !== undefined)).toBe(true)
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(root.find('.export-diagnostic').exists()).toBe(false)
+    expect(root.find('.source-workspace__diagnostic').exists()).toBe(false)
     expect(root.get('[role="tree"]').text()).toContain('config.ts')
-    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
+    expect(root.get('button.source-workspace__download-project').attributes('disabled')).toBeUndefined()
 
     wrapper.unmount()
     target.remove()

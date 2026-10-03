@@ -5,6 +5,7 @@ export type SourceTextFile = Extract<SourceFile, { kind: 'text' }>
 export interface MonacoViewerOptions {
   file: SourceTextFile
   theme: 'dark' | 'light'
+  wrapLines?: boolean
 }
 
 export interface MonacoViewerSession {

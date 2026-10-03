@@ -24,8 +24,61 @@ function createModel(options: MonacoViewerOptions): editor.ITextModel {
   )
 }
 
-function editorTheme(theme: MonacoViewerOptions['theme']): 'vs' | 'vs-dark' {
-  return theme === 'light' ? 'vs' : 'vs-dark'
+let themesDefined = false
+
+function editorTheme(theme: MonacoViewerOptions['theme']): string {
+  if (!themesDefined) {
+    monaco.editor.defineTheme('studio-source-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '87929D' },
+        { token: 'keyword', foreground: '825BB1' },
+        { token: 'tag', foreground: '4778C5' },
+        { token: 'attribute.name', foreground: '877642' },
+        { token: 'attribute.value', foreground: '17856C' },
+        { token: 'attribute.value.html', foreground: '17856C' },
+        { token: 'attribute.name.html', foreground: '877642' },
+        { token: 'string', foreground: '17856C' },
+        { token: 'number', foreground: 'A96543' },
+        { token: 'type.identifier', foreground: '327E95' },
+      ],
+      colors: {
+        'editor.background': '#FFFFFF',
+        'editor.foreground': '#283342',
+        'editorLineNumber.foreground': '#A0A8B4',
+        'editorLineNumber.activeForeground': '#667384',
+        'editorIndentGuide.background1': '#E9EDF2',
+        'editor.selectionBackground': '#E3EAF8',
+      },
+    })
+    monaco.editor.defineTheme('studio-source-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '7D8799' },
+        { token: 'keyword', foreground: 'BA9EE9' },
+        { token: 'tag', foreground: '78A4EF' },
+        { token: 'attribute.name', foreground: 'D9B68B' },
+        { token: 'attribute.value', foreground: '8DCEAF' },
+        { token: 'attribute.value.html', foreground: '8DCEAF' },
+        { token: 'attribute.name.html', foreground: 'D9B68B' },
+        { token: 'string', foreground: '8DCEAF' },
+        { token: 'number', foreground: 'E9A477' },
+        { token: 'type.identifier', foreground: '6AC2D2' },
+      ],
+      colors: {
+        'editor.background': '#1E2127',
+        'editor.foreground': '#D4DAE3',
+        'editorLineNumber.foreground': '#647084',
+        'editorLineNumber.activeForeground': '#B8C2D1',
+        'editorIndentGuide.background1': '#303642',
+        'editor.selectionBackground': '#34425B',
+      },
+    })
+    themesDefined = true
+  }
+  return theme === 'light' ? 'studio-source-light' : 'studio-source-dark'
 }
 
 function mountMonacoViewer(
@@ -61,7 +114,7 @@ function mountMonacoViewer(
     stickyScroll: { enabled: true, maxLineCount: 3 },
     tabSize: 2,
     theme: editorTheme(options.theme),
-    wordWrap: 'off',
+    wordWrap: options.wrapLines ? 'on' : 'off',
   })
 
   let resizeObserver: ResizeObserver | undefined
@@ -109,6 +162,7 @@ function mountMonacoViewer(
         ariaLabel: `Read-only source: ${nextOptions.file.path}`,
         domReadOnly: true,
         readOnly: true,
+        wordWrap: nextOptions.wrapLines ? 'on' : 'off',
       })
       options = nextOptions
       codeEditor.layout()

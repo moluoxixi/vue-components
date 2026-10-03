@@ -26,6 +26,7 @@ const screenTitle = computed(() => createDesignerLocale(props.locale).t('pageMan
       @action="emit('action', $event)"
       @close="emit('close')"
       @create-surface="emit('createSurface')"
+      @import-surface="emit('importSurface')"
       @export="emit('export', $event)"
       @export-source="emit('exportSource', $event)"
       @open-page="emit('openPage', $event)"

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   File,
   FileCode2,
+  FileJson2,
   FileText,
   Folder,
   FolderOpen,
@@ -23,7 +24,9 @@ const nodeIcon = computed<Component>(() => {
   if (props.node.kind === 'directory')
     return expanded.value ? FolderOpen : Folder
   const iconKind = sourceFileIconKind(props.node.file)
-  if (iconKind === 'code' || iconKind === 'data')
+  if (iconKind === 'data')
+    return FileJson2
+  if (iconKind === 'code')
     return FileCode2
   if (iconKind === 'text')
     return FileText
@@ -57,6 +60,7 @@ const nodeIcon = computed<Component>(() => {
       <component
         :is="nodeIcon"
         class="config-form-source-viewer__tree-icon"
+        :data-language="node.kind === 'directory' ? 'directory' : node.file.kind === 'text' ? node.file.language : 'binary'"
         :size="15"
         aria-hidden="true"
       />

@@ -102,9 +102,7 @@ const TAILWIND_CLASSES = {
   overlayClose: 'h-8 w-8 cursor-pointer border-0 bg-transparent text-2xl leading-none text-inherit',
 } as const
 
-const PROJECT_STYLES = `@import './theme.css';
-
-* { box-sizing: border-box; }
+const PROJECT_STYLES = `* { box-sizing: border-box; }
 html { color: var(--demo-color-text, #1f2937); background: var(--demo-color-canvas, #f4f6f8); font-family: var(--demo-font-family, system-ui, sans-serif); font-size: var(--demo-font-size, 16px); font-weight: var(--demo-font-body-weight, 400); line-height: var(--demo-line-height, 1.5); }
 body { min-width: 320px; margin: 0; }
 button, input, select, textarea { font: inherit; }
@@ -167,6 +165,8 @@ function themeSource(theme: ProjectTheme): string {
     lines.push(`  --demo-border-style: ${theme.border.style};`)
   for (const [key, shadow] of Object.entries(theme.shadows ?? {}).sort(([left], [right]) => left.localeCompare(right)))
     lines.push(`  --demo-shadow-${key}: ${shadowValue(shadow)};`)
+  if (lines.length === 1)
+    return ''
   lines.push('}')
   return `${lines.join('\n')}\n`
 }
@@ -210,7 +210,8 @@ function tailwindThemeSource(theme: ProjectTheme): string {
     themeLines.push(`  --shadow-${key}: var(--demo-shadow-${key});`)
   }
 
-  return `${themeSource(theme).trimEnd()}\n\n@theme inline {\n${themeLines.join('\n')}\n}\n`
+  const variables = themeSource(theme)
+  return themeLines.length ? `${variables.trimEnd()}\n\n@theme inline {\n${themeLines.join('\n')}\n}\n` : variables
 }
 
 function layoutGap(props: Readonly<Record<string, unknown>>): number {
@@ -229,7 +230,7 @@ function cssBackend(): SourceStyleBackend {
     bindingVitePluginSource: CSS_BINDING_VITE,
     classes: CSS_CLASSES,
     themeSource,
-    stylesSource: () => PROJECT_STYLES,
+    stylesSource: theme => `${themeSource(theme) ? '@import \'./theme.css\';\n\n' : ''}${PROJECT_STYLES}`,
     rawEntrySource({ imports, styleImports, libraryUses }) {
       return `import { createApp } from 'vue'\nimport App from './App.vue'\nimport { router } from './router'\n${imports.join('\n')}${imports.length ? '\n' : ''}${styleImports.join('\n')}${styleImports.length ? '\n' : ''}import './styles.css'\n\ncreateApp(App)${libraryUses.map(item => `.use(${item})`).join('')}.mount('#app')\n`
     },
@@ -261,7 +262,15 @@ function tailwindBackend(): SourceStyleBackend {
     bindingVitePluginSource: TAILWIND_BINDING_VITE,
     classes: TAILWIND_CLASSES,
     themeSource: tailwindThemeSource,
-    stylesSource: () => `@import 'tailwindcss';\n@import './theme.css';\n\n* { box-sizing: border-box; }\nhtml { color: var(--demo-color-text, #1f2937); background: var(--demo-color-canvas, #f4f6f8); font-family: var(--demo-font-family, system-ui, sans-serif); font-size: var(--demo-font-size, 16px); font-weight: var(--demo-font-body-weight, 400); line-height: var(--demo-line-height, 1.5); }\nbody { min-width: 320px; margin: 0; }\nbutton, input, select, textarea { font: inherit; }\n`,
+    stylesSource: theme => `@import 'tailwindcss';
+${themeSource(theme) ? '@import \'./theme.css\';\n' : ''}
+@layer base {
+  * { box-sizing: border-box; }
+  html { color: var(--demo-color-text, #1f2937); background: var(--demo-color-canvas, #f4f6f8); font-family: var(--demo-font-family, system-ui, sans-serif); font-size: var(--demo-font-size, 16px); font-weight: var(--demo-font-body-weight, 400); line-height: var(--demo-line-height, 1.5); }
+  body { min-width: 320px; margin: 0; }
+  button, input, select, textarea { font: inherit; }
+}
+`,
     rawEntrySource({ imports, styleImports, libraryUses }) {
       return `import { createApp } from 'vue'\nimport App from './App.vue'\nimport { router } from './router'\n${imports.join('\n')}${imports.length ? '\n' : ''}${styleImports.join('\n')}${styleImports.length ? '\n' : ''}import './styles.css'\n\ncreateApp(App)${libraryUses.map(item => `.use(${item})`).join('')}.mount('#app')\n`
     },

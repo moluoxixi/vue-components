@@ -1,47 +1,53 @@
 .workbench-topbar {
   display: grid;
   min-width: 0;
-  padding: 0 10px;
-  grid-template-columns: auto minmax(150px, 260px) minmax(0, 1fr);
+  padding: 0 16px;
+  grid-template-columns: auto minmax(100px, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 18px;
   border-bottom: 1px solid var(--wb-separator);
-  background: var(--wb-elevated);
+  background: var(--wb-surface);
 }
 
 .brand-lockup {
-  display: grid;
-  min-width: 92px;
-  gap: 0;
-  line-height: 1.05;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
 }
 
 .brand-lockup span {
   color: var(--wb-accent-text);
   font-size: 11px;
   font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .brand-lockup strong {
   color: var(--wb-text-strong);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 650;
 }
 
+.brand-lockup .brand-lockup__mark { display: grid; width: 28px; height: 28px; place-items: center; color: var(--wb-action-text); border-radius: 6px; background: var(--wb-action-bg); }
+.brand-lockup .brand-lockup__studio { color: var(--wb-muted); font-size: 11px; font-weight: 500; }
+
 .workspace-context {
-  display: grid;
+  display: flex;
   min-width: 0;
   height: 32px;
-  padding: 4px 10px;
+  padding: 0;
+  align-items: center;
+  gap: 10px;
   overflow: hidden;
   border: 0;
   border-radius: 4px;
-  background: var(--wb-surface);
-  line-height: 1.1;
+  background: transparent;
+  line-height: 1.4;
 }
 
-.workspace-context span,
+.workspace-context button,
 .workspace-context strong {
   min-width: 0;
   overflow: hidden;
@@ -49,16 +55,56 @@
   white-space: nowrap;
 }
 
+.workspace-context button {
+  padding: 3px 0;
+  color: var(--wb-muted);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.workspace-context button:hover { color: var(--wb-accent-text); }
+.workspace-context__separator { color: var(--wb-disabled); }
+
 .workspace-context span {
   color: var(--wb-small-text);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .workspace-context strong {
   color: var(--wb-text-strong);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
 }
+
+.workbench-view-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  height: 34px;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--wb-separator);
+  border-radius: 6px;
+  background: var(--wb-bg);
+}
+
+.workbench-view-switch button {
+  display: flex;
+  min-width: 0;
+  padding: 0 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--wb-muted);
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workbench-view-switch button:hover { color: var(--wb-text-strong); }
+.workbench-view-switch button.is-active { color: var(--wb-text-strong); background: var(--wb-surface-raised); box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
 
 .topbar-actions {
   display: flex;
@@ -226,6 +272,16 @@
   white-space: nowrap;
 }
 
+.revision-state::before {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
 .revision-state.is-dirty {
   color: var(--wb-warning);
 }
@@ -233,7 +289,7 @@
 :is(.workbench-app, .workbench-overlays)[data-theme="light"] .workbench-topbar {
   color: var(--wb-muted);
   border-color: var(--wb-separator);
-  background: var(--wb-elevated);
+  background: var(--wb-surface);
 }
 
 :is(.workbench-app, .workbench-overlays)[data-theme="light"] .export-menu-popover {
@@ -244,12 +300,13 @@
 
 @media (max-width: 900px) {
   .workbench-topbar {
-    grid-template-columns: auto minmax(120px, 1fr) auto;
+    grid-template-columns: auto minmax(60px, 1fr) auto auto;
+    gap: 10px;
   }
   .revision-state {
     display: none;
   }
-  .topbar-actions > .topbar-secondary-action {
+  .topbar-actions .topbar-secondary-action {
     display: none;
   }
   .mobile-action-menu {
@@ -277,12 +334,19 @@
     display: none;
   }
 
+  .brand-lockup strong { font-size: 12px; }
+  .workspace-context button,
+  .workspace-context__separator { display: none; }
+  .workbench-view-switch { grid-template-columns: repeat(3, 28px); border: 0; background: transparent; }
+  .workbench-view-switch button { padding: 0; }
+  .workbench-view-switch button span { display: none; }
+
   .brand-lockup {
     min-width: 0;
   }
 
   .workbench-topbar {
-    grid-template-columns: auto minmax(80px, 1fr) auto;
+    grid-template-columns: auto minmax(28px, 1fr) auto auto;
     gap: 6px;
   }
 

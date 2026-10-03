@@ -106,6 +106,8 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   function openExportPreview(mode: 'source' | 'config'): void {
     exportDialogLoaded.value = true
+    previewOpen.value = false
+    previewExpanded.value = false
     exportPreviewMode.value = mode
   }
 

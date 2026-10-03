@@ -33,12 +33,11 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await expect(submit).toBeEnabled({ timeout: 15_000 })
   await submit.click()
   await expect(page.locator('.page-manager')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.page-manager__row')).toHaveCount(0)
 
-  // The project starts with a blank home page. Seed a profile page for the
-  // designer-focused scenarios, promote it to home, and remove the seed page
-  // so the helper still exposes one predictable page to each test.
-  await page.locator('.page-manager__create-actions').getByRole('button').click()
-  const pageCreation = page.getByRole('main', { name: 'Create page', exact: true })
+  // Create the profile page explicitly inside the empty project.
+  await page.locator('.page-manager__create-actions').getByRole('button', { name: 'New page', exact: true }).click()
+  const pageCreation = page.locator('.page-creation-dialog .template-creation-workspace')
   await pageCreation.locator('.template-workspace-layout').waitFor({ state: 'visible' })
   await page.waitForFunction(() => {
     const root = document.querySelector('.template-creation-workspace')
@@ -64,29 +63,9 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
       await mobileDetails.click()
   }
   await expect(pageCreation.getByText('Registry requirements met', { exact: true })).toBeVisible({ timeout: 15_000 })
-  await pageCreation.getByRole('button', { name: 'Create page', exact: true }).click()
+  await pageCreation.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
-  const managePages = page.getByRole('button', { name: 'Manage pages', exact: true })
-  if (await managePages.isVisible()) {
-    await managePages.click()
-  }
-  else {
-    await page.getByRole('tab', { name: 'Pages', exact: true }).click()
-    await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
-  }
-  const pages = page.locator('.page-manager')
-  await expect(pages.locator('.page-manager__row')).toHaveCount(2)
-  const profileRow = pages.locator('.page-manager__row').nth(1)
-  const blankRow = pages.locator('.page-manager__row').nth(0)
-  await profileRow.locator('button[aria-pressed="false"]').click()
-  await expect(profileRow.locator('button[aria-pressed="true"]')).toBeVisible()
-  await blankRow.locator('button.is-danger').click()
-  await pages.getByRole('alert').getByRole('button', { name: /Delete page|删除页面/ }).click()
-  await expect(pages.locator('.page-manager__row')).toHaveCount(1)
-
-  await pages.locator('.page-manager__link').click()
-  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 15_000 })
 
   // Reopen the persisted project so setup operations do not become part of the
@@ -98,6 +77,53 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
     .frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id^="profile-name-"]'))
     .toBeVisible({ timeout: 15_000 })
+}
+
+/** Open the page-management console from the designer at any supported width. */
+export async function openPageManagement(page: Page): Promise<void> {
+  const sourcePane = page.locator('.source-pane')
+  if (await sourcePane.isVisible())
+    await page.getByRole('button', { name: 'Design', exact: true }).click()
+  const direct = page.getByRole('button', { name: 'Manage pages', exact: true })
+  if (await direct.isVisible()) {
+    await direct.click()
+  }
+  else {
+    await page.getByRole('tab', { name: 'Pages', exact: true }).click()
+    await page.getByRole('button', { name: 'Manage pages', exact: true }).click()
+  }
+  await expect(page.locator('.page-manager')).toBeVisible()
+}
+
+/** Open the page creation dialog and optionally choose its surface kind. */
+export async function openPageCreation(
+  page: Page,
+  kind: 'form' | 'dialog' | 'drawer' = 'form',
+): Promise<import('@playwright/test').Locator> {
+  await openPageManagement(page)
+  const manager = page.locator('.page-manager')
+  await manager.getByRole('button', { name: 'New page', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create page', exact: true })
+  await expect(dialog).toBeVisible()
+  if (kind !== 'form') {
+    const label = kind === 'dialog' ? 'Dialog' : 'Drawer'
+    await dialog.locator('.page-creation-dialog__toolbar .el-segmented__item').filter({ hasText: label }).click()
+  }
+  const workspace = dialog.locator('.template-creation-workspace')
+  await expect(workspace).toBeVisible()
+  return workspace
+}
+
+/** Open the JSON page-import workspace from page management. */
+export async function openPageImport(page: Page): Promise<import('@playwright/test').Locator> {
+  await openPageManagement(page)
+  const manager = page.locator('.page-manager')
+  await manager.getByRole('button', { name: 'Import page', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Import page', exact: true })
+  await expect(dialog).toBeVisible()
+  const workspace = dialog.locator('.template-creation-workspace')
+  await expect(workspace).toBeVisible()
+  return workspace
 }
 
 const appearanceLabels: Record<WorkbenchPalette | WorkbenchThemeMode, string> = {

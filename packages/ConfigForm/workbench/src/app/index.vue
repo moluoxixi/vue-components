@@ -34,12 +34,11 @@ import {
   useWorkbenchUiStore,
 } from './composables'
 import {
-  pageCreatePath,
   projectPagesPath,
   projectsPath,
 } from './navigation'
 
-const ExportDialog = defineAsyncComponent(() => import('../features/export').then(module => module.ExportDialog))
+const SourceWorkspace = defineAsyncComponent(() => import('../features/export').then(module => module.SourceWorkspace))
 const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
 
@@ -121,7 +120,6 @@ const {
   previewViewport,
   resolvedTheme,
   selectMobileStudioView: selectMobileView,
-  setCreationOrigin,
   setPaletteFamily,
   setThemePreference,
   showNotice,
@@ -335,6 +333,18 @@ function showSurfaceManager(): void {
     void router.push(projectPagesPath(projectId))
 }
 
+function showDesign(): void {
+  closeExportPreview()
+  if (previewOpen.value)
+    togglePreview()
+}
+
+function toggleWorkspacePreview(): void {
+  if (!previewOpen.value)
+    closeExportPreview()
+  togglePreview()
+}
+
 function showAssetManager(kind?: 'dataset' | 'resource', id?: string): void {
   assetSelection.value = { ...(kind ? { kind } : {}), ...(id ? { id } : {}) }
   assetManagerOpen.value = true
@@ -348,13 +358,6 @@ function exitToProjects(): void {
  * Creation is a routed workspace, so the command records where it came from and
  * navigates; the creation screen returns here and restores trigger focus.
  */
-function requestPageCreation(focusKey: string): void {
-  const projectId = currentProject.value?.id
-  setCreationOrigin({ focusKey, path: router.currentRoute.value.fullPath })
-  if (projectId)
-    void router.push(pageCreatePath(projectId))
-}
-
 function showPersistenceDialog(mode: PersistenceDialogMode): void {
   persistenceDialogMode.value = mode
 }
@@ -395,12 +398,12 @@ watch(recoveryDrafts, (drafts) => {
       :locale-id="localeId"
       :palette-family="paletteFamily"
       :preview-open="previewOpen"
+      :source-open="Boolean(exportPreviewMode)"
       :repository-revision="repositoryRevision"
       :status-label="statusLabel"
       :theme-preference="themePreference"
       @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
-      @new-surface="requestPageCreation($event)"
       @open-projects="exitToProjects"
       @open-appearance="openAppearanceDrawer"
       @open-surfaces="showSurfaceManager"
@@ -409,7 +412,8 @@ watch(recoveryDrafts, (drafts) => {
       @set-palette-family="setPaletteFamily"
       @set-theme-preference="setThemePreference"
       @toggle-locale="toggleLocale"
-      @toggle-preview="togglePreview"
+      @toggle-preview="toggleWorkspacePreview"
+      @show-design="showDesign"
     />
 
     <section
@@ -423,6 +427,7 @@ watch(recoveryDrafts, (drafts) => {
       }"
     >
       <section
+        v-show="!previewOpen && !exportPreviewMode"
         id="page-editor-panel"
         class="editor-pane"
         :aria-hidden="previewExpanded ? 'true' : undefined"
@@ -620,6 +625,7 @@ watch(recoveryDrafts, (drafts) => {
       </section>
 
       <PreviewDrawer
+        v-if="previewOpen"
         v-model:expanded="previewExpanded"
         v-model:viewport="previewViewport"
         :adapter="getCurrentAdapterId()"
@@ -638,6 +644,24 @@ watch(recoveryDrafts, (drafts) => {
         @ready="handlePreviewRuntimeReady"
         @session="handlePreviewSession"
       />
+
+      <section
+        v-if="exportPreviewMode"
+        class="source-pane"
+        :aria-label="workbenchLocale.t('workbench.code', 'Source')"
+      >
+        <SourceWorkspace
+          v-if="exportDialogLoaded"
+          :capture="captureExportSnapshotInput"
+          :current-compilation="getCurrentExportCompilation()"
+          :locale="localeOptions"
+          :mode="exportPreviewMode"
+          :surface-id="currentSurfaceId"
+          :theme="resolvedTheme"
+          @notice="showNotice($event)"
+          @update:mode="openExportPreview"
+        />
+      </section>
     </section>
 
     <nav v-if="currentProject" ref="mobileDock" class="mobile-studio-dock" role="tablist" :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')">
@@ -664,17 +688,6 @@ watch(recoveryDrafts, (drafts) => {
       :initial-id="assetSelection.id"
       :initial-kind="assetSelection.kind"
       :project="currentProject"
-    />
-
-    <ExportDialog
-      v-if="exportDialogLoaded"
-      :capture="captureExportSnapshotInput"
-      :current-compilation="getCurrentExportCompilation()"
-      :locale="localeOptions"
-      :mode="exportPreviewMode"
-      :theme="resolvedTheme"
-      @close="closeExportPreview"
-      @message="message = $event"
     />
 
     <PersistenceDialog

@@ -2,31 +2,31 @@
 .template-creation-workspace,
 .workbench-overlays,
 :root {
-  --wb-bg: #f7f4ec;
-  --wb-border: #857f72;
-  --wb-control-border: #857f72;
-  --wb-separator: #ded8c8;
-  --wb-elevated: #f1ede1;
-  --wb-hover: #ece7d8;
-  --wb-muted: #6e6a60;
-  --wb-small-text: #67635a;
-  --wb-surface: #fdfaf2;
-  --wb-surface-raised: #fffdf6;
-  --wb-text: #2a2a28;
-  --wb-text-strong: #1c1c1a;
-  --wb-accent: #a63a2e;
-  --wb-accent-text: #a63a2e;
-  --wb-action-bg: #363634;
-  --wb-action-text: #f7f4ec;
-  --wb-accent-soft: #f6e4de;
-  --wb-accent-line: #a63a2e;
-  --wb-focus: #a63a2e;
-  --wb-positive: #3d6a4e;
-  --wb-warning: #85601c;
-  --wb-danger: #a63a2e;
-  --wb-danger-soft: #f9e3de;
-  --wb-disabled: #8b867b;
-  --wb-editor-surface: #f3efe3;
+  --wb-bg: #f5f6f8;
+  --wb-border: #8b929f;
+  --wb-control-border: #8b929f;
+  --wb-separator: #dfe3e8;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f0f2f5;
+  --wb-muted: #6b717d;
+  --wb-small-text: #626975;
+  --wb-surface: #ffffff;
+  --wb-surface-raised: #ffffff;
+  --wb-text: #353a43;
+  --wb-text-strong: #191d25;
+  --wb-accent: #087582;
+  --wb-accent-text: #087582;
+  --wb-action-bg: #22262e;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #e7f4f5;
+  --wb-accent-line: #168d97;
+  --wb-focus: #087f8c;
+  --wb-positive: #227b55;
+  --wb-warning: #93630b;
+  --wb-danger: #c84048;
+  --wb-danger-soft: #fcebed;
+  --wb-disabled: #989eaa;
+  --wb-editor-surface: #f5f6f8;
 
   /* Elevation set: palettes tune these instead of hard-coding shadows. */
   --wb-shadow-overlay: 0 20px 56px rgb(0 0 0 / 28%);
@@ -48,6 +48,7 @@
 }
 
 .workbench-app,
+.management-shell,
 .template-creation-workspace,
 .workbench-overlays {
   --el-color-primary: var(--wb-accent);
@@ -110,6 +111,7 @@
 /* Primary commands run on the action pair (contrast-checked per palette);
    --el-color-primary keeps selection states on the accent. */
 .workbench-app .el-button--primary,
+.management-shell .el-button--primary,
 .template-creation-workspace .el-button--primary,
 .workbench-overlays .el-button--primary {
   --el-button-bg-color: var(--wb-action-bg);
@@ -124,6 +126,7 @@
 }
 
 .workbench-app .el-segmented,
+.management-shell .el-segmented,
 .template-creation-workspace .el-segmented,
 .workbench-overlays .el-segmented {
   --el-segmented-color: var(--wb-text);
@@ -137,37 +140,37 @@
   --el-segmented-item-disabled-color: var(--wb-disabled);
 }
 
-/* ① Ink wash — xuan paper: warm paper, dense-ink commands, cinnabar accents,
-   layered by hairline borders and whitespace instead of shadows. */
+/* Neutral editor chrome keeps page colors distinct from workspace controls. */
 :root[data-palette="ink"][data-theme="light"],
 .workbench-app[data-palette="ink"][data-theme="light"],
+.management-shell[data-palette="ink"][data-theme="light"],
 .template-creation-workspace[data-palette="ink"][data-theme="light"],
 .workbench-overlays[data-palette="ink"][data-theme="light"] {
-  --wb-bg: #f7f4ec;
-  --wb-border: #857f72;
-  --wb-control-border: #857f72;
-  --wb-separator: #ded8c8;
-  --wb-elevated: #f1ede1;
-  --wb-hover: #ece7d8;
-  --wb-muted: #6e6a60;
-  --wb-small-text: #67635a;
-  --wb-surface: #fdfaf2;
-  --wb-surface-raised: #fffdf6;
-  --wb-text: #2a2a28;
-  --wb-text-strong: #1c1c1a;
-  --wb-accent: #a63a2e;
-  --wb-accent-text: #a63a2e;
-  --wb-action-bg: #363634;
-  --wb-action-text: #f7f4ec;
-  --wb-accent-soft: #f6e4de;
-  --wb-accent-line: #a63a2e;
-  --wb-focus: #a63a2e;
-  --wb-positive: #3d6a4e;
-  --wb-warning: #85601c;
-  --wb-danger: #a63a2e;
-  --wb-danger-soft: #f9e3de;
-  --wb-disabled: #8b867b;
-  --wb-editor-surface: #f3efe3;
+  --wb-bg: #f5f6f8;
+  --wb-border: #8b929f;
+  --wb-control-border: #8b929f;
+  --wb-separator: #dfe3e8;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f0f2f5;
+  --wb-muted: #6b717d;
+  --wb-small-text: #626975;
+  --wb-surface: #ffffff;
+  --wb-surface-raised: #ffffff;
+  --wb-text: #353a43;
+  --wb-text-strong: #191d25;
+  --wb-accent: #087582;
+  --wb-accent-text: #087582;
+  --wb-action-bg: #22262e;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #e7f4f5;
+  --wb-accent-line: #168d97;
+  --wb-focus: #087f8c;
+  --wb-positive: #227b55;
+  --wb-warning: #93630b;
+  --wb-danger: #c84048;
+  --wb-danger-soft: #fcebed;
+  --wb-disabled: #989eaa;
+  --wb-editor-surface: #f5f6f8;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -176,36 +179,37 @@
   color-scheme: light;
 }
 
-/* ① Ink wash — night ink: lifted cinnabar, pale-ink commands on dark paper. */
+/* Dark chrome uses the same hierarchy and restrained accent. */
 :root[data-palette="ink"][data-theme="dark"],
 .workbench-app[data-palette="ink"][data-theme="dark"],
+.management-shell[data-palette="ink"][data-theme="dark"],
 .template-creation-workspace[data-palette="ink"][data-theme="dark"],
 .workbench-overlays[data-palette="ink"][data-theme="dark"] {
-  --wb-bg: #1b1b19;
-  --wb-border: #8c887b;
-  --wb-control-border: #8c887b;
-  --wb-separator: #403f38;
-  --wb-elevated: #151513;
-  --wb-hover: #34342f;
-  --wb-muted: #a8a49a;
-  --wb-small-text: #a8a49a;
-  --wb-surface: #252522;
-  --wb-surface-raised: #2e2e2a;
-  --wb-text: #eae6da;
-  --wb-text-strong: #f4f1e7;
-  --wb-accent: #c4483b;
-  --wb-accent-text: #ef8a76;
-  --wb-action-bg: #d8d4c8;
-  --wb-action-text: #1b1b19;
-  --wb-accent-soft: #46302a;
-  --wb-accent-line: #c4483b;
-  --wb-focus: #d9705f;
-  --wb-positive: #9cbe9a;
-  --wb-warning: #d9b36a;
-  --wb-danger: #e2705f;
-  --wb-danger-soft: #4a2a24;
-  --wb-disabled: #807c71;
-  --wb-editor-surface: #21211e;
+  --wb-bg: #191b20;
+  --wb-border: #777e8b;
+  --wb-control-border: #777e8b;
+  --wb-separator: #3b404a;
+  --wb-elevated: #22252b;
+  --wb-hover: #30343c;
+  --wb-muted: #a2a8b4;
+  --wb-small-text: #a2a8b4;
+  --wb-surface: #22252b;
+  --wb-surface-raised: #292d35;
+  --wb-text: #e0e3e9;
+  --wb-text-strong: #f7f8fa;
+  --wb-accent: #54c2c7;
+  --wb-accent-text: #79d2d5;
+  --wb-action-bg: #e4e7ed;
+  --wb-action-text: #22262e;
+  --wb-accent-soft: #213b41;
+  --wb-accent-line: #54c2c7;
+  --wb-focus: #79d2d5;
+  --wb-positive: #70c4a0;
+  --wb-warning: #e1b36a;
+  --wb-danger: #ee8791;
+  --wb-danger-soft: #492d35;
+  --wb-disabled: #737a87;
+  --wb-editor-surface: #191b20;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -218,6 +222,7 @@
    bean-paste accents. */
 :root[data-palette="morandi"][data-theme="light"],
 .workbench-app[data-palette="morandi"][data-theme="light"],
+.management-shell[data-palette="morandi"][data-theme="light"],
 .template-creation-workspace[data-palette="morandi"][data-theme="light"],
 .workbench-overlays[data-palette="morandi"][data-theme="light"] {
   --wb-bg: #f5f2ec;
@@ -251,6 +256,7 @@
 /* ② Morandi cream — deep coffee with milk-white text, never plain black. */
 :root[data-palette="morandi"][data-theme="dark"],
 .workbench-app[data-palette="morandi"][data-theme="dark"],
+.management-shell[data-palette="morandi"][data-theme="dark"],
 .template-creation-workspace[data-palette="morandi"][data-theme="dark"],
 .workbench-overlays[data-palette="morandi"][data-theme="dark"] {
   --wb-bg: #2c2925;
@@ -284,6 +290,7 @@
 /* ③ Cyber tech — restrained electric blue on cool white. */
 :root[data-palette="cyber"][data-theme="light"],
 .workbench-app[data-palette="cyber"][data-theme="light"],
+.management-shell[data-palette="cyber"][data-theme="light"],
 .template-creation-workspace[data-palette="cyber"][data-theme="light"],
 .workbench-overlays[data-palette="cyber"][data-theme="light"] {
   --wb-bg: #eff3f8;
@@ -317,6 +324,7 @@
 /* ③ Cyber tech — deep space with neon cyan focus and a glowing primary. */
 :root[data-palette="cyber"][data-theme="dark"],
 .workbench-app[data-palette="cyber"][data-theme="dark"],
+.management-shell[data-palette="cyber"][data-theme="dark"],
 .template-creation-workspace[data-palette="cyber"][data-theme="dark"],
 .workbench-overlays[data-palette="cyber"][data-theme="dark"] {
   --wb-bg: #0a0f1e;
@@ -352,6 +360,7 @@
    no-backdrop-filter fallback. */
 :root[data-palette="glass"][data-theme="light"],
 .workbench-app[data-palette="glass"][data-theme="light"],
+.management-shell[data-palette="glass"][data-theme="light"],
 .template-creation-workspace[data-palette="glass"][data-theme="light"],
 .workbench-overlays[data-palette="glass"][data-theme="light"] {
   --wb-bg: #f4f1f8;
@@ -392,6 +401,7 @@
 /* ④ Glassmorphism — deep space with purple-pink halos behind frosted panes. */
 :root[data-palette="glass"][data-theme="dark"],
 .workbench-app[data-palette="glass"][data-theme="dark"],
+.management-shell[data-palette="glass"][data-theme="dark"],
 .template-creation-workspace[data-palette="glass"][data-theme="dark"],
 .workbench-overlays[data-palette="glass"][data-theme="dark"] {
   --wb-bg: #0c1122;
@@ -431,6 +441,7 @@
 
 /* Glass backdrops carry the blurred color blobs the panes refract. */
 .workbench-app[data-palette="glass"][data-theme="light"],
+.management-shell[data-palette="glass"][data-theme="light"],
 .template-creation-workspace[data-palette="glass"][data-theme="light"] {
   background:
     radial-gradient(720px 480px at 12% -6%, rgb(99 102 241 / 22%), transparent 60%),
@@ -440,6 +451,7 @@
 }
 
 .workbench-app[data-palette="glass"][data-theme="dark"],
+.management-shell[data-palette="glass"][data-theme="dark"],
 .template-creation-workspace[data-palette="glass"][data-theme="dark"] {
   background:
     radial-gradient(720px 480px at 15% -8%, rgb(129 140 248 / 28%), transparent 60%),
@@ -451,13 +463,14 @@
 /* Frosted chrome panes; without backdrop-filter support the solid surface
    tokens above remain in charge. */
 @supports (backdrop-filter: blur(14px)) {
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-topbar,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .mobile-studio-dock,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .persistence-dialog,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .export-preview-dialog,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .appearance-drawer-shell,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-appearance-popover.el-popper,
-  :is(.workbench-app, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .preview-drawer-shell,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-topbar,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .mobile-studio-dock,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .persistence-dialog,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .source-workspace__heading,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .source-workspace__toolbar,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .appearance-drawer-shell,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-appearance-popover.el-popper,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .preview-drawer-shell,
   .page-manager-page[data-palette="glass"] {
     border-color: var(--wb-veil-border);
     background: var(--wb-veil);

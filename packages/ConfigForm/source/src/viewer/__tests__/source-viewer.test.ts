@@ -9,7 +9,8 @@ const monacoMocks = vi.hoisted(() => {
   const dispose = vi.fn()
   const mount = vi.fn(() => ({ dispose, update: vi.fn() }))
   const load = vi.fn(async () => ({ mount }))
-  return { dispose, load, mount }
+  const update = vi.fn()
+  return { dispose, load, mount, update }
 })
 
 vi.mock('../services/monaco-loader', () => ({
@@ -57,7 +58,7 @@ describe('config form source viewer', () => {
     monacoMocks.load.mockImplementation(async () => ({ mount: monacoMocks.mount }))
     monacoMocks.mount.mockImplementation(() => ({
       dispose: monacoMocks.dispose,
-      update: vi.fn(),
+      update: monacoMocks.update,
     }))
   })
 
@@ -157,5 +158,62 @@ describe('config form source viewer', () => {
     await flushPromises()
 
     expect(monacoMocks.mount).not.toHaveBeenCalled()
+  })
+
+  it('navigates open tabs by keyboard and closes to the neighboring file', async () => {
+    const wrapper = mount(ConfigFormSourceViewer, {
+      attachTo: document.body,
+      props: { files: createFileSet(), selectedPath: 'package.json' },
+    })
+    await wrapper.setProps({ selectedPath: 'src/main.ts' })
+    await wrapper.setProps({ selectedPath: 'src/assets/brand-mark.png' })
+
+    const tabs = () => wrapper.findAll('[role="tab"]')
+    expect(tabs()).toHaveLength(3)
+    expect(tabs().map(tab => tab.attributes('tabindex'))).toEqual(['-1', '-1', '0'])
+    await tabs()[2]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(wrapper.emitted('update:selectedPath')?.at(-1)).toEqual(['package.json'])
+    expect(document.activeElement).toBe(tabs()[0]!.element)
+
+    await wrapper.setProps({ selectedPath: 'package.json' })
+    await tabs()[0]!.trigger('keydown', { key: 'End' })
+    expect(wrapper.emitted('update:selectedPath')?.at(-1)).toEqual(['src/assets/brand-mark.png'])
+    await wrapper.setProps({ selectedPath: 'src/assets/brand-mark.png' })
+    await tabs()[2]!.trigger('keydown', { key: 'Home' })
+    await wrapper.setProps({ selectedPath: 'package.json' })
+    await tabs()[0]!.trigger('keydown', { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(tabs()[2]!.element)
+    await wrapper.setProps({ selectedPath: 'src/assets/brand-mark.png' })
+    await tabs()[2]!.trigger('keydown', { key: 'ArrowLeft' })
+    await wrapper.setProps({ selectedPath: 'src/main.ts' })
+
+    await tabs()[1]!.trigger('keydown', { key: 'Delete' })
+    expect(wrapper.emitted('update:selectedPath')?.at(-1)).toEqual(['src/assets/brand-mark.png'])
+    expect(tabs().map(tab => tab.attributes('title'))).toEqual(['package.json', 'src/assets/brand-mark.png'])
+    expect(document.activeElement).toBe(tabs()[1]!.element)
+    await wrapper.setProps({ selectedPath: 'src/assets/brand-mark.png' })
+    const selectionCount = wrapper.emitted('update:selectedPath')?.length
+    await wrapper.get('[aria-label="Close package.json"]').trigger('click')
+    expect(wrapper.emitted('update:selectedPath')).toHaveLength(selectionCount!)
+    expect(tabs()).toHaveLength(1)
+    expect(wrapper.find('.config-form-source-viewer__tab-close').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('drops tabs from the previous file set and updates wrapping without remounting Monaco', async () => {
+    const files = createFileSet()
+    const wrapper = mount(ConfigFormSourceViewer, {
+      props: { files, selectedPath: 'src/main.ts', wrapLines: true },
+    })
+    await flushPromises()
+    expect(monacoMocks.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ wrapLines: true }))
+    await wrapper.setProps({ selectedPath: 'package.json', wrapLines: false })
+    expect(monacoMocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ wrapLines: false }))
+    expect(monacoMocks.mount).toHaveBeenCalledOnce()
+
+    await wrapper.setProps({ files: { ...files, files: files.files.filter(file => file.path === 'package.json') } })
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('title'))).toEqual(['package.json'])
+    expect(wrapper.get('.config-form-source-viewer__path').text()).toBe('package.json')
+    wrapper.unmount()
   })
 })

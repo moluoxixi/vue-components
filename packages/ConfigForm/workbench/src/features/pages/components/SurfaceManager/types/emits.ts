@@ -4,6 +4,7 @@ export interface SurfaceManagerEmits {
   action: [action: ProjectSurfaceAction]
   close: []
   createSurface: []
+  importSurface: []
   /** Export one page's transfer JSON. */
   export: [id: string]
   /** Export one page's copy-friendly source directory. */

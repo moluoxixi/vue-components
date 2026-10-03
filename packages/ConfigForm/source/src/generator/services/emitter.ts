@@ -25,7 +25,9 @@ import { readProjectImageResourceId } from '@moluoxixi/config-form-model'
 import { readSourceFileSet } from '../validation'
 import { sourceDatasetViewKey as datasetViewKey } from './datasets'
 import { createSourceInitialValues } from './initial-values'
-import { rawValidationModuleSource } from './raw-validation'
+import { rawFormCellClass, rawFormContentClass } from './raw-form-layout'
+import { rawValidationModuleSource, rawValidatorNames } from './raw-validation'
+import { rawValidationComposableSource } from './raw-validation-runtime'
 import {
   escapeHtml,
   kebabCase,
@@ -90,7 +92,7 @@ function classAttribute(className: string): string {
 }
 
 function projectSlug(name: string): string {
-  return safeSlug(name, 'config-form-demo')
+  return safeSlug(name, 'vue-app')
 }
 
 function packageManifest(
@@ -401,22 +403,28 @@ withDefaults(defineProps<{
   label?: string
   required?: boolean
   errors?: readonly string[]
-  controlId?: string
   errorId?: string
+  labelPosition?: 'left' | 'top'
 }>(), {
   errors: () => [],
+  labelPosition: 'left',
 })
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-1.5" data-config-form-item>
-    <label v-if="label" :for="controlId" class="text-[13px] font-semibold" data-config-form-label :data-required="required || undefined">
-      {{ label }}<span v-if="required" class="ml-1 text-[var(--demo-color-danger,#dc2626)]" aria-hidden="true">*</span>
+  <div class="grid min-w-0 gap-y-1.5" :class="label && labelPosition === 'left' ? 'grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] gap-x-4' : ''" data-config-form-item>
+    <label v-if="label" class="grid min-w-0 gap-y-1.5" :class="labelPosition === 'left' ? 'col-span-2 grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] items-start gap-x-4' : ''" data-config-form-label :data-required="required || undefined">
+      <span class="text-[13px] font-semibold">
+        {{ label }}<span v-if="required" class="ml-1 text-[var(--demo-color-danger,#dc2626)]" aria-hidden="true">*</span>
+      </span>
+      <span class="min-w-0" data-config-form-control data-config-form-item-control>
+        <slot />
+      </span>
     </label>
-    <div class="min-w-0" data-config-form-control data-config-form-item-control>
+    <div v-else class="min-w-0" data-config-form-control data-config-form-item-control>
       <slot />
     </div>
-    <p v-for="(message, index) in errors" :id="index === 0 ? errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" data-config-form-error role="alert">
+    <p v-for="(message, index) in errors" :id="index === 0 ? errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" :class="label && labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-error role="alert">
       {{ message }}
     </p>
   </div>
@@ -425,14 +433,24 @@ withDefaults(defineProps<{
 }
 
 function rawFieldControlId(
+  surface: SourceSurface,
   node: SourceFieldNode,
   resolution: SourceComponentResolution,
+  context: EmitContext,
 ): string {
   const configured = [
     node.props.id,
     resolution.staticProps?.id,
   ].find((value): value is string => typeof value === 'string' && value.length > 0)
-  return configured ?? `demo-${safeSlug(node.id, 'field')}-control`
+  if (configured)
+    return configured
+  if (surface.valueScopes.length === 0) {
+    const fields = uniqueSlugs(Object.values(surface.nodesById)
+      .filter((item): item is SourceFieldNode => item.kind === 'field')
+      .map(item => item.field))
+    return `${context.surfaceDirectories.get(surface.id)}-${fields.get(node.field)}-control`
+  }
+  return `field-${safeSlug(node.id, 'field')}-control`
 }
 
 function componentForNode(
@@ -496,6 +514,58 @@ function bindExpression(properties: readonly ExpressionProperty[], projectedNode
     return ` v-bind="mergeDemoNodeProps(${expression}, reactionProjection.props[${sourceAttributeString(projectedNodeId)}], reactionProjection.states[${sourceAttributeString(projectedNodeId)}])"`
   }
   return ` v-bind="${expression}"`
+}
+
+function rawAttributes(properties: readonly ExpressionProperty[], projectedNodeId?: string): string[] {
+  if (projectedNodeId)
+    return [bindExpression(properties, projectedNodeId)]
+  return properties.map(({ key, expression }) => {
+    if (key === 'text')
+      return ''
+    const literal = /^'([^']*)'$/u.exec(expression)
+    return literal && !literal[1]!.includes('\\')
+      ? ` ${kebabCase(key)}="${literal[1]}"`
+      : ` :${kebabCase(key)}="${expression}"`
+  }).filter(Boolean)
+}
+
+function businessFieldAccess(valueSource: string, field: string): string {
+  return /^[a-z_$][\w$]*$/iu.test(field)
+    ? `${valueSource}.${field}`
+    : `${valueSource}[${sourceAttributeString(field)}]`
+}
+
+function rawOpeningTag(tag: string, attributes: readonly string[], indent: string, selfClosing: boolean): string[] {
+  const present = attributes.filter(Boolean)
+  const closing = selfClosing ? ' />' : '>'
+  if (present.join('').length < 90)
+    return [`${indent}<${tag}${present.join('')}${closing}`]
+  return [`${indent}<${tag}`, ...present.map(attribute => `${indent}  ${attribute.trim()}`), `${indent}${closing.trim()}`]
+}
+
+function fieldModelType(node: SourceFieldNode, resolution: SourceComponentResolution): string | undefined {
+  const value = node.defaultValue
+  if (typeof value === 'boolean')
+    return 'boolean'
+  if (typeof value === 'number')
+    return 'number'
+  if (typeof value === 'string')
+    return 'string'
+  if (Array.isArray(value))
+    return undefined
+  const tag = resolution.tag.toLowerCase()
+  if (/switch|checkbox$/u.test(tag))
+    return 'boolean'
+  if (/input-number|slider|rate/u.test(tag))
+    return 'number'
+  if (/input|textarea/u.test(tag))
+    return 'string'
+  return undefined
+}
+
+function usesDirectModel(surface: SourceSurface, node: SourceFieldNode, resolution: SourceComponentResolution): boolean {
+  return surface.valueScopes.length === 0 && valueInteractions(surface).length === 0
+    && resolution.valueProp !== undefined && resolution.trigger === `update:${resolution.valueProp}`
 }
 
 function renderTag(resolution: SourceComponentResolution): string {
@@ -710,6 +780,7 @@ function interactionHandlersSource(
   projectionStatesSource = '{}',
   actionSource = 'navigation',
   validationSource?: string,
+  directRouter = false,
 ): string {
   const interactions = emittedInteractions(surface, context)
   if (interactions.length === 0)
@@ -733,10 +804,12 @@ function interactionHandlersSource(
     }
     const action = binding.action
     if (action.kind === 'navigate') {
-      lines.push(`  await ${actionSource}.navigate(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)})`)
+      lines.push(directRouter
+        ? `  await router.push({ name: ${sourceString(action.targetSurfaceId)} })`
+        : `  await ${actionSource}.navigate(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)})`)
     }
     else if (action.kind === 'back') {
-      lines.push(`  ${actionSource}.back()`)
+      lines.push(`  ${directRouter ? 'router' : actionSource}.back()`)
     }
     else if (action.kind === 'open') {
       const callback = resultCallbackSource(surface, action, valuesSource)
@@ -1054,14 +1127,27 @@ function optionChildren(
   resolution: SourceComponentResolution,
   indent: string,
 ): string[] {
-  if (resolution.options?.mode !== 'children' || !resolution.options.optionTag || !node.datasetBindings)
+  if (resolution.options?.mode !== 'children' || !resolution.options.optionTag)
     return []
-  const binding = Object.entries(node.datasetBindings).sort(([left], [right]) => left.localeCompare(right))[0]
-  if (!binding)
-    return []
-  const [bindingKey] = binding
+  const binding = Object.entries(node.datasetBindings ?? {}).sort(([left], [right]) => left.localeCompare(right))[0]
   const labelProp = resolution.options.labelProp ?? 'label'
   const valueProp = resolution.options.valueProp ?? 'value'
+  if (!binding) {
+    const options = node.props.options ?? resolution.staticProps?.options
+    if (!Array.isArray(options))
+      return []
+    return options.flatMap((option) => {
+      if (typeof option !== 'object' || option === null || Array.isArray(option))
+        throw new TypeError(`Invalid option in ${surface.id}/${node.id}.`)
+      const props = [
+        { key: labelProp, expression: sourceAttributeJson(option.label) },
+        { key: valueProp, expression: sourceAttributeJson(option.value) },
+        ...(option.disabled === undefined ? [] : [{ key: 'disabled', expression: sourceAttributeJson(option.disabled) }]),
+      ]
+      return rawOpeningTag(resolution.options!.optionTag!, rawAttributes(props), indent, true)
+    })
+  }
+  const [bindingKey] = binding
   return [
     `${indent}<${resolution.options.optionTag}`,
     `${indent}  v-for="(option, optionIndex) in datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, bindingKey))}].items"`,
@@ -1088,7 +1174,7 @@ function renderRawNode(
   const projected = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id)
   const visible = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
     && interaction.target.kind === 'state' && interaction.target.key === 'visible')
-  const fieldControlId = node.kind === 'field' ? rawFieldControlId(node, resolution) : undefined
+  const fieldControlId = node.kind === 'field' ? rawFieldControlId(surface, node, resolution, context) : undefined
   const fieldErrorId = fieldControlId ? `${fieldControlId}-error` : undefined
   const requiredBaseline = node.kind === 'field' && fieldRequired(node).required === true
   const projectedRequired = node.kind === 'field' && stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
@@ -1098,10 +1184,29 @@ function renderRawNode(
       ? `reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}`
       : String(requiredBaseline)
     : undefined
+  const directModel = node.kind === 'field' && usesDirectModel(surface, node, resolution)
+  const cellClass = context.style.target === 'tailwind-v4' ? rawFormCellClass(surface, node.id) : ''
+  const childOptionsKey = resolution.options?.mode === 'children'
+    ? Object.keys(node.datasetBindings ?? {}).sort()[0] ?? 'options'
+    : undefined
+  const properties = nodeProperties(surface, node, resolution, context.style, valueSource)
+    .filter(property => !(directModel && property.key === resolution.valueProp)
+      && property.key !== 'aria-required'
+      && property.key !== childOptionsKey && property.key !== `${childOptionsKey}Total`)
+  if (cellClass && node.kind !== 'field') {
+    const existing = properties.find(property => property.key === 'class')
+    if (existing)
+      existing.expression = `[${existing.expression}, ${sourceAttributeString(cellClass)}]`
+    else
+      properties.push({ key: 'class', expression: sourceAttributeString(cellClass) })
+  }
   const attributes = [
-    ` data-node-id="${escapeHtml(node.id)}"`,
-    bindExpression(nodeProperties(surface, node, resolution, context.style, valueSource), projected ? node.id : undefined),
+    ...rawAttributes(properties, projected ? node.id : undefined),
   ]
+  if (directModel) {
+    const modelDirective = resolution.valueProp === 'modelValue' ? 'v-model' : `v-model:${kebabCase(resolution.valueProp!)}`
+    attributes.push(` ${modelDirective}="${businessFieldAccess(valueSource, node.field)}"`)
+  }
   if (fieldControlId) {
     const configuredId = (
       (typeof node.props.id === 'string' && node.props.id.length > 0)
@@ -1109,7 +1214,8 @@ function renderRawNode(
     )
     if (!configuredId)
       attributes.push(` id="${escapeHtml(fieldControlId)}"`)
-    attributes.push(` :aria-required="${requiredExpression}"`)
+    if (requiredBaseline || projectedRequired)
+      attributes.push(` :aria-required="${requiredExpression}"`)
     if (rawNeedsValidation(surface, context)) {
       attributes.push(` :aria-invalid="validationErrors[${sourceAttributeString(node.id)}]?.length ? true : undefined"`)
       attributes.push(` :aria-describedby="validationErrors[${sourceAttributeString(node.id)}]?.length ? ${sourceAttributeString(fieldErrorId!)} : undefined"`)
@@ -1118,7 +1224,17 @@ function renderRawNode(
   if (visible && node.kind !== 'field')
     attributes.push(` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`)
   if (node.kind === 'field' && resolution.trigger) {
-    attributes.push(` @${kebabCase(resolution.trigger)}="updateValue(${valueSource}, ${sourceAttributeString(node.field)}, ${sourceAttributeString(node.id)}, $event)"`)
+    const changeValidation = rawNeedsValidation(surface, context) && node.validateOn.includes('change')
+      ? `validateFields([${sourceAttributeString(node.id)}])`
+      : ''
+    if (directModel) {
+      if (changeValidation)
+        attributes.push(` @${kebabCase(resolution.trigger)}="${changeValidation}"`)
+    }
+    else {
+      const update = `updateValue(${valueSource}, ${sourceAttributeString(node.field)}, ${sourceAttributeString(node.id)}, $event)`
+      attributes.push(` @${kebabCase(resolution.trigger)}="${update}${changeValidation ? `; ${changeValidation}` : ''}"`)
+    }
   }
   if (
     node.kind === 'field'
@@ -1126,7 +1242,7 @@ function renderRawNode(
     && resolution.blurTrigger
     && node.validateOn.includes('blur')
   ) {
-    attributes.push(` @${kebabCase(resolution.blurTrigger)}="void validateDemoFields([${sourceAttributeString(node.id)}])"`)
+    attributes.push(` @${kebabCase(resolution.blurTrigger)}="validateFields([${sourceAttributeString(node.id)}])"`)
   }
   const listeners = new Map<string, string[]>()
   for (const interaction of emittedInteractions(surface, context).filter(item => item.binding.nodeId === node.id)) {
@@ -1170,22 +1286,23 @@ function renderRawNode(
     children.push(`${indent}  ${escapeHtml(node.props.text)}`)
 
   const componentLines = children.length === 0
-    ? [`${indent}<${tag}${attributes.join('')} />`]
-    : [`${indent}<${tag}${attributes.join('')}>`, ...children, `${indent}</${tag}>`]
+    ? rawOpeningTag(tag, attributes, indent, true)
+    : [...rawOpeningTag(tag, attributes, indent, false), ...children, `${indent}</${tag}>`]
   if (node.kind !== 'field')
     return componentLines
   if (context.style.target === 'tailwind-v4') {
     const itemAttributes = [
       ...(node.label ? [` label="${escapeHtml(node.label)}"`] : []),
-      ` :required="${requiredExpression}"`,
-      ` control-id="${escapeHtml(fieldControlId!)}"`,
-      ` error-id="${escapeHtml(fieldErrorId!)}"`,
+      ...(requiredBaseline || projectedRequired ? [` :required="${requiredExpression}"`] : []),
+      ...(cellClass ? [` class="${cellClass}"`] : []),
+      ...(surface.form.labelPosition === 'top' ? [' label-position="top"'] : []),
+      ...(rawNeedsValidation(surface, context) ? [` error-id="${escapeHtml(fieldErrorId!)}"`] : []),
       ...(rawNeedsValidation(surface, context)
         ? [` :errors="validationErrors[${sourceAttributeString(node.id)}] ?? []"`]
         : []),
     ]
     return [
-      `${indent}<ConfigFormItem${itemAttributes.join('')}${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
+      ...rawOpeningTag('ConfigFormItem', [...itemAttributes, ...(visible ? [` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`] : [])], indent, false),
       ...componentLines.map(line => `  ${line}`),
       `${indent}</ConfigFormItem>`,
     ]
@@ -1279,102 +1396,6 @@ function rawNeedsValidation(surface: SourceSurface, context: EmitContext): boole
     || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction' && interaction.validate !== undefined)
 }
 
-function rawValidationSource(
-  surface: SourceSurface,
-  context: EmitContext,
-  hasStateProjection: boolean,
-): string {
-  const fields = Object.values(surface.nodesById)
-    .filter((node): node is SourceFieldNode => node.kind === 'field')
-    .sort((left, right) => left.id.localeCompare(right.id))
-  const definitions = fields.map((node) => {
-    const required = fieldRequired(node)
-    return `  ${sourceString(node.id)}: {
-    field: ${sourceString(node.field)},
-    required: ${required.required === true},
-    validateOn: ${sourceJson(node.validateOn as unknown as ModelJsonValue)},
-    scopes: ${sourceJson(fieldScopeChain(surface, node.id) as unknown as ModelJsonValue)},
-    validator: demoFieldValidators[${sourceString(node.id)}]!,
-    label: ${sourceString(node.label ?? node.field)},
-  },`
-  }).join('\n')
-  const projectedRequired = hasStateProjection
-    ? 'reactionProjection.value.states[nodeId]?.required'
-    : 'undefined'
-  return `interface DemoValidationField {
-  field: string
-  label: string
-  required: boolean
-  validateOn: readonly ('blur' | 'change' | 'submit')[]
-  scopes: readonly { field: string, kind: 'array' | 'object' }[]
-  validator: DemoFieldValidator
-}
-
-interface DemoValidationRequest {
-  surfaceId: string
-  scope: 'surface' | 'fields'
-  fieldIds: readonly string[]
-}
-
-const demoValidationFields: Readonly<Record<string, DemoValidationField>> = {
-${definitions}
-}
-const validationErrors = reactive<Record<string, string[]>>({})
-
-function collectDemoFieldInstances(definition: DemoValidationField): readonly {
-  value: unknown
-  values: Record<string, unknown>
-}[] {
-  let containers: Record<string, unknown>[] = [values]
-  for (const scope of definition.scopes) {
-    containers = containers.flatMap((container) => {
-      const scopedValue = container[scope.field]
-      return scope.kind === 'object'
-        ? [demoObject(scopedValue, scope.field)]
-        : demoArray(scopedValue, scope.field)
-    })
-  }
-  return containers.map(container => ({ value: container[definition.field], values: container }))
-}
-
-async function validateDemoFields(nodeIds: readonly string[], requireInstance = false): Promise<boolean> {
-  let valid = true
-  for (const nodeId of [...new Set(nodeIds)]) {
-    const definition = demoValidationFields[nodeId]
-    if (!definition) {
-      valid = false
-      continue
-    }
-    const instances = collectDemoFieldInstances(definition)
-    const errors: string[] = []
-    if (requireInstance && instances.length === 0)
-      errors.push(\`No live field instance exists for \${definition.label}.\`)
-    for (const instance of instances) {
-      const required = ${projectedRequired} ?? definition.required
-      errors.push(...definition.validator(instance.value, instance.values, required))
-    }
-    validationErrors[nodeId] = errors
-    if (errors.length > 0)
-      valid = false
-  }
-  return valid
-}
-
-const validation = {
-  async validate(request: DemoValidationRequest): Promise<boolean> {
-    if (request.surfaceId !== ${sourceString(surface.id)})
-      return false
-    const nodeIds = request.scope === 'surface'
-      ? Object.keys(demoValidationFields)
-      : request.fieldIds
-    if (request.scope === 'fields' && nodeIds.length === 0)
-      return false
-    return validateDemoFields(nodeIds, request.scope === 'fields')
-  },
-}
-`
-}
-
 function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string {
   assertSupportedInteractionScopes(surface)
   const initialValues = createSourceInitialValues(surface)
@@ -1393,6 +1414,25 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
   const stateRules = stateInteractions(surface)
   const valueRules = valueInteractions(surface)
   const needsValidation = rawNeedsValidation(surface, context)
+  const needsNavigationBridge = rawNeedsNavigationBridge(context)
+  const fields = Object.values(surface.nodesById).filter((node): node is SourceFieldNode => node.kind === 'field')
+  const needsValueUpdate = fields.some((node) => {
+    const resolution = componentForNode(node, context.components)
+    return resolution.trigger && !usesDirectModel(surface, node, resolution)
+  })
+  const needsFieldSetter = valueRules.length > 0 || interactions.some(({ binding }) => (
+    binding.action.kind === 'open' && binding.action.onResults?.some(result => result.assignments.length > 0)
+  ))
+  const needsParameters = surface.parameters.length > 0 || surface.interactions.some(interaction => (
+    interactionExpressions(interaction).some(expression => expressionNodes(expression.ast)
+      .some(node => node.kind === 'reference' && node.scope === 'parameters'))
+  ))
+  const parameterSource = needsParameters ? 'parameters.value' : '{}'
+  const vueImports = [
+    ...(needsParameters || stateRules.length > 0 ? ['computed'] : []),
+    ...(fields.length > 0 || needsFieldSetter ? ['reactive'] : []),
+    ...(valueRules.length > 0 ? ['toRaw'] : []),
+  ]
   const usesExpressions = stateRules.length > 0 || valueRules.length > 0
     || interactions.some(interaction => interactionExpressions(interaction.binding).length > 0)
   const generatedValueImports = [
@@ -1400,7 +1440,7 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     ...(valueRules.length > 0 ? [valueSettlementFunctionName(surface, context)] : []),
   ]
   const imports = [
-    'import { computed, reactive } from \'vue\'',
+    ...(vueImports.length > 0 ? [`import { ${vueImports.join(', ')} } from 'vue'`] : []),
     ...(surfaceUsesRender(surface, context, 'dataset-table')
       ? ['import DemoDatasetTable from \'../../components/DemoDatasetTable.vue\'']
       : []),
@@ -1409,9 +1449,11 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
       : []),
     ...(usesFieldItem ? ['import ConfigFormItem from \'../../components/ConfigFormItem.vue\''] : []),
     ...(needsValidation
-      ? ['import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'']
+      ? ['import { useFormValidation } from \'./composables/useFormValidation\'']
       : []),
-    ...(interactions.length > 0 ? ['import { useDemoNavigation } from \'../../demo-navigation.ts\''] : []),
+    ...(interactions.length > 0
+      ? [needsNavigationBridge ? 'import { useDemoNavigation } from \'../../demo-navigation.ts\'' : 'import { useRouter } from \'vue-router\'']
+      : []),
     ...(usesExpressions ? [demoValueImport] : []),
     ...(generatedValueImports.length > 0
       ? [`import { ${generatedValueImports.join(', ')} } from '../../demo-values.ts'`]
@@ -1423,9 +1465,9 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     ...(surfaceUses(surface, 'resourceBindings') ? ['import { resources } from \'../../data/resources.ts\''] : []),
   ]
   const setDemoFieldsBody = valueRules.length > 0
-    ? `const previousValues = structuredClone(values)
+    ? `const previousValues = structuredClone(toRaw(values))
   const candidateValues = { ...previousValues, ...structuredClone(patch) }
-  const settledValues = ${valueSettlementFunctionName(surface, context)}(previousValues, candidateValues, changedNodeIds, parameters.value)
+  const settledValues = ${valueSettlementFunctionName(surface, context)}(previousValues, candidateValues, changedNodeIds, ${parameterSource})
   Object.keys(values).forEach((field) => {
     if (!Object.hasOwn(settledValues, field))
       delete values[field]
@@ -1434,9 +1476,13 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     : 'Object.assign(values, structuredClone(patch))'
   const interactionScript = `
 
-${interactions.length > 0 ? 'const navigation = useDemoNavigation()\n' : ''}
+${interactions.length > 0 ? needsNavigationBridge ? 'const navigation = useDemoNavigation()\n' : 'const router = useRouter()\n' : ''}
 
-${interactionUtilitiesSource('values', setDemoFieldsBody)}
+${needsFieldSetter
+  ? `function setDemoFields(patch: Readonly<Record<string, unknown>>, changedNodeIds: readonly string[] = []): void {
+  ${setDemoFieldsBody}
+}`
+  : ''}
 
 ${interactionHandlersSource(
   surface,
@@ -1445,12 +1491,13 @@ ${interactionHandlersSource(
   stateRules.length > 0 ? 'reactionProjection.value.states' : '{}',
   'navigation',
   needsValidation ? 'validation' : undefined,
+  !needsNavigationBridge,
 )}`
   const projectionScript = stateRules.length > 0
     ? `
-const reactionProjection = computed(() => ${stateProjectionFunctionName(surface, context)}(values, parameters.value))`
+const reactionProjection = computed(() => ${stateProjectionFunctionName(surface, context)}(values, ${parameterSource}))`
     : ''
-  const scopeUtilities = surface.valueScopes.length === 0 && !needsValidation
+  const scopeUtilities = surface.valueScopes.length === 0
     ? ''
     : `
 
@@ -1466,40 +1513,56 @@ function demoArray(value: unknown, nodeId: string): Record<string, unknown>[] {
   return value as Record<string, unknown>[]
 }`
   const validationRuntime = needsValidation
-    ? `\n\n${rawValidationSource(surface, context, stateRules.length > 0)}`
+    ? `\n\nconst { validationErrors, validateFields${interactions.some(item => item.binding.validate) ? ', validation' : ''} } = useFormValidation(values${stateRules.length > 0 ? ', () => reactionProjection.value.states' : ''})`
     : ''
-  const script = `${imports.join('\n')}
-
+  const parametersScript = needsParameters
+    ? `
 const surfaceProps = defineProps<{ demoParameters?: Readonly<Record<string, unknown>> }>()
 const parameters = computed<Record<string, unknown>>(() => ({
   ...${sourceJson(surfaceParameterDefaults(surface))},
   ...(surfaceProps.demoParameters ?? {}),
 }))
-
-const values = reactive<Record<string, unknown>>(${sourceJson(initialValues)})${projectionScript}${scopeUtilities}${validationRuntime}
+`
+    : ''
+  const modelFields = fields.filter(node => fieldScopeChain(surface, node.id).length === 0)
+    .sort((left, right) => left.field.localeCompare(right.field))
+  const needsRecordValues = needsValueUpdate || needsFieldSetter || needsValidation || usesExpressions || surface.valueScopes.length > 0
+  const modelType = fields.length > 0
+    ? `
+interface FormValues${needsRecordValues ? ' extends Record<string, unknown>' : ''} {
+${modelFields.map(node => `  ${/^[a-z_$][\w$]*$/iu.test(node.field) ? node.field : sourceString(node.field)}${node.defaultValue === undefined ? '?' : ''}: ${fieldModelType(node, componentForNode(node, context.components)) ?? 'unknown'}`).join('\n')}
+}
+`
+    : ''
+  const valuesScript = fields.length > 0
+    ? `const values = reactive<FormValues>(${sourceJson(initialValues)})`
+    : interactions.length > 0 || stateRules.length > 0 ? 'const values: Record<string, unknown> = {}' : ''
+  const updateScript = needsValueUpdate
+    ? `
 
 function updateValue(targetValues: Record<string, unknown>, field: string, nodeId: string, payload: unknown): void {
   const target = payload && typeof payload === 'object' && 'target' in payload
     ? (payload as { target?: { checked?: unknown, value?: unknown, type?: unknown } }).target
     : undefined
   const value = target?.type === 'checkbox' ? Boolean(target.checked) : (target?.value ?? payload)
-  if (targetValues === values)
+  ${valueRules.length > 0
+    ? `if (targetValues === values)
     setDemoFields({ [field]: value }, [nodeId])
   else
-    targetValues[field] = structuredClone(value)
-  ${needsValidation ? 'if (demoValidationFields[nodeId]?.validateOn.includes(\'change\'))\n    void validateDemoFields([nodeId])' : ''}
-}${interactionScript}`
+    targetValues[field] = value`
+    : 'targetValues[field] = value'}
+}`
+    : ''
+  const script = `${imports.join('\n')}
+${modelType}${parametersScript}
+${valuesScript}${projectionScript}${scopeUtilities}${validationRuntime}${updateScript}${interactionScript}`.trim()
   const body = surface.rootIds.flatMap(nodeId => renderRawNode(surface, nodeId, context, 3))
-  return `<script setup lang="ts">
-${script}
-</script>
-
-<template>
-  <section class="${context.style.classes.surface}" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
+  return `${script ? `<script setup lang="ts">\n${script}\n</script>\n\n` : ''}<template>
+  <section class="${context.style.classes.surface}">
     <header class="${context.style.classes.surfaceHeader}">
       <h1${classAttribute(context.style.classes.surfaceTitle)}>${escapeHtml(surface.name)}</h1>
     </header>
-    <div class="${context.style.classes.surfaceContent}">
+    <div class="${context.style.target === 'tailwind-v4' ? rawFormContentClass(surface) : context.style.classes.surfaceContent}">
 ${body.join('\n')}
     </div>
   </section>
@@ -1880,11 +1943,8 @@ function routerSource(compilation: ProjectCompilation, directories: ReadonlyMap<
     const surface = compilation.ir.surfacesById[surfaceId]
     return surface?.kind === 'page' ? [surface] : []
   })
-  const imports = pages.map((page, index) => (
-    `import Surface${index + 1} from './surfaces/${directories.get(page.id)}/Surface.vue'`
-  ))
-  const routes = pages.map((page, index) => (
-    `    { path: ${sourceString(page.route)}, name: ${sourceString(page.id)}, component: Surface${index + 1} },`
+  const routes = pages.map(page => (
+    `    { path: ${sourceString(page.route)}, name: ${sourceString(page.id)}, component: () => import('./surfaces/${directories.get(page.id)}/Surface.vue') },`
   ))
   const home = compilation.ir.surfacesById[compilation.ir.homeSurfaceId]
   const homeRoute = home?.kind === 'page' ? home.route : pages[0]?.route ?? '/'
@@ -1892,7 +1952,6 @@ function routerSource(compilation: ProjectCompilation, directories: ReadonlyMap<
     ? []
     : [`    { path: '/', redirect: ${sourceString(homeRoute)} },`]
   return `import { createRouter, createWebHistory } from 'vue-router'
-${imports.join('\n')}
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -2353,10 +2412,7 @@ function appSource(context: EmitContext): string {
     const surface = compilation.ir.surfacesById[surfaceId]
     return surface && surface.kind !== 'page' ? [surface] : []
   })
-  const usesNavigation = overlays.length > 0 || compilation.ir.surfaceOrder.some((surfaceId) => {
-    const surface = compilation.ir.surfacesById[surfaceId]
-    return surface ? emittedInteractions(surface, context).length > 0 : false
-  })
+  const usesNavigation = rawNeedsNavigationBridge(context)
   if (!usesNavigation) {
     return `<script setup lang="ts">
 import { RouterView } from 'vue-router'
@@ -2456,6 +2512,13 @@ function sourceSurfaces(context: EmitContext): SourceSurface[] {
   })
 }
 
+function rawNeedsNavigationBridge(context: EmitContext): boolean {
+  return sourceSurfaces(context).some(surface => surface.kind !== 'page' || surface.parameters.length > 0
+    || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction'
+      && (interaction.action.kind === 'open' || interaction.action.kind === 'closeCurrent' || interaction.action.kind === 'closeAll'
+        || (interaction.action.kind === 'navigate' && interaction.action.parameters.length > 0))))
+}
+
 function demoValueFiles(context: EmitContext): SourceTextFile[] {
   const surfaces = sourceSurfaces(context)
   const needsDemoValues = surfaces.some(surface => (
@@ -2476,11 +2539,12 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
   const { compilation } = context
   const surfaces = sourceSurfaces(context)
   const favicon = projectFavicon(context)
-  const needsDemoNavigation = surfaces.some(surface => surface.kind !== 'page' || emittedInteractions(surface, context).length > 0)
+  const needsDemoNavigation = rawNeedsNavigationBridge(context)
   const needsDatasetTable = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-table'))
   const needsDatasetList = surfaces.some(surface => surfaceUsesRender(surface, context, 'dataset-list'))
   const needsFieldItem = context.style.target === 'tailwind-v4'
     && surfaces.some(surface => Object.values(surface.nodesById).some(node => node.kind === 'field'))
+  const theme = context.style.themeSource(compilation.ir.theme as ProjectTheme)
   return [
     textFile('index.html', 'text', htmlSource(compilation.ir.name, favicon.href)),
     textFile('src/App.vue', 'vue', appSource(context)),
@@ -2493,13 +2557,17 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
     ...(needsFieldItem
       ? [textFile('src/components/ConfigFormItem.vue', 'vue', configFormItemComponentSource())]
       : []),
-    textFile('src/data/datasets.ts', 'typescript', datasetsSource(context.datasets)),
-    textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources)),
+    ...(surfaces.some(surface => surfaceUses(surface, 'datasetBindings'))
+      ? [textFile('src/data/datasets.ts', 'typescript', `export const datasetViews = ${sourceJson(context.datasets.views as unknown as ModelJsonValue)} as const\n`)]
+      : []),
+    ...(surfaces.some(surface => surfaceUses(surface, 'resourceBindings'))
+      ? [textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources))]
+      : []),
     ...(needsDemoNavigation ? [textFile('src/demo-navigation.ts', 'typescript', demoNavigationSource(compilation))] : []),
     ...demoValueFiles(context),
     textFile('src/router.ts', 'typescript', routerSource(compilation, context.surfaceDirectories)),
     textFile(context.style.rawStyleFile, 'css', context.style.stylesSource(compilation.ir.theme as ProjectTheme)),
-    textFile('src/theme.css', 'css', context.style.themeSource(compilation.ir.theme as ProjectTheme)),
+    ...(theme ? [textFile('src/theme.css', 'css', theme)] : []),
     textFile('tsconfig.json', 'json', tsconfig),
     textFile('vite.config.ts', 'typescript', context.style.vitePluginSource),
   ]
@@ -2507,6 +2575,7 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
 
 function bindingCommonFiles(context: BindingEmitContext): SourceTextFile[] {
   const { compilation } = context
+  const theme = context.style.themeSource(compilation.ir.theme as ProjectTheme)
   return [
     textFile('src/bindings.ts', 'typescript', bindingEntrySource(context)),
     textFile('src/data/datasets.ts', 'typescript', datasetsSource(context.datasets)),
@@ -2514,7 +2583,7 @@ function bindingCommonFiles(context: BindingEmitContext): SourceTextFile[] {
     ...demoValueFiles(context),
     textFile('src/host.ts', 'typescript', bindingHostSource),
     textFile(context.style.bindingStyleFile, 'css', context.style.stylesSource(compilation.ir.theme as ProjectTheme)),
-    textFile('src/theme.css', 'css', context.style.themeSource(compilation.ir.theme as ProjectTheme)),
+    ...(theme ? [textFile('src/theme.css', 'css', theme)] : []),
     textFile('tsconfig.json', 'json', tsconfig),
     textFile('vite.config.ts', 'typescript', context.style.bindingVitePluginSource),
   ]
@@ -2550,13 +2619,22 @@ export function emitRawProject(
     const directory = surfaceDirectories.get(surfaceId)
     return [
       textFile(`src/surfaces/${directory}/Surface.vue`, 'vue', rawSurfaceSource(surface, context)),
-      textFile(
-        `src/surfaces/${directory}/validation.ts`,
-        'typescript',
-        rawValidationModuleSource(surface, validationFields(surface, context), {
-          includeZod: style.target === 'tailwind-v4',
-        }),
-      ),
+      ...(rawValidatorNames(surface).size > 0
+        ? [textFile(
+            `src/surfaces/${directory}/validation.ts`,
+            'typescript',
+            rawValidationModuleSource(surface, validationFields(surface, context), {
+              includeZod: style.target === 'tailwind-v4',
+            }),
+          )]
+        : []),
+      ...(rawNeedsValidation(surface, context)
+        ? [textFile(
+            `src/surfaces/${directory}/composables/useFormValidation.ts`,
+            'typescript',
+            rawValidationComposableSource(surface, stateInteractions(surface).length > 0),
+          )]
+        : []),
     ]
   })
   return assemble('raw-source', 'src/main.ts', [

@@ -437,7 +437,7 @@ describe('template catalog', () => {
     expect(project.registryLock.components).toHaveProperty('element.input-number')
   })
 
-  it('keeps readable source prefixes in default generated identities', async () => {
+  it('keeps business field names and fresh node identities in default templates', async () => {
     const template = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const project = instantiateTemplateProject(template, {
       name: 'Readable identities',
@@ -455,9 +455,9 @@ describe('template catalog', () => {
     expect(Object.values(surface.graph.nodesById)
       .filter(node => node.kind === 'field')
       .map(node => node.field)).toEqual(expect.arrayContaining([
-      expect.stringMatching(/^name-/),
-      expect.stringMatching(/^role-/),
-      expect.stringMatching(/^active-/),
+      'name',
+      'role',
+      'active',
     ]))
   })
 

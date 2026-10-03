@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
 import { PROJECT_DOCUMENT_VERSION, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { expect, test } from '@playwright/test'
-import { createProject, readDownloadText, setAppearance } from './helpers'
+import { createProject, openPageImport, readDownloadText, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -16,11 +16,13 @@ async function exportJson(
   page: import('@playwright/test').Page,
   scope: 'project' | 'surface',
 ): Promise<string> {
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  const sourcePane = page.locator('.source-pane')
+  await expect(sourcePane).toBeVisible()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('menuitem', {
-      name: scope === 'project' ? 'Export project JSON' : 'Export current Surface JSON',
+    sourcePane.getByRole('button', {
+      name: scope === 'project' ? 'Export engineering project JSON' : 'Export current page JSON',
       exact: true,
     }).click(),
   ])
@@ -39,8 +41,7 @@ async function openProjectCreation(page: import('@playwright/test').Page): Promi
 }
 
 async function openSurfaceCreation(page: import('@playwright/test').Page): Promise<void> {
-  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
-  await expect(page.getByRole('main', { name: 'Create page' })).toBeVisible()
+  await openPageImport(page)
 }
 
 async function chooseJsonImport(workspace: import('@playwright/test').Locator): Promise<void> {
@@ -123,7 +124,7 @@ test('imports an Ant Design Vue Surface JSON file as one undoable command', asyn
   exportedSurface.surfacesById[exportedSurface.rootSurfaceId].route = '/imported-profile'
   const importSource = JSON.stringify(exportedSurface)
   await openSurfaceCreation(page)
-  const workspace = page.getByRole('main', { name: 'Create page' })
+  const workspace = page.locator('.template-creation-workspace:visible').first()
   await chooseJsonImport(workspace)
   await workspace.locator('.json-import-source .el-segmented__item').filter({ hasText: 'JSON file' }).click()
   await workspace.locator('input[type="file"]').setInputFiles({

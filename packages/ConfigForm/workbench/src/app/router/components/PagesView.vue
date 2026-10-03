@@ -24,6 +24,7 @@ const router = useRouter()
 const nav = useWorkbenchManagementNav()
 const project = computed(() => controller.currentProject.value)
 const pageCreationOpen = ref(false)
+const pageImportOpen = ref(false)
 const pageCreationKind = ref<'page' | 'dialog' | 'drawer'>('page')
 
 useCreationReturnFocus()
@@ -59,8 +60,36 @@ function createSurface(): void {
   })
 }
 
+function importSurface(): void {
+  if (!project.value)
+    return
+  pageImportOpen.value = true
+  ui.setCreationOrigin({
+    focusKey: 'page-manager-import-surface',
+    path: router.currentRoute.value.fullPath,
+  })
+}
+
 async function createdPage(): Promise<void> {
   pageCreationOpen.value = false
+  ui.clearCreationOrigin()
+  await nextTick()
+  const projectId = project.value?.id
+  const surfaceId = controller.currentSurfaceId.value
+  if (projectId && surfaceId) {
+    await router.push(pageDesignPath(projectId, surfaceId))
+    await nextTick()
+    document.querySelector<HTMLElement>('[data-designer-entry]')?.focus()
+  }
+}
+
+function closePageImport(): void {
+  pageImportOpen.value = false
+  ui.clearCreationOrigin()
+}
+
+async function importedPage(): Promise<void> {
+  pageImportOpen.value = false
   ui.clearCreationOrigin()
   await nextTick()
   const projectId = project.value?.id
@@ -131,6 +160,7 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       @action="runAction"
       @close="closePages"
       @create-surface="createSurface"
+      @import-surface="importSurface"
       @export="exportPage"
       @export-source="exportPageSource"
       @open-page="openPage"
@@ -180,6 +210,28 @@ async function exportPageSource(surfaceId: string): Promise<void> {
         :target="'surface'"
         @close="pageCreationOpen = false"
         @created="createdPage"
+        @toggle-locale="ui.toggleLocale"
+      />
+    </ElDialog>
+    <ElDialog
+      v-model="pageImportOpen"
+      class="page-creation-dialog"
+      width="min(1180px, calc(100vw - 28px))"
+      top="3vh"
+      append-to="#workbench-overlays"
+      destroy-on-close
+      :close-on-click-modal="false"
+      :close-on-press-escape="!controller.busy.value"
+      :show-close="!controller.busy.value"
+      :title="controller.workbenchLocale.value.t('pages.importTitle', 'Import page')"
+    >
+      <TemplateCreationWorkspace
+        :can-close="true"
+        :initial-mode="'json'"
+        :locale="controller.localeOptions.value"
+        :target="'surface'"
+        @close="closePageImport"
+        @created="importedPage"
         @toggle-locale="ui.toggleLocale"
       />
     </ElDialog>

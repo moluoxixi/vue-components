@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import type { WorkbenchExportCommand, WorkbenchTopbarEmits, WorkbenchTopbarProps } from '../types'
+import type { WorkbenchTopbarEmits, WorkbenchTopbarProps } from '../types'
 import {
-  Braces,
   ChevronDown,
   Code2,
-  Download,
-  FileJson2,
   Files,
   FolderKanban,
   Languages,
   MoreHorizontal,
-  PanelRightClose,
-  PanelRightOpen,
-  Plus,
+  MousePointer2,
+  Play,
+  PanelsTopLeft,
   History,
   BookmarkPlus,
   Save,
@@ -27,7 +24,6 @@ const props = defineProps<WorkbenchTopbarProps>()
 
 const emit = defineEmits<WorkbenchTopbarEmits>()
 
-const exportTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('exportTrigger')
 const mobileMenuTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('mobileMenuTrigger')
 const saveTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('saveTrigger')
 const locale = computed(() => createDesignerLocale(props.locale))
@@ -53,13 +49,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updateSurfaceManagerPlacement))
 
-type MobileAction = 'newSurface' | 'openAppearance' | 'openSurfaces' | 'toggleLocale'
+type MobileAction = 'openAppearance' | 'openSurfaces' | 'toggleLocale'
 
 function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
     mobileMenuTrigger.value?.$el?.focus()
     switch (action) {
-      case 'newSurface': emit('newSurface', 'topbar-mobile-menu'); break
       case 'openSurfaces': emit('openSurfaces'); break
       case 'toggleLocale': emit('toggleLocale'); break
       case 'openAppearance': emit('openAppearance'); break
@@ -79,24 +74,35 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
   })
 }
 
-function chooseExport(command: WorkbenchExportCommand): void {
-  void nextTick(() => {
-    exportTrigger.value?.$el?.focus()
-    emit('export', command)
-  })
-}
 </script>
 
 <template>
   <header class="workbench-topbar">
     <div class="brand-lockup">
-      <span>ConfigForm</span>
-      <strong>Workbench</strong>
+      <span class="brand-lockup__mark"><PanelsTopLeft :size="16" aria-hidden="true" /></span>
+      <strong>ConfigForm</strong>
+      <span class="brand-lockup__studio">Studio</span>
     </div>
 
     <div v-if="project && currentSurface" class="workspace-context" :aria-label="locale.t('workbench.context', 'Current project and Surface')">
-      <span>{{ project.name }}</span>
+      <button type="button" :title="locale.t('pages.manage', 'Manage pages')" @click="emit('openSurfaces')">{{ project.name }}</button>
+      <span class="workspace-context__separator" aria-hidden="true">/</span>
       <strong>{{ currentSurface.name }}</strong>
+    </div>
+
+    <div v-if="project" class="workbench-view-switch" role="group" :aria-label="locale.t('workbench.views', 'Workspace view')">
+      <button type="button" :aria-label="locale.t('workbench.design', 'Design')" :title="locale.t('workbench.design', 'Design')" :aria-pressed="!previewOpen && !sourceOpen" :class="{ 'is-active': !previewOpen && !sourceOpen }" @click="emit('showDesign')">
+        <MousePointer2 :size="14" aria-hidden="true" />
+        <span>{{ locale.t('workbench.design', 'Design') }}</span>
+      </button>
+      <button type="button" :aria-label="locale.t('workbench.code', 'Code')" :title="locale.t('workbench.code', 'Code')" :aria-pressed="sourceOpen === true" :class="{ 'is-active': sourceOpen }" @click="emit('export', 'source')">
+        <Code2 :size="15" aria-hidden="true" />
+        <span>{{ locale.t('workbench.code', 'Code') }}</span>
+      </button>
+      <button type="button" :aria-pressed="previewOpen === true" :class="{ 'is-active': previewOpen }" :title="locale.t('preview.title', 'Preview')" :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')" @click="emit('togglePreview')">
+        <Play :size="14" aria-hidden="true" />
+        <span>{{ locale.t('preview.title', 'Preview') }}</span>
+      </button>
     </div>
 
     <div class="topbar-actions">
@@ -119,12 +125,6 @@ function chooseExport(command: WorkbenchExportCommand): void {
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-        <WorkbenchCommandHint :label="locale.t('pages.new', 'New page')">
-          <ElButton native-type="button" class="topbar-secondary-action topbar-labeled-action" :aria-label="locale.t('pages.new', 'New page')" :title="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-surface" @click="emit('newSurface', 'topbar-new-surface')">
-            <Plus :size="17" aria-hidden="true" />
-            <span class="topbar-command-label">{{ locale.t('pages.new', 'New page') }}</span>
-          </ElButton>
-        </WorkbenchCommandHint>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
           <ElButton
             ref="saveTrigger"
@@ -155,22 +155,6 @@ function chooseExport(command: WorkbenchExportCommand): void {
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-        <ElDropdown v-if="project" class="export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseExport">
-          <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')" :title="locale.t('action.export', 'Export')">
-            <Download :size="16" aria-hidden="true" />
-            <span class="topbar-command-label">{{ locale.t('action.export', 'Export') }}</span>
-            <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
-          </ElButton>
-          <template #dropdown>
-            <ElDropdownMenu class="export-menu-popover" data-export-menu>
-              <ElDropdownItem command="source"><Code2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.source', 'Export project source') }}</span></ElDropdownItem>
-              <ElDropdownItem command="config"><Braces :size="15" aria-hidden="true" /><span>{{ locale.t('export.config', 'Export ConfigForm bindings') }}</span></ElDropdownItem>
-              <ElDropdownItem command="surface-source"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('export.surfaceSource', 'Export current page source') }}</span></ElDropdownItem>
-              <ElDropdownItem command="project-json" divided><FileJson2 :size="15" aria-hidden="true" /><span>{{ locale.t('export.projectJson', 'Export project JSON') }}</span></ElDropdownItem>
-              <ElDropdownItem command="surface-json"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('export.surfaceJson', 'Export current Surface JSON') }}</span></ElDropdownItem>
-            </ElDropdownMenu>
-          </template>
-        </ElDropdown>
       <WorkbenchCommandHint :label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')">
         <ElButton
           native-type="button"
@@ -190,19 +174,6 @@ function chooseExport(command: WorkbenchExportCommand): void {
         @set-palette-family="emit('setPaletteFamily', $event)"
         @set-theme-preference="emit('setThemePreference', $event)"
       />
-      <WorkbenchCommandHint v-if="project" :label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')">
-        <ElButton
-          native-type="button"
-          class="preview-toggle-button topbar-labeled-action"
-          :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
-          :title="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
-          @click="emit('togglePreview')"
-        >
-          <PanelRightClose v-if="previewOpen" :size="17" aria-hidden="true" />
-          <PanelRightOpen v-else :size="17" aria-hidden="true" />
-          <span class="topbar-command-label">{{ locale.t('preview.title', 'Preview') }}</span>
-        </ElButton>
-      </WorkbenchCommandHint>
         <ElDropdown class="mobile-action-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseMobileAction">
           <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" :title="locale.t('workbench.moreActions', 'More actions')" data-create-trigger="topbar-mobile-menu" circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
           <template #dropdown>
@@ -211,7 +182,6 @@ function chooseExport(command: WorkbenchExportCommand): void {
                 <span role="status">v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}</span>
               </ElDropdownItem>
               <ElDropdownItem v-if="project && pageManagerInOverflow" command="openSurfaces"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
-              <ElDropdownItem command="newSurface"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></ElDropdownItem>
               <ElDropdownItem command="openAppearance"><Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span></ElDropdownItem>
             </ElDropdownMenu>

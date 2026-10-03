@@ -148,13 +148,12 @@ for (const adapter of ['element', 'antd'] as const) {
       .toHaveText(['Properties', 'Validation', 'Interactions'])
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
-    await page.getByRole('button', { name: 'Export' }).click()
-    await page.getByRole('menuitem', { name: 'Export raw Vue source' }).click()
-    const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
-    await expect(sourceDialog).toBeVisible()
-    await sourceDialog.getByRole('button', { name: 'Files', exact: true }).click()
-    await expect(sourceDialog.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
-    await expectNoAccessibilityViolations(page, `${adapter} mobile source export`)
+    await page.getByRole('button', { name: 'Code', exact: true }).click()
+    const sourcePane = page.locator('.source-pane')
+    await expect(sourcePane).toBeVisible()
+    await sourcePane.getByRole('button', { name: 'Files', exact: true }).click()
+    await expect(sourcePane.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
+    await expectNoAccessibilityViolations(page, `${adapter} mobile source workspace`)
   })
 }
 
@@ -212,17 +211,17 @@ test('keeps both management consoles accessible', async ({ page }) => {
   const pages = page.getByRole('main', { name: 'Page management', exact: true })
   const rail = page.getByRole('navigation', { name: 'Management' })
   await expect(projects).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(rail.getByRole('menuitem', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
   await expectNoAccessibilityViolations(page, 'desktop project management')
 
-  await rail.getByRole('button', { name: 'Page management', exact: true }).click()
+  await rail.getByRole('menuitem', { name: 'Page management', exact: true }).click()
   await expect(pages).toBeVisible()
   await expectNoAccessibilityViolations(page, 'desktop page management')
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectNoAccessibilityViolations(page, 'mobile page management')
 
-  await rail.getByRole('button', { name: 'Projects', exact: true }).click()
+  await rail.getByRole('menuitem', { name: 'Projects', exact: true }).click()
   await expect(projects).toBeVisible()
   await expectNoAccessibilityViolations(page, 'mobile project management')
 })

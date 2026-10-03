@@ -11,7 +11,6 @@ import {
   SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { generateVueSource } from '@moluoxixi/config-form-source/generator'
-import { sourceSurfaceDirectory } from './archive'
 import { downloadStructuredSourceArchive } from './download'
 
 /** Create the Source Generator input for a persisted project. */
@@ -100,6 +99,7 @@ export async function downloadGeneratedSourceArchive(
   const generated = await generateVueSource(input.source)
   if (!generated.success)
     throw new TypeError(generated.diagnostics[0]?.message ?? 'Vue source generation failed.')
+  const { sourceSurfaceDirectory } = await import('./structured-projection')
   const surface = input.surfaceId
     ? input.document.surfacesById[input.surfaceId]
     : undefined

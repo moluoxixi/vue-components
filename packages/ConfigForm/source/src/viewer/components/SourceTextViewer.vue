@@ -6,6 +6,7 @@ import { loadMonacoViewerRuntime } from '../services'
 const props = defineProps<{
   file: SourceTextFile
   theme: 'dark' | 'light'
+  wrapLines?: boolean
 }>()
 
 const containerRef = ref<HTMLElement>()
@@ -16,7 +17,7 @@ let session: MonacoViewerSession | undefined
 let unmounted = false
 
 function currentOptions() {
-  return { file: props.file, theme: props.theme } as const
+  return { file: props.file, theme: props.theme, wrapLines: props.wrapLines } as const
 }
 
 onMounted(async () => {
@@ -35,7 +36,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [props.file.path, props.file.language, props.file.content, props.theme] as const,
+  () => [props.file.path, props.file.language, props.file.content, props.theme, props.wrapLines] as const,
   () => session?.update(currentOptions()),
 )
 

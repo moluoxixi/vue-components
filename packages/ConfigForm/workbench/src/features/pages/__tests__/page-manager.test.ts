@@ -60,8 +60,8 @@ describe('page manager', () => {
 
     // Browsing state: the page name is the link, there is no route column, and no
     // field is editable.
-    expect(wrapper.findAll('[role="columnheader"]').map(header => header.text()))
-      .toEqual(['Page', 'Actions'])
+    expect(wrapper.find('[role="list"]').exists()).toBe(true)
+    expect(wrapper.findAll('[role="listitem"]')).toHaveLength(1)
     expect(wrapper.find('input[aria-label^="Page name"]').exists()).toBe(false)
     expect(wrapper.find('input[aria-label^="Route for"]').exists()).toBe(false)
 

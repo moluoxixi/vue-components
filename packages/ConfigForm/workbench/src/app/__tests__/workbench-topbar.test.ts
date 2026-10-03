@@ -20,7 +20,7 @@ describe('workbench topbar', () => {
 
   afterEach(() => document.body.replaceChildren())
 
-  it('opens a keyboard navigable export menu and emits the selected projection', async () => {
+  it('keeps export projections inside the Source workspace instead of a topbar menu', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
       props: {
@@ -33,41 +33,9 @@ describe('workbench topbar', () => {
       },
     })
 
-    const trigger = wrapper.get('button[aria-label="Export"]')
-    expect(trigger.get('.topbar-command-label').text()).toBe('Export')
-    await trigger.trigger('click')
-    const overlays = overlayRoot()
-    const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
-    expect(items).toHaveLength(5)
-    expect(overlays.find('[data-export-menu]').exists()).toBe(true)
-    expect(items.map(item => item.text())).toEqual([
-      'Export project source',
-      'Export ConfigForm bindings',
-      'Export current page source',
-      'Export project JSON',
-      'Export current Surface JSON',
-    ])
-    expect(trigger.attributes('aria-haspopup')).toBe('menu')
-    expect(items.every(item => item.attributes('role') === 'menuitem')).toBe(true)
-    await items[1]!.trigger('click')
-    expect(wrapper.emitted('export')).toEqual([['config']])
-    expect(overlays.get('[data-export-menu]').isVisible()).toBe(false)
-    expect(document.activeElement).toBe(trigger.element)
-
-    await trigger.trigger('click')
-    await overlays.findAll('[data-export-menu] [role="menuitem"]')[3]!.trigger('click')
-    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json']])
-    expect(document.activeElement).toBe(trigger.element)
-
-    await trigger.trigger('click')
-    await overlays.findAll('[data-export-menu] [role="menuitem"]')[4]!.trigger('click')
-    expect(wrapper.emitted('export')).toEqual([['config'], ['project-json'], ['surface-json']])
-    expect(document.activeElement).toBe(trigger.element)
-
-    await trigger.trigger('click')
-    await overlays.get('[data-export-menu]').trigger('keydown', { code: 'Escape', key: 'Escape' })
-    await nextTick()
-    expect(document.activeElement).toBe(trigger.element)
+    expect(wrapper.find('button[aria-label="Export"]').exists()).toBe(false)
+    await wrapper.get('button[aria-label="Code"]').trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['source']])
     wrapper.unmount()
   })
 
@@ -103,13 +71,12 @@ describe('workbench topbar', () => {
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[2]!.trigger('click')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
-    await wrapper.get('[data-create-trigger="topbar-new-surface"]').trigger('click')
+    expect(wrapper.find('[data-create-trigger="topbar-new-surface"]').exists()).toBe(false)
     expect(wrapper.get('button[aria-label="Open appearance settings"]')).toBeDefined()
     expect(wrapper.emitted('save')).toHaveLength(1)
     expect(wrapper.emitted('createCheckpoint')).toHaveLength(1)
     expect(wrapper.emitted('openVersions')).toHaveLength(1)
     expect(wrapper.emitted('togglePreview')).toHaveLength(1)
-    expect(wrapper.emitted('newSurface')).toEqual([['topbar-new-surface']])
     wrapper.unmount()
   })
 
@@ -129,7 +96,7 @@ describe('workbench topbar', () => {
     })
 
     const commandHints = wrapper.findAllComponents(WorkbenchCommandHint)
-    expect(commandHints).toHaveLength(5)
+    expect(commandHints).toHaveLength(3)
     expect(commandHints.every(hint => Boolean(hint.props('label')))).toBe(true)
     const save = wrapper.get('button[aria-label^="Save options"]')
     expect(save.attributes('aria-disabled')).toBe('true')
@@ -141,6 +108,21 @@ describe('workbench topbar', () => {
     await wrapper.get('button[aria-label="More actions"]').trigger('click')
     const status = overlayRoot().get('[data-mobile-action-menu] [role="status"]')
     expect(status.text()).toBe('v7 · Saving')
+    wrapper.unmount()
+  })
+
+  it('switches workspace modes through their commands and reports the active view', async () => {
+    const wrapper = mount(WorkbenchTopbar, {
+      props: { project, currentSurface, localeId: 'en-US', paletteFamily: 'ink', statusLabel: 'Saved', themePreference: 'light' },
+    })
+    expect(wrapper.get('button[aria-label="Design"]').attributes('aria-pressed')).toBe('true')
+    await wrapper.get('button[aria-label="Code"]').trigger('click')
+    expect(wrapper.emitted('export')).toEqual([['source']])
+    await wrapper.setProps({ sourceOpen: true })
+    expect(wrapper.get('button[aria-label="Code"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('button[aria-label="Design"]').attributes('aria-pressed')).toBe('false')
+    await wrapper.get('button[aria-label="Design"]').trigger('click')
+    expect(wrapper.emitted('showDesign')).toHaveLength(1)
     wrapper.unmount()
   })
 
@@ -159,14 +141,14 @@ describe('workbench topbar', () => {
     })
 
     try {
-      const newSurfaceButton = wrapper.get('button[aria-label="New page"]')
-      ;(newSurfaceButton.element as HTMLButtonElement).focus()
+      const managerButton = wrapper.get('button[aria-label="Manage pages"]')
+      ;(managerButton.element as HTMLButtonElement).focus()
       await vi.advanceTimersByTimeAsync(400)
       await nextTick()
       const tooltip = overlayRoot().get('.workbench-command-tooltip')
-      expect(tooltip.text()).toBe('New page')
+      expect(tooltip.text()).toBe('Manage pages')
       expect(tooltip.attributes('role')).toBe('tooltip')
-      expect(newSurfaceButton.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
+      expect(managerButton.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
     }
     finally {
       wrapper.unmount()

@@ -750,6 +750,52 @@ function generatedConst(
 }
 
 describe('source generators', () => {
+  it('exports a simple business page without designer runtime scaffolding', async () => {
+    const minimal = compilation()
+    const source = minimal.ir.surfacesById.home!
+    const field = { ...source.nodesById.name!, required: false, validation: undefined } as typeof source.nodesById.name
+    const home = { ...source, nodesById: { name: field! }, rootIds: ['name'], interactions: [], valueScopes: [], scopedFields: [{ nodeId: 'name', field: 'name', defaultValue: 'Ada' }] }
+    const input = { ...minimal, ir: { ...minimal.ir, surfaceOrder: ['home'], surfacesById: { home }, theme: { version: PROJECT_THEME_VERSION } } }
+    const result = await generateVueSource(rawInput({ compilation: input, styleTarget: 'tailwind-v4' }))
+    expect(result.success, JSON.stringify(result.diagnostics)).toBe(true)
+    if (!result.success)
+      return
+    const page = textAt(result.data, 'src/surfaces/home/Surface.vue')
+    expect(page).toContain('v-model="values.name"')
+    expect(page).toContain('reactive<FormValues>')
+    expect(page).toContain('interface FormValues {')
+    expect(page).not.toContain('control-id=')
+    expect(page).toContain('id="home-name-control"')
+    expect(page).not.toContain(':aria-required="false"')
+    expect(page).not.toMatch(/demoParameters|updateValue|setDemoFields|Validation|data-node-id|data-surface-id|useDemoNavigation/)
+    expect(result.data.files.map(file => file.path)).not.toEqual(expect.arrayContaining(['src/demo-navigation.ts', 'src/demo-values.ts', 'src/data/datasets.ts', 'src/data/resources.ts', 'src/surfaces/home/validation.ts', 'src/theme.css']))
+    expect(textAt(result.data, 'src/styles.css')).not.toContain('./theme.css')
+    expect(textAt(result.data, 'src/styles.css')).toContain('@layer base')
+    expect(JSON.parse(textAt(result.data, 'package.json')).dependencies).not.toHaveProperty('zod')
+    assertGeneratedVueFilesCompile(result.data)
+    await verifyGeneratedConsumer(result.data)
+  }, 30_000)
+
+  it('uses Vue Router directly for ordinary page navigation', async () => {
+    const minimal = compilation()
+    const source = minimal.ir.surfacesById.home!
+    const interactions = source.interactions.flatMap(interaction => interaction.kind === 'primaryUiAction' && interaction.action.kind === 'navigate'
+      ? [{ ...interaction, validate: undefined, action: { ...interaction.action, parameters: [] } }]
+      : [])
+    const home = { ...source, nodesById: { navigate: source.nodesById.navigate! }, rootIds: ['navigate'], interactions, valueScopes: [], scopedFields: [], parameters: [] }
+    const summary = { ...minimal.ir.surfacesById.summary!, parameters: [], nodesById: {}, rootIds: [], interactions: [], valueScopes: [], scopedFields: [] }
+    const input = { ...minimal, ir: { ...minimal.ir, surfaceOrder: ['home', 'summary'], surfacesById: { home, summary } } } as ProjectCompilation
+    const result = await generateVueSource(rawInput({ compilation: input, styleTarget: 'tailwind-v4' }))
+    expect(result.success, JSON.stringify(result.diagnostics)).toBe(true)
+    if (!result.success)
+      return
+    expect(textAt(result.data, 'src/surfaces/home/Surface.vue')).toContain('router.push({ name: "summary" })')
+    expect(result.data.files.some(file => file.path === 'src/demo-navigation.ts')).toBe(false)
+    expect(textAt(result.data, 'src/App.vue')).toContain('<RouterView />')
+    expect(textAt(result.data, 'src/router.ts')).toContain('component: () => import(\'./surfaces/summary/Surface.vue\')')
+    await verifyGeneratedConsumer(result.data)
+  }, 30_000)
+
   it('generates deterministic raw Vue source that directly uses provider UI', async () => {
     const requests: SourceComponentRequest[] = []
     const reader = resourceReader()
@@ -763,7 +809,7 @@ describe('source generators', () => {
 
     expect(first.data.kind).toBe('raw-source')
     expect(first.data.entry).toBe('src/main.ts')
-    expect(first.data.files.map(file => file.path)).toEqual([...first.data.files.map(file => file.path)].sort())
+    expect(first.data.files.map(file => file.path)).toEqual([...first.data.files.map(file => file.path)].sort((left, right) => left.localeCompare(right)))
     expect(first.data.files.map(file => file.path)).toEqual(expect.arrayContaining([
       'package.json',
       'src/App.vue',
@@ -777,7 +823,7 @@ describe('source generators', () => {
       'src/surfaces/home/Surface.vue',
       'src/surfaces/home/validation.ts',
       'src/surfaces/details/Surface.vue',
-      'src/surfaces/details/validation.ts',
+      'src/surfaces/home/composables/useFormValidation.ts',
       'src/surfaces/drawer/Surface.vue',
       'src/surfaces/summary/Surface.vue',
       'src/assets/brand-logo.png',
@@ -798,12 +844,12 @@ describe('source generators', () => {
     expect(homeSource).toContain('return handleOpenRowDetails(demoArgs[0])')
     expect(homeSource).not.toContain('@row-click="(...demoArgs')
     expect(homeSource).toContain('readDemoPath(item, ["name"])')
-    expect(homeSource).toContain('\'aria-required\': \'true\'')
+    expect(homeSource).toContain(':aria-required="reactionProjection.states[\'name\']?.required ?? true"')
     expect(homeSource).toContain('demo-field__required')
     expect(homeSource).toContain('reactionProjection.states')
-    expect(homeSource).toContain('import { demoFieldValidators, type DemoFieldValidator } from \'./validation.ts\'')
-    expect(homeSource).toContain('@blur="void validateDemoFields([\'name\'])"')
-    expect(homeSource).toMatch(/validateOn: \[\s*"blur",\s*"submit"\s*\]/u)
+    expect(homeSource).toContain('import { useFormValidation } from \'./composables/useFormValidation\'')
+    expect(homeSource).toContain('@blur="validateFields([\'name\'])"')
+    expect(homeSource).not.toContain('demoValidationFields')
     expect(homeSource).toContain('v-for="(scopeRowOrdersScope, scopeIndexOrdersScope) in demoArray(')
     expect(homeSource).toContain('demoObject(scopeRowOrdersScope[\'details\'], \'detailsScope\')[\'name\']')
     expect(textAt(first.data, 'src/surfaces/details/Surface.vue')).toContain('navigation.closeCurrent({ name: "saved"')
@@ -1163,8 +1209,10 @@ describe('source generators', () => {
     expect(homeSurface).toContain('items-start justify-end')
     expect(homeSurface).toContain('<ConfigFormItem')
     expect(homeSurface).toContain('aria-describedby')
+    expect(homeSurface).not.toContain('control-id=')
     expect(textAt(firstRaw.data, 'src/components/ConfigFormItem.vue')).toContain('data-config-form-item')
-    expect(textAt(firstRaw.data, 'src/surfaces/home/validation.ts')).toContain('demoFieldSchemas')
+    expect(textAt(firstRaw.data, 'src/components/ConfigFormItem.vue')).not.toContain('controlId')
+    expect(textAt(firstRaw.data, 'src/surfaces/home/validation.ts')).toContain('export const nameSchema = z.string()')
     const appSource = textAt(firstRaw.data, 'src/App.vue')
     expect(appSource).toContain('[&[open]]:grid')
     expect(appSource).toContain('[&_.demo-surface]:w-full')

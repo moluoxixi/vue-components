@@ -16,6 +16,7 @@ export interface WorkbenchTopbarProps {
   localeId: WorkbenchLocaleId
   paletteFamily: WorkbenchPaletteFamily
   previewOpen?: boolean
+  sourceOpen?: boolean
   repositoryRevision?: number
   statusLabel: string
   themePreference: WorkbenchThemePreference
@@ -23,13 +24,13 @@ export interface WorkbenchTopbarProps {
 
 export interface WorkbenchTopbarEmits {
   export: [command: WorkbenchExportCommand]
-  newSurface: [focusKey: string]
   openAppearance: []
   openProjects: []
   openSurfaces: []
   openVersions: []
   createCheckpoint: []
   save: []
+  showDesign: []
   setPaletteFamily: [value: WorkbenchPaletteFamily]
   setThemePreference: [value: WorkbenchThemePreference]
   toggleLocale: []

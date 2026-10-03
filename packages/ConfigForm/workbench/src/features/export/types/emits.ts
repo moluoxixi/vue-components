@@ -1,4 +1,4 @@
-export interface ExportDialogEmits {
-  close: []
-  message: [message: string]
+export interface SourceWorkspaceEmits {
+  'notice': [notice: { message: string, tone: 'success' | 'error' }]
+  'update:mode': [mode: 'source' | 'config']
 }

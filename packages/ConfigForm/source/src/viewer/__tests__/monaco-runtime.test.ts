@@ -39,6 +39,7 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api', () => ({
     create: monacoMocks.create,
     createModel: monacoMocks.createModel,
     setTheme: monacoMocks.setTheme,
+    defineTheme: vi.fn(),
   },
   Uri: { parse: (value: string) => value },
 }))
@@ -66,16 +67,20 @@ describe('monaco viewer runtime', () => {
     const session = createMonacoViewerRuntime().mount(document.createElement('div'), {
       file: { content: 'first', kind: 'text', language: 'typescript', path: 'src/main.ts' },
       theme: 'dark',
+      wrapLines: true,
     })
     const editor = monacoMocks.editors[0]!
     const firstModel = monacoMocks.models[0]!
+    expect(monacoMocks.create).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ wordWrap: 'on' }))
 
     session.update({
       file: { content: 'updated', kind: 'text', language: 'typescript', path: 'src/main.ts' },
       theme: 'light',
+      wrapLines: false,
     })
     expect(firstModel.setValue).toHaveBeenCalledWith('updated')
-    expect(monacoMocks.setTheme).toHaveBeenCalledWith('vs')
+    expect(monacoMocks.setTheme).toHaveBeenCalledWith('studio-source-light')
+    expect(editor.updateOptions).toHaveBeenLastCalledWith(expect.objectContaining({ wordWrap: 'off' }))
 
     session.update({
       file: { content: '<template />', kind: 'text', language: 'vue', path: 'src/App.vue' },

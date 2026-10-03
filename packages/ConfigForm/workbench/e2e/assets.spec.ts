@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test'
 import { createProject, readDownloadText } from './helpers'
 
 async function openAssetManager(page: import('@playwright/test').Page): Promise<import('@playwright/test').Locator> {
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   await page.getByRole('button', { name: 'Manage data', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Assets', exact: true })
   await expect(dialog).toBeVisible()

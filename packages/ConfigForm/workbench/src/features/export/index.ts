@@ -1,2 +1,2 @@
-export { default as ExportDialog } from './index.vue'
-export type { ExportDialogEmits, ExportDialogProps, ExportMode } from './types'
+export { default as SourceWorkspace } from './index.vue'
+export type { ExportMode, SourceWorkspaceEmits, SourceWorkspaceProps } from './types'

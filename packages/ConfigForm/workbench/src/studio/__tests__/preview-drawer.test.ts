@@ -3,7 +3,7 @@
 import type { VueWrapper } from '@vue/test-utils'
 import type { Component } from 'vue'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { PreviewDrawer } from '../../app'
 
@@ -38,6 +38,7 @@ function mountPreviewDrawer(componentProps: Record<string, unknown>): {
   target.dataset.theme = 'dark'
   document.body.append(target)
   const wrapper = mount(PreviewDrawer as Component, {
+    attachTo: target,
     props: componentProps,
     global: { stubs: { PreviewRuntimeHostFrame: RuntimeStub } },
   })
@@ -51,7 +52,7 @@ describe('preview drawer', () => {
     await flushPromises()
 
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
-    expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Surface preview')
+    expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Page preview')
     const runtime = wrapper.findComponent(RuntimeStub)
     const identity = {
       hostId: 'host-1',
@@ -66,7 +67,7 @@ describe('preview drawer', () => {
 
     await wrapper.setProps({ expanded: true })
     await nextTick()
-    expect(root.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+    expect(wrapper.get('.preview-dialog-shell').classes()).toContain('is-expanded')
     wrapper.unmount()
     target.remove()
   })
@@ -78,7 +79,7 @@ describe('preview drawer', () => {
 
     expect(root.find('.preview-dialog-shell').exists()).toBe(true)
     expect(root.find('.el-drawer').exists()).toBe(false)
-    expect(root.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+    expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Page preview')
     expect(root.find('[data-preview-results]').exists()).toBe(false)
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
 
@@ -105,38 +106,12 @@ describe('preview drawer', () => {
     target.remove()
   })
 
-  it('restores the opening trigger after compact Preview closes', async () => {
-    const trigger = document.createElement('button')
-    document.body.append(trigger)
-    const { target, wrapper } = mountPreviewDrawer({ ...props(), open: false })
-    trigger.focus()
-
-    await wrapper.setProps({ open: true })
-    await flushPromises()
-    target.querySelector<HTMLButtonElement>('button[aria-label="Close preview"]')?.focus()
-    await wrapper.setProps({ open: false })
-    await flushPromises()
-
-    expect(document.activeElement).toBe(trigger)
-    wrapper.unmount()
-    target.remove()
-    trigger.remove()
-  })
-
-  it('collapses fullscreen through the dialog close guard without destroying its content', async () => {
+  it('keeps the runtime mounted while the embedded preview is resized', async () => {
     const { root, target, wrapper } = mountPreviewDrawer({ ...props(), expanded: true })
     await flushPromises()
     const runtime = root.get('[data-runtime-stub]').element
-    const done = vi.fn()
-    const dialog = wrapper.findComponent({ name: 'ElDialog' })
-    dialog.props('beforeClose')(done)
-    expect(done).not.toHaveBeenCalled()
-    expect(wrapper.emitted('update:expanded')).toEqual([[false]])
-    expect(wrapper.emitted('close')).toBeUndefined()
     await wrapper.setProps({ expanded: false })
     expect(root.get('[data-runtime-stub]').element).toBe(runtime)
-    dialog.props('beforeClose')(done)
-    expect(done).toHaveBeenCalledTimes(1)
     wrapper.unmount()
     target.remove()
   })

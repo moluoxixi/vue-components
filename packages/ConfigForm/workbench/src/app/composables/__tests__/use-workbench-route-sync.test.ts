@@ -38,6 +38,7 @@ async function createHarness(options: {
   const dirty = ref(false)
   const configError = ref('')
   const notify = vi.fn()
+  const closeExportPreview = vi.fn()
 
   const requestOpenProject = vi.fn(async (id: string) => {
     const document = documents.get(id)
@@ -82,7 +83,7 @@ async function createHarness(options: {
 
   const Host = defineComponent({
     setup() {
-      useWorkbenchRouteSync({ controller, ui: { notify } as unknown as WorkbenchUiStore })
+      useWorkbenchRouteSync({ controller, ui: { closeExportPreview, notify } as unknown as WorkbenchUiStore })
       return () => h('div')
     },
   })
@@ -92,6 +93,7 @@ async function createHarness(options: {
   return {
     currentProject,
     currentSurfaceId,
+    closeExportPreview,
     dirty,
     initialized,
     notify,
@@ -122,6 +124,16 @@ describe('workbench route sync', () => {
     expect(harness.requestOpenProject).toHaveBeenCalledWith('project-a')
     expect(harness.selectSurfaceFromDesigner).not.toHaveBeenCalled()
     expect(harness.router.currentRoute.value.path).toBe('/projects/project-a/pages')
+    harness.wrapper.unmount()
+  })
+
+  it('clears transient source mode when leaving the designer route', async () => {
+    const harness = await createHarness({ initialPath: '/projects/project-a/pages/home/design' })
+
+    await harness.router.push('/projects/project-a/pages')
+    await flushPromises()
+
+    expect(harness.closeExportPreview).toHaveBeenCalledOnce()
     harness.wrapper.unmount()
   })
 

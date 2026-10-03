@@ -68,6 +68,7 @@ let previewRequest = 0
 let disposed = false
 
 const selectedTemplate = computed(() => templates.value.find(template => template.manifest.id === selectedId.value))
+const creationSurfaceKind = computed(() => props.surfaceKind ?? selectedTemplate.value?.surface.kind ?? 'page')
 const providerOptions = computed(() => [...new Set(templates.value.map(template => template.providerId))])
 const mobilePaneOptions = computed(() => [
   { label: locale.value.t('template.catalog', 'Catalog'), value: 'catalog' },
@@ -111,16 +112,16 @@ const filteredTemplates = computed(() => {
 
 const creationTitle = computed(() => props.target === 'project'
   ? locale.value.t('template.createProject', 'Create project')
-  : props.surfaceKind === 'dialog'
+  : creationSurfaceKind.value === 'dialog'
     ? locale.value.t('pages.createDialog', 'Create dialog')
-    : props.surfaceKind === 'drawer'
+    : creationSurfaceKind.value === 'drawer'
       ? locale.value.t('pages.createDrawer', 'Create drawer')
       : locale.value.t('pages.createForm', 'Create form page'))
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('template.createProjectAction', 'Create project')
-  : props.surfaceKind === 'dialog'
+  : creationSurfaceKind.value === 'dialog'
     ? locale.value.t('pages.createDialogAction', 'Create dialog')
-    : props.surfaceKind === 'drawer'
+    : creationSurfaceKind.value === 'drawer'
       ? locale.value.t('pages.createDrawerAction', 'Create drawer')
       : locale.value.t('pages.createFormAction', 'Create form page'))
 const createUnavailableReason = computed(() => {
@@ -210,6 +211,35 @@ function handleCatalogDrawerOpened(): void {
   drawerCatalog.value?.focusSearch()
 }
 
+function handleCatalogDrawerKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Tab')
+    return
+  const drawer = document.querySelector<HTMLElement>(
+    '.template-catalog-drawer .el-drawer, .template-catalog-drawer',
+  )
+  const activeElement = event.target instanceof HTMLElement ? event.target : document.activeElement
+  if (!drawer)
+    return
+  const focusable = [...drawer.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+  )].filter(element => element.offsetParent !== null && !element.getAttribute('aria-hidden'))
+  if (focusable.length === 0)
+    return
+  const currentIndex = focusable.indexOf(activeElement as HTMLElement)
+  if (currentIndex < 0) {
+    event.preventDefault()
+    const target = event.shiftKey ? focusable.at(-1) : focusable[0]
+    target?.focus()
+    return
+  }
+  const nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1
+  if (nextIndex >= 0 && nextIndex < focusable.length)
+    return
+  event.preventDefault()
+  const target = event.shiftKey ? focusable.at(-1) : focusable[0]
+  target?.focus()
+}
+
 function chooseMobileAction(action: 'openAppearance' | 'toggleLocale'): void {
   void nextTick(() => {
     mobileActionsTrigger.value?.$el?.focus()
@@ -230,6 +260,7 @@ function handleEscape(event: KeyboardEvent): void {
     return
   if (catalogDrawerOpen.value) {
     event.preventDefault()
+    event.stopPropagation()
     closeCatalogDrawer()
     return
   }
@@ -380,6 +411,7 @@ watch(isMedium, (medium) => {
 
 onMounted(async () => {
   document.addEventListener('keydown', handleEscape)
+  window.addEventListener('keydown', handleCatalogDrawerKeydown, true)
   await loadCatalog()
   if (disposed)
     return
@@ -392,6 +424,7 @@ onBeforeUnmount(() => {
   disposed = true
   previewRequest += 1
   document.removeEventListener('keydown', handleEscape)
+  window.removeEventListener('keydown', handleCatalogDrawerKeydown, true)
 })
 </script>
 

@@ -1,6 +1,8 @@
 import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
-import { createProject, readDownloadText, restoreAppearance, setAppearance } from './helpers'
+import { strFromU8, unzipSync } from 'fflate'
+import { createProject, openPageCreation, readDownloadText, restoreAppearance, setAppearance } from './helpers'
 
 interface DragGeometry {
   height: number
@@ -334,7 +336,7 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
       }
     })
     expect(geometry.row.height).toBeGreaterThanOrEqual(32)
-    expect(geometry.row.height).toBeLessThanOrEqual(36)
+    expect(geometry.row.height).toBeLessThanOrEqual(44)
     expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
     expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
     await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
@@ -448,24 +450,22 @@ test('authors, persists, restores, and executes a primary interaction through St
   await expect(inspector.locator('[data-interaction-editor]')).toBeVisible()
   await inspector.getByRole('tab', { name: 'Properties', exact: true }).click()
 
-  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
-  const creation = page.getByRole('main', { name: 'Create page' })
-  await expect(creation).toBeVisible()
+  const creation = await openPageCreation(page, 'dialog')
   await creation.getByRole('option', { name: /^Element Plus blank dialog/ }).click()
-  const createDialog = creation.getByRole('button', { name: 'Create page', exact: true })
+  const createDialog = creation.getByRole('button', { name: 'Create dialog', exact: true })
   await expect(createDialog).toBeEnabled({ timeout: 15_000 })
   await createDialog.click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
-  await page.locator('[data-create-trigger="topbar-new-surface"]').click()
-  await expect(creation).toBeVisible()
-  await creation.getByRole('option', { name: /^Element Plus blank drawer/ }).click()
-  const createDrawer = creation.getByRole('button', { name: 'Create page', exact: true })
+  const drawerCreation = await openPageCreation(page, 'drawer')
+  await expect(drawerCreation).toBeVisible()
+  await drawerCreation.getByRole('option', { name: /^Element Plus blank drawer/ }).click()
+  const createDrawer = drawerCreation.getByRole('button', { name: 'Create drawer', exact: true })
   await expect(createDrawer).toBeEnabled({ timeout: 15_000 })
   await createDrawer.click()
   await expect(page.getByRole('region', { name: 'Drawer title', exact: true })).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   const pages = page.getByRole('listbox', { name: 'Pages', exact: true })
   await expect(pages.getByRole('option')).toHaveCount(1)
   await expect(page.getByRole('listbox', { name: 'Dialogs', exact: true }).getByRole('option')).toHaveCount(1)
@@ -515,7 +515,7 @@ test('authors, persists, restores, and executes a primary interaction through St
   // The design route lives in the URL, so a reload restores the same Surface.
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('tab', { name: 'Layers', exact: true }).click()
-  await page.getByRole('tree', { name: 'Surface layers', exact: true })
+  await page.getByRole('tree', { name: 'Page layers', exact: true })
     .getByRole('button', { name: 'Button', exact: true })
     .click()
   await inspector.getByRole('tab', { name: 'Interactions', exact: true }).click()
@@ -613,7 +613,7 @@ test('provides focus and Escape command hints, including disabled reasons and re
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Show preview' }).click()
-  await expect(page.getByRole('complementary', { name: 'Surface preview' })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Page preview' })).toBeVisible()
   await page.waitForTimeout(400)
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
   await page.keyboard.press('Tab')
@@ -626,13 +626,11 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await page.setViewportSize({ width: 900, height: 900 })
   await expectTopbarFits(page)
   const save = page.getByRole('button', { name: 'Save options' })
-  const exportButton = page.getByRole('button', { name: 'Export' })
+  const sourceButton = page.getByRole('button', { name: 'Code', exact: true })
   await expect(save).toBeVisible()
-  await expect(exportButton).toBeVisible()
+  await expect(sourceButton).toBeVisible()
   await expect(save.locator('.topbar-command-label')).toHaveText('Save')
-  await expect(exportButton.locator('.topbar-command-label')).toHaveText('Export')
   await expect(save.locator('.topbar-command-label')).toBeVisible()
-  await expect(exportButton.locator('.topbar-command-label')).toBeVisible()
   const sidebarLabels = page.locator('.mx-config-form-designer__sidebar-label')
   await expect(sidebarLabels).toHaveText(['Components', 'Properties'])
   await expect(sidebarLabels.first()).toBeVisible()
@@ -649,33 +647,33 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await expect(menu.getByRole('menuitem', { name: 'Save' })).toHaveCount(0)
   await expect(menu.getByRole('menuitem', { name: 'Create named checkpoint' })).toHaveCount(0)
   await expect(menu.getByRole('menuitem', { name: 'Version history' })).toHaveCount(0)
-  await expect(menu.getByRole('menuitem', { name: 'New page' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'New page' })).toHaveCount(0)
   await menu.getByRole('menuitem', { name: 'Switch to Chinese' }).click()
   await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toHaveText('保存')
-  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).toHaveText('导出')
+  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
   await expect(page.locator('.mx-config-form-designer__sidebar-label')).toHaveText(['组件', '属性'])
   await expectTopbarFits(page)
 
   await page.setViewportSize({ width: 641, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toBeVisible()
-  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).toBeVisible()
+  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
   await expect(page.locator('.mobile-studio-dock')).toBeVisible()
 
   await page.setViewportSize({ width: 640, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
-  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).not.toBeVisible()
+  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
   await expect(page.locator('.mobile-studio-dock')).toBeVisible()
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '导出' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
   await expect(page.getByRole('button', { name: '显示预览' })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
-  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).not.toBeVisible()
+  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
   const mobileDockMetrics = await page.locator('.mobile-studio-dock button').evaluateAll(buttons => buttons.map((button) => {
     const rect = button.getBoundingClientRect()
     return {
@@ -1159,7 +1157,7 @@ for (const adapter of [
     await page.getByRole('tab', { name: 'Layers', exact: true }).click()
     await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('button', { name: 'Show preview' }).click()
-    const previewName = previewRuntime(page).getByRole('textbox', { name: /^\*?Name$/ })
+    const previewName = previewRuntime(page).getByRole('textbox', { name: /Name/ })
     await previewName.fill('')
     await previewName.blur()
     await expect(previewRuntime(page).getByText('Name is required', { exact: true })).toBeVisible()
@@ -1228,11 +1226,13 @@ test('has no Events, Flow, or Automation entry and keeps Designer JSON function-
   await expect(page.getByRole('link', { name: forbidden })).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: forbidden })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await expect(page.getByRole('menuitem', { name: forbidden })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  const sourcePane = page.locator('.source-pane')
+  await expect(sourcePane.getByRole('button', { name: forbidden })).toHaveCount(0)
+  await sourcePane.getByRole('button', { name: 'Download options', exact: true }).click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('menuitem', { name: 'Export project JSON', exact: true }).click(),
+    page.getByRole('menuitem', { name: 'Export engineering project JSON', exact: true }).click(),
   ])
   const source = await readDownloadText(download)
   expect(JSON.parse(source)).toMatchObject({ kind: 'config-form-project', version: 1 })
@@ -1263,7 +1263,7 @@ test('keeps Dataset-authored mock data local in Design and Preview', async ({ pa
   })
 
   await createProject(page, 'element')
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   await page.getByRole('button', { name: 'Manage data', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Assets', exact: true })
   await expect(dialog).toBeVisible()
@@ -1297,7 +1297,7 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
   await selectCanvasNode(page, roleNode, roleNode.locator('.el-select__wrapper'))
   await page.getByRole('button', { name: 'Show preview' }).click()
 
-  const preview = page.getByRole('complementary', { name: 'Surface preview' })
+  const preview = page.getByRole('complementary', { name: 'Page preview' })
   const stage = preview.locator('.preview-stage')
   const runtime = previewRuntime(page)
   const layout = runtime.locator('[data-config-form-responsive-layout]').first()
@@ -1640,7 +1640,7 @@ test('pins the selected Preview viewport when the host window is wider', async (
   await createProject(page, 'element')
   await page.getByRole('button', { name: 'Show preview' }).click()
 
-  const preview = page.getByRole('complementary', { name: 'Surface preview' })
+  const preview = page.getByRole('complementary', { name: 'Page preview' })
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
   const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
@@ -1725,8 +1725,8 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   const panel = page.locator('.designer-components-panel')
   const searchBox = await visibleBox(search)
   const panelBox = await visibleBox(panel)
-  expect(Math.abs(searchBox.x - panelBox.x - 6)).toBeLessThanOrEqual(1)
-  expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 6)).toBeLessThanOrEqual(1)
+  expect(Math.abs(searchBox.x - panelBox.x - 10)).toBeLessThanOrEqual(1)
+  expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 10)).toBeLessThanOrEqual(1)
 
   await page.getByRole('tab', { name: 'Layers' }).click()
   const firstLayer = page.getByRole('treeitem').first()
@@ -1740,7 +1740,7 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   await expect(page.getByRole('menuitem', { name: 'Indent', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  await page.getByRole('tab', { name: 'Surfaces', exact: true }).click()
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
   const pageName = page.locator('.designer-pages button > span > span').first()
   await expect(pageName).not.toHaveText('')
   expect((await visibleBox(pageName)).width).toBeGreaterThan(80)
@@ -1770,6 +1770,7 @@ test('keeps the layer action menu inside the viewport at the scroll boundary', a
 })
 
 test('exports pinned source and config files through the readonly workspace', async ({ page }) => {
+  test.slow()
   const browserErrors: string[] = []
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning')
@@ -1778,55 +1779,54 @@ test('exports pinned source and config files through the readonly workspace', as
   page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await createProject(page, 'element')
 
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export raw Vue source', exact: true }).click()
-  const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
-  await expect(sourceDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
-  await expect(sourceDialog.getByRole('region', { name: 'Read-only source: src/main.ts' })).toBeVisible()
-  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('display', 'flex')
-  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('flex-direction', 'column')
-  await expect(sourceDialog.locator('.export-preview-body')).toHaveCSS('min-height', '0px')
-  await expect(sourceDialog.locator('.export-dialog-footer')).toHaveCSS('justify-content', 'space-between')
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  const sourcePane = page.locator('.source-pane')
+  await expect(sourcePane.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
+  await sourcePane.getByRole('treeitem', { name: 'main.ts', exact: true }).click()
+  await expect(sourcePane.getByRole('region', { name: 'Read-only source: src/main.ts' })).toBeVisible()
+  await expect(sourcePane.locator('.source-workspace__body')).toHaveCSS('display', 'flex')
+  await expect(sourcePane.locator('.source-workspace__body')).toHaveCSS('flex-direction', 'column')
+  await expect(sourcePane.locator('.source-workspace__body')).toHaveCSS('min-height', '0px')
+  await expect(sourcePane.locator('.source-workspace__statusbar')).toHaveCSS('justify-content', 'space-between')
   await page.setViewportSize({ width: 390, height: 844 })
-  const mobileLayout = await sourceDialog.evaluate((dialog) => {
-    const footer = dialog.querySelector('.export-dialog-footer')
-    const actions = dialog.querySelector('.export-dialog-actions')
+  const mobileLayout = await sourcePane.evaluate((pane) => {
+    const footer = pane.querySelector('.source-workspace__statusbar')
+    const actions = pane.querySelector('.source-workspace__file-actions')
     if (!(footer instanceof HTMLElement) || !(actions instanceof HTMLElement))
       throw new TypeError('Export footer and actions are required')
-    const dialogRect = dialog.getBoundingClientRect()
+    const paneRect = pane.getBoundingClientRect()
     const footerRect = footer.getBoundingClientRect()
     const actionsRect = actions.getBoundingClientRect()
     return {
       actionsWidth: actionsRect.width,
-      clientWidth: dialog.clientWidth,
-      dialogHeight: dialogRect.height,
-      dialogWidth: dialogRect.width,
+      clientWidth: pane.clientWidth,
+      paneHeight: paneRect.height,
+      paneWidth: paneRect.width,
       footerDirection: getComputedStyle(footer).flexDirection,
       footerWidth: footerRect.width,
-      scrollWidth: dialog.scrollWidth,
+      scrollWidth: pane.scrollWidth,
     }
   })
-  expect(mobileLayout.dialogWidth).toBe(390)
-  expect(mobileLayout.dialogHeight).toBe(844)
-  expect(mobileLayout.footerDirection).toBe('column')
-  expect(Math.abs(mobileLayout.actionsWidth - mobileLayout.footerWidth)).toBeLessThanOrEqual(1)
+  expect(mobileLayout.paneWidth).toBe(390)
+  expect(mobileLayout.paneHeight).toBeGreaterThan(600)
+  expect(mobileLayout.footerDirection).toBe('row')
+  expect(mobileLayout.actionsWidth).toBeLessThanOrEqual(mobileLayout.footerWidth)
   expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.clientWidth)
   await page.setViewportSize({ width: 1440, height: 1000 })
   const [sourceDownload] = await Promise.all([
     page.waitForEvent('download'),
-    sourceDialog.getByRole('button', { name: 'Download', exact: true }).click(),
+    sourcePane.getByRole('button', { name: 'Download', exact: true }).click(),
   ])
   expect(sourceDownload.suggestedFilename()).toBe('main.ts')
 
-  await sourceDialog.getByRole('button', { name: 'Close export' }).click()
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export ConfigForm bindings', exact: true }).click()
-  const configDialog = page.getByRole('dialog', { name: 'ConfigForm binding source' })
-  await expect(configDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
-  await expect(configDialog.getByRole('region', { name: 'Read-only source: src/bindings.ts' })).toBeVisible()
+  await sourcePane.locator('.source-workspace__mode .el-segmented__item').filter({ hasText: 'ConfigForm bindings' }).click()
+  const configPane = page.locator('.source-pane')
+  await expect(configPane.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
+  await configPane.getByRole('treeitem', { name: 'bindings.ts', exact: true }).click()
+  await expect(configPane.getByRole('region', { name: 'Read-only source: src/bindings.ts' })).toBeVisible()
   const [configDownload] = await Promise.all([
     page.waitForEvent('download'),
-    configDialog.getByRole('button', { name: 'Download', exact: true }).click(),
+    configPane.getByRole('button', { name: 'Download', exact: true }).click(),
   ])
   expect(configDownload.suggestedFilename()).toBe('bindings.ts')
   expect(browserErrors).toEqual([])
@@ -1842,16 +1842,16 @@ test('resolves export utility colors from every Workbench palette and theme', as
       await setAppearance(page, theme, palette)
       await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-palette', palette)
       await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-theme', theme)
-      await page.getByRole('button', { name: 'Export', exact: true }).click()
-      await page.getByRole('menuitem', { name: 'Export raw Vue source', exact: true }).click()
-      const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
-      await expect(sourceDialog).toBeVisible()
+      await page.getByRole('button', { name: 'Code', exact: true }).click()
+      const sourcePane = page.locator('.source-pane')
+      await expect(sourcePane).toBeVisible()
 
-      const colors = await sourceDialog.evaluate((dialog) => {
-        const body = dialog.querySelector('.export-preview-body')
-        const eyebrow = dialog.querySelector('.dialog-eyebrow')
-        const heading = dialog.querySelector('h2')
-        const footer = dialog.querySelector('.export-dialog-footer')
+      await expect(sourcePane.locator('.view-lines').first()).toBeVisible({ timeout: 15_000 })
+      const colors = await sourcePane.evaluate((pane) => {
+        const body = pane.querySelector('.source-workspace__body')
+        const eyebrow = pane.querySelector('.source-workspace__mark')
+        const heading = pane.querySelector('h2')
+        const footer = pane.querySelector('.source-workspace__statusbar')
         if (
           !(body instanceof HTMLElement)
           || !(eyebrow instanceof HTMLElement)
@@ -1864,7 +1864,7 @@ test('resolves export utility colors from every Workbench palette and theme', as
         const resolveColor = (token: string): string => {
           const probe = document.createElement('span')
           probe.style.color = `var(${token})`
-          dialog.append(probe)
+          pane.append(probe)
           const color = getComputedStyle(probe).color
           probe.remove()
           return color
@@ -1887,8 +1887,7 @@ test('resolves export utility colors from every Workbench palette and theme', as
 
       expect(colors.actual).toEqual(colors.expected)
       signatures.add(JSON.stringify(colors.actual))
-      await sourceDialog.getByRole('button', { name: 'Close export' }).click()
-      await expect(sourceDialog).toHaveCount(0)
+      await expect(sourcePane).toBeVisible()
     }
   }
 
@@ -1904,22 +1903,79 @@ test('keeps raw and ConfigForm exports read-only and dependency-distinct', async
   page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await createProject(page, 'element')
 
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export raw Vue source', exact: true }).click()
-  const sourceDialog = page.getByRole('dialog', { name: 'Raw Vue source' })
-  await sourceDialog.getByRole('treeitem', { name: 'package.json', exact: true }).click()
-  const sourceEditor = sourceDialog.getByRole('region', { name: 'Read-only source: package.json' })
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  const sourcePane = page.locator('.source-pane')
+  await sourcePane.getByRole('treeitem', { name: 'package.json', exact: true }).click()
+  const sourceEditor = sourcePane.getByRole('region', { name: 'Read-only source: package.json' })
   await expect(sourceEditor.locator('.view-lines')).toContainText('element-plus')
   await expect(sourceEditor.locator('.view-lines')).not.toContainText('@moluoxixi/config-form')
   await expect(sourceEditor.locator('textarea')).toHaveAttribute('readonly', 'true')
 
-  await sourceDialog.getByRole('button', { name: 'Close export' }).click()
-  await page.getByRole('button', { name: 'Export', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Export ConfigForm bindings', exact: true }).click()
-  const configDialog = page.getByRole('dialog', { name: 'ConfigForm binding source' })
-  await configDialog.getByRole('treeitem', { name: 'package.json', exact: true }).click()
-  const configEditor = configDialog.getByRole('region', { name: 'Read-only source: package.json' })
+  await sourcePane.locator('.source-workspace__mode .el-segmented__item').filter({ hasText: 'ConfigForm bindings' }).click()
+  const configPane = page.locator('.source-pane')
+  await configPane.getByRole('treeitem', { name: 'package.json', exact: true }).click()
+  const configEditor = configPane.getByRole('region', { name: 'Read-only source: package.json' })
   await expect(configEditor.locator('.view-lines')).toContainText('@moluoxixi/config-form-element')
   await expect(configEditor.locator('textarea')).toHaveAttribute('readonly', 'true')
   expect(browserErrors).toEqual([])
+})
+
+test('downloads the selected source shape and styling for a page while project ZIP includes both pages', async ({ page }) => {
+  test.slow()
+  await createProject(page, 'element')
+  const creation = await openPageCreation(page)
+  await creation.getByRole('option', { name: /Element Plus profile/ }).click()
+  await creation.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  const sourcePane = page.locator('.source-pane')
+  await expect(sourcePane.locator('.view-lines').first()).toBeVisible()
+
+  const readArchive = async (download: import('@playwright/test').Download) => {
+    const path = await download.path()
+    if (!path)
+      throw new Error('The browser download did not produce a ZIP.')
+    const entries = unzipSync(await readFile(path))
+    return Object.fromEntries(Object.entries(entries).map(([path, bytes]) => [path.slice(path.indexOf('/') + 1), strFromU8(bytes)]))
+  }
+  const [projectDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    sourcePane.getByRole('button', { name: 'Download project', exact: true }).click(),
+  ])
+  const project = await readArchive(projectDownload)
+  expect(Object.keys(project).filter(path => /^src\/views\/[^/]+\/index\.vue$/u.test(path))).toHaveLength(2)
+  expect(project['src/main.ts']).toContain('@/router')
+  expect(project['src/router/index.ts']).toContain('@/views/')
+
+  for (const mode of ['Vue source', 'ConfigForm bindings']) {
+    await sourcePane.locator('.source-workspace__mode .el-segmented__item').filter({ hasText: mode }).click()
+    for (const style of ['Tailwind v4', 'CSS']) {
+      await sourcePane.locator('.source-workspace__style-target .el-segmented__item').filter({ hasText: style }).click()
+      await expect(sourcePane.locator('.source-workspace__loading')).toHaveCount(0)
+      let visibleSource: string | undefined
+      if (mode === 'Vue source') {
+        const [file] = await Promise.all([
+          page.waitForEvent('download'),
+          sourcePane.getByRole('button', { name: 'Download', exact: true }).click(),
+        ])
+        visibleSource = await readDownloadText(file)
+      }
+      await sourcePane.getByRole('button', { name: 'Download options', exact: true }).click()
+      const [pageDownload] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('menuitem', { name: 'Export current page source', exact: true }).click(),
+      ])
+      const exported = await readArchive(pageDownload)
+      const manifest = JSON.parse(exported['package.json']!)
+      const views = Object.keys(exported).filter(path => /^src\/views\/[^/]+\/index\.vue$/u.test(path))
+      expect(views).toHaveLength(1)
+      expect(manifest.dependencies['@moluoxixi/config-form-element'] !== undefined).toBe(mode === 'ConfigForm bindings')
+      expect(manifest.devDependencies?.tailwindcss !== undefined).toBe(style === 'Tailwind v4')
+      if (visibleSource) {
+        expect(exported[views[0]!]).toBe(visibleSource)
+        expect(exported[views[0]!]).not.toContain('control-id')
+      }
+      expect(Object.keys(exported).some(path => /^(?:shared|views)\//u.test(path))).toBe(false)
+    }
+  }
 })

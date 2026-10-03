@@ -9,7 +9,7 @@ import { loadWorkbenchAdapter } from '../../adapters'
 import {
   buildExportSnapshot,
   createExportSession,
-  createSourceArchive,
+  createStructuredSourceArchive,
   isExportSnapshotStale,
   resolveExportSnapshotPath,
   sourceFileBytes,
@@ -177,14 +177,14 @@ describe('export snapshot', () => {
     exposed[1] = 1
 
     expect([...sourceFileBytes(file)]).toEqual([0, 127, 255])
-    const archive = unzipSync(await createSourceArchive({
+    const archive = unzipSync(await createStructuredSourceArchive({
       files: [file],
       name: 'Binary snapshot',
     }))
     expect([...archive['binary-snapshot/assets/payload.bin']!]).toEqual([0, 127, 255])
   })
 
-  it('feeds frozen raw-source bytes to the archive', async () => {
+  it('projects frozen raw source into the current archive without mutating the snapshot', async () => {
     const snapshot = await buildExportSnapshot(await fixture())
     const rawSource = expectReady(snapshot.rawSource)
     const page = rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')
@@ -192,11 +192,14 @@ describe('export snapshot', () => {
     if (page?.kind !== 'text')
       return
 
-    const archive = unzipSync(await createSourceArchive({
+    const archive = unzipSync(await createStructuredSourceArchive({
       files: rawSource.files,
       name: snapshot.compilation.ir.name,
     }))
-    expect(strFromU8(archive['customer-app/src/surfaces/home/Surface.vue']!)).toBe(page.content)
+    const projected = strFromU8(archive['customer-app/src/views/home/index.vue']!)
+    expect(projected).toContain('@/components/ConfigFormItem.vue')
+    expect(rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')).toBe(page)
+    expect(page.content).toContain('../../components/ConfigFormItem.vue')
   })
 
   it('uses preferred, entry, first text, then first file fallback order', async () => {

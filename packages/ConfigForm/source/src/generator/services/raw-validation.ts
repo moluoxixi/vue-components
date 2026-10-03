@@ -12,11 +12,18 @@ function validatorIdentifier(value: string, fallback: string): string {
   return `validate${suffix && /^[A-Z]/u.test(suffix) ? suffix : fallback}`
 }
 
-function uniqueValidatorNames(fields: readonly SourceFieldNode[]): ReadonlyMap<string, string> {
+export function rawValidatorNames(surface: SourceSurface): ReadonlyMap<string, string> {
+  const fields = Object.values(surface.nodesById)
+    .filter((node): node is SourceFieldNode => node.kind === 'field' && (
+      node.required === true || node.validation !== undefined
+      || surface.interactions.some(interaction => interaction.kind === 'stateProjection'
+        && interaction.target.kind === 'state' && interaction.target.nodeId === node.id && interaction.target.key === 'required')
+    ))
+    .sort((left, right) => left.id.localeCompare(right.id))
   const names = new Map<string, string>()
   const used = new Set<string>()
   fields.forEach((field, index) => {
-    const base = validatorIdentifier(field.id, `Field${index + 1}`)
+    const base = validatorIdentifier(field.field, `Field${index + 1}`)
     let name = base
     let suffix = 2
     while (used.has(name)) {
@@ -27,6 +34,11 @@ function uniqueValidatorNames(fields: readonly SourceFieldNode[]): ReadonlyMap<s
     names.set(field.id, name)
   })
   return names
+}
+
+function schemaName(validator: string): string {
+  const suffix = validator.slice('validate'.length)
+  return `${suffix[0]!.toLowerCase()}${suffix.slice(1)}Schema`
 }
 
 function baseMessage(label: string, base: RuleBase): string {
@@ -216,7 +228,7 @@ function fieldValidatorSource(
 
   if (useZod) {
     lines.push(
-      `  const zodResult = demoFieldSchemas[${sourceString(node.id)}].safeParse(value)`,
+      `  const zodResult = ${schemaName(functionName)}.safeParse(value)`,
       '  if (!zodResult.success) return zodResult.error.issues.map(issue => issue.message)',
     )
     const compareRules = validation.ruleSet.rules.filter((rule): rule is Extract<RuleDescriptor, { kind: 'compare' }> => rule.kind === 'compare')
@@ -334,8 +346,9 @@ export function rawValidationModuleSource(
   validations: readonly SourceValidationFieldEmission[],
   options: { includeZod?: boolean } = {},
 ): string {
+  const names = rawValidatorNames(surface)
   const fields = Object.values(surface.nodesById)
-    .filter((node): node is SourceFieldNode => node.kind === 'field')
+    .filter((node): node is SourceFieldNode => node.kind === 'field' && names.has(node.id))
     .sort((left, right) => left.id.localeCompare(right.id))
   const byNodeId = new Map(validations.map(validation => [validation.nodeId, validation]))
   const ruleSets = validations.map(validation => validation.ruleSet)
@@ -346,48 +359,30 @@ export function rawValidationModuleSource(
   const usesCompare = ruleSets.some(ruleSet => ruleSet.rules.some(rule => rule.kind === 'compare'))
   const helpers = [
     emptyHelper,
-    ...(usesDate || usesCompare ? [dateHelper] : []),
-    ...(usesUrl ? [urlHelper] : []),
-    ...(usesMultipleOf ? [multipleOfHelper] : []),
+    ...((!options.includeZod && usesDate) || usesCompare ? [dateHelper] : []),
+    ...(!options.includeZod && usesUrl ? [urlHelper] : []),
+    ...(!options.includeZod && usesMultipleOf ? [multipleOfHelper] : []),
     ...(usesCompare ? [compareHelper] : []),
   ]
-  const names = uniqueValidatorNames(fields)
   const validators = fields.map(field => fieldValidatorSource(
     field,
     byNodeId.get(field.id),
     names.get(field.id)!,
     options.includeZod === true,
   ))
-  const entries = fields.map(field => `  ${sourceString(field.id)}: ${names.get(field.id)},`)
   const zodHeader = options.includeZod && validations.length > 0
     ? `import { z } from 'zod'
 
-export const demoFieldRuleSets = {
-${validations.map(validation => `  ${sourceString(validation.nodeId)}: ${sourceJson(validation.ruleSet)},`).join('\n')}
-} as const
-
-export const demoFieldSchemas = {
 ${validations.map((validation) => {
   const field = fields.find(item => item.id === validation.nodeId)
   const label = field?.label ?? field?.field ?? validation.nodeId
-  return `  ${sourceString(validation.nodeId)}: ${zodSchemaSource(label, validation.ruleSet)},`
+  return `export const ${schemaName(names.get(validation.nodeId)!)} = ${zodSchemaSource(label, validation.ruleSet)}`
 }).join('\n')}
-} as const
 
 `
     : ''
   return `${zodHeader}${helpers.join('\n\n')}
 
-export type DemoFieldValidator = (
-  value: unknown,
-  values: Readonly<Record<string, unknown>>,
-  required?: boolean,
-) => string[]
-
 ${validators.join('\n\n')}
-
-export const demoFieldValidators: Readonly<Record<string, DemoFieldValidator>> = {
-${entries.join('\n')}
-}
 `
 }

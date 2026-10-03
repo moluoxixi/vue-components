@@ -118,12 +118,12 @@ describe('workbench theme contract', () => {
       ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-dialog-shell'],
       ['../../app/router/components/ManagementShell/style/index.css', '.management-shell', '.workbench-topbar'],
       ['../../app/components/PreviewDrawer/style/index.css', '.preview-dialog-shell', '.workbench-topbar'],
-      ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
-      ['../../features/persistence/style/index.css', '.persistence-dialog', '.export-preview-dialog'],
-      ['../../features/pages/style/index.css', '.page-manager-page', '.export-preview-dialog'],
+      ['../../features/export/style/index.css', '.source-workspace', '.persistence-dialog'],
+      ['../../features/persistence/style/index.css', '.persistence-dialog', '.source-workspace'],
+      ['../../features/pages/style/index.css', '.page-manager-page', '.source-workspace'],
       ['../../features/projects/style/index.css', '.project-manager', '.page-manager-page'],
       ['../../app/components/ProjectCreationWorkspace/style/index.css', '.project-creation-workspace', '.template-creation-workspace'],
-      ['../../app/style/index.css', '.workbench-message', '.export-preview-dialog'],
+      ['../../app/style/index.css', '.workbench-message', '.source-workspace__toolbar'],
       ['../../app/components/TemplateCreationWorkspace/style/index.css', '.template-creation-workspace', '.json-import-pane'],
       ['../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', '.template-catalog-panel', '.json-import-pane'],
       ['../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', '.json-import-pane', '.template-catalog-item'],
@@ -210,27 +210,26 @@ describe('workbench theme contract', () => {
     expect(runtimeHostStylesheet).not.toContain('--color-wb-')
   })
 
-  it('keeps third-party export surfaces in bridge CSS and plain layout in utilities', () => {
+  it('fills the source tab and keeps third-party controls in feature-owned bridge CSS', () => {
     for (const selector of [
-      '.export-preview-dialog',
-      '.export-preview-dialog .el-dialog__body',
-      '.export-dialog-heading > .el-button',
-      '.export-source-viewer',
-      '.export-diagnostic .el-alert__content',
-      '.dialog-action',
+      '.source-workspace',
+      '.source-workspace__download-project.el-button',
+      '.source-workspace .el-segmented',
+      '.source-workspace .source-workspace__viewer',
+      '.source-workspace__diagnostic .el-alert__content',
+      '.source-workspace__file-action.el-button',
     ])
       expect(selectorBlock(selector, exportDialogStylesheet)).not.toBe('')
 
     const responsiveStart = exportDialogStylesheet.indexOf('@media (max-width: 700px)')
-    const baseStyles = exportDialogStylesheet.slice(0, responsiveStart)
-    for (const selector of ['.export-preview-body', '.dialog-eyebrow', '.export-dialog-footer'])
-      expect(cssRules(baseStyles).some(rule => rule.selector.split(',').some(item => item.trim() === selector))).toBe(false)
-
-    expect(exportDialogComponent).toContain('export-dialog-heading flex min-w-0 items-center justify-between gap-4')
-    expect(exportDialogComponent).toContain('export-dialog-footer flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain('source-workspace__heading flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain('source-workspace__statusbar flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain('flex-auto flex-col overflow-hidden bg-wb-editor-surface')
+    expect(exportDialogComponent).not.toContain('ElDialog')
     expect(responsiveStart).toBeGreaterThan(0)
-    expect(exportDialogStylesheet.slice(responsiveStart)).toContain('.export-dialog-footer {')
-    expect(selectorBlock('.export-preview-dialog', exportDialogStylesheet)).toContain('height: min(800px, calc(100vh - 40px));')
+    expect(exportDialogStylesheet.slice(responsiveStart)).toContain('.source-workspace__statusbar {')
+    expect(selectorBlock('.source-workspace', exportDialogStylesheet)).toContain('height: 100%;')
+    expect(selectorBlock('.source-workspace', exportDialogStylesheet)).toContain('min-height: 0;')
   })
   const paletteSelectors = ['ink', 'morandi', 'cyber', 'glass'].flatMap(palette =>
     ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
@@ -344,9 +343,9 @@ describe('workbench theme contract', () => {
       expect(cssRules(stylesheet).some(rule => rule.selector === selector
         && rule.body.includes('background: var(--wb-hover);'))).toBe(true)
     }
-    expect(selectorBlock('.export-source-viewer')).toContain('flex: 1 1 auto;')
+    expect(selectorBlock('.source-workspace .source-workspace__viewer')).toContain('flex: 1 1 auto;')
     expect(selectorBlock('.config-form-source-viewer__workspace', sourceViewerStylesheet))
-      .toContain('grid-template-columns: clamp(190px, 24vw, 280px) minmax(0, 1fr);')
+      .toContain('grid-template-columns: clamp(208px, 18vw, 260px) minmax(0, 1fr);')
     expect(stylesheet).not.toContain('.config-form-source-viewer__workspace')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
@@ -424,7 +423,7 @@ describe('workbench theme contract', () => {
     expect(selectorBlock('.workspace-context')).toContain('border: 0;')
     expect(selectorBlock('.brand-lockup span')).toContain('font-size: 11px;')
     expect(cssRules(stylesheet).find(rule => rule.selector === '.workspace-context span')?.body)
-      .toContain('font-size: 11px;')
+      .toContain('font-size: 12px;')
   })
 
   it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {

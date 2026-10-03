@@ -15,7 +15,7 @@ import {
   createSurfaceTransferDocument,
 } from '../../import'
 import { safeProjectSlug } from '../../utils'
-import { createSourceArchive, createStructuredSourceArchive } from './archive'
+import { createStructuredSourceArchive } from './archive'
 import { sourceFileBytes } from './file-content'
 
 function downloadBlob(blob: Blob, filename: string): string {
@@ -81,11 +81,7 @@ async function downloadArchive(input: SourceArchiveInput, data: Uint8Array): Pro
   return downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename)
 }
 
-export async function downloadSourceArchive(input: SourceArchiveInput): Promise<string> {
-  return downloadArchive(input, await createSourceArchive(input))
-}
-
-/** Download the copy-friendly project/page directory layout. */
+/** Download the standard Vue project/page directory layout. */
 export async function downloadStructuredSourceArchive(
   input: StructuredSourceArchiveInput,
 ): Promise<string> {

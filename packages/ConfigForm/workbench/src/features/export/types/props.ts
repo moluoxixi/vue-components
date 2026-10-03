@@ -3,7 +3,8 @@ import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { BuildExportSnapshotInput } from '../../../project'
 import type { ExportMode } from './domain'
 
-export interface ExportDialogProps {
+export interface SourceWorkspaceProps {
+  surfaceId?: string
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation?: ProjectCompilation
   locale?: DesignerLocaleOptions

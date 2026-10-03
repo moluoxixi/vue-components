@@ -136,6 +136,10 @@ export function useWorkbenchRouteSync(options: WorkbenchRouteSyncOptions): void 
   watch(
     () => [route.name, route.params.projectId, route.params.pageId],
     () => {
+      // Source is a transient designer workspace. It must not survive a routed
+      // management or creation screen and reappear when the next page is opened.
+      if (route.name !== 'page-design')
+        ui.closeExportPreview?.()
       if (controller.initialized.value)
         void reconcileFromRoute()
     },

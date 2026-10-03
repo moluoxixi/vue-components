@@ -11,7 +11,9 @@ import {
   FilePlus2,
   FolderKanban,
   Files,
+  FileJson2,
   Home,
+  MoreHorizontal,
   Pencil,
   Search,
   SlidersHorizontal,
@@ -178,10 +180,9 @@ function exportPageSource(surfaceId: string): void {
           <span class="page-manager__breadcrumb-current">{{ project.name }}</span>
         </nav>
         <div class="page-manager__title-row">
-          <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page orchestration') }}</h2>
+          <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page management') }}</h2>
           <span class="page-manager__project-chip"><FolderKanban :size="13" aria-hidden="true" />{{ locale.t('pageManager.projectBadge', 'Engineering project') }}</span>
         </div>
-        <p>{{ locale.t('pageManager.subtitle', 'Arrange pages and overlays for this project.') }}</p>
       </div>
       <div class="page-manager__header-summary" :aria-label="locale.t('pageManager.summary', 'Page summary')">
         <span><strong>{{ pageStats.total }}</strong>{{ locale.t('pageManager.pageCountShort', 'pages') }}</span>
@@ -212,23 +213,27 @@ function exportPageSource(surfaceId: string): void {
           <FilePlus2 :size="16" aria-hidden="true" />
           {{ locale.t('pages.new', 'New page') }}
         </ElButton>
+        <ElButton data-create-trigger="page-manager-import-surface" native-type="button" :disabled="busy" @click="emit('importSurface')">
+          <FileJson2 :size="16" aria-hidden="true" />
+          {{ locale.t('pages.import', 'Import page') }}
+        </ElButton>
       </div>
     </div>
 
-    <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
-      <div class="page-manager__table-header" role="row">
-        <span role="columnheader">{{ locale.t('pageManager.page', 'Page') }}</span>
-        <span role="columnheader">{{ locale.t('pageManager.actions', 'Actions') }}</span>
-      </div>
-      <div
+    <div class="page-manager__table" role="list" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
+      <article
         v-for="page in filteredSurfaces"
         :key="page.id"
         class="page-manager__row"
-        role="row"
+        role="listitem"
         @keydown.esc="cancelEdit"
       >
-        <div class="page-manager__name-cell" role="cell">
-          <img class="page-manager__preview" :src="previewImage(page)" :alt="locale.t('pageManager.previewAlt', 'Preview of {name}', { name: page.name })" />
+        <button type="button" class="page-manager__preview-button" :disabled="busy" :aria-label="locale.t('pageManager.previewAlt', 'Preview of {name}', { name: page.name })" @click="emit('openPage', page.id)">
+          <img class="page-manager__preview" :src="previewImage(page)" alt="" />
+          <span class="page-manager__preview-kind" :data-kind="page.kind">{{ surfaceKindLabel(page.kind) }}</span>
+          <span v-if="project.homeSurfaceId === page.id" class="page-manager__preview-home"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span>
+        </button>
+        <div class="page-manager__name-cell">
           <div class="page-manager__name-content">
             <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
             <template v-if="editingId === page.id">
@@ -270,11 +275,10 @@ function exportPageSource(surfaceId: string): void {
             <div class="page-manager__meta">
               <span class="page-manager__kind"><Files :size="12" aria-hidden="true" />{{ surfaceKindLabel(page.kind) }}</span>
               <code v-if="page.kind === 'page'">{{ page.route }}</code>
-              <small>{{ page.id }}</small>
             </div>
           </div>
         </div>
-        <div class="page-manager__actions" role="cell">
+        <footer class="page-manager__actions">
           <ElButton
             v-if="editingId !== page.id"
             native-type="button"
@@ -312,12 +316,6 @@ function exportPageSource(surfaceId: string): void {
           >
             <Home :size="15" aria-hidden="true" />
           </ElButton>
-          <ElButton native-type="button" text circle :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || project.surfaceOrder[0] === page.id" @click="moveSurface(page.id, -1)">
-            <ArrowUp :size="15" aria-hidden="true" />
-          </ElButton>
-          <ElButton native-type="button" text circle :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || project.surfaceOrder.at(-1) === page.id" @click="moveSurface(page.id, 1)">
-            <ArrowDown :size="15" aria-hidden="true" />
-          </ElButton>
           <ElButton native-type="button" text circle :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'surface.duplicate', surfaceId: page.id })">
             <Copy :size="15" aria-hidden="true" />
           </ElButton>
@@ -333,7 +331,16 @@ function exportPageSource(surfaceId: string): void {
           <ElButton native-type="button" text circle type="danger" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.surfaceOrder.length === 1" @click="pendingDeleteId = page.id">
             <Trash2 :size="15" aria-hidden="true" />
           </ElButton>
-        </div>
+          <ElDropdown trigger="click" placement="bottom-end" append-to="#workbench-overlays" @command="(direction: string) => moveSurface(page.id, direction === 'up' ? -1 : 1)">
+            <ElButton native-type="button" text circle :disabled="busy" :aria-label="locale.t('pageManager.more', 'More page actions')" :title="locale.t('pageManager.more', 'More page actions')"><MoreHorizontal :size="16" aria-hidden="true" /></ElButton>
+            <template #dropdown>
+              <ElDropdownMenu>
+                <ElDropdownItem command="up" :disabled="busy || project.surfaceOrder[0] === page.id"><ArrowUp :size="15" aria-hidden="true" />{{ locale.t('pageManager.moveUp', 'Move page up') }}</ElDropdownItem>
+                <ElDropdownItem command="down" :disabled="busy || project.surfaceOrder.at(-1) === page.id"><ArrowDown :size="15" aria-hidden="true" />{{ locale.t('pageManager.moveDown', 'Move page down') }}</ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+        </footer>
         <SurfacePresentationEditor
           v-if="page.kind !== 'page' && editingPresentationId === page.id"
           :surface="page"
@@ -342,8 +349,12 @@ function exportPageSource(surfaceId: string): void {
           @cancel="editingPresentationId = undefined"
           @save="emit('action', { type: 'surface.presentation', surfaceId: page.id, presentation: $event }); editingPresentationId = undefined"
         />
+      </article>
+      <div v-if="filteredSurfaces.length === 0" class="page-manager__empty">
+        <Files :size="30" aria-hidden="true" />
+        <strong>{{ search ? locale.t('pageManager.noMatch', 'No pages match this search.') : locale.t('pageManager.empty', 'No pages yet') }}</strong>
+        <ElButton v-if="!search" native-type="button" :disabled="busy" @click="emit('createSurface')"><FilePlus2 :size="15" aria-hidden="true" />{{ locale.t('pages.new', 'New page') }}</ElButton>
       </div>
-      <p v-if="filteredSurfaces.length === 0" class="page-manager__empty">{{ locale.t('pageManager.noMatch', 'No pages match this search.') }}</p>
     </div>
 
     <ElAlert
@@ -369,382 +380,4 @@ function exportPageSource(surfaceId: string): void {
   </section>
 </template>
 
-<style scoped>
-.page-manager {
-  display: grid;
-  width: 100%;
-  min-height: 0;
-  max-height: none;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  overflow: hidden;
-  color: var(--wb-text);
-  background: transparent;
-}
-
-.page-manager__header,
-.page-manager__toolbar,
-.page-manager__table-header,
-.page-manager__row {
-  display: grid;
-  align-items: center;
-}
-
-.page-manager__header {
-  min-height: 78px;
-  padding: 12px 14px 12px 18px;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  column-gap: 18px;
-  border-bottom: 1px solid var(--wb-separator);
-  background: var(--wb-elevated);
-}
-
-.page-manager__header span,
-.page-manager__row small {
-  color: var(--wb-muted);
-  font-size: 11px;
-}
-
-.page-manager__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.page-manager__breadcrumb-link.el-button {
-  height: auto;
-  padding: 0;
-  color: var(--wb-accent);
-  font-size: 11px;
-}
-
-.page-manager__breadcrumb-link.el-button:hover {
-  text-decoration: underline;
-}
-
-.page-manager__breadcrumb-current {
-  color: var(--wb-muted);
-  font-size: 11px;
-}
-
-.page-manager__header-copy {
-  min-width: 0;
-}
-
-.page-manager__title-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-}
-
-.page-manager__project-chip {
-  display: inline-flex;
-  min-width: max-content;
-  padding: 3px 7px;
-  align-items: center;
-  gap: 4px;
-  color: var(--wb-accent-text);
-  border: 1px solid var(--wb-accent-line);
-  border-radius: 999px;
-  background: var(--wb-accent-soft);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.page-manager__header .page-manager__project-chip {
-  color: var(--wb-accent-text);
-}
-
-.page-manager__header-copy > p {
-  margin: 4px 0 0;
-  color: var(--wb-muted);
-  font-size: 11px;
-}
-
-.page-manager__header-summary {
-  display: flex;
-  min-width: max-content;
-  align-items: center;
-  gap: 12px;
-}
-
-.page-manager__header-summary span {
-  display: grid;
-  padding-left: 12px;
-  gap: 1px;
-  border-left: 1px solid var(--wb-separator);
-  font-size: 10px;
-}
-
-.page-manager__header-summary strong {
-  color: var(--wb-text-strong);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.page-manager__header h2 {
-  margin: 2px 0 0;
-  color: var(--wb-text-strong);
-  font-size: 18px;
-  letter-spacing: 0;
-}
-
-.page-manager__header > .el-button,
-.page-manager__actions .el-button {
-  margin-left: 0;
-}
-
-.page-manager__toolbar {
-  padding: 12px 14px;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
-  gap: 10px;
-  border-bottom: 1px solid var(--wb-separator);
-  background: var(--wb-surface);
-}
-
-.page-manager__toolbar label > span:not(.sr-only) {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--wb-muted);
-  font-size: 11px;
-}
-
-.page-manager__search {
-  position: relative;
-  align-self: end;
-}
-
-.page-manager__create-actions {
-  display: flex;
-  align-self: end;
-  gap: 8px;
-}
-
-.page-manager__create-actions .el-button {
-  min-height: 32px;
-  margin-left: 0;
-  white-space: nowrap;
-}
-
-.page-manager__table {
-  min-height: 0;
-  overflow: auto;
-}
-
-.page-manager__table-header,
-.page-manager__row {
-  grid-template-columns: minmax(220px, 1fr) minmax(190px, auto);
-  column-gap: 12px;
-}
-
-.page-manager__table-header {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  min-height: 34px;
-  padding: 0 16px;
-  color: var(--wb-muted);
-  border-bottom: 1px solid var(--wb-separator);
-  background: var(--wb-elevated);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.page-manager__row {
-  min-height: 64px;
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--wb-separator);
-  transition: background 120ms ease;
-}
-
-.page-manager__row:hover {
-  background: color-mix(in srgb, var(--wb-hover) 62%, transparent);
-}
-
-.page-manager__row label {
-  min-width: 0;
-}
-
-.page-manager__row > [role="cell"] {
-  min-width: 0;
-}
-
-.page-manager__name-cell {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: 148px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-
-.page-manager__name-content {
-  min-width: 0;
-}
-
-.page-manager__preview {
-  display: block;
-  width: 148px;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border: 1px solid var(--wb-control-border);
-  border-radius: 7px;
-  background: var(--wb-surface);
-  box-shadow: 0 3px 10px rgb(15 23 42 / 8%);
-}
-
-.page-manager__name-cell .page-manager__link.el-button {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.page-manager__route-input {
-  margin-top: 4px;
-}
-
-/* The page name is the page's online address, so it reads as a link rather than
-   as an always-editable field. Element Plus supplies the link button base; these
-   rules add the Workbench palette color, the underline, and the inline metrics.
-   Element Plus wraps slot content in one span, so the label row lives there. */
-.page-manager__link.el-button {
-  height: auto;
-  padding: 0;
-  color: var(--wb-accent);
-  font-size: 12px;
-}
-
-.page-manager__link.el-button > span {
-  display: inline-flex;
-  max-width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 4px;
-}
-
-.page-manager__link-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.page-manager__link.el-button:hover:not(.is-disabled) {
-  text-decoration: underline;
-}
-
-.page-manager__link.el-button.is-disabled {
-  color: var(--wb-muted);
-}
-
-.page-manager__meta { display: flex; min-width: 0; margin-top: 4px; align-items: center; gap: 7px; }
-.page-manager__meta small { min-width: 0; margin: 0; overflow: hidden; color: var(--wb-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.page-manager__kind { display: inline-flex; min-width: max-content; align-items: center; gap: 4px; color: var(--wb-accent-text); font-size: 10px; font-weight: 650; }
-.page-manager__meta code { min-width: 0; overflow: hidden; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-
-.page-manager__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 5px;
-}
-
-.page-manager .el-button.is-home {
-  color: var(--wb-accent);
-  border-color: var(--wb-accent);
-  background: var(--wb-accent-soft);
-  opacity: 1;
-}
-
-.page-manager .el-button.is-danger {
-  color: var(--wb-danger);
-}
-
-.page-manager__empty {
-  margin: 0;
-  padding: 36px 18px;
-  color: var(--wb-muted);
-  text-align: center;
-}
-
-.page-manager__confirm {
-  min-height: 72px;
-  border-radius: 0;
-  border-top: 1px solid var(--wb-danger);
-}
-
-.page-manager__confirm-content {
-  display: grid;
-  gap: 3px;
-}
-
-.page-manager__confirm-content > span {
-  color: var(--wb-muted);
-  font-size: 12px;
-}
-
-.page-manager__confirm-content > div {
-  display: flex;
-  margin-top: 6px;
-  gap: 8px;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 680px) {
-  .page-manager {
-    width: 100%;
-    max-height: none;
-  }
-
-  .page-manager__toolbar {
-    grid-template-columns: 1fr auto;
-  }
-
-  .page-manager__toolbar > label:first-child {
-    grid-column: 1 / -1;
-  }
-
-  .page-manager__table-header {
-    display: none;
-  }
-
-  .page-manager__row {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .page-manager__name-cell {
-    grid-template-columns: 112px minmax(0, 1fr);
-    align-items: start;
-    gap: 10px;
-  }
-
-  .page-manager__preview { width: 112px; }
-
-  .page-manager__header-summary {
-    display: none;
-  }
-
-  .page-manager__title-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .page-manager__project-chip {
-    font-size: 10px;
-  }
-
-  .page-manager__actions {
-    justify-content: flex-start;
-  }
-
-}
-</style>
+<style src="./style/index.css" scoped />

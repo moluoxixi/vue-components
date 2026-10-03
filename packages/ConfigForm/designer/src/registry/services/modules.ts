@@ -100,8 +100,7 @@ function projectMaterialCapabilities(material: DesignerMaterialDefinition): Desi
             ...(node.kind === 'field' && node.defaultValue !== undefined
               ? { defaultValue: structuredClone(node.defaultValue) }
               : {}),
-            ...(material.runtime.trigger ? { trigger: material.runtime.trigger } : {}),
-            ...(material.runtime.valueProp ? { valueProp: material.runtime.valueProp } : {}),
+            ...(material.kind === 'field' ? { trigger, valueProp } : {}),
           },
         }
       : {}),

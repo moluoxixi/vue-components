@@ -263,6 +263,12 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
 
 <template>
   <div class="designer-left-panel">
+    <header class="designer-left-heading">
+      <strong>{{ views.find(view => view.id === activeView)?.label }}</strong>
+      <span v-if="activeView === 'components'">{{ materials.length }}</span>
+      <span v-else-if="activeView === 'layers'">{{ layers.length }}</span>
+      <span v-else-if="activeView === 'pages'">{{ project.surfaceOrder.length }}</span>
+    </header>
     <ElTabs class="designer-left-tabs" :model-value="activeView" stretch @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
         <template #label>
@@ -325,7 +331,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
     </div>
 
     <ElScrollbar v-else-if="activeView === 'layers'" class="designer-layers-scrollbar">
-    <div ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Surface layers')">
+    <div ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Page layers')">
       <div
         v-for="(layer, index) in layers"
         :key="layer.id"

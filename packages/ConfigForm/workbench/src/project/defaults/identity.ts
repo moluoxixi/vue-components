@@ -3,6 +3,8 @@ import type { ProjectIdentityFactory, ProjectIdentityKind } from '../types'
 let identitySequence = 0
 
 function randomIdentity(kind: ProjectIdentityKind, source: string): string {
+  if (kind === 'field')
+    return source
   const random = typeof globalThis.crypto?.randomUUID === 'function'
     ? globalThis.crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`

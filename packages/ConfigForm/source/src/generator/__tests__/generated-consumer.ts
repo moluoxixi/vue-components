@@ -703,8 +703,9 @@ export async function verifyGeneratedConsumer(fileSet: SourceFileSetV1): Promise
   try {
     await writeGeneratedFiles(consumerRoot, fileSet)
     await linkConsumerDependencies(consumerRoot, fileSet)
-    await verifyGeneratedInteractions(consumerRoot, fileSet)
-    if (fileSet.kind === 'raw-source')
+    if (textFiles(fileSet).some(file => file.path === 'src/demo-values.ts'))
+      await verifyGeneratedInteractions(consumerRoot, fileSet)
+    if (fileSet.kind === 'raw-source' && textFiles(fileSet).some(file => file.path === 'src/demo-navigation.ts'))
       await verifyGeneratedNavigation(consumerRoot)
     try {
       await execFileAsync(process.execPath, [vueTscBin, '-p', 'tsconfig.json', '--noEmit'], {

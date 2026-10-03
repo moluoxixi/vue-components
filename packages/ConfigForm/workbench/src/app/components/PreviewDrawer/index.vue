@@ -15,16 +15,14 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, watch } from 'vue'
+import { computed } from 'vue'
 import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
 
 const props = defineProps<PreviewDrawerProps>()
 const emit = defineEmits<PreviewDrawerEmits>()
 
-let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
-const dialogWidth = computed(() => 'min(calc(100vw - 24px), clamp(720px, 78vw, 1200px))')
 const runtimeAvailable = computed(() => Boolean(
   props.adapter
   && props.compilation
@@ -43,59 +41,21 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
     emit('ready', event)
 }
 
-function guardDialogClose(done: () => void): void {
-  if (props.expanded) {
-    emit('update:expanded', false)
-    return
-  }
-  done()
-}
-
-function handleDialogClose(): void {
-  if (props.open)
-    emit('close')
-}
-
-watch(() => props.open, (open, wasOpen) => {
-  if (open) {
-    returnFocus = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : undefined
-    return
-  }
-  const target = returnFocus
-  returnFocus = undefined
-  if (wasOpen && target?.isConnected)
-    void nextTick(() => target.focus())
-})
 </script>
 
 <template>
-  <ElDialog
+  <aside
     v-if="open"
     class="preview-dialog-shell"
     :class="{ 'is-expanded': expanded }"
-    modal-class="preview-drawer-overlay"
-    :model-value="open"
-    :width="dialogWidth"
-    :fullscreen="!!expanded"
-    align-center
-    append-to="#workbench-overlays"
-    destroy-on-close
-    trap-focus
-    :close-on-click-modal="false"
-    close-on-press-escape
-    :show-close="false"
-    :before-close="guardDialogClose"
-    :aria-label="locale.t('preview.page', 'Surface preview')"
+    :aria-label="locale.t('preview.page', 'Page preview')"
     aria-labelledby="preview-dialog-title"
-    @close="handleDialogClose"
   >
     <aside
       class="preview-pane"
       :class="{ 'is-expanded': expanded }"
       role="complementary"
-      :aria-label="locale.t('preview.page', 'Surface preview')"
+      :aria-label="locale.t('preview.page', 'Page preview')"
     >
       <header class="pane-header">
         <div class="preview-heading">
@@ -159,7 +119,7 @@ watch(() => props.open, (open, wasOpen) => {
               :revision="revision"
               :session="session"
               :session-id="sessionId"
-              :title="locale.t('preview.runtimeFrame', 'Surface preview runtime')"
+              :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
               @error="emit('error', $event)"
               @instance-state="emit('instanceState', $event)"
               @mounted="emit('mounted', $event)"
@@ -174,5 +134,5 @@ watch(() => props.open, (open, wasOpen) => {
         </div>
       </div>
     </aside>
-  </ElDialog>
+  </aside>
 </template>
