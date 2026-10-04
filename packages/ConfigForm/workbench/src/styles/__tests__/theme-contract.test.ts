@@ -38,6 +38,7 @@ const projectThemeEditor = readFileSync(new URL('../../app/components/ProjectThe
 const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
+const pageManagerStylesheet = readFileSync(new URL('../../features/pages/components/SurfaceManager/style/index.css', import.meta.url), 'utf8')
 const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
 const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
 const sourceViewerStylesheet = readFileSync(new URL('../../../../source/src/viewer/style/index.scss', import.meta.url), 'utf8')
@@ -139,6 +140,10 @@ describe('workbench theme contract', () => {
       expect(stylesheet).not.toContain(orphan)
     expect(studioLeftPanelStylesheet).toContain('@media (max-width: 700px)')
     expect(studioLeftPanelStylesheet).toContain('.designer-pages button')
+    expect(selectorBlock('.designer-theme-panel', studioLeftPanelStylesheet)).toContain('flex-direction: column;')
+    expect(selectorBlock('.designer-theme-panel > *', studioLeftPanelStylesheet)).toContain('flex: 1 1 auto;')
+    expect(selectorBlock('.designer-theme-type-grid', studioLeftPanelStylesheet)).toContain('grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));')
+    expect(selectorBlock('.designer-theme-field > .el-select', studioLeftPanelStylesheet)).toContain('width: 100%;')
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
@@ -194,8 +199,9 @@ describe('workbench theme contract', () => {
     expect(tailwindStylesheet).toContain('@import "tailwindcss/utilities.css" layer(utilities) source(none);')
     expect(tailwindStylesheet).not.toMatch(/@import\s+["']tailwindcss["']/)
     expect(tailwindStylesheet).not.toContain('preflight.css')
-    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(2)
+    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(3)
     expect(tailwindStylesheet).toContain('@source "../features/export/index.vue";')
+    expect(tailwindStylesheet).toContain('@source "../features/assets/index.vue";')
     expect(tailwindStylesheet).toContain('@source "../app/components/ProjectThemeEditor/index.vue";')
     expect(tailwindStylesheet).toContain('--color-wb-editor-surface: var(--wb-editor-surface);')
     expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
@@ -366,6 +372,14 @@ describe('workbench theme contract', () => {
       '.mx-config-form-designer__tabs button[aria-selected=true]',
       designerStylesheet,
     )).toContain('color: var(--mx-designer-accent-text);')
+    expect(selectorBlock(
+      '.mx-config-form-designer__interaction-rule.el-card.is-hover-shadow:focus-within',
+      designerStylesheet,
+    )).toContain('box-shadow: var(--el-box-shadow-light);')
+    expect(designerStylesheet).not.toContain('.mx-config-form-designer__interaction-rule-toggle:hover')
+    expect(selectorBlock('.project-row:focus-within')).toContain('box-shadow: 0 6px 20px rgb(15 23 42 / 6%);')
+    expect(selectorBlock('.page-manager__row:focus-within', pageManagerStylesheet)).toContain('box-shadow: 0 5px 18px rgb(0 0 0 / 5%);')
+    expect(selectorBlock('.designer-layers > div:focus-within', studioLeftPanelStylesheet)).toContain('background: var(--wb-hover);')
     expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
     const paletteItem = selectorBlock(
       '.mx-config-form-designer__palette-item',

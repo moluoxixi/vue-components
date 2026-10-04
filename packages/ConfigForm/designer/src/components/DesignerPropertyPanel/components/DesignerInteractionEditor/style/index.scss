@@ -2,7 +2,6 @@
 
 .mx-config-form-designer__interaction-editor,
 .mx-config-form-designer__interaction-section,
-.mx-config-form-designer__interaction-rule,
 .mx-config-form-designer__interaction-rule-body,
 .mx-config-form-designer__interaction-bindings,
 .mx-config-form-designer__interaction-binding,
@@ -207,15 +206,32 @@
   font-size: 0.6875rem;
 }
 
-.mx-config-form-designer__interaction-rule {
-  overflow: hidden;
-  background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
-  border-radius: 5px;
+.mx-config-form-designer__interaction-rule.el-card {
+  --el-card-border-color: var(--mx-designer-border);
+  --el-card-border-radius: 5px;
+  --el-card-bg-color: var(--mx-designer-subtle);
+  --el-box-shadow-light: 0 2px 8px var(--mx-designer-shadow);
+  min-width: 0;
+  color: var(--mx-designer-text);
+  transition: box-shadow 120ms ease;
+}
+
+.mx-config-form-designer__interaction-rule.el-card.is-hover-shadow:hover,
+.mx-config-form-designer__interaction-rule.el-card.is-hover-shadow:focus-within {
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.mx-config-form-designer__interaction-rule > .el-card__header {
+  padding: 5px 6px 5px 7px;
+  border-bottom: 0;
+}
+
+.mx-config-form-designer__interaction-rule > .el-card__body {
+  min-width: 0;
+  padding: 0;
 }
 
 .mx-config-form-designer__interaction-rule-heading {
-  padding: 5px 6px 5px 7px;
   gap: 5px;
 }
 
@@ -234,10 +250,6 @@
   border: 0;
   border-radius: 4px;
   cursor: pointer;
-}
-
-.mx-config-form-designer__interaction-rule-toggle:hover {
-  background: var(--mx-designer-hover);
 }
 
 .mx-config-form-designer__interaction-rule-toggle:focus-visible {
@@ -423,6 +435,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mx-config-form-designer__interaction-rule.el-card,
   .mx-config-form-designer__interaction-rule-toggle > svg:last-child {
     transition: none;
   }

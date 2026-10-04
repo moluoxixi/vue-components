@@ -14,7 +14,7 @@ import type {
 import type { DesignerInteractionFieldOption } from './types'
 import type { DesignerInteractionSurfaceOption } from '../../types'
 import { ArrowRightLeft, ChevronDown, Eye, MousePointerClick, Plus, Trash2 } from '@lucide/vue'
-import { ElCheckbox, ElInput, ElOption, ElSelect } from 'element-plus'
+import { ElCard, ElCheckbox, ElInput, ElOption, ElSelect } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import { createDesignerCommandId, walkDesignGraph } from '../../../../graph'
 import { useDesignerLocale } from '../../../../locale'
@@ -284,8 +284,9 @@ function updateStateKey(rule: StateProjectionRule, key: typeof stateKeys[number]
 }
 
 function addValueRule(): void {
-  const field = fields.value[0]
-  if (!field)
+  const dependencyField = fields.value[0]
+  const targetField = fields.value.find(field => field.id !== dependencyField?.id)
+  if (!dependencyField || !targetField)
     return
   selectInteractionFilter('valueChange')
   const id = createDesignerCommandId('interaction')
@@ -293,18 +294,21 @@ function addValueRule(): void {
   emit('update', [...props.interactions.map(rule => cloneInteractionJson(rule)), {
     kind: 'valueChange',
     id,
-    dependencies: [field.id],
-    action: { kind: 'clear', targetFieldId: field.id },
+    dependencies: [dependencyField.id],
+    action: { kind: 'clear', targetFieldId: targetField.id },
   }])
 }
 
 function updateDependencies(rule: ValueChangeRule, dependencies: string[]): void {
-  if (dependencies.length)
-    replaceRule(rule.id, { ...rule, dependencies })
+  const next = dependencies.filter(fieldId => fieldId !== rule.action.targetFieldId)
+  if (next.length)
+    replaceRule(rule.id, { ...rule, dependencies: next })
 }
 
 function updateValueActionKind(rule: ValueChangeRule, kind: 'clear' | 'copy' | 'set'): void {
-  const targetFieldId = rule.action.targetFieldId || fields.value[0]?.id
+  const targetFieldId = rule.action.targetFieldId && !rule.dependencies.includes(rule.action.targetFieldId)
+    ? rule.action.targetFieldId
+    : fields.value.find(field => !rule.dependencies.includes(field.id))?.id
   if (!targetFieldId)
     return
   const action = kind === 'clear'
@@ -316,6 +320,8 @@ function updateValueActionKind(rule: ValueChangeRule, kind: 'clear' | 'copy' | '
 }
 
 function updateValueTarget(rule: ValueChangeRule, targetFieldId: string): void {
+  if (rule.dependencies.includes(targetFieldId))
+    return
   replaceRule(rule.id, { ...rule, action: { ...rule.action, targetFieldId } })
 }
 
@@ -671,25 +677,35 @@ function actionLabel(kind: typeof actionKinds[number]): string {
       <div v-if="stateRules.length === 0" class="mx-config-form-designer__interaction-empty">
         <span>{{ locale.t('interaction.state.empty', 'No state rules yet') }}</span>
       </div>
-      <article v-for="rule in visibleStateRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
-        <div class="mx-config-form-designer__interaction-rule-heading">
-          <button
-            type="button"
-            class="mx-config-form-designer__interaction-rule-toggle"
-            :aria-expanded="isRuleExpanded(rule.id)"
-            :aria-controls="`interaction-rule-${rule.id}`"
-            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
-            @click="toggleRule(rule.id)"
-          >
-            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
-            <span class="mx-config-form-designer__interaction-rule-copy">
-              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
-              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
-            </span>
-            <ChevronDown :size="14" aria-hidden="true" />
-          </button>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
+      <ElCard
+        v-for="rule in visibleStateRules"
+        :key="rule.id"
+        shadow="hover"
+        class="mx-config-form-designer__interaction-rule"
+        :data-interaction-id="rule.id"
+        role="group"
+        :aria-label="ruleSummary(rule)"
+      >
+        <template #header>
+          <div class="mx-config-form-designer__interaction-rule-heading">
+            <button
+              type="button"
+              class="mx-config-form-designer__interaction-rule-toggle"
+              :aria-expanded="isRuleExpanded(rule.id)"
+              :aria-controls="`interaction-rule-${rule.id}`"
+              :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+              @click="toggleRule(rule.id)"
+            >
+              <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+              <span class="mx-config-form-designer__interaction-rule-copy">
+                <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+                <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+              </span>
+              <ChevronDown :size="14" aria-hidden="true" />
+            </button>
+            <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
+          </div>
+        </template>
         <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
           <div class="mx-config-form-designer__interaction-step">
             <span class="mx-config-form-designer__interaction-step-index">1</span>
@@ -715,7 +731,7 @@ function actionLabel(kind: typeof actionKinds[number]): string {
           </div>
           <DesignerSafeExpressionEditor :model-value="rule.value" :fields="fields" purpose="condition" :label="locale.t('interaction.condition.label', 'State condition')" :disabled="readonly" @update:model-value="$event && replaceRule(rule.id, { ...rule, value: $event })" />
         </div>
-      </article>
+      </ElCard>
     </section>
 
     <section v-if="interactionFilter === 'all' || interactionFilter === 'valueChange'" class="mx-config-form-designer__interaction-section" data-interaction-kind="valueChange">
@@ -726,7 +742,7 @@ function actionLabel(kind: typeof actionKinds[number]): string {
             <strong>{{ locale.t('interaction.value.title', 'Value linkage') }}</strong>
           </span>
         </div>
-        <button type="button" class="mx-config-form-designer__interaction-add" :aria-label="locale.t('interaction.value.add', 'Add value rule')" :disabled="readonly || fields.length === 0" @click="addValueRule">
+        <button type="button" class="mx-config-form-designer__interaction-add" :aria-label="locale.t('interaction.value.add', 'Add value rule')" :disabled="readonly || fields.length < 2" @click="addValueRule">
           <Plus :size="14" aria-hidden="true" />
           <span>{{ locale.t('interaction.add', 'Add rule') }}</span>
         </button>
@@ -734,25 +750,35 @@ function actionLabel(kind: typeof actionKinds[number]): string {
       <div v-if="valueRules.length === 0" class="mx-config-form-designer__interaction-empty">
         <span>{{ locale.t('interaction.value.empty', 'No value rules yet') }}</span>
       </div>
-      <article v-for="rule in visibleValueRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
-        <div class="mx-config-form-designer__interaction-rule-heading">
-          <button
-            type="button"
-            class="mx-config-form-designer__interaction-rule-toggle"
-            :aria-expanded="isRuleExpanded(rule.id)"
-            :aria-controls="`interaction-rule-${rule.id}`"
-            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
-            @click="toggleRule(rule.id)"
-          >
-            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
-            <span class="mx-config-form-designer__interaction-rule-copy">
-              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
-              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
-            </span>
-            <ChevronDown :size="14" aria-hidden="true" />
-          </button>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
+      <ElCard
+        v-for="rule in visibleValueRules"
+        :key="rule.id"
+        shadow="hover"
+        class="mx-config-form-designer__interaction-rule"
+        :data-interaction-id="rule.id"
+        role="group"
+        :aria-label="ruleSummary(rule)"
+      >
+        <template #header>
+          <div class="mx-config-form-designer__interaction-rule-heading">
+            <button
+              type="button"
+              class="mx-config-form-designer__interaction-rule-toggle"
+              :aria-expanded="isRuleExpanded(rule.id)"
+              :aria-controls="`interaction-rule-${rule.id}`"
+              :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+              @click="toggleRule(rule.id)"
+            >
+              <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+              <span class="mx-config-form-designer__interaction-rule-copy">
+                <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+                <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+              </span>
+              <ChevronDown :size="14" aria-hidden="true" />
+            </button>
+            <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
+          </div>
+        </template>
         <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
           <div class="mx-config-form-designer__interaction-step">
             <span class="mx-config-form-designer__interaction-step-index">1</span>
@@ -780,7 +806,7 @@ function actionLabel(kind: typeof actionKinds[number]): string {
             <label class="mx-config-form-designer__interaction-field">
               <span>{{ locale.t('interaction.value.target', 'Target field') }}</span>
               <ElSelect :model-value="rule.action.targetFieldId" :disabled="readonly" :aria-label="locale.t('interaction.value.target', 'Target field')" @update:model-value="updateValueTarget(rule, $event)">
-                <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+                <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" :disabled="rule.dependencies.includes(field.id)" />
               </ElSelect>
             </label>
           </div>
@@ -793,7 +819,7 @@ function actionLabel(kind: typeof actionKinds[number]): string {
           <DesignerSafeExpressionEditor v-if="rule.action.kind === 'set'" :model-value="rule.action.value" :fields="fields" purpose="value" :label="locale.t('interaction.value.expression', 'Value to set')" :disabled="readonly" @update:model-value="updateSetValue(rule, $event)" />
           <DesignerSafeExpressionEditor :model-value="rule.when" :fields="fields" purpose="condition" optional :label="locale.t('interaction.condition.optionalLabel', 'Optional condition')" :disabled="readonly" @update:model-value="updateWhen(rule, $event)" />
         </div>
-      </article>
+      </ElCard>
     </section>
 
     <section v-if="interactionFilter === 'all' || interactionFilter === 'primaryUiAction'" class="mx-config-form-designer__interaction-section" data-interaction-kind="primaryUiAction">
@@ -812,25 +838,35 @@ function actionLabel(kind: typeof actionKinds[number]): string {
       <div v-if="primaryRules.length === 0" class="mx-config-form-designer__interaction-empty">
         <span>{{ locale.t('interaction.primary.empty', 'No UI actions yet') }}</span>
       </div>
-      <article v-for="rule in visiblePrimaryRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
-        <div class="mx-config-form-designer__interaction-rule-heading">
-          <button
-            type="button"
-            class="mx-config-form-designer__interaction-rule-toggle"
-            :aria-expanded="isRuleExpanded(rule.id)"
-            :aria-controls="`interaction-rule-${rule.id}`"
-            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
-            @click="toggleRule(rule.id)"
-          >
-            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
-            <span class="mx-config-form-designer__interaction-rule-copy">
-              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
-              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
-            </span>
-            <ChevronDown :size="14" aria-hidden="true" />
-          </button>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
+      <ElCard
+        v-for="rule in visiblePrimaryRules"
+        :key="rule.id"
+        shadow="hover"
+        class="mx-config-form-designer__interaction-rule"
+        :data-interaction-id="rule.id"
+        role="group"
+        :aria-label="ruleSummary(rule)"
+      >
+        <template #header>
+          <div class="mx-config-form-designer__interaction-rule-heading">
+            <button
+              type="button"
+              class="mx-config-form-designer__interaction-rule-toggle"
+              :aria-expanded="isRuleExpanded(rule.id)"
+              :aria-controls="`interaction-rule-${rule.id}`"
+              :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+              @click="toggleRule(rule.id)"
+            >
+              <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+              <span class="mx-config-form-designer__interaction-rule-copy">
+                <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+                <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+              </span>
+              <ChevronDown :size="14" aria-hidden="true" />
+            </button>
+            <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
+          </div>
+        </template>
         <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
           <div class="mx-config-form-designer__interaction-step">
             <span class="mx-config-form-designer__interaction-step-index">1</span>
@@ -980,7 +1016,7 @@ function actionLabel(kind: typeof actionKinds[number]): string {
             </ElSelect>
           </label>
         </div>
-      </article>
+      </ElCard>
     </section>
 
     <p v-if="currentSurface?.kind !== 'page'" class="mx-config-form-designer__interaction-note">

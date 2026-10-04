@@ -8,7 +8,7 @@ import type {
 import type { VueWrapper } from '@vue/test-utils'
 import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
-import { ElCheckbox, ElOption, ElSelect } from 'element-plus'
+import { ElCard, ElCheckbox, ElOption, ElSelect } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import DesignerSafeExpressionEditor from '../src/components/DesignerPropertyPanel/components/DesignerInteractionEditor/components/DesignerSafeExpressionEditor/index.vue'
 import DesignerInteractionEditor from '../src/components/DesignerPropertyPanel/components/DesignerInteractionEditor/index.vue'
@@ -156,8 +156,29 @@ describe('designer interaction editor', () => {
     const addValue = wrapper.get('button[aria-label="Add value rule"]')
     expect(addValue.attributes('disabled')).toBeUndefined()
     await addValue.trigger('click')
-    expect(wrapper.emitted('update')?.at(-1)?.[0]).toHaveLength(2)
+    const updated = wrapper.emitted('update')?.at(-1)?.[0] as PrototypeInteraction[]
+    expect(updated).toHaveLength(2)
+    expect(updated.at(-1)).toMatchObject({
+      kind: 'valueChange',
+      dependencies: ['name-field'],
+      action: { kind: 'clear', targetFieldId: 'status-field' },
+    })
     expect(wrapper.get('[data-interaction-filter="valueChange"]').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('does not allow a value rule to target one of its dependency fields', async () => {
+    const wrapper = mountEditor([{
+      kind: 'valueChange',
+      id: 'value-clear',
+      dependencies: ['status-field'],
+      action: { kind: 'clear', targetFieldId: 'name-field' },
+    }])
+
+    const target = selectByLabel(wrapper, 'Target field')
+    const status = target.findAllComponents(ElOption).find(option => option.props('value') === 'status-field')
+    expect(status?.props('disabled')).toBe(true)
+    target.vm.$emit('update:modelValue', 'status-field')
+    expect(wrapper.emitted('update')).toBeUndefined()
   })
 
   it('renders all state projections and value action kinds', () => {
@@ -285,6 +306,45 @@ describe('designer interaction editor', () => {
 
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('false')
+
+    await toggle.trigger('click')
+    await wrapper.get('[data-interaction-id="primary"] button[aria-label="Delete interaction"]').trigger('click')
+    expect(wrapper.emitted('update')?.at(-1)?.[0]).toEqual([])
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+  })
+
+  it('uses one hover card for each rule header and its delete action', () => {
+    const wrapper = mountEditor([
+      {
+        kind: 'stateProjection',
+        id: 'state-visible',
+        target: { kind: 'state', nodeId: 'name-field', key: 'visible' },
+        value: { version: 1, ast: { kind: 'literal', value: true } },
+      },
+      {
+        kind: 'valueChange',
+        id: 'value-clear',
+        dependencies: ['status-field'],
+        action: { kind: 'clear', targetFieldId: 'name-field' },
+      },
+      {
+        kind: 'primaryUiAction',
+        id: 'primary',
+        nodeId: 'save-action',
+        trigger: 'activate',
+        action: { kind: 'navigate', targetSurfaceId: 'home', parameters: [] },
+      },
+    ])
+
+    const cards = wrapper.findAllComponents(ElCard)
+    expect(cards).toHaveLength(3)
+    for (const card of cards) {
+      expect(card.props('shadow')).toBe('hover')
+      expect(card.classes()).toContain('is-hover-shadow')
+      expect(card.attributes('role')).toBe('group')
+      expect(card.find('.mx-config-form-designer__interaction-rule-toggle').exists()).toBe(true)
+      expect(card.find('button[aria-label="Delete interaction"]').exists()).toBe(true)
+    }
   })
 
   it('authors named result write-back to multiple fields', async () => {

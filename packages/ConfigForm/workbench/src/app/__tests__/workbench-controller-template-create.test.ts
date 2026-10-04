@@ -10,6 +10,7 @@ import { defineComponent, h } from 'vue'
 import { createWorkbenchController, createWorkbenchUiStore } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
+  buildExportSnapshot,
   builtInTemplateCatalogProvider,
   createMemoryProjectRecoveryDraftStore,
   createProjectTransferDocument,
@@ -105,6 +106,54 @@ afterEach(() => {
 })
 
 describe('workbench template project creation transaction', () => {
+  it('exports staged resource bytes before autosave and after replacing a saved file', async () => {
+    const repository = durableRepository()
+    const { controller } = await setup(repository)
+    expect(await controller.createProjectFromTemplate(await elementTemplate(), 'Draft assets')).toBe(true)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const resourceId = await controller.createEmbeddedResource({
+        name: 'Logo',
+        fileName: 'logo.png',
+        mediaType: 'image/png',
+        bytes: new Uint8Array([1, 2, 3]),
+      })
+      expect(resourceId).toBeTruthy()
+      const projectId = controller.currentProject.value!.id
+      expect((await repository.get(projectId))?.document.resources[resourceId!]).toBeUndefined()
+
+      async function expectExportedBytes(contentBase64: string): Promise<void> {
+        const captured = controller.exportService.capture()
+        expect(captured).toBeDefined()
+        const exported = await buildExportSnapshot(captured!)
+        for (const artifact of [exported.rawSource, exported.configBindings]) {
+          expect(artifact.status, artifact.status === 'failed' ? JSON.stringify(artifact.diagnostics) : '').toBe('ready')
+          if (artifact.status === 'ready') {
+            expect(artifact.fileSet.files).toContainEqual(expect.objectContaining({
+              kind: 'binary',
+              contentBase64,
+            }))
+          }
+        }
+      }
+
+      await expectExportedBytes('AQID')
+      await controller.saveProject()
+      expect(controller.dirty.value).toBe(false)
+      expect(await controller.replaceEmbeddedResource(resourceId!, {
+        name: 'Updated logo',
+        fileName: 'logo.png',
+        mediaType: 'image/png',
+        bytes: new Uint8Array([4, 5, 6, 7]),
+      })).toBe(true)
+      expect((await repository.get(projectId))?.document.resources[resourceId!]).toMatchObject({ byteLength: 3 })
+      await expectExportedBytes('BAUGBw==')
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('renames current and inactive projects through Model commands before persistence', async () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')

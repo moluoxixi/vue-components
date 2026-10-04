@@ -1,3 +1,4 @@
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type {
   ContractResult,
   DatasetProjection,
@@ -50,6 +51,7 @@ export interface AssetManagerDialogProps {
   commands: AssetManagerCommands
   initialId?: string
   initialKind?: 'dataset' | 'resource'
+  locale?: DesignerLocaleOptions
   modelValue: boolean
   project: ReadonlyProjectDocument
 }

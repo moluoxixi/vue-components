@@ -193,7 +193,8 @@
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.project-row:hover {
+.project-row:hover,
+.project-row:focus-within {
   border-color: var(--wb-accent-line);
   box-shadow: 0 6px 20px rgb(15 23 42 / 6%);
 }

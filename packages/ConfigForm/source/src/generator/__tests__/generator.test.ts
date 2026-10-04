@@ -1474,8 +1474,34 @@ describe('source generators', () => {
     const bindings = await generateConfigFormBindings(bindingInput({ compilation: cyclicCompilation }))
     expect(raw).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
     expect(bindings).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
-    if (!raw.success)
+    if (!raw.success) {
+      expect(raw.diagnostics[0]?.message).toContain('contain a cycle')
       expect(raw.diagnostics[0]?.context?.reason).toContain('contain a cycle')
+    }
+    if (!bindings.success)
+      expect(bindings.diagnostics[0]?.message).toContain('contain a cycle')
+  })
+
+  it('rejects self-targeted value rules instead of exporting legacy templates', async () => {
+    const invalidCompilation = compilation()
+    const home = invalidCompilation.ir.surfacesById.home!
+    ;(home.interactions as unknown as unknown[]).push({
+      kind: 'valueChange',
+      id: 'self-targeted-value-rule',
+      dependencies: ['name'],
+      action: { kind: 'clear', targetFieldId: 'name' },
+    })
+
+    const [raw, bindings] = await Promise.all([
+      generateVueSource(rawInput({ compilation: invalidCompilation })),
+      generateConfigFormBindings(bindingInput({ compilation: invalidCompilation })),
+    ])
+    expect(raw).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
+    expect(bindings).toMatchObject({ success: false, diagnostics: [{ code: 'source_input_invalid' }] })
+    if (!raw.success)
+      expect(raw.diagnostics[0]?.message).toContain('contain a cycle')
+    if (!bindings.success)
+      expect(bindings.diagnostics[0]?.message).toContain('contain a cycle')
   })
 
   it('fails closed when a handler requires an unavailable nested value scope', async () => {

@@ -2,12 +2,14 @@
 import type { UploadFile, UploadInstance } from 'element-plus'
 import type { DatasetProjection } from '@moluoxixi/config-form-model'
 import type { AssetManagerDialogProps } from './types'
-import { Plus } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { AlertCircle, Braces, CheckCircle2, Database, Download, FilePlus2, FileText, Image, Link2, List, Pencil, Plus, Save, SlidersHorizontal, Table2, Trash2, Upload, X } from '@lucide/vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 
 const props = defineProps<AssetManagerDialogProps>()
 
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
+const locale = computed(() => createDesignerLocale(props.locale))
 const kind = ref<'dataset' | 'resource'>(props.initialKind ?? 'dataset')
 const selectedId = ref(props.initialId ?? '')
 const datasetName = ref('')
@@ -25,6 +27,10 @@ const resourceImport = ref<UploadInstance>()
 const resourceFile = ref<UploadInstance>()
 const resourceReplacementFile = ref<UploadInstance>()
 const resourceEmptyFile = ref<UploadInstance>()
+const messageTone = ref<'success' | 'error'>('success')
+const resourceBusy = ref(false)
+const mobilePane = ref<'list' | 'editor'>('list')
+const datasetTab = ref('json')
 
 const datasets = computed(() => props.project.datasetOrder
   .map(id => props.project.datasetsById[id])
@@ -44,40 +50,92 @@ const tableColumns = computed(() => {
   return [...new Set(dataset.rows.flatMap(row => Object.keys(row)))].slice(0, 8)
 })
 const tableRows = computed<Record<string, unknown>[]>(() => selectedDataset.value?.rows.map(cloneDatasetRow) ?? [])
+const totalAssets = computed(() => datasets.value.length + resources.value.length)
+const selectedAssetLabel = computed(() => kind.value === 'dataset'
+  ? locale.value.t('assets.dataset', 'Dataset')
+  : locale.value.t('assets.resource', 'Resource'))
 
 watch([() => props.initialId, () => props.initialKind, () => props.modelValue], () => {
+  pendingFile.value = undefined
+  message.value = ''
   if (!props.modelValue)
     return
   kind.value = props.initialKind ?? kind.value
   selectedId.value = props.initialId ?? selectedId.value
   ensureSelection()
+  mobilePane.value = props.initialId || totalAssets.value === 0 ? 'editor' : 'list'
 }, { immediate: true })
 
-watch(selectedDataset, (dataset) => {
-  if (!dataset)
-    return
-  datasetName.value = dataset.name
-  datasetJson.value = JSON.stringify(dataset.rows, null, 2)
-  projectionJson.value = dataset.defaultProjection ? JSON.stringify(dataset.defaultProjection, null, 2) : ''
+watch([() => selectedDataset.value?.id, () => selectedDataset.value?.name], ([, name]) => {
+  datasetName.value = name ?? ''
 }, { immediate: true })
 
-watch(selectedResource, (resource) => {
-  if (!resource)
-    return
-  resourceName.value = resource.name
-  resourceUrl.value = resource.kind === 'url' ? resource.url : ''
-  resourceMediaType.value = resource.mediaType ?? ''
-  resourceIntegrity.value = resource.kind === 'url' ? resource.integrity ?? '' : ''
+watch(() => selectedDataset.value?.id, () => {
+  datasetTab.value = 'json'
+})
+
+watch([() => selectedDataset.value?.id, () => JSON.stringify(selectedDataset.value?.rows, null, 2)], ([, rows]) => {
+  datasetJson.value = rows ?? '[]'
 }, { immediate: true })
+
+watch([() => selectedDataset.value?.id, () => JSON.stringify(selectedDataset.value?.defaultProjection, null, 2)], ([, projection]) => {
+  projectionJson.value = projection ?? ''
+}, { immediate: true })
+
+watch([() => selectedResource.value?.id, () => selectedResource.value?.name], ([, name]) => {
+  resourceName.value = name ?? ''
+}, { immediate: true })
+
+watch([() => selectedResource.value?.id, () => {
+  const resource = selectedResource.value
+  return resource?.kind === 'url' ? resource.url : ''
+}], ([, url]) => {
+  resourceUrl.value = url ?? ''
+}, { immediate: true })
+
+watch([() => selectedResource.value?.id, () => selectedResource.value?.mediaType], ([, mediaType]) => {
+  resourceMediaType.value = mediaType ?? ''
+}, { immediate: true })
+
+watch([() => selectedResource.value?.id, () => {
+  const resource = selectedResource.value
+  return resource?.kind === 'url' ? resource.integrity : ''
+}], ([, integrity]) => {
+  resourceIntegrity.value = integrity ?? ''
+}, { immediate: true })
+
+watch(() => selectedResource.value?.id, () => {
+  pendingFile.value = undefined
+})
 
 function ensureSelection(): void {
   if (kind.value === 'dataset') {
-    if (!props.project.datasetsById[selectedId.value])
-      selectedId.value = datasets.value[0]?.id ?? ''
+    if (props.project.datasetsById[selectedId.value])
+      return
+    if (datasets.value[0]) {
+      selectedId.value = datasets.value[0].id
+      return
+    }
+    if (resources.value[0]) {
+      kind.value = 'resource'
+      selectedId.value = resources.value[0].id
+      return
+    }
+    selectedId.value = ''
     return
   }
-  if (!props.project.resources[selectedId.value])
-    selectedId.value = resources.value[0]?.id ?? ''
+  if (props.project.resources[selectedId.value])
+    return
+  if (resources.value[0]) {
+    selectedId.value = resources.value[0].id
+    return
+  }
+  if (datasets.value[0]) {
+    kind.value = 'dataset'
+    selectedId.value = datasets.value[0].id
+    return
+  }
+  selectedId.value = ''
 }
 
 function cloneDatasetRow(row: object): Record<string, unknown> {
@@ -95,31 +153,42 @@ function cloneTableValue(value: unknown): unknown {
 function select(nextKind: 'dataset' | 'resource', id: string): void {
   kind.value = nextKind
   selectedId.value = id
+  mobilePane.value = 'editor'
   message.value = ''
 }
 
-function setError(error: unknown, fallback: string): void {
-  message.value = error instanceof Error ? error.message : fallback
+function handlePaneKeydown(event: KeyboardEvent): void {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+    return
+  event.preventDefault()
+  mobilePane.value = event.key === 'Home' ? 'list' : event.key === 'End' ? 'editor' : mobilePane.value === 'list' ? 'editor' : 'list'
+  const tabs = (event.currentTarget as HTMLElement).parentElement
+  void nextTick(() => tabs?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus())
+}
+
+function setMessage(value: string, tone: 'success' | 'error' = 'success'): void {
+  message.value = value
+  messageTone.value = tone
 }
 
 function parseRows(): unknown | undefined {
   try {
     const rows = JSON.parse(datasetJson.value)
     if (!Array.isArray(rows) || rows.some(row => !row || typeof row !== 'object' || Array.isArray(row)))
-      throw new TypeError('Dataset JSON must be an array of objects.')
+      throw new TypeError('Dataset rows must be objects.')
     return rows
   }
-  catch (error) {
-    setError(error, 'Dataset JSON is invalid.')
+  catch {
+    setMessage(locale.value.t('assets.datasetJsonInvalid', 'Enter a valid JSON array of objects.'), 'error')
   }
 }
 
 function createDataset(): void {
-  const id = props.commands.createDataset('Dataset', [])
+  const id = props.commands.createDataset(locale.value.t('assets.dataset', 'Dataset'), [])
   if (id)
     select('dataset', id)
   else
-    message.value = 'Dataset could not be created.'
+    setMessage(locale.value.t('assets.datasetCreateRejected', 'Dataset could not be created.'), 'error')
 }
 
 function saveDatasetRows(): void {
@@ -127,9 +196,9 @@ function saveDatasetRows(): void {
   if (!rows || !selectedDataset.value)
     return
   if (props.commands.replaceDatasetRows(selectedDataset.value.id, rows))
-    message.value = 'Dataset saved.'
+    setMessage(locale.value.t('assets.datasetSaved', 'Dataset saved.'))
   else
-    message.value = 'Dataset rows were rejected.'
+    setMessage(locale.value.t('assets.datasetRowsRejected', 'Dataset rows were rejected.'), 'error')
 }
 
 function saveProjection(): void {
@@ -141,12 +210,12 @@ function saveProjection(): void {
       ? JSON.parse(projectionJson.value) as DatasetProjection
       : undefined
     if (!props.commands.setDatasetDefaultProjection(dataset.id, projection))
-      message.value = 'Dataset projection was rejected.'
+      setMessage(locale.value.t('assets.projectionRejected', 'Dataset projection was rejected.'), 'error')
     else
-      message.value = 'Default projection saved.'
+      setMessage(locale.value.t('assets.projectionSaved', 'Default projection saved.'))
   }
-  catch (error) {
-    setError(error, 'Projection JSON is invalid.')
+  catch {
+    setMessage(locale.value.t('assets.projectionJsonInvalid', 'Enter valid JSON for the mapping.'), 'error')
   }
 }
 
@@ -156,16 +225,20 @@ function renameDataset(): void {
     props.commands.renameDataset(dataset.id, datasetName.value)
 }
 
-function removeDataset(): void {
+async function removeDataset(): Promise<void> {
   const dataset = selectedDataset.value
   if (!dataset)
     return
   if (props.commands.deleteDataset(dataset.id)) {
     selectedId.value = ''
+    await nextTick()
     ensureSelection()
+    if (totalAssets.value === 0)
+      mobilePane.value = 'editor'
+    message.value = ''
   }
   else {
-    message.value = 'Dataset is referenced and cannot be deleted.'
+    setMessage(locale.value.t('assets.datasetDeleteBlocked', 'Dataset is referenced and cannot be deleted.'), 'error')
   }
 }
 
@@ -194,10 +267,10 @@ async function importDataset(uploadFile: UploadFile): Promise<void> {
     if (id)
       select('dataset', id)
     else
-      message.value = 'Dataset import was rejected.'
+      setMessage(locale.value.t('assets.datasetImportRejected', 'Dataset import was rejected.'), 'error')
   }
-  catch (error) {
-    setError(error, 'Dataset import failed.')
+  catch {
+    setMessage(locale.value.t('assets.datasetImportRejected', 'Dataset import was rejected.'), 'error')
   }
   finally {
     datasetImport.value?.clearFiles()
@@ -205,24 +278,23 @@ async function importDataset(uploadFile: UploadFile): Promise<void> {
 }
 
 function newUrlResource(): void {
-  const id = props.commands.createUrlResource({ name: 'Resource', url: 'https://example.com/' })
+  const id = props.commands.createUrlResource({ name: locale.value.t('assets.resource', 'Resource'), url: 'https://example.com/' })
   if (id)
     select('resource', id)
   else
-    message.value = 'Resource URL was rejected.'
+    setMessage(locale.value.t('assets.resourceCreateRejected', 'Resource URL was rejected.'), 'error')
 }
 
-function selectResourceFile(uploadFile: UploadFile): void {
+function selectReplacementFile(uploadFile: UploadFile): void {
   pendingFile.value = uploadFile.raw
-  resourceFile.value?.clearFiles()
   resourceReplacementFile.value?.clearFiles()
-  resourceEmptyFile.value?.clearFiles()
 }
 
-async function createEmbeddedResource(): Promise<void> {
-  const file = pendingFile.value
-  if (!file)
+async function createEmbeddedResource(uploadFile: UploadFile): Promise<void> {
+  const file = uploadFile.raw
+  if (!file || resourceBusy.value)
     return
+  resourceBusy.value = true
   try {
     const id = await props.commands.createEmbeddedResource({
       name: file.name,
@@ -233,10 +305,15 @@ async function createEmbeddedResource(): Promise<void> {
     if (id)
       select('resource', id)
     else
-      message.value = 'Embedded Resource was rejected.'
+      setMessage(locale.value.t('assets.embeddedCreateRejected', 'Embedded Resource was rejected.'), 'error')
   }
-  catch (error) {
-    setError(error, 'Embedded Resource creation failed.')
+  catch {
+    setMessage(locale.value.t('assets.embeddedCreateRejected', 'Embedded Resource was rejected.'), 'error')
+  }
+  finally {
+    resourceBusy.value = false
+    resourceFile.value?.clearFiles()
+    resourceEmptyFile.value?.clearFiles()
   }
 }
 
@@ -250,22 +327,41 @@ function saveUrlResource(): void {
     mediaType: resourceMediaType.value,
     integrity: resourceIntegrity.value,
   })) {
-    message.value = 'Resource URL was rejected.'
+    setMessage(locale.value.t('assets.resourceUrlRejected', 'Resource URL was rejected.'), 'error')
+  }
+  else {
+    setMessage(locale.value.t('assets.resourceSaved', 'Resource saved.'))
   }
 }
 
 async function replaceEmbeddedResource(): Promise<void> {
   const resource = selectedResource.value
   const file = pendingFile.value
-  if (!resource || resource.kind !== 'embedded' || !file)
+  if (!resource || resource.kind !== 'embedded' || !file || resourceBusy.value)
     return
-  if (!await props.commands.replaceEmbeddedResource(resource.id, {
-    name: resourceName.value,
-    fileName: file.name,
-    mediaType: file.type || 'application/octet-stream',
-    bytes: new Uint8Array(await file.arrayBuffer()),
-  })) {
-    message.value = 'Resource replacement was rejected.'
+  resourceBusy.value = true
+  try {
+    const replaced = await props.commands.replaceEmbeddedResource(resource.id, {
+      name: resourceName.value,
+      fileName: file.name,
+      mediaType: file.type || 'application/octet-stream',
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    })
+    if (selectedResource.value?.id !== resource.id)
+      return
+    if (!replaced) {
+      setMessage(locale.value.t('assets.resourceReplacementRejected', 'Resource replacement was rejected.'), 'error')
+      return
+    }
+    pendingFile.value = undefined
+    setMessage(locale.value.t('assets.resourceSaved', 'Resource saved.'))
+  }
+  catch {
+    setMessage(locale.value.t('assets.resourceReplacementRejected', 'Resource replacement was rejected.'), 'error')
+  }
+  finally {
+    resourceBusy.value = false
+    resourceReplacementFile.value?.clearFiles()
   }
 }
 
@@ -275,16 +371,20 @@ function renameResource(): void {
     props.commands.renameResource(resource.id, resourceName.value)
 }
 
-function removeResource(): void {
+async function removeResource(): Promise<void> {
   const resource = selectedResource.value
   if (!resource)
     return
   if (props.commands.deleteResource(resource.id)) {
     selectedId.value = ''
+    await nextTick()
     ensureSelection()
+    if (totalAssets.value === 0)
+      mobilePane.value = 'editor'
+    message.value = ''
   }
   else {
-    message.value = 'Resource is referenced and cannot be deleted.'
+    setMessage(locale.value.t('assets.resourceDeleteBlocked', 'Resource is referenced and cannot be deleted.'), 'error')
   }
 }
 
@@ -304,10 +404,10 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
     if (id)
       select('resource', id)
     else
-      message.value = 'Resource import was rejected.'
+      setMessage(locale.value.t('assets.resourceImportRejected', 'Resource import was rejected.'), 'error')
   }
-  catch (error) {
-    setError(error, 'Resource import failed.')
+  catch {
+    setMessage(locale.value.t('assets.resourceImportRejected', 'Resource import was rejected.'), 'error')
   }
   finally {
     resourceImport.value?.clearFiles()
@@ -316,74 +416,170 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
 </script>
 
 <template>
-  <ElDialog :model-value="modelValue" width="min(960px, calc(100vw - 32px))" title="Assets" data-asset-manager @update:model-value="emit('update:modelValue', $event)">
-    <div class="asset-manager">
-      <aside class="asset-manager__list" data-asset-navigation>
-        <div class="asset-manager__heading"><strong>Datasets</strong><ElButton text circle aria-label="New Dataset" @click="createDataset"><Plus :size="15" aria-hidden="true" /></ElButton></div>
-        <ElButton v-for="dataset in datasets" :key="dataset.id" text :class="{ 'is-active': kind === 'dataset' && selectedId === dataset.id }" @click="select('dataset', dataset.id)">{{ dataset.name }}</ElButton>
-        <div class="asset-manager__actions">
-          <ElUpload ref="datasetImport" class="asset-manager__upload" data-asset-dataset-import-file accept="application/json,.json" :auto-upload="false" :show-file-list="false" :on-change="importDataset">
-            <ElButton size="small" data-asset-dataset-import>Import</ElButton>
-          </ElUpload>
-          <ElButton size="small" data-asset-dataset-export :disabled="!selectedDataset" @click="exportDataset">Export</ElButton>
-        </div>
-        <div class="asset-manager__heading"><strong>Resources</strong><ElButton text circle aria-label="New URL Resource" @click="newUrlResource"><Plus :size="15" aria-hidden="true" /></ElButton></div>
-        <ElButton v-for="resource in resources" :key="resource.id" text :class="{ 'is-active': kind === 'resource' && selectedId === resource.id }" @click="select('resource', resource.id)">{{ resource.name }}</ElButton>
-        <div class="asset-manager__actions">
-          <ElUpload ref="resourceImport" class="asset-manager__upload" data-asset-resource-import-file accept="application/json,.json" :auto-upload="false" :show-file-list="false" :on-change="importResource">
-            <ElButton size="small" data-asset-resource-import>Import</ElButton>
-          </ElUpload>
-          <ElButton size="small" data-asset-resource-export :disabled="!selectedResource" @click="exportResource">Export</ElButton>
-        </div>
-        <div class="asset-manager__actions">
-          <ElUpload ref="resourceFile" class="asset-manager__upload" data-asset-resource-file :auto-upload="false" :show-file-list="false" :on-change="selectResourceFile">
-            <ElButton size="small" data-asset-resource-file-picker>Add file</ElButton>
-          </ElUpload>
-          <ElButton size="small" data-asset-resource-file-create :disabled="!pendingFile" @click="createEmbeddedResource">Create file</ElButton>
-        </div>
-        <ElSelect v-model="importStrategy" size="small" aria-label="Import conflict strategy"><ElOption label="Copy on conflict" value="copy" /><ElOption label="Overwrite on conflict" value="overwrite" /><ElOption label="Skip on conflict" value="skip" /></ElSelect>
-      </aside>
+  <ElDialog
+    class="asset-manager-dialog"
+    :model-value="modelValue"
+    width="min(1040px, calc(100vw - 32px))"
+    :title="locale.t('assets.title', 'Assets')"
+    append-to="#workbench-overlays"
+    align-center
+    transition="none"
+    data-asset-manager
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <template #header="{ titleId }">
+      <div class="asset-manager__dialog-title flex min-w-0 items-center gap-2">
+        <Database :size="18" aria-hidden="true" />
+        <h2 :id="titleId">{{ locale.t('assets.title', 'Assets') }}</h2>
+      </div>
+    </template>
 
-      <section v-if="selectedDataset" class="asset-manager__editor" data-asset-dataset-editor>
-        <div class="asset-manager__editor-header"><ElInput v-model="datasetName" aria-label="Dataset name" @change="renameDataset" /><ElButton type="danger" plain @click="removeDataset">Delete</ElButton></div>
-        <ElTabs>
-          <ElTabPane label="JSON">
-            <ElInput v-model="datasetJson" class="asset-manager__json" data-asset-dataset-json type="textarea" :rows="18" aria-label="Dataset JSON" />
-            <ElButton type="primary" data-asset-dataset-save @click="saveDatasetRows">Save JSON</ElButton>
-          </ElTabPane>
-          <ElTabPane label="Table">
-            <ElTable :data="tableRows" data-asset-dataset-table size="small" max-height="380"><ElTableColumn v-for="column in tableColumns" :key="column" :label="column"><template #default="scope"><code>{{ typeof scope.row[column] === 'object' ? JSON.stringify(scope.row[column]) : scope.row[column] }}</code></template></ElTableColumn></ElTable>
-          </ElTabPane>
-        </ElTabs>
-        <label class="asset-manager__label">Default projection</label>
-        <ElInput v-model="projectionJson" class="asset-manager__projection" type="textarea" :rows="4" aria-label="Dataset default projection JSON" />
-        <ElButton @click="saveProjection">Save projection</ElButton>
-      </section>
+    <div class="asset-manager-shell flex min-h-0 flex-1 flex-col overflow-hidden" :data-active-pane="mobilePane">
+      <div class="asset-manager__mobile-navigation" role="tablist" :aria-label="locale.t('assets.views', 'Asset views')">
+        <button id="asset-list-tab" type="button" role="tab" :aria-selected="mobilePane === 'list'" :tabindex="mobilePane === 'list' ? 0 : -1" aria-controls="asset-list-panel" @click="mobilePane = 'list'" @keydown="handlePaneKeydown">
+          <List :size="15" aria-hidden="true" />{{ locale.t('assets.list', 'Asset list') }}<span aria-hidden="true">{{ totalAssets }}</span>
+        </button>
+        <button id="asset-editor-tab" type="button" role="tab" :aria-selected="mobilePane === 'editor'" :tabindex="mobilePane === 'editor' ? 0 : -1" aria-controls="asset-editor-panel" @click="mobilePane = 'editor'" @keydown="handlePaneKeydown">
+          <Pencil :size="15" aria-hidden="true" />{{ locale.t('assets.details', 'Details') }}
+        </button>
+      </div>
+      <div class="asset-manager">
+        <aside id="asset-list-panel" class="asset-manager__list" :aria-label="locale.t('assets.list', 'Asset list')" data-asset-navigation>
+          <section class="asset-manager__group">
+            <div class="asset-manager__heading">
+              <div class="asset-manager__section-label"><Database :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.datasets', 'Datasets') }}</strong><span>{{ datasets.length }}</span></div>
+              <ElButton text circle :title="locale.t('assets.newDataset', 'New Dataset')" :aria-label="locale.t('assets.newDataset', 'New Dataset')" @click="createDataset"><Plus :size="15" aria-hidden="true" /></ElButton>
+            </div>
+            <nav class="asset-manager__items" :aria-label="locale.t('assets.datasets', 'Datasets')">
+              <ElButton v-for="dataset in datasets" :key="dataset.id" text class="asset-manager__item" :class="{ 'is-active': kind === 'dataset' && selectedId === dataset.id }" :aria-pressed="kind === 'dataset' && selectedId === dataset.id" :title="dataset.name" @click="select('dataset', dataset.id)">
+                <Database :size="14" aria-hidden="true" /><span class="asset-manager__item-name">{{ dataset.name }}</span><small>{{ dataset.rows.length }}</small>
+              </ElButton>
+              <p v-if="datasets.length === 0" class="asset-manager__empty-list">{{ locale.t('assets.emptyDatasets', 'No datasets yet') }}</p>
+            </nav>
+            <div class="asset-manager__actions">
+              <ElUpload ref="datasetImport" class="asset-manager__upload" data-asset-dataset-import-file accept="application/json,.json" :auto-upload="false" :show-file-list="false" :on-change="importDataset">
+                <ElButton tag="span" size="small" data-asset-dataset-import><Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}</ElButton>
+              </ElUpload>
+            </div>
+          </section>
 
-      <section v-else-if="selectedResource" class="asset-manager__editor" data-asset-resource-editor>
-        <div class="asset-manager__editor-header"><ElInput v-model="resourceName" aria-label="Resource name" @change="renameResource" /><ElButton type="danger" plain @click="removeResource">Delete</ElButton></div>
-        <template v-if="selectedResource.kind === 'url'"><ElInput v-model="resourceUrl" aria-label="Resource URL" /><ElInput v-model="resourceMediaType" aria-label="Resource media type" placeholder="Media type" /><ElInput v-model="resourceIntegrity" aria-label="Resource integrity" placeholder="Integrity" /><ElButton type="primary" @click="saveUrlResource">Save URL</ElButton></template>
-        <template v-else><dl class="asset-manager__metadata"><dt>File name</dt><dd>{{ selectedResource.fileName }}</dd><dt>Bytes</dt><dd>{{ selectedResource.byteLength }}</dd><dt>SHA-256</dt><dd>{{ selectedResource.contentHash }}</dd></dl><div class="asset-manager__actions"><ElUpload ref="resourceReplacementFile" class="asset-manager__upload" data-asset-resource-replacement-file :auto-upload="false" :show-file-list="false" :on-change="selectResourceFile"><ElButton>Choose replacement</ElButton></ElUpload><ElButton :disabled="!pendingFile" type="primary" @click="replaceEmbeddedResource">Replace file</ElButton></div></template>
-      </section>
+          <section class="asset-manager__group">
+            <div class="asset-manager__heading">
+              <div class="asset-manager__section-label"><Image :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.resources', 'Resources') }}</strong><span>{{ resources.length }}</span></div>
+              <ElButton text circle :title="locale.t('assets.newUrlResource', 'New URL Resource')" :aria-label="locale.t('assets.newUrlResource', 'New URL Resource')" @click="newUrlResource"><Plus :size="15" aria-hidden="true" /></ElButton>
+            </div>
+            <nav class="asset-manager__items" :aria-label="locale.t('assets.resources', 'Resources')">
+              <ElButton v-for="resource in resources" :key="resource.id" text class="asset-manager__item" :class="{ 'is-active': kind === 'resource' && selectedId === resource.id }" :aria-pressed="kind === 'resource' && selectedId === resource.id" :title="resource.name" @click="select('resource', resource.id)">
+                <Link2 v-if="resource.kind === 'url'" :size="14" aria-hidden="true" /><FileText v-else :size="14" aria-hidden="true" /><span class="asset-manager__item-name">{{ resource.name }}</span><small>{{ resource.kind === 'url' ? locale.t('assets.urlResourceType', 'URL') : locale.t('assets.fileResourceType', 'File') }}</small>
+              </ElButton>
+              <p v-if="resources.length === 0" class="asset-manager__empty-list">{{ locale.t('assets.emptyResources', 'No resources yet') }}</p>
+            </nav>
+            <div class="asset-manager__actions">
+              <ElUpload ref="resourceImport" class="asset-manager__upload" data-asset-resource-import-file accept="application/json,.json" :auto-upload="false" :show-file-list="false" :on-change="importResource">
+                <ElButton tag="span" size="small" data-asset-resource-import><Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}</ElButton>
+              </ElUpload>
+              <ElUpload ref="resourceFile" class="asset-manager__upload" data-asset-resource-file :disabled="resourceBusy" :auto-upload="false" :show-file-list="false" :on-change="createEmbeddedResource">
+                <ElButton tag="span" size="small" data-asset-resource-file-picker :loading="resourceBusy"><FilePlus2 :size="13" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}</ElButton>
+              </ElUpload>
+            </div>
+          </section>
 
-      <section v-else class="asset-manager__empty"><ElEmpty description="Select an asset, or create a Dataset / URL Resource." /><ElUpload ref="resourceEmptyFile" class="asset-manager__upload" data-asset-resource-empty-file :auto-upload="false" :show-file-list="false" :on-change="selectResourceFile"><ElButton>Choose file</ElButton></ElUpload><ElButton :disabled="!pendingFile" @click="createEmbeddedResource">Create embedded Resource</ElButton></section>
+          <label class="asset-manager__conflict-field">
+            <span>{{ locale.t('assets.importStrategy', 'When an asset already exists') }}</span>
+            <ElSelect v-model="importStrategy" size="small" append-to="#workbench-overlays" :aria-label="locale.t('assets.importStrategy', 'Import conflict strategy')">
+              <ElOption :label="locale.t('assets.copyOnConflict', 'Copy on conflict')" value="copy" />
+              <ElOption :label="locale.t('assets.overwriteOnConflict', 'Overwrite on conflict')" value="overwrite" />
+              <ElOption :label="locale.t('assets.skipOnConflict', 'Skip on conflict')" value="skip" />
+            </ElSelect>
+          </label>
+        </aside>
+
+        <section v-if="selectedDataset" id="asset-editor-panel" class="asset-manager__editor flex min-h-0 min-w-0 flex-col overflow-hidden" data-asset-dataset-editor>
+          <header class="asset-manager__editor-header">
+            <div class="asset-manager__editor-title"><span>{{ selectedAssetLabel }}</span><ElInput v-model="datasetName" :aria-label="locale.t('assets.datasetName', 'Dataset name')" @change="renameDataset" /></div>
+            <div class="asset-manager__editor-actions">
+              <ElButton size="small" data-asset-dataset-export :disabled="!selectedDataset" @click="exportDataset"><Download :size="13" aria-hidden="true" />{{ locale.t('assets.export', 'Export') }}</ElButton>
+              <ElButton size="small" type="danger" plain @click="removeDataset"><Trash2 :size="14" aria-hidden="true" />{{ locale.t('assets.delete', 'Delete') }}</ElButton>
+            </div>
+          </header>
+          <div class="asset-manager__editor-body asset-manager__dataset-body">
+            <ElTabs v-model="datasetTab" class="asset-manager__tabs">
+              <ElTabPane name="json">
+                <template #label><span class="asset-manager__tab-label"><Braces :size="14" aria-hidden="true" />JSON</span></template>
+                <ElInput v-model="datasetJson" class="asset-manager__json" data-asset-dataset-json type="textarea" :rows="14" resize="none" :aria-label="locale.t('assets.datasetJson', 'Dataset JSON')" />
+              </ElTabPane>
+              <ElTabPane name="table">
+                <template #label><span class="asset-manager__tab-label"><Table2 :size="14" aria-hidden="true" />{{ locale.t('assets.table', 'Table') }}</span></template>
+                <ElTable :data="tableRows" data-asset-dataset-table size="small" :empty-text="locale.t('assets.emptyRows', 'No rows')"><ElTableColumn v-for="column in tableColumns" :key="column" :label="column" min-width="120"><template #default="scope"><code>{{ typeof scope.row[column] === 'object' ? JSON.stringify(scope.row[column]) : scope.row[column] }}</code></template></ElTableColumn></ElTable>
+              </ElTabPane>
+              <ElTabPane name="projection">
+                <template #label><span class="asset-manager__tab-label"><SlidersHorizontal :size="14" aria-hidden="true" />{{ locale.t('assets.defaultProjection', 'Default projection') }}</span></template>
+                <ElInput v-model="projectionJson" class="asset-manager__projection" type="textarea" :rows="14" resize="none" :aria-label="locale.t('assets.projectionJson', 'Dataset default projection JSON')" />
+              </ElTabPane>
+            </ElTabs>
+          </div>
+          <footer class="asset-manager__editor-footer">
+            <ElButton v-if="datasetTab === 'json'" type="primary" data-asset-dataset-save @click="saveDatasetRows"><Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveJson', 'Save JSON') }}</ElButton>
+            <ElButton v-if="datasetTab === 'projection'" type="primary" @click="saveProjection"><Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveProjection', 'Save projection') }}</ElButton>
+          </footer>
+        </section>
+
+        <section v-else-if="selectedResource" id="asset-editor-panel" class="asset-manager__editor flex min-h-0 min-w-0 flex-col overflow-hidden" data-asset-resource-editor>
+          <header class="asset-manager__editor-header">
+            <div class="asset-manager__editor-title"><span>{{ selectedAssetLabel }}</span><ElInput v-model="resourceName" :aria-label="locale.t('assets.resourceName', 'Resource name')" @change="renameResource" /></div>
+            <div class="asset-manager__editor-actions">
+              <ElButton size="small" data-asset-resource-export :disabled="!selectedResource" @click="exportResource"><Download :size="13" aria-hidden="true" />{{ locale.t('assets.export', 'Export') }}</ElButton>
+              <ElButton size="small" type="danger" plain :disabled="resourceBusy" @click="removeResource"><Trash2 :size="14" aria-hidden="true" />{{ locale.t('assets.delete', 'Delete') }}</ElButton>
+            </div>
+          </header>
+          <div class="asset-manager__editor-body">
+            <template v-if="selectedResource.kind === 'url'">
+              <div class="asset-manager__form-grid">
+                <label class="is-wide"><span>{{ locale.t('assets.resourceUrl', 'Resource URL') }}</span><ElInput v-model="resourceUrl" :aria-label="locale.t('assets.resourceUrl', 'Resource URL')" /></label>
+                <label><span>{{ locale.t('assets.resourceMediaType', 'Media type') }}</span><ElInput v-model="resourceMediaType" :aria-label="locale.t('assets.resourceMediaTypeAria', 'Resource media type')" placeholder="application/json" /></label>
+                <label><span>{{ locale.t('assets.resourceIntegrity', 'Integrity') }}</span><ElInput v-model="resourceIntegrity" :aria-label="locale.t('assets.resourceIntegrityAria', 'Resource integrity')" :placeholder="locale.t('assets.resourceIntegrityHint', 'Optional checksum')" /></label>
+              </div>
+            </template>
+            <template v-else>
+              <dl class="asset-manager__metadata">
+                <div><dt>{{ locale.t('assets.fileName', 'File name') }}</dt><dd>{{ selectedResource.fileName }}</dd></div>
+                <div><dt>{{ locale.t('assets.resourceMediaType', 'Media type') }}</dt><dd>{{ selectedResource.mediaType || 'application/octet-stream' }}</dd></div>
+                <div><dt>{{ locale.t('assets.bytes', 'Bytes') }}</dt><dd>{{ selectedResource.byteLength }} B</dd></div>
+                <div><dt>{{ locale.t('assets.sha256', 'SHA-256') }}</dt><dd><code>{{ selectedResource.contentHash }}</code></dd></div>
+              </dl>
+              <div class="asset-manager__file-replace">
+                <strong>{{ locale.t('assets.replaceFile', 'Replace file') }}</strong>
+                <ElUpload ref="resourceReplacementFile" class="asset-manager__upload" data-asset-resource-replacement-file :disabled="resourceBusy" :auto-upload="false" :show-file-list="false" :on-change="selectReplacementFile">
+                  <ElButton tag="span" :disabled="resourceBusy"><Upload :size="14" aria-hidden="true" />{{ locale.t('assets.chooseReplacement', 'Choose replacement') }}</ElButton>
+                </ElUpload>
+                <div v-if="pendingFile" class="asset-manager__pending-file">
+                  <FileText :size="15" aria-hidden="true" /><span :title="pendingFile.name">{{ pendingFile.name }}</span>
+                  <ElButton text circle :disabled="resourceBusy" :title="locale.t('assets.clearFile', 'Clear selected file')" :aria-label="locale.t('assets.clearFile', 'Clear selected file')" @click="pendingFile = undefined"><X :size="14" aria-hidden="true" /></ElButton>
+                </div>
+              </div>
+            </template>
+          </div>
+          <footer class="asset-manager__editor-footer">
+            <ElButton v-if="selectedResource.kind === 'url'" type="primary" @click="saveUrlResource"><Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveUrl', 'Save URL') }}</ElButton>
+            <ElButton v-else :disabled="!pendingFile" :loading="resourceBusy" type="primary" @click="replaceEmbeddedResource"><Save :size="14" aria-hidden="true" />{{ locale.t('assets.replace', 'Replace file') }}</ElButton>
+          </footer>
+        </section>
+
+        <section v-else id="asset-editor-panel" class="asset-manager__empty">
+          <div class="asset-manager__empty-icon"><FilePlus2 :size="22" aria-hidden="true" /></div>
+          <strong>{{ locale.t('assets.emptyTitle', 'Create your first asset') }}</strong>
+          <div class="asset-manager__empty-actions">
+            <ElButton type="primary" @click="createDataset"><Database :size="14" aria-hidden="true" />{{ locale.t('assets.createDataset', 'Create dataset') }}</ElButton>
+            <ElButton @click="newUrlResource"><Link2 :size="14" aria-hidden="true" />{{ locale.t('assets.createUrlResource', 'Create URL resource') }}</ElButton>
+            <ElUpload ref="resourceEmptyFile" class="asset-manager__upload" data-asset-resource-empty-file :disabled="resourceBusy" :auto-upload="false" :show-file-list="false" :on-change="createEmbeddedResource"><ElButton tag="span" :loading="resourceBusy"><FilePlus2 :size="14" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}</ElButton></ElUpload>
+          </div>
+        </section>
+      </div>
     </div>
-    <p v-if="message" class="asset-manager__message" role="status">{{ message }}</p>
+    <div class="asset-manager__status" role="status" aria-live="polite">
+      <p v-if="message" class="asset-manager__message" :class="`is-${messageTone}`"><CheckCircle2 v-if="messageTone === 'success'" :size="14" aria-hidden="true" /><AlertCircle v-else :size="14" aria-hidden="true" />{{ message }}</p>
+    </div>
   </ElDialog>
 </template>
 
-<style scoped>
-.asset-manager { display: grid; min-height: 500px; grid-template-columns: 210px minmax(0, 1fr); border: 1px solid var(--el-border-color); }
-.asset-manager__list { display: grid; align-content: start; gap: 3px; padding: 10px; border-right: 1px solid var(--el-border-color); overflow: auto; }
-.asset-manager__heading, .asset-manager__editor-header, .asset-manager__actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
-.asset-manager__list > .el-button { justify-content: flex-start; margin: 0; }
-.asset-manager__list > .el-button.is-active { background: var(--el-color-primary-light-9); }
-.asset-manager__editor, .asset-manager__empty { display: grid; align-content: start; gap: 12px; padding: 16px; min-width: 0; }
-.asset-manager__json :deep(textarea), .asset-manager__projection :deep(textarea) { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.asset-manager__metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; margin: 0; }
-.asset-manager__metadata dd { margin: 0; overflow-wrap: anywhere; }
-.asset-manager__label { font-size: 12px; color: var(--el-text-color-secondary); }
-.asset-manager__upload :deep(.el-upload) { display: inline-flex; }
-.asset-manager__message { margin: 10px 0 0; color: var(--el-color-danger); }
-@media (max-width: 640px) { .asset-manager { grid-template-columns: 1fr; }.asset-manager__list { border-right: 0; border-bottom: 1px solid var(--el-border-color); }.asset-manager__editor { min-height: 0; } }
-</style>
+<style src="./style/index.css" scoped />

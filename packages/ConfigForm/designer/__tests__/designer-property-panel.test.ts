@@ -648,7 +648,7 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.find('[data-interaction-editor]').exists()).toBe(true)
     expect(wrapper.find('[data-property-tab="validation"]').exists()).toBe(false)
     expect(wrapper.get('button[aria-label="Add state rule"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('button[aria-label="Add value rule"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('button[aria-label="Add value rule"]').attributes('disabled')).toBeDefined()
   })
 
   it('edits canonical pixel gap and label width through numeric controls', async () => {

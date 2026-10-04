@@ -687,6 +687,7 @@ watch(recoveryDrafts, (drafts) => {
       :commands="controller"
       :initial-id="assetSelection.id"
       :initial-kind="assetSelection.kind"
+      :locale="localeOptions"
       :project="currentProject"
     />
 

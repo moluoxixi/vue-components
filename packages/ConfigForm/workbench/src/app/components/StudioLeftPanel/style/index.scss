@@ -413,9 +413,67 @@
 
 .designer-theme-panel {
   display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.designer-theme-panel > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.designer-theme-panel .el-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.designer-theme-panel .el-tabs__header {
+  flex: 0 0 auto;
+}
+
+.designer-theme-panel .el-tabs__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.designer-theme-panel .el-tab-pane {
+  min-height: 100%;
+}
+
+.designer-theme-field-grid {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.designer-theme-type-grid,
+.designer-theme-shape-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+.designer-theme-field {
+  min-width: 0;
+}
+
+.designer-theme-field > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-theme-field > .el-select,
+.designer-theme-field > .el-input-number {
+  width: 100%;
+  min-width: 0;
 }
 
 .designer-history-header {
@@ -699,6 +757,7 @@
 }
 
 .designer-layers > div:hover,
+.designer-layers > div:focus-within,
 .designer-pages button:hover {
   background: var(--wb-hover);
 }

@@ -72,28 +72,28 @@ function reset(): void {
       </ElTabPane>
 
       <ElTabPane :label="locale.t('theme.typography', 'Type')" name="type">
-        <div class="grid grid-cols-1 gap-3 px-3 pb-3">
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+        <div class="designer-theme-field-grid designer-theme-type-grid px-3 pb-3">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.fontFamily', 'Font family') }}</span>
             <ElSelect v-model="draft.typography!.family" :disabled="readonly" append-to="#workbench-overlays">
               <ElOption v-for="option in fontFamilies" :key="option.value" :label="option.label" :value="option.value" />
             </ElSelect>
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.baseSize', 'Base size') }}</span>
             <ElInputNumber v-model="draft.typography!.baseSize" :disabled="readonly" :min="10" :max="32" :step="1" controls-position="right" />
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.lineHeight', 'Line height') }}</span>
             <ElInputNumber v-model="draft.typography!.lineHeight" :disabled="readonly" :min="1" :max="3" :step="0.1" :precision="1" controls-position="right" />
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.bodyWeight', 'Body weight') }}</span>
             <ElSelect v-model="draft.typography!.bodyWeight" :disabled="readonly" append-to="#workbench-overlays">
               <ElOption v-for="option in weights" :key="option.value" :label="option.label" :value="option.value" />
             </ElSelect>
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.headingWeight', 'Heading weight') }}</span>
             <ElSelect v-model="draft.typography!.headingWeight" :disabled="readonly" append-to="#workbench-overlays">
               <ElOption v-for="option in weights" :key="option.value" :label="option.label" :value="option.value" />
@@ -103,20 +103,20 @@ function reset(): void {
       </ElTabPane>
 
       <ElTabPane :label="locale.t('theme.shape', 'Shape')" name="shape">
-        <div class="grid grid-cols-2 gap-3 px-3 pb-3">
-          <label v-for="key in spacingKeys" :key="`spacing-${key}`" class="grid gap-1 text-xs text-[var(--wb-muted)]">
+        <div class="designer-theme-field-grid designer-theme-shape-grid px-3 pb-3">
+          <label v-for="key in spacingKeys" :key="`spacing-${key}`" class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.spacing', 'Space {key}', { key }) }}</span>
             <ElInputNumber v-model="draft.spacing![key]" :disabled="readonly" :min="0" :max="128" controls-position="right" />
           </label>
-          <label v-for="key in radiusKeys" :key="`radius-${key}`" class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label v-for="key in radiusKeys" :key="`radius-${key}`" class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.radius', 'Radius {key}', { key }) }}</span>
             <ElInputNumber v-model="draft.radius![key]" :disabled="readonly" :min="0" :max="64" controls-position="right" />
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.borderWidth', 'Border width') }}</span>
             <ElInputNumber v-model="draft.border!.width" :disabled="readonly" :min="0" :max="12" controls-position="right" />
           </label>
-          <label class="grid gap-1 text-xs text-[var(--wb-muted)]">
+          <label class="designer-theme-field grid gap-1 text-xs text-[var(--wb-muted)]">
             <span>{{ locale.t('theme.borderStyle', 'Border style') }}</span>
             <ElSelect v-model="draft.border!.style" :disabled="readonly" append-to="#workbench-overlays">
               <ElOption v-for="option in borderStyles" :key="option.value" :label="option.label" :value="option.value" />

@@ -147,9 +147,8 @@ export async function generateVueSource(input: GenerateVueSourceInput): Generate
     return { success: true, data, diagnostics: [] }
   }
   catch (error) {
-    return inputFailure('Raw Vue source could not be assembled.', {
-      reason: error instanceof Error ? error.message : String(error),
-    })
+    const reason = error instanceof Error ? error.message : String(error)
+    return inputFailure(`Raw Vue source could not be assembled: ${reason}`, { reason })
   }
 }
 
@@ -193,8 +192,7 @@ export async function generateConfigFormBindings(
     return { success: true, data, diagnostics: [] }
   }
   catch (error) {
-    return inputFailure('ConfigForm binding source could not be assembled.', {
-      reason: error instanceof Error ? error.message : String(error),
-    })
+    const reason = error instanceof Error ? error.message : String(error)
+    return inputFailure(`ConfigForm binding source could not be assembled: ${reason}`, { reason })
   }
 }

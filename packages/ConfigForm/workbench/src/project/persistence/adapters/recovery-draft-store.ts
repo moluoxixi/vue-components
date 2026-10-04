@@ -532,7 +532,9 @@ export class IndexedDBProjectRecoveryDraftStore implements ProjectRecoveryDraftS
   private readonly storeName: string
 
   constructor(options: IndexedDBProjectRecoveryDraftStoreOptions = {}) {
-    this.dbName = options.dbName ?? 'moluoxixi-config-form-workbench'
+    // Keep recovery drafts on the same clean development namespace as the
+    // project repository; old drafts must not be replayed into new templates.
+    this.dbName = options.dbName ?? 'moluoxixi-config-form-workbench-dev-reset'
     this.now = options.now ?? (() => new Date().toISOString())
     this.storeName = options.storeName ?? 'workspace-projects'
     this.storage = new IndexDBStorage({
