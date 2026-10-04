@@ -13,6 +13,7 @@ import { useDesignerLocale } from '../../../../../../locale'
 const props = withDefaults(defineProps<{
   disabled?: boolean
   fields: readonly DesignerInteractionFieldOption[]
+  label?: string
   modelValue?: SafeExpression
   optional?: boolean
   purpose?: DesignerExpressionPurpose
@@ -219,6 +220,7 @@ function applyAdvanced(): void {
 
 <template>
   <div class="mx-config-form-designer__expression-editor" :data-expression-purpose="purpose">
+    <div v-if="label" class="mx-config-form-designer__expression-heading">{{ label }}</div>
     <ElCheckbox v-if="optional" :model-value="enabled" :disabled="disabled" @update:model-value="toggleEnabled">
       {{ locale.t('interaction.condition.enabled', 'Use condition') }}
     </ElCheckbox>

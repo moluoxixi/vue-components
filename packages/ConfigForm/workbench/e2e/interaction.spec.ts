@@ -482,6 +482,19 @@ test('authors, persists, restores, and executes a primary interaction through St
   await interactionEditor.getByRole('button', { name: 'Add primary action', exact: true }).click()
   const rule = interactionEditor.locator('[data-interaction-id]').last()
   await expect(rule).toBeVisible()
+  await expect(interactionEditor.locator('[data-interaction-filter="primaryUiAction"]')).toHaveAttribute('aria-pressed', 'true')
+  await expect(interactionEditor.locator('[data-interaction-kind]')).toHaveCount(1)
+  await interactionEditor.locator('[data-interaction-filter="all"]').click()
+  await expect(interactionEditor.locator('[data-interaction-kind]')).toHaveCount(3)
+  await interactionEditor.locator('[data-interaction-filter="primaryUiAction"]').click()
+  const ruleToggle = rule.locator('.mx-config-form-designer__interaction-rule-toggle')
+  await expect(ruleToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(rule.locator('.mx-config-form-designer__interaction-rule-copy strong')).toContainText('Button')
+  await ruleToggle.click()
+  await expect(ruleToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(rule.locator('.mx-config-form-designer__interaction-rule-body')).toBeHidden()
+  await ruleToggle.click()
+  await expect(rule.locator('.mx-config-form-designer__interaction-rule-body')).toBeVisible()
 
   const action = rule.getByRole('combobox', { name: 'Action', exact: true })
   const actionListboxId = await action.getAttribute('aria-controls')
@@ -1727,6 +1740,12 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   const panelBox = await visibleBox(panel)
   expect(Math.abs(searchBox.x - panelBox.x - 10)).toBeLessThanOrEqual(1)
   expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 10)).toBeLessThanOrEqual(1)
+  const materialGrid = page.locator('.designer-material-list').first()
+  expect(await materialGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(1)
+  expect(await page.locator('.designer-material-button .mx-config-form-designer__palette-item-name').evaluateAll(names => names.every((name) => {
+    const element = name as HTMLElement
+    return element.clientWidth > 80 && element.scrollWidth <= element.clientWidth
+  }))).toBe(true)
 
   await page.getByRole('tab', { name: 'Layers' }).click()
   const firstLayer = page.getByRole('treeitem').first()

@@ -13,9 +13,9 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { DesignerInteractionFieldOption } from './types'
 import type { DesignerInteractionSurfaceOption } from '../../types'
-import { Plus, Trash2 } from '@lucide/vue'
+import { ArrowRightLeft, ChevronDown, Eye, MousePointerClick, Plus, Trash2 } from '@lucide/vue'
 import { ElCheckbox, ElInput, ElOption, ElSelect } from 'element-plus'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { createDesignerCommandId, walkDesignGraph } from '../../../../graph'
 import { useDesignerLocale } from '../../../../locale'
 import { DesignerSafeExpressionEditor } from './components'
@@ -42,6 +42,9 @@ const emit = defineEmits<{
 const locale = useDesignerLocale()
 const stateKeys = ['visible', 'disabled', 'readonly', 'required'] as const
 const actionKinds = ['navigate', 'back', 'open', 'closeCurrent', 'closeAll'] as const
+type InteractionFilter = 'all' | PrototypeInteraction['kind']
+const interactionFilter = ref<InteractionFilter>('all')
+const expandedRuleIds = ref(new Set<string>())
 
 const nodes = computed(() => {
   const result: SurfaceNode[] = []
@@ -56,12 +59,133 @@ const valueRules = computed(() => props.interactions.filter((rule): rule is Valu
 const primaryRules = computed(() => props.interactions.filter((rule): rule is PrimaryUiActionBinding => rule.kind === 'primaryUiAction'))
 const currentSurface = computed(() => props.surfaces.find(surface => surface.id === props.surfaceId))
 const actionSourceNodes = computed(() => nodes.value.filter(node => triggersFor(node.id).length > 0))
+const filterOptions = computed(() => [
+  { value: 'all' as const, label: locale.t('interaction.filter.all', 'All'), count: props.interactions.length },
+  { value: 'stateProjection' as const, label: locale.t('interaction.filter.state', 'State'), count: stateRules.value.length },
+  { value: 'valueChange' as const, label: locale.t('interaction.filter.value', 'Value'), count: valueRules.value.length },
+  { value: 'primaryUiAction' as const, label: locale.t('interaction.filter.primary', 'Actions'), count: primaryRules.value.length },
+])
+const visibleStateRules = computed(() => interactionFilter.value === 'all' || interactionFilter.value === 'stateProjection' ? stateRules.value : [])
+const visibleValueRules = computed(() => interactionFilter.value === 'all' || interactionFilter.value === 'valueChange' ? valueRules.value : [])
+const visiblePrimaryRules = computed(() => interactionFilter.value === 'all' || interactionFilter.value === 'primaryUiAction' ? primaryRules.value : [])
+
+watch(() => props.interactions.map(rule => rule.id), (ids) => {
+  const validIds = new Set(ids)
+  expandedRuleIds.value = new Set([...expandedRuleIds.value].filter(id => validIds.has(id)))
+}, { immediate: true })
+
+watch(() => props.node?.id, () => {
+  interactionFilter.value = 'all'
+})
 
 function nodeLabel(nodeId: string): string {
   const node = props.graph.nodesById[nodeId]
   if (!node)
     return nodeId
   return node.kind === 'field' ? node.label?.trim() || node.field : node.component
+    .split(/[.:/]/u)
+    .at(-1)
+    ?.replace(/[-_]+/gu, ' ')
+    .replace(/^\w/u, character => character.toUpperCase()) || node.component
+}
+
+function fieldLabel(fieldId: string): string {
+  const field = fields.value.find(candidate => candidate.id === fieldId)
+  return field?.label ?? field?.field ?? fieldId
+}
+
+function fieldLabelByPath(path: string): string {
+  const field = fields.value.find(candidate => candidate.field === path)
+  return field?.label ?? path
+}
+
+function literalLabel(value: unknown): string {
+  if (value === null)
+    return locale.t('interaction.value.null', 'Null')
+  if (typeof value === 'boolean')
+    return value ? locale.t('value.true', 'True') : locale.t('value.false', 'False')
+  if (typeof value === 'string')
+    return value ? `“${value}”` : locale.t('interaction.value.emptyLiteral', 'Empty string')
+  return String(value)
+}
+
+function expressionLabel(expression: SafeExpression | undefined): string {
+  if (!expression)
+    return locale.t('interaction.condition.always', 'Always')
+  const ast = expression.ast
+  if (ast.kind === 'literal')
+    return literalLabel(ast.value)
+  if (ast.kind === 'reference')
+    return ast.scope === 'values'
+      ? fieldLabelByPath(ast.path[0] ?? '')
+      : ast.path.join('.') || locale.t('interaction.expression.result', 'Action result')
+  if (ast.kind === 'binary') {
+    const left = ast.left.kind === 'reference'
+      ? ast.left.scope === 'values' ? fieldLabelByPath(ast.left.path[0] ?? '') : ast.left.path.join('.')
+      : locale.t('interaction.expression.value', 'Value')
+    const right = ast.right.kind === 'literal' ? literalLabel(ast.right.value) : locale.t('interaction.expression.value', 'Value')
+    return `${left} ${ast.operator} ${right}`
+  }
+  return locale.t('interaction.expression.advancedSummary', 'Advanced expression')
+}
+
+function ruleIcon(kind: PrototypeInteraction['kind']) {
+  return kind === 'stateProjection' ? Eye : kind === 'valueChange' ? ArrowRightLeft : MousePointerClick
+}
+
+function ruleSummary(rule: PrototypeInteraction): string {
+  if (rule.kind === 'stateProjection') {
+    const target = rule.target.kind === 'state' ? rule.target : undefined
+    return target
+      ? `${nodeLabel(target.nodeId)} · ${stateLabel(target.key)}`
+      : locale.t('interaction.state.title', 'State linkage')
+  }
+  if (rule.kind === 'valueChange') {
+    const target = fieldLabel(rule.action.targetFieldId)
+    if (rule.action.kind === 'copy')
+      return `${fieldLabel(rule.action.sourceFieldId)} ${locale.t('interaction.value.copyTo', 'copy to')} ${target}`
+    if (rule.action.kind === 'set')
+      return `${target} ${locale.t('interaction.value.setTo', 'set to')} ${expressionLabel(rule.action.value)}`
+    return `${locale.t('interaction.value.clear', 'Clear')} ${target}`
+  }
+  return `${nodeLabel(rule.nodeId)} · ${triggerLabel(rule.trigger)}`
+}
+
+function ruleDetail(rule: PrototypeInteraction): string {
+  if (rule.kind === 'stateProjection')
+    return `${locale.t('interaction.condition.when', 'When')} ${expressionLabel(rule.value)}`
+  if (rule.kind === 'valueChange') {
+    const dependencies = rule.dependencies.map(fieldLabel).join('、')
+    return `${locale.t('interaction.value.dependenciesShort', 'When')} ${dependencies || locale.t('interaction.value.anyField', 'a field changes')}${rule.when ? ` · ${locale.t('interaction.condition.when', 'when')} ${expressionLabel(rule.when)}` : ''}`
+  }
+  const target = targetSurface(rule)
+  const action = rule.action.kind === 'navigate' || rule.action.kind === 'open'
+    ? `${actionLabel(rule.action.kind)}${target ? ` → ${target.name}` : ''}`
+    : actionLabel(rule.action.kind)
+  return rule.validate?.scope
+    ? `${action} · ${locale.t('interaction.validation.enabledSummary', 'Validate before action')}`
+    : action
+}
+
+function isRuleExpanded(id: string): boolean {
+  return expandedRuleIds.value.has(id)
+}
+
+function toggleRule(id: string): void {
+  const next = new Set(expandedRuleIds.value)
+  if (next.has(id))
+    next.delete(id)
+  else
+    next.add(id)
+  expandedRuleIds.value = next
+}
+
+function selectInteractionFilter(filter: InteractionFilter): void {
+  interactionFilter.value = filter
+}
+
+function expandRule(id: string): void {
+  expandedRuleIds.value = new Set([...expandedRuleIds.value, id])
 }
 
 function definitionFor(nodeId: string): ComponentContract | undefined {
@@ -131,9 +255,12 @@ function addStateRule(): void {
   const key = stateKeys.find(candidate => !used.has(candidate))
   if (!key)
     return
+  selectInteractionFilter('stateProjection')
+  const id = createDesignerCommandId('interaction')
+  expandRule(id)
   emit('update', [...props.interactions.map(rule => cloneInteractionJson(rule)), {
     kind: 'stateProjection',
-    id: createDesignerCommandId('interaction'),
+    id,
     target: { kind: 'state', nodeId: node.id, key },
     value: defaultCondition(),
   }])
@@ -160,9 +287,12 @@ function addValueRule(): void {
   const field = fields.value[0]
   if (!field)
     return
+  selectInteractionFilter('valueChange')
+  const id = createDesignerCommandId('interaction')
+  expandRule(id)
   emit('update', [...props.interactions.map(rule => cloneInteractionJson(rule)), {
     kind: 'valueChange',
-    id: createDesignerCommandId('interaction'),
+    id,
     dependencies: [field.id],
     action: { kind: 'clear', targetFieldId: field.id },
   }])
@@ -242,9 +372,12 @@ function addPrimaryRule(): void {
   const action = createAction('navigate') ?? createAction('open') ?? createAction('back')
   if (!trigger || !action)
     return
+  selectInteractionFilter('primaryUiAction')
+  const id = createDesignerCommandId('interaction')
+  expandRule(id)
   emit('update', [...props.interactions.map(rule => cloneInteractionJson(rule)), {
     kind: 'primaryUiAction',
-    id: createDesignerCommandId('interaction'),
+    id,
     nodeId: node.id,
     trigger,
     action,
@@ -505,192 +638,348 @@ function actionLabel(kind: typeof actionKinds[number]): string {
 
 <template>
   <div class="mx-config-form-designer__interaction-editor" data-interaction-editor>
-    <p class="mx-config-form-designer__interaction-summary">
-      {{ locale.t('interaction.summary', 'Prototype-only behavior using local values. No API calls or custom functions.') }}
-    </p>
-
-    <section class="mx-config-form-designer__interaction-section">
-      <div class="mx-config-form-designer__interaction-heading">
-        <strong>{{ locale.t('interaction.state.title', 'State') }}</strong>
-        <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('interaction.state.add', 'Add state rule')" :disabled="readonly || !node" @click="addStateRule">
-          <Plus :size="14" aria-hidden="true" />
+    <div class="mx-config-form-designer__interaction-toolbar">
+      <div class="mx-config-form-designer__interaction-filter" role="group" :aria-label="locale.t('interaction.filter.label', 'Filter interactions')">
+        <button
+          v-for="option in filterOptions"
+          :key="option.value"
+          type="button"
+          :aria-pressed="interactionFilter === option.value"
+          :aria-label="`${option.label} (${option.count})`"
+          :data-interaction-filter="option.value"
+          @click="selectInteractionFilter(option.value)"
+        >
+          <span>{{ option.label }}</span>
+          <output>{{ option.count }}</output>
         </button>
       </div>
-      <p v-if="stateRules.length === 0" class="mx-config-form-designer__interaction-empty">{{ locale.t('interaction.state.empty', 'No state rules') }}</p>
-      <article v-for="rule in stateRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
-        <div class="mx-config-form-designer__interaction-rule-heading">
-          <code>{{ rule.id }}</code>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
-        <div class="mx-config-form-designer__interaction-grid">
-          <ElSelect :model-value="rule.target.nodeId" :disabled="readonly" :aria-label="locale.t('interaction.target.node', 'Target component')" @update:model-value="updateStateNode(rule, $event)">
-            <ElOption v-for="item in nodes" :key="item.id" :value="item.id" :label="nodeLabel(item.id)" />
-          </ElSelect>
-          <ElSelect v-if="rule.target.kind === 'state'" :model-value="rule.target.key" :disabled="readonly" :aria-label="locale.t('interaction.state.key', 'Projected state')" @update:model-value="updateStateKey(rule, $event)">
-            <ElOption v-for="key in stateKeyOptions(rule.target.nodeId)" :key="key" :value="key" :label="stateLabel(key)" />
-          </ElSelect>
-        </div>
-        <DesignerSafeExpressionEditor :model-value="rule.value" :fields="fields" purpose="condition" :disabled="readonly" @update:model-value="$event && replaceRule(rule.id, { ...rule, value: $event })" />
-      </article>
-    </section>
+    </div>
 
-    <section class="mx-config-form-designer__interaction-section">
+    <section v-if="interactionFilter === 'all' || interactionFilter === 'stateProjection'" class="mx-config-form-designer__interaction-section" data-interaction-kind="stateProjection">
       <div class="mx-config-form-designer__interaction-heading">
-        <strong>{{ locale.t('interaction.value.title', 'Value linkage') }}</strong>
-        <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('interaction.value.add', 'Add value rule')" :disabled="readonly || fields.length === 0" @click="addValueRule"><Plus :size="14" aria-hidden="true" /></button>
+        <div class="mx-config-form-designer__interaction-heading-copy">
+          <span class="mx-config-form-designer__interaction-section-icon" aria-hidden="true"><Eye :size="14" /></span>
+          <span>
+            <strong>{{ locale.t('interaction.state.title', 'State linkage') }}</strong>
+          </span>
+        </div>
+        <button type="button" class="mx-config-form-designer__interaction-add" :aria-label="locale.t('interaction.state.add', 'Add state rule')" :disabled="readonly || !node" @click="addStateRule">
+          <Plus :size="14" aria-hidden="true" />
+          <span>{{ locale.t('interaction.add', 'Add rule') }}</span>
+        </button>
       </div>
-      <p v-if="valueRules.length === 0" class="mx-config-form-designer__interaction-empty">{{ locale.t('interaction.value.empty', 'No value rules') }}</p>
-      <article v-for="rule in valueRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
-        <div class="mx-config-form-designer__interaction-rule-heading">
-          <code>{{ rule.id }}</code>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
-        <label>{{ locale.t('interaction.value.dependencies', 'When fields change') }}</label>
-        <ElSelect :model-value="rule.dependencies" multiple :disabled="readonly" :aria-label="locale.t('interaction.value.dependencies', 'When fields change')" @update:model-value="updateDependencies(rule, $event)">
-          <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
-        </ElSelect>
-        <div class="mx-config-form-designer__interaction-grid">
-          <ElSelect :model-value="rule.action.kind" :disabled="readonly" :aria-label="locale.t('interaction.value.action', 'Value action')" @update:model-value="updateValueActionKind(rule, $event)">
-            <ElOption value="set" :label="locale.t('interaction.value.set', 'Set')" />
-            <ElOption value="copy" :label="locale.t('interaction.value.copy', 'Copy')" />
-            <ElOption value="clear" :label="locale.t('interaction.value.clear', 'Clear')" />
-          </ElSelect>
-          <ElSelect :model-value="rule.action.targetFieldId" :disabled="readonly" :aria-label="locale.t('interaction.value.target', 'Target field')" @update:model-value="updateValueTarget(rule, $event)">
-            <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
-          </ElSelect>
-        </div>
-        <ElSelect v-if="rule.action.kind === 'copy'" :model-value="rule.action.sourceFieldId" :disabled="readonly" :aria-label="locale.t('interaction.value.source', 'Source field')" @update:model-value="updateCopySource(rule, $event)">
-          <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
-        </ElSelect>
-        <DesignerSafeExpressionEditor v-if="rule.action.kind === 'set'" :model-value="rule.action.value" :fields="fields" purpose="value" :disabled="readonly" @update:model-value="updateSetValue(rule, $event)" />
-        <DesignerSafeExpressionEditor :model-value="rule.when" :fields="fields" purpose="condition" optional :disabled="readonly" @update:model-value="updateWhen(rule, $event)" />
-      </article>
-    </section>
-
-    <section class="mx-config-form-designer__interaction-section">
-      <div class="mx-config-form-designer__interaction-heading">
-        <strong>{{ locale.t('interaction.primary.title', 'Primary UI action') }}</strong>
-        <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('interaction.primary.add', 'Add primary action')" :disabled="readonly || !node || unusedTriggers(node.id).length === 0" @click="addPrimaryRule"><Plus :size="14" aria-hidden="true" /></button>
+      <div v-if="stateRules.length === 0" class="mx-config-form-designer__interaction-empty">
+        <span>{{ locale.t('interaction.state.empty', 'No state rules yet') }}</span>
       </div>
-      <p v-if="primaryRules.length === 0" class="mx-config-form-designer__interaction-empty">{{ locale.t('interaction.primary.empty', 'No primary actions') }}</p>
-      <article v-for="rule in primaryRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
+      <article v-for="rule in visibleStateRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
         <div class="mx-config-form-designer__interaction-rule-heading">
-          <code>{{ rule.id }}</code>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
-        </div>
-        <div class="mx-config-form-designer__interaction-grid">
-          <ElSelect :model-value="rule.nodeId" :disabled="readonly" :aria-label="locale.t('interaction.source.node', 'Source component')" @update:model-value="updatePrimaryNode(rule, $event)">
-            <ElOption v-for="item in actionSourceNodes" :key="item.id" :value="item.id" :label="nodeLabel(item.id)" />
-          </ElSelect>
-          <ElSelect :model-value="rule.trigger" :disabled="readonly" :aria-label="locale.t('interaction.trigger', 'Trigger')" @update:model-value="replaceRule(rule.id, { ...rule, trigger: $event })">
-            <ElOption v-for="trigger in triggersFor(rule.nodeId)" :key="trigger" :value="trigger" :label="triggerLabel(trigger)" />
-          </ElSelect>
-        </div>
-        <ElSelect :model-value="rule.action.kind" :disabled="readonly" :aria-label="locale.t('interaction.action', 'Action')" @update:model-value="updatePrimaryAction(rule, $event)">
-          <ElOption v-for="kind in actionKinds" :key="kind" :value="kind" :label="actionLabel(kind)" :disabled="(kind === 'navigate' || kind === 'open') && targetOptions(kind).length === 0" />
-        </ElSelect>
-        <template v-if="rule.action.kind === 'navigate' || rule.action.kind === 'open'">
-          <ElSelect :model-value="rule.action.targetSurfaceId" :disabled="readonly" :aria-label="locale.t('interaction.action.targetSurface', 'Target surface')" @update:model-value="updateActionTarget(rule, $event)">
-            <ElOption v-for="surface in targetOptions(rule.action.kind)" :key="surface.id" :value="surface.id" :label="`${surface.name} (${surface.kind})`" />
-          </ElSelect>
-          <div v-if="targetSurface(rule)?.parameters.length" class="mx-config-form-designer__interaction-bindings">
-            <strong>{{ locale.t('interaction.parameters', 'Parameters') }}</strong>
-            <div v-for="parameter in targetSurface(rule)?.parameters" :key="parameter.name" class="mx-config-form-designer__interaction-binding">
-              <ElCheckbox :model-value="parameterValue(rule, parameter.name) !== undefined" :disabled="readonly || parameterRequired(rule, parameter.name)" @update:model-value="toggleParameter(rule, parameter.name, $event === true)">
-                {{ parameter.name }}<span v-if="parameter.required"> *</span>
-              </ElCheckbox>
-              <DesignerSafeExpressionEditor v-if="parameterValue(rule, parameter.name)" :model-value="parameterValue(rule, parameter.name)" :fields="fields" purpose="value" :disabled="readonly" @update:model-value="updateParameter(rule, parameter.name, $event)" />
-            </div>
-          </div>
-          <div v-if="rule.action.kind === 'open' && targetSurface(rule)?.outputs.length" class="mx-config-form-designer__interaction-bindings" data-result-bindings>
-            <strong>{{ locale.t('interaction.results', 'Result write-back') }}</strong>
-            <div v-for="output in targetSurface(rule)?.outputs" :key="output.name" class="mx-config-form-designer__interaction-binding" :data-result-name="output.name">
-              <ElCheckbox
-                :model-value="openResultBinding(rule, output.name) !== undefined"
-                :disabled="readonly || fields.length === 0"
-                @update:model-value="toggleOpenResult(rule, output.name, $event === true)"
-              >
-                {{ output.name }}
-              </ElCheckbox>
-              <template v-if="openResultBinding(rule, output.name)">
-                <div
-                  v-for="assignment in openResultBinding(rule, output.name)?.assignments"
-                  :key="assignment.targetFieldId"
-                  class="mx-config-form-designer__interaction-assignment"
-                  :data-result-target="assignment.targetFieldId"
-                >
-                  <div class="mx-config-form-designer__interaction-assignment-heading">
-                    <ElSelect
-                      :model-value="assignment.targetFieldId"
-                      :disabled="readonly"
-                      :aria-label="locale.t('interaction.result.target', 'Write result to field')"
-                      @update:model-value="updateResultAssignmentTarget(rule, output.name, assignment.targetFieldId, $event)"
-                    >
-                      <ElOption
-                        v-for="field in fields"
-                        :key="field.id"
-                        :value="field.id"
-                        :label="field.label"
-                        :disabled="resultTargetUsed(rule, output.name, field.id, assignment.targetFieldId)"
-                      />
-                    </ElSelect>
-                    <button
-                      type="button"
-                      class="mx-config-form-designer__mini-button is-danger"
-                      :aria-label="locale.t('interaction.result.assignment.delete', 'Delete result assignment')"
-                      :disabled="readonly"
-                      @click="removeResultAssignment(rule, output.name, assignment.targetFieldId)"
-                    ><Trash2 :size="14" aria-hidden="true" /></button>
-                  </div>
-                  <DesignerSafeExpressionEditor
-                    :model-value="assignment.value"
-                    :fields="fields"
-                    purpose="value"
-                    :disabled="readonly"
-                    @update:model-value="updateResultAssignmentValue(rule, output.name, assignment.targetFieldId, $event)"
-                  />
-                </div>
-                <button
-                  type="button"
-                  class="mx-config-form-designer__interaction-command"
-                  :disabled="readonly || (openResultBinding(rule, output.name)?.assignments.length ?? 0) >= fields.length"
-                  @click="addResultAssignment(rule, output.name)"
-                >
-                  {{ locale.t('interaction.result.assignment.add', 'Add write-back field') }}
-                </button>
-              </template>
-            </div>
-          </div>
-        </template>
-        <div v-if="rule.action.kind === 'closeCurrent' && currentSurface?.outputs.length" class="mx-config-form-designer__interaction-bindings" data-close-result>
-          <strong>{{ locale.t('interaction.output', 'Return result') }}</strong>
-          <ElSelect
-            :model-value="rule.action.result?.name ?? ''"
-            :disabled="readonly"
-            :aria-label="locale.t('interaction.output.name', 'Returned result')"
-            @update:model-value="updateCloseResult(rule, $event)"
+          <button
+            type="button"
+            class="mx-config-form-designer__interaction-rule-toggle"
+            :aria-expanded="isRuleExpanded(rule.id)"
+            :aria-controls="`interaction-rule-${rule.id}`"
+            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+            @click="toggleRule(rule.id)"
           >
-            <ElOption value="" :label="locale.t('interaction.output.none', 'Do not return a result')" />
-            <ElOption v-for="output in currentSurface.outputs" :key="output.name" :value="output.name" :label="output.name" />
-          </ElSelect>
-          <DesignerSafeExpressionEditor
-            v-if="rule.action.result"
-            :model-value="rule.action.result.value"
-            :fields="fields"
-            purpose="value"
-            :disabled="readonly"
-            @update:model-value="updateCloseResultValue(rule, $event)"
-          />
+            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+            <span class="mx-config-form-designer__interaction-rule-copy">
+              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+            </span>
+            <ChevronDown :size="14" aria-hidden="true" />
+          </button>
+          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
         </div>
-        <label>{{ locale.t('interaction.validation', 'Validate before action') }}</label>
-        <ElSelect :model-value="validationScope(rule)" :disabled="readonly" :aria-label="locale.t('interaction.validation', 'Validate before action')" @update:model-value="updateValidationScope(rule, $event)">
-          <ElOption value="none" :label="locale.t('interaction.validation.none', 'Do not validate')" />
-          <ElOption value="surface" :label="locale.t('interaction.validation.surface', 'Whole surface')" />
-          <ElOption value="fields" :label="locale.t('interaction.validation.fields', 'Selected fields')" :disabled="fields.length === 0" />
-        </ElSelect>
-        <ElSelect v-if="rule.validate?.scope === 'fields'" :model-value="rule.validate.fieldIds" multiple :disabled="readonly" :aria-label="locale.t('interaction.validation.fieldList', 'Fields to validate')" @update:model-value="updateValidationFields(rule, $event)">
-          <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
-        </ElSelect>
+        <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
+          <div class="mx-config-form-designer__interaction-step">
+            <span class="mx-config-form-designer__interaction-step-index">1</span>
+            <strong>{{ locale.t('interaction.step.when', 'When') }}</strong>
+          </div>
+          <div class="mx-config-form-designer__interaction-grid">
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.target.node', 'Target component') }}</span>
+              <ElSelect :model-value="rule.target.nodeId" :disabled="readonly" :aria-label="locale.t('interaction.target.node', 'Target component')" @update:model-value="updateStateNode(rule, $event)">
+                <ElOption v-for="item in nodes" :key="item.id" :value="item.id" :label="nodeLabel(item.id)" />
+              </ElSelect>
+            </label>
+            <label v-if="rule.target.kind === 'state'" class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.state.key', 'Projected state') }}</span>
+              <ElSelect :model-value="rule.target.key" :disabled="readonly" :aria-label="locale.t('interaction.state.key', 'Projected state')" @update:model-value="updateStateKey(rule, $event)">
+                <ElOption v-for="key in stateKeyOptions(rule.target.nodeId)" :key="key" :value="key" :label="stateLabel(key)" />
+              </ElSelect>
+            </label>
+          </div>
+          <div class="mx-config-form-designer__interaction-step is-result">
+            <span class="mx-config-form-designer__interaction-step-index">2</span>
+            <strong>{{ locale.t('interaction.step.condition', 'Condition') }}</strong>
+          </div>
+          <DesignerSafeExpressionEditor :model-value="rule.value" :fields="fields" purpose="condition" :label="locale.t('interaction.condition.label', 'State condition')" :disabled="readonly" @update:model-value="$event && replaceRule(rule.id, { ...rule, value: $event })" />
+        </div>
+      </article>
+    </section>
+
+    <section v-if="interactionFilter === 'all' || interactionFilter === 'valueChange'" class="mx-config-form-designer__interaction-section" data-interaction-kind="valueChange">
+      <div class="mx-config-form-designer__interaction-heading">
+        <div class="mx-config-form-designer__interaction-heading-copy">
+          <span class="mx-config-form-designer__interaction-section-icon" aria-hidden="true"><ArrowRightLeft :size="14" /></span>
+          <span>
+            <strong>{{ locale.t('interaction.value.title', 'Value linkage') }}</strong>
+          </span>
+        </div>
+        <button type="button" class="mx-config-form-designer__interaction-add" :aria-label="locale.t('interaction.value.add', 'Add value rule')" :disabled="readonly || fields.length === 0" @click="addValueRule">
+          <Plus :size="14" aria-hidden="true" />
+          <span>{{ locale.t('interaction.add', 'Add rule') }}</span>
+        </button>
+      </div>
+      <div v-if="valueRules.length === 0" class="mx-config-form-designer__interaction-empty">
+        <span>{{ locale.t('interaction.value.empty', 'No value rules yet') }}</span>
+      </div>
+      <article v-for="rule in visibleValueRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
+        <div class="mx-config-form-designer__interaction-rule-heading">
+          <button
+            type="button"
+            class="mx-config-form-designer__interaction-rule-toggle"
+            :aria-expanded="isRuleExpanded(rule.id)"
+            :aria-controls="`interaction-rule-${rule.id}`"
+            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+            @click="toggleRule(rule.id)"
+          >
+            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+            <span class="mx-config-form-designer__interaction-rule-copy">
+              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+            </span>
+            <ChevronDown :size="14" aria-hidden="true" />
+          </button>
+          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
+        </div>
+        <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
+          <div class="mx-config-form-designer__interaction-step">
+            <span class="mx-config-form-designer__interaction-step-index">1</span>
+            <strong>{{ locale.t('interaction.step.when', 'When') }}</strong>
+          </div>
+          <label class="mx-config-form-designer__interaction-field">
+            <span>{{ locale.t('interaction.value.dependencies', 'When fields change') }}</span>
+            <ElSelect :model-value="rule.dependencies" multiple :disabled="readonly" :aria-label="locale.t('interaction.value.dependencies', 'When fields change')" @update:model-value="updateDependencies(rule, $event)">
+              <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+            </ElSelect>
+          </label>
+          <div class="mx-config-form-designer__interaction-step is-result">
+            <span class="mx-config-form-designer__interaction-step-index">2</span>
+            <strong>{{ locale.t('interaction.step.then', 'Then') }}</strong>
+          </div>
+          <div class="mx-config-form-designer__interaction-grid">
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.value.action', 'Value action') }}</span>
+              <ElSelect :model-value="rule.action.kind" :disabled="readonly" :aria-label="locale.t('interaction.value.action', 'Value action')" @update:model-value="updateValueActionKind(rule, $event)">
+                <ElOption value="set" :label="locale.t('interaction.value.set', 'Set')" />
+                <ElOption value="copy" :label="locale.t('interaction.value.copy', 'Copy')" />
+                <ElOption value="clear" :label="locale.t('interaction.value.clear', 'Clear')" />
+              </ElSelect>
+            </label>
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.value.target', 'Target field') }}</span>
+              <ElSelect :model-value="rule.action.targetFieldId" :disabled="readonly" :aria-label="locale.t('interaction.value.target', 'Target field')" @update:model-value="updateValueTarget(rule, $event)">
+                <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+              </ElSelect>
+            </label>
+          </div>
+          <label v-if="rule.action.kind === 'copy'" class="mx-config-form-designer__interaction-field">
+            <span>{{ locale.t('interaction.value.source', 'Source field') }}</span>
+            <ElSelect :model-value="rule.action.sourceFieldId" :disabled="readonly" :aria-label="locale.t('interaction.value.source', 'Source field')" @update:model-value="updateCopySource(rule, $event)">
+              <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+            </ElSelect>
+          </label>
+          <DesignerSafeExpressionEditor v-if="rule.action.kind === 'set'" :model-value="rule.action.value" :fields="fields" purpose="value" :label="locale.t('interaction.value.expression', 'Value to set')" :disabled="readonly" @update:model-value="updateSetValue(rule, $event)" />
+          <DesignerSafeExpressionEditor :model-value="rule.when" :fields="fields" purpose="condition" optional :label="locale.t('interaction.condition.optionalLabel', 'Optional condition')" :disabled="readonly" @update:model-value="updateWhen(rule, $event)" />
+        </div>
+      </article>
+    </section>
+
+    <section v-if="interactionFilter === 'all' || interactionFilter === 'primaryUiAction'" class="mx-config-form-designer__interaction-section" data-interaction-kind="primaryUiAction">
+      <div class="mx-config-form-designer__interaction-heading">
+        <div class="mx-config-form-designer__interaction-heading-copy">
+          <span class="mx-config-form-designer__interaction-section-icon" aria-hidden="true"><MousePointerClick :size="14" /></span>
+          <span>
+            <strong>{{ locale.t('interaction.primary.title', 'UI actions') }}</strong>
+          </span>
+        </div>
+        <button type="button" class="mx-config-form-designer__interaction-add" :aria-label="locale.t('interaction.primary.add', 'Add primary action')" :disabled="readonly || !node || unusedTriggers(node.id).length === 0" @click="addPrimaryRule">
+          <Plus :size="14" aria-hidden="true" />
+          <span>{{ locale.t('interaction.add', 'Add rule') }}</span>
+        </button>
+      </div>
+      <div v-if="primaryRules.length === 0" class="mx-config-form-designer__interaction-empty">
+        <span>{{ locale.t('interaction.primary.empty', 'No UI actions yet') }}</span>
+      </div>
+      <article v-for="rule in visiblePrimaryRules" :key="rule.id" class="mx-config-form-designer__interaction-rule" :data-interaction-id="rule.id">
+        <div class="mx-config-form-designer__interaction-rule-heading">
+          <button
+            type="button"
+            class="mx-config-form-designer__interaction-rule-toggle"
+            :aria-expanded="isRuleExpanded(rule.id)"
+            :aria-controls="`interaction-rule-${rule.id}`"
+            :aria-label="locale.t('interaction.editRule', 'Edit {name}', { name: ruleSummary(rule) })"
+            @click="toggleRule(rule.id)"
+          >
+            <span class="mx-config-form-designer__interaction-rule-icon" aria-hidden="true"><component :is="ruleIcon(rule.kind)" :size="13" /></span>
+            <span class="mx-config-form-designer__interaction-rule-copy">
+              <strong :title="ruleSummary(rule)">{{ ruleSummary(rule) }}</strong>
+              <small :title="ruleDetail(rule)">{{ ruleDetail(rule) }}</small>
+            </span>
+            <ChevronDown :size="14" aria-hidden="true" />
+          </button>
+          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('interaction.delete', 'Delete interaction')" :disabled="readonly" @click="removeRule(rule.id)"><Trash2 :size="14" aria-hidden="true" /></button>
+        </div>
+        <div v-show="isRuleExpanded(rule.id)" :id="`interaction-rule-${rule.id}`" class="mx-config-form-designer__interaction-rule-body">
+          <div class="mx-config-form-designer__interaction-step">
+            <span class="mx-config-form-designer__interaction-step-index">1</span>
+            <strong>{{ locale.t('interaction.step.when', 'When') }}</strong>
+          </div>
+          <div class="mx-config-form-designer__interaction-grid">
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.source.node', 'Source component') }}</span>
+              <ElSelect :model-value="rule.nodeId" :disabled="readonly" :aria-label="locale.t('interaction.source.node', 'Source component')" @update:model-value="updatePrimaryNode(rule, $event)">
+                <ElOption v-for="item in actionSourceNodes" :key="item.id" :value="item.id" :label="nodeLabel(item.id)" />
+              </ElSelect>
+            </label>
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.trigger', 'Trigger') }}</span>
+              <ElSelect :model-value="rule.trigger" :disabled="readonly" :aria-label="locale.t('interaction.trigger', 'Trigger')" @update:model-value="replaceRule(rule.id, { ...rule, trigger: $event })">
+                <ElOption v-for="trigger in triggersFor(rule.nodeId)" :key="trigger" :value="trigger" :label="triggerLabel(trigger)" />
+              </ElSelect>
+            </label>
+          </div>
+          <div class="mx-config-form-designer__interaction-step is-result">
+            <span class="mx-config-form-designer__interaction-step-index">2</span>
+            <strong>{{ locale.t('interaction.step.then', 'Then') }}</strong>
+          </div>
+          <label class="mx-config-form-designer__interaction-field">
+            <span>{{ locale.t('interaction.action', 'Action') }}</span>
+            <ElSelect :model-value="rule.action.kind" :disabled="readonly" :aria-label="locale.t('interaction.action', 'Action')" @update:model-value="updatePrimaryAction(rule, $event)">
+              <ElOption v-for="kind in actionKinds" :key="kind" :value="kind" :label="actionLabel(kind)" :disabled="(kind === 'navigate' || kind === 'open') && targetOptions(kind).length === 0" />
+            </ElSelect>
+          </label>
+          <template v-if="rule.action.kind === 'navigate' || rule.action.kind === 'open'">
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.action.targetSurface', 'Target surface') }}</span>
+              <ElSelect :model-value="rule.action.targetSurfaceId" :disabled="readonly" :aria-label="locale.t('interaction.action.targetSurface', 'Target surface')" @update:model-value="updateActionTarget(rule, $event)">
+                <ElOption v-for="surface in targetOptions(rule.action.kind)" :key="surface.id" :value="surface.id" :label="`${surface.name} (${surface.kind})`" />
+              </ElSelect>
+            </label>
+            <div v-if="targetSurface(rule)?.parameters.length" class="mx-config-form-designer__interaction-bindings">
+              <strong>{{ locale.t('interaction.parameters', 'Parameters') }}</strong>
+              <div v-for="parameter in targetSurface(rule)?.parameters" :key="parameter.name" class="mx-config-form-designer__interaction-binding">
+                <ElCheckbox :model-value="parameterValue(rule, parameter.name) !== undefined" :disabled="readonly || parameterRequired(rule, parameter.name)" @update:model-value="toggleParameter(rule, parameter.name, $event === true)">
+                  {{ parameter.name }}<span v-if="parameter.required"> *</span>
+                </ElCheckbox>
+                <DesignerSafeExpressionEditor v-if="parameterValue(rule, parameter.name)" :model-value="parameterValue(rule, parameter.name)" :fields="fields" purpose="value" :disabled="readonly" @update:model-value="updateParameter(rule, parameter.name, $event)" />
+              </div>
+            </div>
+            <div v-if="rule.action.kind === 'open' && targetSurface(rule)?.outputs.length" class="mx-config-form-designer__interaction-bindings" data-result-bindings>
+              <strong>{{ locale.t('interaction.results', 'Result write-back') }}</strong>
+              <div v-for="output in targetSurface(rule)?.outputs" :key="output.name" class="mx-config-form-designer__interaction-binding" :data-result-name="output.name">
+                <ElCheckbox
+                  :model-value="openResultBinding(rule, output.name) !== undefined"
+                  :disabled="readonly || fields.length === 0"
+                  @update:model-value="toggleOpenResult(rule, output.name, $event === true)"
+                >
+                  {{ output.name }}
+                </ElCheckbox>
+                <template v-if="openResultBinding(rule, output.name)">
+                  <div
+                    v-for="assignment in openResultBinding(rule, output.name)?.assignments"
+                    :key="assignment.targetFieldId"
+                    class="mx-config-form-designer__interaction-assignment"
+                    :data-result-target="assignment.targetFieldId"
+                  >
+                    <div class="mx-config-form-designer__interaction-assignment-heading">
+                      <ElSelect
+                        :model-value="assignment.targetFieldId"
+                        :disabled="readonly"
+                        :aria-label="locale.t('interaction.result.target', 'Write result to field')"
+                        @update:model-value="updateResultAssignmentTarget(rule, output.name, assignment.targetFieldId, $event)"
+                      >
+                        <ElOption
+                          v-for="field in fields"
+                          :key="field.id"
+                          :value="field.id"
+                          :label="field.label"
+                          :disabled="resultTargetUsed(rule, output.name, field.id, assignment.targetFieldId)"
+                        />
+                      </ElSelect>
+                      <button
+                        type="button"
+                        class="mx-config-form-designer__mini-button is-danger"
+                        :aria-label="locale.t('interaction.result.assignment.delete', 'Delete result assignment')"
+                        :disabled="readonly"
+                        @click="removeResultAssignment(rule, output.name, assignment.targetFieldId)"
+                      ><Trash2 :size="14" aria-hidden="true" /></button>
+                    </div>
+                    <DesignerSafeExpressionEditor
+                      :model-value="assignment.value"
+                      :fields="fields"
+                      purpose="value"
+                      :label="locale.t('interaction.result.value', 'Value to write')"
+                      :disabled="readonly"
+                      @update:model-value="updateResultAssignmentValue(rule, output.name, assignment.targetFieldId, $event)"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="mx-config-form-designer__interaction-command"
+                    :disabled="readonly || (openResultBinding(rule, output.name)?.assignments.length ?? 0) >= fields.length"
+                    @click="addResultAssignment(rule, output.name)"
+                  >
+                    {{ locale.t('interaction.result.assignment.add', 'Add write-back field') }}
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+          <div v-if="rule.action.kind === 'closeCurrent' && currentSurface?.outputs.length" class="mx-config-form-designer__interaction-bindings" data-close-result>
+            <strong>{{ locale.t('interaction.output', 'Return result') }}</strong>
+            <label class="mx-config-form-designer__interaction-field">
+              <span>{{ locale.t('interaction.output.name', 'Returned result') }}</span>
+              <ElSelect
+                :model-value="rule.action.result?.name ?? ''"
+                :disabled="readonly"
+                :aria-label="locale.t('interaction.output.name', 'Returned result')"
+                @update:model-value="updateCloseResult(rule, $event)"
+              >
+                <ElOption value="" :label="locale.t('interaction.output.none', 'Do not return a result')" />
+                <ElOption v-for="output in currentSurface.outputs" :key="output.name" :value="output.name" :label="output.name" />
+              </ElSelect>
+            </label>
+            <DesignerSafeExpressionEditor
+              v-if="rule.action.result"
+              :model-value="rule.action.result.value"
+              :fields="fields"
+              purpose="value"
+              :label="locale.t('interaction.output.value', 'Returned value')"
+              :disabled="readonly"
+              @update:model-value="updateCloseResultValue(rule, $event)"
+            />
+          </div>
+          <div class="mx-config-form-designer__interaction-step is-condition">
+            <span class="mx-config-form-designer__interaction-step-index">3</span>
+            <strong>{{ locale.t('interaction.step.guard', 'Guard') }}</strong>
+          </div>
+          <label class="mx-config-form-designer__interaction-field">
+            <span>{{ locale.t('interaction.validation', 'Validate before action') }}</span>
+            <ElSelect :model-value="validationScope(rule)" :disabled="readonly" :aria-label="locale.t('interaction.validation', 'Validate before action')" @update:model-value="updateValidationScope(rule, $event)">
+              <ElOption value="none" :label="locale.t('interaction.validation.none', 'Do not validate')" />
+              <ElOption value="surface" :label="locale.t('interaction.validation.surface', 'Whole surface')" />
+              <ElOption value="fields" :label="locale.t('interaction.validation.fields', 'Selected fields')" :disabled="fields.length === 0" />
+            </ElSelect>
+          </label>
+          <label v-if="rule.validate?.scope === 'fields'" class="mx-config-form-designer__interaction-field">
+            <span>{{ locale.t('interaction.validation.fieldList', 'Fields to validate') }}</span>
+            <ElSelect :model-value="rule.validate.fieldIds" multiple :disabled="readonly" :aria-label="locale.t('interaction.validation.fieldList', 'Fields to validate')" @update:model-value="updateValidationFields(rule, $event)">
+              <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+            </ElSelect>
+          </label>
+        </div>
       </article>
     </section>
 

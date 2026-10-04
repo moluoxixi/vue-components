@@ -299,6 +299,93 @@ describe('designer property panel lite Inspector', () => {
     expect(scrollIntoView).toHaveBeenCalled()
   })
 
+  it('filters component properties by label, field, or path and clears stale queries on selection changes', async () => {
+    const first = field('customerName', 'test.input', {
+      label: 'Customer name',
+      props: { autocomplete: 'name', clearable: true, maxlength: 80, placeholder: 'Type a name', showWordLimit: true },
+    })
+    const second = field('contactEmail', 'test.input', {
+      label: 'Contact email',
+      props: { autocomplete: 'email', clearable: false, maxlength: 120, placeholder: 'name@example.com', showWordLimit: false },
+    })
+    const setters: DesignerPropertySetterDefinition[] = [
+      { key: 'autocomplete', label: 'Autocomplete', path: ['props', 'autocomplete'], control: 'text' },
+      { key: 'clearable', label: 'Clearable', path: ['props', 'clearable'], control: 'boolean' },
+      { key: 'maxlength', label: 'Max length', path: ['props', 'maxlength'], control: 'number' },
+      placeholderSetter,
+      { key: 'showWordLimit', label: 'Show word limit', path: ['props', 'showWordLimit'], control: 'boolean' },
+    ]
+    const material = fieldMaterial('test.input', setters)
+    const definition = contract('test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([first]),
+        node: first,
+        material,
+        componentDefinition: definition,
+        diagnostics: [],
+      },
+    })
+
+    const search = wrapper.get('[data-property-search]')
+    expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
+      .toEqual(['field', 'layout', 'component'])
+    await search.setValue('placeholder')
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
+      .toEqual(['component'])
+    expect(wrapper.get('.mx-config-form-designer__search-count').text()).toBe('1 / 8')
+
+    await search.setValue('maxlength')
+    expect(wrapper.find('input[aria-label="Max length"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(false)
+
+    await search.setValue('missing-property')
+    expect(wrapper.find('[data-property-empty]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(false)
+    await wrapper.get('button[aria-label="Clear property search"]').trigger('click')
+    expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(true)
+
+    await search.setValue('layout')
+    expect(wrapper.find('[data-property-group="layout"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Span"]').exists()).toBe(true)
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(false)
+
+    await search.setValue('missing-property')
+    await wrapper.setProps({ graph: graph([second]), node: second })
+    expect((wrapper.get('[data-property-search]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.find('[data-property-empty]').exists()).toBe(false)
+    expect(wrapper.get('.mx-config-form-designer__property-identity strong').text()).toBe('Contact email')
+  })
+
+  it('returns to expanded properties when the canvas selection changes', async () => {
+    const first = field('first', 'test.input')
+    const second = field('second', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([first, second]),
+        node: first,
+        material: fieldMaterial('test.input', [placeholderSetter]),
+        componentDefinition: contract('test.input'),
+        diagnostics: [],
+      },
+    })
+
+    await wrapper.get('[data-property-tab="interactions"]').trigger('click')
+    const componentGroup = wrapper.get('[data-property-group="component"] button')
+    await componentGroup.trigger('click')
+    expect(componentGroup.attributes('aria-expanded')).toBe('false')
+
+    await wrapper.setProps({ graph: graph([second]), node: second })
+
+    expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('true')
+    expect(wrapper.get('[data-property-group="component"] button').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
+  })
+
   it('uses only compatible common setters for heterogeneous selections', async () => {
     const first = field('first', 'test.first')
     const second = field('second', 'test.second')
@@ -433,7 +520,10 @@ describe('designer property panel lite Inspector', () => {
         renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
-        material: fieldMaterial('test.select'),
+        material: fieldMaterial('test.select', [
+          placeholderSetter,
+          { key: 'clearable', label: 'Clearable', path: ['props', 'clearable'], control: 'boolean' },
+        ]),
         componentDefinition: contract('test.select', {
           datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
         }),
@@ -447,6 +537,10 @@ describe('designer property panel lite Inspector', () => {
     })
 
     expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    await wrapper.get('[data-property-search]').setValue('unmatched')
+    expect(wrapper.find('[data-property-empty]').exists()).toBe(true)
+    expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    await wrapper.get('button[aria-label="Clear property search"]').trigger('click')
     await wrapper.get('[data-apply-dataset-binding]').trigger('click')
     expect(wrapper.emitted('updateDatasetBinding')?.at(-1)).toEqual([
       'role',

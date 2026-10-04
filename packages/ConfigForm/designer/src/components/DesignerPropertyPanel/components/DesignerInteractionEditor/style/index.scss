@@ -3,6 +3,7 @@
 .mx-config-form-designer__interaction-editor,
 .mx-config-form-designer__interaction-section,
 .mx-config-form-designer__interaction-rule,
+.mx-config-form-designer__interaction-rule-body,
 .mx-config-form-designer__interaction-bindings,
 .mx-config-form-designer__interaction-binding,
 .mx-config-form-designer__interaction-assignment,
@@ -14,17 +15,104 @@
 }
 
 .mx-config-form-designer__interaction-editor {
-  gap: 14px;
+  gap: 10px;
 }
 
-.mx-config-form-designer__interaction-summary,
+.mx-config-form-designer__interaction-section-icon,
+.mx-config-form-designer__interaction-rule-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.mx-config-form-designer__interaction-heading-copy > span:last-of-type,
+.mx-config-form-designer__interaction-rule-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
 .mx-config-form-designer__interaction-empty,
 .mx-config-form-designer__interaction-note,
 .mx-config-form-designer__interaction-error {
   margin: 0;
   color: var(--mx-designer-muted);
-  font-size: 12px;
+  font-size: 0.6875rem;
   line-height: 1.5;
+}
+
+.mx-config-form-designer__interaction-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.mx-config-form-designer__interaction-filter {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow-x: auto;
+  gap: 8px;
+  border-bottom: 1px solid var(--mx-designer-separator);
+  scrollbar-width: none;
+}
+
+.mx-config-form-designer__interaction-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.mx-config-form-designer__interaction-filter button {
+  position: relative;
+  display: inline-flex;
+  min-height: 31px;
+  padding: 3px 4px 5px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: var(--mx-designer-muted);
+  font: inherit;
+  font-size: 0.6875rem;
+  letter-spacing: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__interaction-filter button:hover {
+  color: var(--mx-designer-text);
+}
+
+.mx-config-form-designer__interaction-filter button[aria-pressed="true"] {
+  color: var(--mx-designer-accent-text);
+  border-bottom-color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__interaction-filter button:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__interaction-filter output {
+  min-width: 12px;
+  padding: 0 1px;
+  color: var(--mx-designer-muted);
+  background: transparent;
+  border-radius: 0;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.mx-config-form-designer__interaction-filter button[aria-pressed="true"] output {
+  color: var(--mx-designer-accent-text);
+}
+
+.mx-config-form-designer__interaction-section {
+  gap: 6px;
 }
 
 .mx-config-form-designer__interaction-heading,
@@ -38,24 +126,241 @@
 }
 
 .mx-config-form-designer__interaction-heading {
-  padding-bottom: 6px;
+  padding: 2px 0 7px;
   border-bottom: 1px solid var(--mx-designer-border);
 }
 
-.mx-config-form-designer__interaction-rule {
-  padding: 9px;
-  background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
-  border-radius: 6px;
+.mx-config-form-designer__interaction-heading-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
 }
 
-.mx-config-form-designer__interaction-rule-heading code {
-  min-width: 0;
+.mx-config-form-designer__interaction-heading-copy > span:last-of-type {
   overflow: hidden;
-  color: var(--mx-designer-muted);
-  font-size: 10px;
+}
+
+.mx-config-form-designer__interaction-section-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--mx-designer-accent-text);
+}
+
+.mx-config-form-designer__interaction-heading-copy strong {
+  overflow: hidden;
+  color: var(--mx-designer-text);
+  font-size: 0.75rem;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mx-config-form-designer__interaction-add,
+.mx-config-form-designer__interaction-command {
+  display: inline-flex;
+  min-height: 26px;
+  padding: 3px 5px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--mx-designer-accent-text);
+  font: inherit;
+  font-size: 0.6875rem;
+  letter-spacing: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__interaction-add {
+  flex: 0 0 auto;
+}
+
+.mx-config-form-designer__interaction-add:hover:not(:disabled),
+.mx-config-form-designer__interaction-command:hover:not(:disabled) {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+}
+
+.mx-config-form-designer__interaction-add:focus-visible,
+.mx-config-form-designer__interaction-command:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__interaction-add:disabled,
+.mx-config-form-designer__interaction-command:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mx-config-form-designer__interaction-empty {
+  display: flex;
+  min-height: 23px;
+  padding: 1px 2px;
+  align-items: center;
+  color: var(--mx-designer-muted);
+  font-size: 0.6875rem;
+}
+
+.mx-config-form-designer__interaction-rule {
+  overflow: hidden;
+  background: var(--mx-designer-subtle);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__interaction-rule-heading {
+  padding: 5px 6px 5px 7px;
+  gap: 5px;
+}
+
+.mx-config-form-designer__interaction-rule-toggle {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  color: var(--mx-designer-text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__interaction-rule-toggle:hover {
+  background: var(--mx-designer-hover);
+}
+
+.mx-config-form-designer__interaction-rule-toggle:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__interaction-rule-icon {
+  width: 23px;
+  height: 23px;
+  color: var(--mx-designer-accent-text);
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-accent-line);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__interaction-rule-copy {
+  overflow: hidden;
+  flex: 1;
+}
+
+.mx-config-form-designer__interaction-rule-copy strong,
+.mx-config-form-designer__interaction-rule-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__interaction-rule-copy strong {
+  color: var(--mx-designer-text);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.mx-config-form-designer__interaction-rule-copy small {
+  color: var(--mx-designer-muted);
+  font-size: 0.625rem;
+  line-height: 1.4;
+}
+
+.mx-config-form-designer__interaction-rule-toggle > svg:last-child {
+  flex: 0 0 auto;
+  color: var(--mx-designer-muted);
+  transition: transform 120ms ease;
+}
+
+.mx-config-form-designer__interaction-rule-toggle[aria-expanded="true"] > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.mx-config-form-designer__interaction-rule-body {
+  padding: 8px;
+  border-top: 1px solid var(--mx-designer-border);
+  background: var(--mx-designer-surface);
+}
+
+.mx-config-form-designer__interaction-step {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--mx-designer-text);
+}
+
+.mx-config-form-designer__interaction-step + .mx-config-form-designer__interaction-grid,
+.mx-config-form-designer__interaction-step + .mx-config-form-designer__interaction-field,
+.mx-config-form-designer__interaction-step + .mx-config-form-designer__expression-editor,
+.mx-config-form-designer__interaction-step + .mx-config-form-designer__interaction-bindings {
+  margin-top: 1px;
+}
+
+.mx-config-form-designer__interaction-step.is-result,
+.mx-config-form-designer__interaction-step.is-condition {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__interaction-step-index {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  place-items: center;
+  color: var(--mx-designer-accent-text);
+  background: var(--mx-designer-accent-soft);
+  border: 1px solid var(--mx-designer-accent-line);
+  border-radius: 50%;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.mx-config-form-designer__interaction-step > strong,
+.mx-config-form-designer__interaction-bindings > strong {
+  color: var(--mx-designer-text);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.mx-config-form-designer__interaction-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.mx-config-form-designer__interaction-field > span {
+  overflow: hidden;
+  color: var(--mx-designer-muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__interaction-rule-body > label,
+.mx-config-form-designer__interaction-bindings > strong {
+  color: var(--mx-designer-muted);
+  font-size: 0.625rem;
+  font-weight: 650;
 }
 
 .mx-config-form-designer__interaction-grid,
@@ -64,6 +369,18 @@
   min-width: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+}
+
+.mx-config-form-designer__expression-heading {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mx-designer-muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mx-config-form-designer__expression-simple > :only-child,
@@ -90,24 +407,6 @@
   color: var(--mx-designer-danger);
 }
 
-.mx-config-form-designer__interaction-command {
-  min-height: 30px;
-  padding: 5px 10px;
-  justify-self: end;
-  color: var(--mx-designer-accent);
-  font: inherit;
-  letter-spacing: 0;
-  background: var(--mx-designer-accent-soft);
-  border: 1px solid var(--mx-designer-accent-line);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.mx-config-form-designer__interaction-command:focus-visible {
-  outline: 2px solid var(--mx-designer-accent);
-  outline-offset: 1px;
-}
-
 @container config-form-inspector (max-width: 270px) {
   .mx-config-form-designer__interaction-grid,
   .mx-config-form-designer__expression-simple {
@@ -116,5 +415,15 @@
 
   .mx-config-form-designer__expression-simple > * {
     grid-column: 1;
+  }
+
+  .mx-config-form-designer__interaction-add > span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-config-form-designer__interaction-rule-toggle > svg:last-child {
+    transition: none;
   }
 }

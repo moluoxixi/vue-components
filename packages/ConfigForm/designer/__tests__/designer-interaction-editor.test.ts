@@ -157,6 +157,7 @@ describe('designer interaction editor', () => {
     expect(addValue.attributes('disabled')).toBeUndefined()
     await addValue.trigger('click')
     expect(wrapper.emitted('update')?.at(-1)?.[0]).toHaveLength(2)
+    expect(wrapper.get('[data-interaction-filter="valueChange"]').attributes('aria-pressed')).toBe('true')
   })
 
   it('renders all state projections and value action kinds', () => {
@@ -206,6 +207,44 @@ describe('designer interaction editor', () => {
       .map(select => select.props('modelValue'))).toEqual(['set', 'copy', 'clear'])
   })
 
+  it('filters the rule list by interaction kind and keeps the counts visible', async () => {
+    const wrapper = mountEditor([
+      {
+        kind: 'stateProjection',
+        id: 'state-visible',
+        target: { kind: 'state', nodeId: 'name-field', key: 'visible' },
+        value: { version: 1, ast: { kind: 'literal', value: true } },
+      },
+      {
+        kind: 'valueChange',
+        id: 'value-clear',
+        dependencies: ['status-field'],
+        action: { kind: 'clear', targetFieldId: 'name-field' },
+      },
+      {
+        kind: 'primaryUiAction',
+        id: 'primary',
+        nodeId: 'save-action',
+        trigger: 'activate',
+        action: { kind: 'navigate', targetSurfaceId: 'home', parameters: [] },
+      },
+    ])
+
+    expect(wrapper.findAll('[data-interaction-id]')).toHaveLength(3)
+    expect(wrapper.get('[data-interaction-filter="all"]').text()).toContain('3')
+    expect(wrapper.get('[data-interaction-filter="stateProjection"]').text()).toContain('1')
+    expect(wrapper.get('[data-interaction-filter="valueChange"]').text()).toContain('1')
+    expect(wrapper.get('[data-interaction-filter="primaryUiAction"]').text()).toContain('1')
+
+    await wrapper.get('[data-interaction-filter="primaryUiAction"]').trigger('click')
+    expect(wrapper.findAll('[data-interaction-id]')).toHaveLength(1)
+    expect(wrapper.get('[data-interaction-id="primary"]')).toBeTruthy()
+    expect(wrapper.get('[data-interaction-filter="primaryUiAction"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.get('[data-interaction-filter="all"]').trigger('click')
+    expect(wrapper.findAll('[data-interaction-id]')).toHaveLength(3)
+  })
+
   it('offers every primary action and filters page versus overlay targets', async () => {
     const wrapper = mountEditor([{
       kind: 'primaryUiAction',
@@ -226,6 +265,26 @@ describe('designer interaction editor', () => {
       id: 'primary',
       action: { kind: 'navigate', targetSurfaceId: 'home' },
     }])
+  })
+
+  it('keeps existing rules collapsed and opens only the rule just created', async () => {
+    const wrapper = mountEditor([{
+      kind: 'primaryUiAction',
+      id: 'primary',
+      nodeId: 'save-action',
+      trigger: 'activate',
+      action: { kind: 'navigate', targetSurfaceId: 'home', parameters: [] },
+    }])
+
+    const toggle = wrapper.get('[data-interaction-id="primary"] .mx-config-form-designer__interaction-rule-toggle')
+    expect(wrapper.get('[data-interaction-filter="all"]').attributes('aria-pressed')).toBe('true')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
   })
 
   it('authors named result write-back to multiple fields', async () => {
