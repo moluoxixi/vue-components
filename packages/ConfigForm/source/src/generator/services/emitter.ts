@@ -1396,6 +1396,10 @@ function rawNeedsValidation(surface: SourceSurface, context: EmitContext): boole
     || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction' && interaction.validate !== undefined)
 }
 
+function surfaceRootTag(surface: SourceSurface): 'main' | 'div' {
+  return surface.kind === 'page' ? 'main' : 'div'
+}
+
 function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string {
   assertSupportedInteractionScopes(surface)
   const initialValues = createSourceInitialValues(surface)
@@ -1557,15 +1561,16 @@ function updateValue(targetValues: Record<string, unknown>, field: string, nodeI
 ${modelType}${parametersScript}
 ${valuesScript}${projectionScript}${scopeUtilities}${validationRuntime}${updateScript}${interactionScript}`.trim()
   const body = surface.rootIds.flatMap(nodeId => renderRawNode(surface, nodeId, context, 3))
+  const rootTag = surfaceRootTag(surface)
   return `${script ? `<script setup lang="ts">\n${script}\n</script>\n\n` : ''}<template>
-  <section class="${context.style.classes.surface}">
+  <${rootTag} class="${context.style.classes.surface}">
     <header class="${context.style.classes.surfaceHeader}">
       <h1${classAttribute(context.style.classes.surfaceTitle)}>${escapeHtml(surface.name)}</h1>
     </header>
     <div class="${context.style.target === 'tailwind-v4' ? rawFormContentClass(surface) : context.style.classes.surfaceContent}">
 ${body.join('\n')}
     </div>
-  </section>
+  </${rootTag}>
 </template>
 `
 }
@@ -1865,6 +1870,7 @@ function bindingSurfaceSource(surface: SourceSurface, context: BindingEmitContex
   const stateRules = stateInteractions(surface)
   const valueRules = valueInteractions(surface)
   const hasContext = interactions.length > 0 || valueRules.length > 0
+  const rootTag = surfaceRootTag(surface)
   return `<script setup lang="ts">
 ${interactions.length > 0 ? 'import type { ConfigBindingActions, ConfigBindingValidation } from \'../../host.ts\'\n' : ''}import { computed, shallowRef } from 'vue'
 import { ${context.binding.component.importName} } from ${sourceString(context.binding.component.moduleSpecifier)}
@@ -1922,7 +1928,7 @@ ${stateRules.length > 0 ? 'const reactionProjection = computed(() => createReact
 </script>
 
 <template>
-  <section class="${context.style.classes.surface}" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
+  <${rootTag} class="${context.style.classes.surface}" data-surface-id="${escapeHtml(surface.id)}" data-surface-kind="${surface.kind}">
     <header class="${context.style.classes.surfaceHeader}">
       <h1${classAttribute(context.style.classes.surfaceTitle)}>${escapeHtml(surface.name)}</h1>
     </header>
@@ -1933,7 +1939,7 @@ ${stateRules.length > 0 ? 'const reactionProjection = computed(() => createReact
       :model="model"
       ${stateRules.length > 0 ? ':reaction-projection="reactionProjection"' : ''}
     />
-  </section>
+  </${rootTag}>
 </template>
 `
 }
@@ -2393,7 +2399,7 @@ function overlaySource(
       @cancel="handleOverlayCancel($event, overlay.instanceId, ${presentation.close.escape})"
       @close="handleOverlayClose(overlay.instanceId)"
     >
-      <section
+      <div
         class="${panelClass}"
         :style="{ '--demo-overlay-size': ${sourceAttributeString(controlledLengthSource(size))} }"
       >
@@ -2402,7 +2408,7 @@ function overlaySource(
           ${presentation.close.button ? `<button type="button" class="${classes.overlayClose}" aria-label="Close ${escapeHtml(presentation.title)}" @click="dismissOverlay(overlay.instanceId, true)">&times;</button>` : ''}
         </header>
         <${componentName} :demo-parameters="overlay.parameters" />
-      </section>
+      </div>
     </dialog>`
 }
 
