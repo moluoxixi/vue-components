@@ -6,7 +6,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@moluoxixi/config-form": ["../runtime/dist/index.d.ts"]
     },
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,

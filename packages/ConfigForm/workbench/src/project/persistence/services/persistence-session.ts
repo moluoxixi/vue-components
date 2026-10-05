@@ -264,7 +264,12 @@ export function createProjectPersistenceSession(
     else {
       status = 'pending'
       await writeDraft()
-      scheduleAutosave()
+      // A save can finish after a new editor notification has already queued
+      // another autosave. Keep that queued work and only create a timer when
+      // no autosave is currently scheduled, otherwise a slow draft capture can
+      // repeatedly postpone the next save on CI.
+      if (autosaveIdleTimer === undefined && autosaveMaxTimer === undefined)
+        scheduleAutosave()
     }
     publish()
   }
