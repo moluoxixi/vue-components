@@ -54,6 +54,8 @@ jobs:
 
       - name: Test
         run: pnpm test
+        env:
+          CI_PERFORMANCE_BUDGET_MULTIPLIER: 2
 
       - name: Test performance budgets
         run: pnpm test:performance

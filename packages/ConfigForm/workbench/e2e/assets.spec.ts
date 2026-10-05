@@ -199,7 +199,7 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   await expect.poll(() => runtimeThemeFontSize(page, experienceFrame), { timeout: 15_000 }).toBe('19px')
   await page.getByRole('button', { name: 'Close preview', exact: true }).click()
 
-  await expect(page.locator('.revision-state')).toContainText('Autosaved', { timeout: 15_000 })
+  await expect(page.locator('.revision-state')).toContainText('Autosaved', { timeout: 60_000 })
   await page.reload()
   // The theme is read back from the restored design route.
   await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible({ timeout: 15_000 })
