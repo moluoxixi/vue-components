@@ -1,5 +1,11 @@
 # @moluoxixi/postcss-selector-prefix
 
+## 0.0.4
+
+### Patch Changes
+
+- Automatically release packages changed in 8a67b25d18a8.
+
 ## 0.0.3
 
 ### Patch Changes

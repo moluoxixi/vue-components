@@ -1,5 +1,13 @@
 # @moluoxixi/excel
 
+## 0.0.5
+
+### Patch Changes
+
+- Automatically release packages changed in 8a67b25d18a8.
+- Updated dependencies
+  - @moluoxixi/utils@0.1.4
+
 ## 0.0.4
 
 ### Patch Changes

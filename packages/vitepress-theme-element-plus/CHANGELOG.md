@@ -1,5 +1,12 @@
 # @moluoxixi/vitepress-theme-element-plus
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/ai-doc-assistant@1.0.1
+
 ## 0.2.1
 
 ### Patch Changes

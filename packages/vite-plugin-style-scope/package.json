@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-style-scope",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "构建期给 qiankun 子应用的全局样式添加 :where([data-qiankun=\"<appName>\"]) 作用域前缀的 Vite 插件",
   "keywords": [
     "vite-plugin",

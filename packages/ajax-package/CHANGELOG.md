@@ -1,5 +1,13 @@
 # @moluoxixi/ajax-package
 
+## 0.0.63
+
+### Patch Changes
+
+- Automatically release packages changed in 8a67b25d18a8.
+- Updated dependencies
+  - @moluoxixi/utils@0.1.4
+
 ## 0.0.62
 
 ### Patch Changes

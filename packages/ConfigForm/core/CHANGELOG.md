@@ -1,5 +1,17 @@
 # @moluoxixi/config-form-core
 
+## 0.3.0
+
+### Minor Changes
+
+- 06f0677: 将 Data Source 响应映射合同无兼容切换为 `kind: 'response'`、`response` 上下文和 `$response` 表达式根；旧 `event/$event` 合同不再接受。
+- 6d49398: 将 ConfigForm 定型为 Runtime-first 表单方案，完整删除事件编辑、事件转发与 Flow 编排合同，Designer 收敛为 properties 与 validation 两个默认区域。复杂组件事件由宿主在运行时 config 的 `props.onX` 中直接维护；持久化、编译、Preview 与 Source 合同同步硬切到无事件编排的当前版本。
+- 9772a58: Surface Foundation 将 ConfigForm 的持久化、编译和运行身份切换为严格的
+  ProjectDocument v6 / SurfaceGraph v1 合同，加入 Dataset/Resource 基础引用、
+  Project/Surface transfer、Surface-aware Vue backend，并发布共享 Prototype Runtime
+  的无 DOM session 与 Vue overlay host。旧 Page-only、事件编排、事件转发和 Flow 合同
+  不提供兼容读取器。
+
 ## 0.2.6
 
 ### Patch Changes

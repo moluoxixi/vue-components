@@ -1,5 +1,11 @@
 # @moluoxixi/ai-doc-assistant
 
+## 1.0.1
+
+### Patch Changes
+
+- Automatically release packages changed in 8a67b25d18a8.
+
 ## 1.0.0
 
 ### Major Changes

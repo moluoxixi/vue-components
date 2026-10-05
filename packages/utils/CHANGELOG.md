@@ -1,5 +1,11 @@
 # @moluoxixi/utils
 
+## 0.1.4
+
+### Patch Changes
+
+- Automatically release packages changed in 8a67b25d18a8.
+
 ## 0.1.3
 
 ### Patch Changes

@@ -1,5 +1,18 @@
 # @moluoxixi/config-form-headless
 
+## 0.3.0
+
+### Minor Changes
+
+- 6d49398: 将 ConfigForm 定型为 Runtime-first 表单方案，完整删除事件编辑、事件转发与 Flow 编排合同，Designer 收敛为 properties 与 validation 两个默认区域。复杂组件事件由宿主在运行时 config 的 `props.onX` 中直接维护；持久化、编译、Preview 与 Source 合同同步硬切到无事件编排的当前版本。
+
+### Patch Changes
+
+- Updated dependencies [06f0677]
+- Updated dependencies [6d49398]
+- Updated dependencies [9772a58]
+  - @moluoxixi/config-form-core@0.3.0
+
 ## 0.2.6
 
 ### Patch Changes
