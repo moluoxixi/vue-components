@@ -1,9 +1,10 @@
+import type { ConfigFormRendererNode } from '../src/renderer'
 import type { ReadonlyAdapter } from '../src/runtime'
 import type { NormalizedFieldConfig, NormalizedNodeConfig } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
 import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/defaults'
-import { createFormRuntime } from '../src/runtime'
+import { createFormRuntime, projectRuntimeFields } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
 const RuntimeInput = markRaw({ name: 'RuntimeInput' })
@@ -358,6 +359,22 @@ describe('form runtime', () => {
     })
     expect(resolved.slots?.footer).toBe(renderSlot)
     expect(() => runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-13', component: 'section', slots: { default: 'plain text' as never } }))).toThrow(/Slot "default" must be a field config, render function, or an array of them/)
+  })
+
+  it('preserves render functions nested in projected slot arrays', () => {
+    const renderSlot = () => null
+    const runtime = createFormRuntime()
+    const resolved = runtime.transformField({
+      component: 'section',
+      slots: { default: [renderSlot] },
+    })
+    const projected = projectRuntimeFields(
+      [resolved as unknown as ConfigFormRendererNode],
+      runtime,
+    )
+
+    expect((projected[0] as unknown as { slots?: Record<string, unknown> }).slots?.default)
+      .toEqual([renderSlot])
   })
 
   it('enforces plugin name and component registration conflicts', () => {
