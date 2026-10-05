@@ -6,6 +6,7 @@
     "tsconfig*.json",
     "scripts/fail-on-dts-diagnostics.mjs"
   ],
+  "globalEnv": ["CI_PERFORMANCE_BUDGET_MULTIPLIER"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

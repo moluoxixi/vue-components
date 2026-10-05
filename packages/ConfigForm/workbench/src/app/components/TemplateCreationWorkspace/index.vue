@@ -223,7 +223,7 @@ function visibleCatalogDrawer(): HTMLElement | undefined {
 }
 
 function handleCatalogDrawerKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Tab')
+  if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey)
     return
   const drawer = visibleCatalogDrawer()
   if (!drawer)
@@ -239,8 +239,6 @@ function handleCatalogDrawerKeydown(event: KeyboardEvent): void {
   })
   if (focusable.length === 0)
     return
-
-  event.preventDefault()
   const current = document.activeElement instanceof HTMLElement
     ? document.activeElement
     : undefined
@@ -248,6 +246,8 @@ function handleCatalogDrawerKeydown(event: KeyboardEvent): void {
   const nextIndex = event.shiftKey
     ? currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1
     : currentIndex < 0 || currentIndex >= focusable.length - 1 ? 0 : currentIndex + 1
+  event.preventDefault()
+  event.stopImmediatePropagation()
   focusable[nextIndex]?.focus()
 }
 
