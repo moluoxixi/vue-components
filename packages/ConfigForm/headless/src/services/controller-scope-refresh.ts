@@ -2,7 +2,7 @@ import type {
   ConfigFormJsonObject,
   ConfigFormValueScopeRowIdFactory,
 } from '@moluoxixi/config-form-core'
-import type { ConfigFormFieldInstance, ConfigFormValueSchema, ConfigFormValues } from '../types'
+import type { ConfigFormFieldInstance, ConfigFormValues, ConfigFormValueSchema } from '../types'
 import type { ControllerScopeService } from '../types/controller-internal'
 import {
   CONFIG_FORM_VALUE_SCOPE_ROW_ID_ATTEMPTS,
@@ -107,8 +107,9 @@ function compatibleScopes(previous: ConfigFormValueSchema, next: ConfigFormValue
     while (current) {
       const old = previousById.get(current.nodeId)
       if (seen.has(current.nodeId) || !old || old.field !== current.field
-        || old.parentId !== current.parentId || old.kind !== current.kind || old.itemKey !== current.itemKey)
+        || old.parentId !== current.parentId || old.kind !== current.kind || old.itemKey !== current.itemKey) {
         return false
+      }
       seen.add(current.nodeId)
       if (current.parentId === undefined)
         return true

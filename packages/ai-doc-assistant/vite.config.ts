@@ -1,8 +1,11 @@
+import type { UserConfig } from 'vite'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import dts from 'unplugin-dts/vite'
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
+
+type VitestConfig = UserConfig & { test: Record<string, unknown> }
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -11,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  * 多入口库：index（聚合）/ api-contract / plugin（BFF Vite 插件）/ cli（构建命令）/ protocol（前后端共享类型）。
  * 所有运行时依赖与 node 内置均 external，保持产物精简、由消费方装 peer/依赖。
  */
-export default defineConfig({
+const config = {
   plugins: [
     // vue 插件供 vitest 编译 .vue 单测（lib 入口均为 .ts，不受影响）
     vue(),
@@ -79,4 +82,6 @@ export default defineConfig({
       ],
     },
   },
-})
+} satisfies VitestConfig
+
+export default defineConfig(config)

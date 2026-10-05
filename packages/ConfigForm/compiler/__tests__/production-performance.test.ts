@@ -1,6 +1,6 @@
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { performance } from 'node:perf_hooks'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { createCompileCoordinator } from '../index'
 import { createCompilerFixture } from './fixtures'

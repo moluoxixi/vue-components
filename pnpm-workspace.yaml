@@ -89,6 +89,20 @@ catalogs:
     xlsx: ^0.18.5
   conflicts_@vueuse/core_h12_0_0:
     '@vueuse/core': ^12.0.0
+  conflicts_build_h18_3_1:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- React 18 consumers retain this major
+    react: ^18.3.1
+  conflicts_build_h3_5_13:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Vue 3.5.13 consumers retain this patch range
+    vue: ^3.5.13
+  conflicts_build_h5_3_1:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Vue Router 5 consumers retain this major
+    vue-router: ^5.3.1
+  conflicts_build_h8_5_26:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- PostCSS 8.5.26 consumers retain this patch range
+    postcss: ^8.5.26
+  conflicts_conflicts_dev_h7_3_1_h5_4_11:
+    vite: ^5.4.11
   conflicts_dev_h21_0_0:
     unplugin-auto-import: ^21.0.0
   conflicts_dev_h31_0_0:
@@ -96,9 +110,15 @@ catalogs:
   conflicts_dev_h4_0_0:
     '@vitest/coverage-v8': ^4.0.0
     vitest: ^4.0.0
+  conflicts_dev_h5_6_3:
+    typescript: ^5.6.3
+  conflicts_dev_h5_7_2:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- TypeScript 5.7 consumers retain this compiler range
+    typescript: ^5.7.2
   conflicts_dev_h6_0_4:
     '@vitejs/plugin-vue': ^6.0.4
   conflicts_dev_h7_3_1:
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Vite 7 consumers retain this toolchain
     vite: ^7.3.1
   data:
     '@orama/orama': ^3.1.18
@@ -133,6 +153,7 @@ catalogs:
     magic-string: ^0.30.17
     sass: ^1.85.0
     tsup: 8.0.2
+    # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- the default development toolchain retains TypeScript 5.8
     typescript: ^5.8.2
     # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Vite 6 consumers retain this plugin major
     unplugin-auto-import: ^19.1.2
@@ -159,17 +180,3 @@ catalogs:
     '@tiptap/vue-3': ^3.29.2
     ant-design-vue: ^4.2.6
     element-plus: ^2.9.1
-  conflicts_build_h18_3_1:
-    react: ^18.3.1
-  conflicts_dev_h5_6_3:
-    typescript: ^5.6.3
-  conflicts_build_h3_5_13:
-    vue: ^3.5.13
-  conflicts_build_h5_3_1:
-    vue-router: ^5.3.1
-  conflicts_build_h8_5_26:
-    postcss: ^8.5.26
-  conflicts_dev_h5_7_2:
-    typescript: ^5.7.2
-  conflicts_conflicts_dev_h7_3_1_h5_4_11:
-    vite: ^5.4.11

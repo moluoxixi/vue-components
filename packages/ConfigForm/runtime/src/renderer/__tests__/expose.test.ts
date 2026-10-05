@@ -92,4 +92,61 @@ describe('createConfigFormRendererExpose', () => {
       expose.setValues({ age: 21 }, true)
     }
   })
+
+  it('forwards array and scoped instance operations to the mounted renderer', async () => {
+    const rendererRef = shallowRef<ConfigFormRendererExpose<TestValues> | null>(null)
+    const expose = createConfigFormRendererExpose(rendererRef)
+    const address = { nodeId: 'rows', scope: [] }
+    const renderer = {
+      appendRow: vi.fn(),
+      applyFieldInstanceChange: vi.fn(),
+      clearInstanceValidate: vi.fn(),
+      duplicateRow: vi.fn(),
+      getInstanceErrors: vi.fn(() => []),
+      getInstanceKey: vi.fn(() => 'rows'),
+      getInstanceMeta: vi.fn(() => ({ dirty: false, touched: false })),
+      getInstanceValue: vi.fn(() => undefined),
+      getIssues: vi.fn(() => []),
+      insertRow: vi.fn(),
+      isInstanceValidating: vi.fn(() => false),
+      listFieldInstances: vi.fn(() => []),
+      listRows: vi.fn(() => []),
+      moveRow: vi.fn(),
+      removeRow: vi.fn(),
+      setInstanceTouched: vi.fn(),
+      setInstanceValue: vi.fn(),
+      setTouched: vi.fn(),
+      setValues: vi.fn(),
+      validateInstance: vi.fn(async () => true),
+    } as unknown as ConfigFormRendererExpose<TestValues>
+    rendererRef.value = renderer
+
+    expose.appendRow('rows', { name: 'first' })
+    expose.applyFieldInstanceChange({ address, value: 'value' })
+    expose.clearInstanceValidate(address)
+    expose.duplicateRow('rows', 'row-1')
+    expose.getInstanceErrors(address)
+    expose.getInstanceKey(address)
+    expose.getInstanceMeta(address)
+    expose.getInstanceValue(address)
+    expose.getIssues()
+    expose.insertRow('rows', 0, { name: 'inserted' })
+    expose.isInstanceValidating(address)
+    expose.listFieldInstances('rows')
+    expose.listRows('rows')
+    expose.moveRow('rows', 'row-1', 0)
+    expose.removeRow('rows', 'row-1')
+    expose.setInstanceTouched(address, true)
+    expose.setInstanceValue(address, 'value')
+    expose.setTouched()
+    expose.setTouched(true)
+    expose.setValues({ age: 18, name: 'Ada' }, true)
+    await expect(expose.validateInstance(address)).resolves.toBe(true)
+
+    expect(renderer.appendRow).toHaveBeenCalledWith('rows', { name: 'first' }, undefined)
+    expect(renderer.applyFieldInstanceChange).toHaveBeenCalledWith({ address, value: 'value' })
+    expect(renderer.setTouched).toHaveBeenNthCalledWith(1)
+    expect(renderer.setTouched).toHaveBeenNthCalledWith(2, true)
+    expect(renderer.setValues).toHaveBeenCalledWith({ age: 18, name: 'Ada' }, true)
+  })
 })

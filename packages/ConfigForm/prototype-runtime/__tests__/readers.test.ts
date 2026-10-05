@@ -99,7 +99,7 @@ describe('prototype contract readers', () => {
           topology: {
             ...projectContext.surfacesById.home!.topology,
             nodeOrder: ['panel', 'late-node'],
-            ownerScopeIdByNodeId: { panel: null, 'late-node': null },
+            ownerScopeIdByNodeId: { 'panel': null, 'late-node': null },
           },
         },
       },

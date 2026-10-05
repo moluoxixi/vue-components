@@ -8,8 +8,9 @@ import { DesignerRegistryError } from '../../graph'
 function isSurfaceNode(value: object): value is SurfaceNode {
   const candidate = value as Record<string, unknown>
   if (typeof candidate.id !== 'string' || typeof candidate.component !== 'string'
-    || !['field', 'layout', 'element'].includes(candidate.kind as string))
+    || !['field', 'layout', 'element'].includes(candidate.kind as string)) {
     return false
+  }
   if (typeof candidate.props !== 'object' || candidate.props === null || Array.isArray(candidate.props))
     return false
   if (candidate.kind === 'field')

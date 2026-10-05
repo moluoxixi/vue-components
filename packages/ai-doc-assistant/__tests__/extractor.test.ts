@@ -326,7 +326,7 @@ describe('extractContracts — real workspace package types', () => {
 
     const payload = contract.typeDefs.find(item => item.name === 'ConfigFormFieldChangePayload')
     expect(payload?.raw).toContain('ConfigFormFieldChangePayload<TValues extends ConfigFormValues')
-    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'value', 'values'])
+    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'address', 'scope', 'value', 'values'])
     expect(contract.typeDefs.map(item => item.name)).toEqual(
       expect.arrayContaining(['ConfigFormFieldKey', 'ConfigFormValues']),
     )

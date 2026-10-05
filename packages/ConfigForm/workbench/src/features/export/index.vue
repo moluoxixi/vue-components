@@ -28,11 +28,7 @@ import {
   downloadSourceFile,
   resolveExportSnapshotPath,
 } from '../../project'
-import {
-  projectStructuredSourceFiles,
-  projectStructuredSourcePath,
-  sourceSurfaceDirectory,
-} from '../../project/export/services/structured-projection'
+import { projectStructuredSourceFiles, projectStructuredSourcePath, sourceSurfaceDirectory } from '../../project/export'
 import { createSourceWorkspaceArchiveInput } from './services'
 import '@moluoxixi/config-form-source/viewer/style'
 

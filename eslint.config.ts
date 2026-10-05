@@ -39,6 +39,7 @@ export default antfu({
     '.codex/**',
     '.moluoxixi/**',
     '.trellis/**',
+    '.workbuddy/**',
     'spikes/**',
   ],
   rules: {},

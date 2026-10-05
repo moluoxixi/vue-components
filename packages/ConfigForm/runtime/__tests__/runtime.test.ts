@@ -2,7 +2,7 @@ import type { ReadonlyAdapter } from '../src/runtime'
 import type { NormalizedFieldConfig, NormalizedNodeConfig } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
-import { BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/defaults'
+import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/defaults'
 import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
@@ -79,6 +79,67 @@ describe('form runtime', () => {
         width: '80px',
       },
     })
+  })
+
+  it('preserves explicit binding and validation defaults', () => {
+    const runtime = createFormRuntime()
+    const resolved = expectResolvedField(runtime.transformField(defineField({
+      id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-16',
+      component: 'input',
+      field: 'name',
+      blurTrigger: 'focusout',
+      required: true,
+      requiredMessage: 'Name is required',
+      submitWhenDisabled: true,
+      submitWhenHidden: true,
+      trigger: 'change',
+      validateOn: 'change',
+      valueProp: 'value',
+    })))
+
+    expect(resolved).toMatchObject({
+      blurTrigger: 'focusout',
+      required: true,
+      requiredMessage: 'Name is required',
+      submitWhenDisabled: true,
+      submitWhenHidden: true,
+      trigger: 'change',
+      validateOn: ['change', 'submit'],
+      valueProp: 'value',
+    })
+  })
+
+  it('falls back for nullable JavaScript field options', () => {
+    const nullableField = {
+      component: 'input',
+      field: 'name',
+      blurTrigger: null,
+      required: null,
+      requiredMessage: null,
+      submitWhenDisabled: null,
+      submitWhenHidden: null,
+      trigger: null,
+      valueProp: null,
+    } as unknown as Parameters<typeof applyFieldDefaults>[0]
+    const resolved = applyFieldDefaults(nullableField)
+
+    expect(resolved).toMatchObject({
+      blurTrigger: 'blur',
+      required: false,
+      requiredMessage: '必填',
+      submitWhenDisabled: false,
+      submitWhenHidden: false,
+      trigger: 'update:modelValue',
+      valueProp: 'modelValue',
+    })
+
+    expect(() => applyFieldDefaults(defineField({
+      id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-17',
+      component: 'input',
+      field: 'name',
+      blurTrigger: 'change',
+      trigger: 'change',
+    }))).toThrow(/cannot use the same event/)
   })
 
   it('runs default hooks before transform hooks with merged field input', () => {

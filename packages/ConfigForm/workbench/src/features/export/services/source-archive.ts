@@ -2,7 +2,7 @@ import type { StructuredSourceArchiveInput } from '../../../project'
 import type { SourceWorkspaceArchiveOptions } from '../types'
 import { generateConfigFormBindings, generateVueSource } from '@moluoxixi/config-form-source/generator'
 import { createProjectSourceInput } from '../../../project'
-import { sourceSurfaceDirectory } from '../../../project/export/services/structured-projection'
+import { sourceSurfaceDirectory } from '../../../project/export'
 
 /** Keep page downloads on the same model, output shape, and style as the source tab. */
 export async function createSourceWorkspaceArchiveInput(

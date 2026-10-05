@@ -2,7 +2,7 @@ import type { ConfigFormController, ConfigFormControllerOptions, ConfigFormLifec
 import { describe, expect, it, vi } from 'vitest'
 import { createConfigFormController } from '../index'
 
-type Values = { name: string }
+interface Values { name: string }
 type Boundary = 'reset' | 'clear' | 'clear instance' | 'schema' | 'dispose'
 
 function fixture(options: Partial<ConfigFormControllerOptions<Values>> = {}) {
@@ -13,25 +13,34 @@ function fixture(options: Partial<ConfigFormControllerOptions<Values>> = {}) {
   const controller = createConfigFormController<Values>({
     model: { read: () => values, write: next => values = next },
     fields: () => [{ id: 'name', field: 'name', component: 'input', required: true }],
-    onSubmit, onError, onDiagnostic,
+    onSubmit,
+    onError,
+    onDiagnostic,
     ...options,
   })
   return { controller, onSubmit, onError, onDiagnostic }
 }
 
 function cancel(controller: ConfigFormController<Values>, boundary: Boundary): void {
-  if (boundary === 'reset') void controller.resetFields()
-  if (boundary === 'clear') controller.clearValidate()
-  if (boundary === 'clear instance') controller.clearInstanceValidate({ nodeId: 'name', scope: [] })
-  if (boundary === 'schema') controller.updateValueSchema({
-    valueScopes: [], scopedFields: [{ nodeId: 'name', field: 'name' }],
-  })
-  if (boundary === 'dispose') controller.dispose()
+  if (boundary === 'reset')
+    void controller.resetFields()
+  if (boundary === 'clear')
+    controller.clearValidate()
+  if (boundary === 'clear instance')
+    controller.clearInstanceValidate({ nodeId: 'name', scope: [] })
+  if (boundary === 'schema') {
+    controller.updateValueSchema({
+      valueScopes: [],
+      scopedFields: [{ nodeId: 'name', field: 'name' }],
+    })
+  }
+  if (boundary === 'dispose')
+    controller.dispose()
 }
 
 const boundaries: Boundary[] = ['reset', 'clear', 'clear instance', 'schema', 'dispose']
 
-describe('Headless submit operation isolation', () => {
+describe('headless submit operation isolation', () => {
   it.each(boundaries)('rejects a same-value %s inside onValidatingChange(false)', async (boundary) => {
     let once = true
     const { controller, onSubmit, onError } = fixture({
@@ -69,7 +78,8 @@ describe('Headless submit operation isolation', () => {
   })
 
   it.each(['form.beforeSubmit', 'form.validationSuccess', 'form.submit'] as const)(
-    'rejects reset from %s even when reset restores the same values', async (kind) => {
+    'rejects reset from %s even when reset restores the same values',
+    async (kind) => {
       let once = true
       const { controller, onSubmit } = fixture({
         onLifecycle: (current) => {
@@ -87,9 +97,13 @@ describe('Headless submit operation isolation', () => {
   )
 
   const pendingCases: Array<[ConfigFormLifecycleKind, Boundary]> = [
-    ['form.beforeSubmit', 'reset'], ['form.validationSuccess', 'reset'], ['form.submit', 'reset'],
-    ['form.beforeSubmit', 'clear'], ['form.validationSuccess', 'clear instance'],
-    ['form.submit', 'schema'], ['form.beforeSubmit', 'dispose'],
+    ['form.beforeSubmit', 'reset'],
+    ['form.validationSuccess', 'reset'],
+    ['form.submit', 'reset'],
+    ['form.beforeSubmit', 'clear'],
+    ['form.validationSuccess', 'clear instance'],
+    ['form.submit', 'schema'],
+    ['form.beforeSubmit', 'dispose'],
   ]
   it.each(pendingCases)('settles a permanent %s hook on %s and releases the submit lock', async (kind, boundary) => {
     let started!: () => void
@@ -98,7 +112,8 @@ describe('Headless submit operation isolation', () => {
     let signal!: AbortSignal
     const { controller, onSubmit, onDiagnostic } = fixture({
       onLifecycle: (current, context) => {
-        if (current !== kind || !first) return
+        if (current !== kind || !first)
+          return
         first = false
         signal = context.signal
         started()
@@ -123,9 +138,12 @@ describe('Headless submit operation isolation', () => {
   it.each(boundaries)('releases the lock after %s cancels an abort-ignoring permanent validator', async (boundary) => {
     let first = true
     const { controller, onSubmit } = fixture({ fields: () => [{
-      id: 'name', field: 'name', component: 'input',
+      id: 'name',
+      field: 'name',
+      component: 'input',
       validator: () => {
-        if (!first) return undefined
+        if (!first)
+          return undefined
         first = false
         return new Promise<string>(() => {})
       },
@@ -156,7 +174,9 @@ describe('Headless submit operation isolation', () => {
     expect(onSubmit).not.toHaveBeenCalled()
     let transformOnce = true
     const transformed = fixture({ fields: () => [{
-      id: 'name', field: 'name', component: 'input',
+      id: 'name',
+      field: 'name',
+      component: 'input',
       transform: (value) => {
         if (transformOnce) {
           transformOnce = false

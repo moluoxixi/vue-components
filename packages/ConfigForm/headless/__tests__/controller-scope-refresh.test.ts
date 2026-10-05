@@ -1,13 +1,13 @@
 import type {
   ConfigFormControllerOptions,
   ConfigFormNode,
-  ConfigFormValueSchema,
   ConfigFormValues,
+  ConfigFormValueSchema,
 } from '../index'
 import { describe, expect, it, vi } from 'vitest'
 import { createConfigFormController } from '../index'
 
-type TestValueSchema = {
+interface TestValueSchema {
   scopedFields: ConfigFormValueSchema['scopedFields'][number][]
   valueScopes: ConfigFormValueSchema['valueScopes'][number][]
 }
@@ -138,7 +138,9 @@ describe('controller value schema refresh', () => {
     controller.setValue('status', 'edited status')
     await expect(controller.resetFields()).resolves.toBe(true)
     expect(form.read()).toEqual({
-      title: 'Original', extra: 'Unmanaged', status: 'draft',
+      title: 'Original',
+      extra: 'Unmanaged',
+      status: 'draft',
       groups: [
         { name: 'First', items: [{ name: 'One', quantity: 3 }, { name: 'Two', quantity: 3 }] },
         { name: 'Second', items: [{ name: 'Three', quantity: 3 }] },
@@ -203,9 +205,14 @@ describe('controller value schema refresh', () => {
     const oldRows = form.controller.listRows('groups').map(row => row.rowId)
     const outer = schema.valueScopes[0]!
     outer.minItems = 1
-    if (change === 'field') outer.field = 'renamedGroups'
-    if (change === 'kind') { outer.kind = 'object'; delete outer.minItems }
-    if (change === 'itemKey') outer.itemKey = 'id'
+    if (change === 'field')
+      outer.field = 'renamedGroups'
+    if (change === 'kind') {
+      outer.kind = 'object'
+      delete outer.minItems
+    }
+    if (change === 'itemKey')
+      outer.itemKey = 'id'
     if (change === 'nodeId') {
       outer.nodeId = 'new-groups'
       schema.valueScopes[1]!.parentId = 'new-groups'
@@ -252,11 +259,16 @@ describe('controller value schema refresh', () => {
     const meta = controller.getMeta()
     const issues = controller.getIssues()
     const schema = nestedSchema()
-    if (invalid === 'missing-owner') schema.scopedFields[3]!.scopeId = 'missing'
-    if (invalid === 'duplicate') schema.scopedFields.push({ nodeId: 'other', field: 'title' })
-    if (invalid === 'cycle') schema.valueScopes[0]!.parentId = 'items'
-    if (invalid === 'maxItems') schema.valueScopes[0]!.maxItems = 1
-    if (invalid === 'bad-default') schema.scopedFields.push({ nodeId: 'bad', field: 'bad', defaultValue: Number.NaN })
+    if (invalid === 'missing-owner')
+      schema.scopedFields[3]!.scopeId = 'missing'
+    if (invalid === 'duplicate')
+      schema.scopedFields.push({ nodeId: 'other', field: 'title' })
+    if (invalid === 'cycle')
+      schema.valueScopes[0]!.parentId = 'items'
+    if (invalid === 'maxItems')
+      schema.valueScopes[0]!.maxItems = 1
+    if (invalid === 'bad-default')
+      schema.scopedFields.push({ nodeId: 'bad', field: 'bad', defaultValue: Number.NaN })
     expect(() => controller.updateValueSchema(schema)).toThrow()
     expect(controller.getValues()).toEqual(values)
     expect(controller.listFieldInstances()).toEqual(instances)
@@ -274,16 +286,22 @@ describe('controller value schema refresh', () => {
     const diagnostic = vi.fn()
     const form = fixture(undefined, undefined, {
       fields: () => [{
-        id: 'title', field: 'title', component: 'input',
+        id: 'title',
+        field: 'title',
+        component: 'input',
         validator: (_value, _values, context) => {
           validationSignal = context.signal
-          return new Promise<never>((_resolve, reject) => { rejectValidation = reject })
+          return new Promise<never>((_resolve, reject) => {
+            rejectValidation = reject
+          })
         },
       }],
       onDiagnostic: diagnostic,
       onLifecycle: (_kind, context) => {
         lifecycleSignal = context.signal
-        return new Promise<never>((_resolve, reject) => { rejectLifecycle = reject })
+        return new Promise<never>((_resolve, reject) => {
+          rejectLifecycle = reject
+        })
       },
     })
     const pending = form.controller.validateField('title')
@@ -324,7 +342,9 @@ describe('controller value schema refresh', () => {
     controller.setInstanceTouched(address)
     controller.setErrors({ title: ['Keep'] })
     fields = [...fields, {
-      id: 'details', component: 'section', valueScope: { field: 'details', kind: 'object' },
+      id: 'details',
+      component: 'section',
+      valueScope: { field: 'details', kind: 'object' },
       slots: { default: [{ id: 'detail', field: 'detail', component: 'input', defaultValue: 'Default' }] },
     }]
     controller.updateValueSchema()

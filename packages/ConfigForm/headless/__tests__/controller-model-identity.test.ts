@@ -54,13 +54,14 @@ function identities(controller: ConfigFormController<Values>) {
   return controller.listFieldInstances().map(instance => instance.instanceKey).sort()
 }
 
-describe('Headless external model identity', () => {
+describe('headless external model identity', () => {
   it('invalidates equal external unkeyed replacement once, including pending work and state', async () => {
     let signal!: AbortSignal
     let first = true
     const { controller, replace, write, onChange, onSubmit } = fixture({
       onLifecycle: (kind, context) => {
-        if (kind !== 'form.beforeSubmit' || !first) return
+        if (kind !== 'form.beforeSubmit' || !first)
+          return
         first = false
         signal = context.signal
         return new Promise<void>(() => {})
@@ -149,7 +150,8 @@ describe('Headless external model identity', () => {
     const reads: Values[] = []
     let controller!: ConfigFormController<Values>
     const write = vi.fn((values: Values) => {
-      if (mode === 'ref') host.value = values
+      if (mode === 'ref')
+        host.value = values
       else Object.assign(host.value, values)
       reads.push(controller.getValues())
       controller.listFieldInstances()

@@ -1,4 +1,4 @@
-import type { ComponentContract, FormSettings, ModelDiagnostic, SurfaceGraph, SurfaceNode, ProjectCommand, ProjectHistorySummary } from '@moluoxixi/config-form-model'
+import type { ComponentContract, FormSettings, ModelDiagnostic, ProjectCommand, ProjectHistorySummary, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignCommandPreview, DesignerDiagnostic, DesignerDropTarget } from '../../../graph'
 import type { DesignerMaterialDefinition } from '../../../registry'
 

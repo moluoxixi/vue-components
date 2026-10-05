@@ -1,10 +1,10 @@
 import type {
   ModelDiagnostic,
   NodePlacement,
-  SurfaceGraph,
-  SurfaceNode,
   ProjectCommand,
   SlotItem,
+  SurfaceGraph,
+  SurfaceNode,
 } from '@moluoxixi/config-form-model'
 
 export type DesignerJsonValue = import('@moluoxixi/config-form-model').ModelJsonValue

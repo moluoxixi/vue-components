@@ -91,18 +91,19 @@ export function createControllerMetaService<TValues extends ConfigFormValues>(
           touchedFields.add(instance.instanceKey)
         const baseline = previousBaseline.get(previousKey)
         if (baseline) {
-          baselineByInstance.set(instance.instanceKey,
-            !baseline.hasValue && defaults.has(instance.address.nodeId)
-              ? { hasValue: true, value: cloneControllerValue(defaults.get(instance.address.nodeId)) }
-              : baseline)
+          baselineByInstance.set(instance.instanceKey, !baseline.hasValue && defaults.has(instance.address.nodeId)
+            ? { hasValue: true, value: cloneControllerValue(defaults.get(instance.address.nodeId)) }
+            : baseline)
         }
         return
       }
       const baseline = readPath(resetValues, instance.valuePath)
-      baselineByInstance.set(instance.instanceKey, baseline.hasValue ? baseline : {
-        hasValue: defaults.has(instance.address.nodeId),
-        value: cloneControllerValue(defaults.get(instance.address.nodeId)),
-      })
+      baselineByInstance.set(instance.instanceKey, baseline.hasValue
+        ? baseline
+        : {
+            hasValue: defaults.has(instance.address.nodeId),
+            value: cloneControllerValue(defaults.get(instance.address.nodeId)),
+          })
     })
   }
 

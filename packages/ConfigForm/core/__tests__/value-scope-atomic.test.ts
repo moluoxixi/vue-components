@@ -16,7 +16,8 @@ function fixture() {
       { nodeId: 'other', field: 'other', kind: 'array' },
     ],
     values: {
-      title: 'initial', extra: true,
+      title: 'initial',
+      extra: true,
       rows: [
         { amount: 1, items: [{ detail: 10 }, { detail: 11 }] },
         { amount: 2, items: [{ detail: 20 }] },
@@ -42,7 +43,8 @@ describe('value scope atomic patches', () => {
     const item = store.listRows('items', rows[0]!.scope)[0]!
     const ids = identities(store)
     const result = store.applyPatch({
-      set: { title: 'changed' }, remove: ['extra'],
+      set: { title: 'changed' },
+      remove: ['extra'],
       instances: [
         { nodeId: 'amount', scope: rows[0]!.scope, value: 3 },
         { nodeId: 'detail', scope: item.scope, value: 30 },
@@ -80,19 +82,28 @@ describe('value scope atomic patches', () => {
   })
 
   it.each(['duplicate', 'root set overlap', 'root remove overlap', 'root set/remove', 'duplicate remove', 'invalid scope', 'undefined', 'unsafe'])(
-    'rejects %s before any value or identity change', (failure) => {
+    'rejects %s before any value or identity change',
+    (failure) => {
       const store = fixture()
       const row = store.listRows('rows')[0]!
       const write = { nodeId: 'amount', scope: row.scope, value: 99 }
       const patch: ConfigFormValueScopePatch = { set: { title: 'must not commit' }, instances: [write] }
-      if (failure === 'duplicate') patch.instances = [write, write]
-      if (failure === 'root set overlap') patch.set!.rows = []
-      if (failure === 'root remove overlap') patch.remove = ['rows']
-      if (failure === 'root set/remove') patch.remove = ['title']
-      if (failure === 'duplicate remove') patch.remove = ['extra', 'extra']
-      if (failure === 'invalid scope') patch.instances = [write, { ...write, scope: [] }]
-      if (failure === 'undefined') patch.instances = [write, { nodeId: 'title', scope: [], value: undefined as never }]
-      if (failure === 'unsafe') patch.set = JSON.parse('{"title":"changed","__proto__":{}}')
+      if (failure === 'duplicate')
+        patch.instances = [write, write]
+      if (failure === 'root set overlap')
+        patch.set!.rows = []
+      if (failure === 'root remove overlap')
+        patch.remove = ['rows']
+      if (failure === 'root set/remove')
+        patch.remove = ['title']
+      if (failure === 'duplicate remove')
+        patch.remove = ['extra', 'extra']
+      if (failure === 'invalid scope')
+        patch.instances = [write, { ...write, scope: [] }]
+      if (failure === 'undefined')
+        patch.instances = [write, { nodeId: 'title', scope: [], value: undefined as never }]
+      if (failure === 'unsafe')
+        patch.set = JSON.parse('{"title":"changed","__proto__":{}}')
       const before = store.getValues()
       const ids = identities(store)
       expect(() => store.applyPatch(patch)).toThrow()
@@ -105,8 +116,9 @@ describe('value scope atomic patches', () => {
     const store = fixture()
     const before = store.getValues()
     const row = store.listRows('rows')[0]!
-    expect(() => store.applyPatch({ set: { title: Array.from({ length: 6000 }, () => 0) }, instances: [
-      { nodeId: 'amount', scope: row.scope, value: Array.from({ length: 6000 }, () => 0) },
+    const oversizedValues = Array.from({ length: 6000 }).fill(0) as number[]
+    expect(() => store.applyPatch({ set: { title: oversizedValues }, instances: [
+      { nodeId: 'amount', scope: row.scope, value: oversizedValues },
     ] })).toThrow(/size or depth/)
     expect(store.getValues()).toEqual(before)
     const keyed = createConfigFormValueScopeStore({
@@ -164,7 +176,9 @@ describe('value scope atomic patches', () => {
   it('does not reserve candidate row IDs on rollback or allow async/reentrant commits', () => {
     const createRowId = vi.fn(() => 'reusable')
     const store = createConfigFormValueScopeStore({
-      scopes: [{ nodeId: 'rows', kind: 'array', field: 'rows' }], fields: [], createRowId,
+      scopes: [{ nodeId: 'rows', kind: 'array', field: 'rows' }],
+      fields: [],
+      createRowId,
     })
     expect(() => store.transaction((draft) => {
       draft.appendRow('rows')

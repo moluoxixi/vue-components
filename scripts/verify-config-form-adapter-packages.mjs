@@ -390,6 +390,7 @@ function verifyRuntimePackage() {
     const expected = [
       'ConfigForm',
       'ConfigFormError',
+      'ConfigFormItem',
       'ConfigFormRenderer',
       'asVueFunctionalComponent',
       'createConfigFormRendererExpose',
@@ -418,6 +419,7 @@ function verifyRuntimePackage() {
   try {
     writeFileSync(resolve(consumerDir, 'consumer.ts'), `
       import {
+        ConfigFormItem,
         ConfigFormRenderer,
         createConfigFormRendererExpose,
         initializeRendererVariables,
@@ -453,6 +455,7 @@ function verifyRuntimePackage() {
       const fieldLayout: ConfigFormFieldLayout = resolveConfigFormFieldLayout(labelPosition, true)
       const nodeSpan = resolveConfigFormNodeSpan(12, layout)
       void [
+        ConfigFormItem,
         ConfigFormRenderer,
         components,
         createConfigFormRendererExpose,

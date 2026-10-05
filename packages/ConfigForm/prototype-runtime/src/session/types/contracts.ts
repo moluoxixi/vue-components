@@ -1,3 +1,4 @@
+import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type {
   ConfigFormJsonObject,
   ConfigFormJsonValue,
@@ -6,7 +7,6 @@ import type {
   ConfigFormValueScopeDefinition,
   ConfigFormValueScopeRowIdFactory,
 } from '@moluoxixi/config-form-core'
-import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 
 export type ModelJsonObject = ConfigFormJsonObject
 export type ModelJsonValue = ConfigFormJsonValue

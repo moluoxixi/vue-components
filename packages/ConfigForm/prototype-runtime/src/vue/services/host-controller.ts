@@ -300,10 +300,10 @@ export function createPrototypeVueHostController(
       try {
         if (options.createInstanceId) {
           instanceId = options.createInstanceId({
-              parentInstanceId: source.instance.instanceId,
-              sourceAddress: input.sourceAddress,
-              surfaceId: target.id,
-            })
+            parentInstanceId: source.instance.instanceId,
+            sourceAddress: input.sourceAddress,
+            surfaceId: target.id,
+          })
         }
         else {
           do instanceId = `prototype-instance-${++nextInstance}`

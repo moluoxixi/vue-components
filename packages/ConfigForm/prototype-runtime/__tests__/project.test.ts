@@ -63,7 +63,7 @@ function compilation(): ProjectCompilation {
   } as unknown as ProjectCompilation
 }
 
-describe('ProjectCompilation Prototype projection', () => {
+describe('projectCompilation Prototype projection', () => {
   it('projects strict Surface contracts and derives scoped initial values and owners', () => {
     const result = createPrototypeProjectContext(compilation())
 

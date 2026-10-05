@@ -1,7 +1,6 @@
 import type { ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type {
   ConfigFormAttrs,
-  ConfigFormController,
   ConfigFormControllerDiagnostic,
   ConfigFormErrors,
   ConfigFormLifecycleHook,
@@ -44,7 +43,6 @@ export function useRendererController<TValues extends ConfigFormValues>(
   })
   let writingModel = false
   let observedValues: TValues | undefined
-  let controller!: ConfigFormController<TValues>
   const errors = shallowRef<ConfigFormErrors>({})
   const meta = shallowRef<ConfigFormMeta>({ dirty: false, fields: {}, touched: false })
   const validatingRevision = shallowRef(0)
@@ -58,7 +56,7 @@ export function useRendererController<TValues extends ConfigFormValues>(
     emit('metaChange', nextMeta)
   }
 
-  controller = createConfigFormController<TValues>({
+  const controller = createConfigFormController<TValues>({
     valueSchema: props.plan?.valueSchema,
     defaultValues: props.defaultValues,
     // The headless controller only traverses node semantics; renderer-only

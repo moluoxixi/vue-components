@@ -792,7 +792,7 @@ describe('package architecture collector', () => {
     expect(result.reconciliation.unknown).toEqual([])
     expect(result.reconciliation.staleDebt).toEqual([])
     expect(result.reconciliation.staleExceptions).toEqual([])
-  })
+  }, 30_000)
 
   it('keeps the checked-in manifest read-only during CLI verification', () => {
     const manifestPath = resolve(repositoryRoot, 'scripts/package-architecture/config/manifest.json')

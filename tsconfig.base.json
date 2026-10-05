@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
+    "incremental": true,
     "composite": true,
     "target": "ESNext",
-    "incremental": true,
     "jsx": "preserve",
     "useDefineForClassFields": false,
     "experimentalDecorators": true,

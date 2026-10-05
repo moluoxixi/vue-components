@@ -42,13 +42,11 @@ export function createDesignBusinessKeyAllocator(graph: SurfaceGraph) {
       if (key !== undefined)
         onKey(node, key, owner)
       if (node.kind === 'layout') {
-        visit(nodes, Object.values(node.slots).flat().map(item => item.nodeId),
-          node.valueScope ? node.id : owner, onKey)
+        visit(nodes, Object.values(node.slots).flat().map(item => item.nodeId), node.valueScope ? node.id : owner, onKey)
       }
     }
   }
-  visit(graph.nodesById, graph.root.map(item => item.nodeId), undefined,
-    (_node, key, owner) => keysFor(owner).add(key))
+  visit(graph.nodesById, graph.root.map(item => item.nodeId), undefined, (_node, key, owner) => keysFor(owner).add(key))
 
   function allocate(base: string, owners: readonly (string | undefined)[], copy: boolean): string {
     const available = (key: string) => owners.every(owner => !keysFor(owner).has(key))
@@ -66,23 +64,21 @@ export function createDesignBusinessKeyAllocator(graph: SurfaceGraph) {
 
   return {
     assign(subgraph: NodeSubgraph, target: DesignerDropTarget, copy = false): void {
-      visit(subgraph.nodesById, subgraph.root.map(item => item.nodeId), ownerAtTarget(graph, target),
-        (node, key, owner) => {
-          const next = allocate(key, [owner], copy)
-          if (node.kind === 'field')
-            node.field = next
-          else if (node.kind === 'layout' && node.valueScope)
-            node.valueScope.field = next
-        })
+      visit(subgraph.nodesById, subgraph.root.map(item => item.nodeId), ownerAtTarget(graph, target), (node, key, owner) => {
+        const next = allocate(key, [owner], copy)
+        if (node.kind === 'field')
+          node.field = next
+        else if (node.kind === 'layout' && node.valueScope)
+          node.valueScope.field = next
+      })
     },
     duplicateMap(subgraph: NodeSubgraph, target: DesignerDropTarget, idMap: Record<string, string>): Record<string, string> {
       const ownersByKey = new Map<string, (string | undefined)[]>()
-      visit(subgraph.nodesById, subgraph.root.map(item => item.nodeId), ownerAtTarget(graph, target),
-        (_node, key, owner) => {
-          const owners = ownersByKey.get(key) ?? []
-          owners.push(owner === undefined ? undefined : idMap[owner] ?? owner)
-          ownersByKey.set(key, owners)
-        })
+      visit(subgraph.nodesById, subgraph.root.map(item => item.nodeId), ownerAtTarget(graph, target), (_node, key, owner) => {
+        const owners = ownersByKey.get(key) ?? []
+        owners.push(owner === undefined ? undefined : idMap[owner] ?? owner)
+        ownersByKey.set(key, owners)
+      })
       // The Model duplicate command maps names across the complete subtree.
       // Reserve each result in every owning scope where that name occurs.
       return Object.fromEntries([...ownersByKey].map(([key, owners]) => [key, allocate(key, owners, true)]))

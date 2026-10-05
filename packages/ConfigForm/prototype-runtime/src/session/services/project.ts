@@ -14,9 +14,9 @@ import type {
 import { createConfigFormValueScopeStore } from '@moluoxixi/config-form-core'
 import { readPrototypeProjectContext } from '../schemas'
 import { isSafeIdentifier } from '../utils'
+import { initializePrototypeSession } from './reducer'
 import { createPrototypeInstanceRuntimeSnapshot } from './runtime-snapshot'
 import { readPrototypeSession } from './session-reader'
-import { initializePrototypeSession } from './reducer'
 
 type CompiledSurface = ProjectCompilation['ir']['surfacesById'][string]
 

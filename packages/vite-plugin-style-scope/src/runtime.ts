@@ -23,7 +23,8 @@ function findQiankunHead(container: Element): Element | null {
   let cur: Element | null = container
   while (cur && cur !== document.documentElement) {
     const head = cur.querySelector('qiankun-head')
-    if (head) return head
+    if (head)
+      return head
     cur = cur.parentElement
   }
   return null
@@ -31,7 +32,8 @@ function findQiankunHead(container: Element): Element | null {
 
 /** 动态样式节点：<style> 或 <link rel="stylesheet"> */
 function isStyleNode(node: Node): boolean {
-  if (node.nodeType !== Node.ELEMENT_NODE) return false
+  if (node.nodeType !== Node.ELEMENT_NODE)
+    return false
   const el = node as HTMLElement
   return (
     el.tagName === 'STYLE'
@@ -63,9 +65,11 @@ function patchInsertion(
   }
 
   return () => {
-    if (prevAppend) Object.defineProperty(target, 'appendChild', prevAppend)
+    if (prevAppend)
+      Object.defineProperty(target, 'appendChild', prevAppend)
     else Reflect.deleteProperty(target, 'appendChild')
-    if (prevInsert) Object.defineProperty(target, 'insertBefore', prevInsert)
+    if (prevInsert)
+      Object.defineProperty(target, 'insertBefore', prevInsert)
     else Reflect.deleteProperty(target, 'insertBefore')
   }
 }
@@ -89,22 +93,26 @@ function patchDomInjection(
 ): () => void {
   const qiankunHead = findQiankunHead(container)
   // 找不到 qiankun-head 说明是独立运行，保持原生行为
-  if (!qiankunHead) return () => {}
+  if (!qiankunHead)
+    return () => {}
 
   /** 被我们搬进 qiankun-head 的样式节点，还原时需要搬回 head */
   const managedStyles = new Set<Node>()
 
   const restoreHead = patchInsertion(document.head, (node) => {
-    if (!isStyleNode(node)) return null
+    if (!isStyleNode(node))
+      return null
     managedStyles.add(node)
     return qiankunHead.appendChild(node)
   })
 
   const restoreBody = patchInsertion(document.body, (node) => {
     // 只接管元素节点；<script>（部分 SDK 动态注入）保持原生行为
-    if (node.nodeType !== Node.ELEMENT_NODE) return null
+    if (node.nodeType !== Node.ELEMENT_NODE)
+      return null
     const el = node as HTMLElement
-    if (el.tagName === 'SCRIPT') return null
+    if (el.tagName === 'SCRIPT')
+      return null
     return container.appendChild(el)
   })
 
@@ -123,7 +131,8 @@ function patchDomInjection(
     restoreBody()
     // 搬回 head，保住 dev 模块缓存里的样式节点引用，二次挂载直接复用
     for (const style of managedStyles) {
-      if (style.isConnected) document.head.appendChild(style)
+      if (style.isConnected)
+        document.head.appendChild(style)
     }
     managedStyles.clear()
   }
@@ -148,23 +157,28 @@ export function createStyleScope(
 ): StyleScopeHandle {
   // qiankun 的包裹节点（或更上层）已有同名同值标记时直接复用，不重复打也不负责摘
   const marked = !container.closest(`[${scopeAttr}="${scopeValue}"]`)
-  if (marked) container.setAttribute(scopeAttr, scopeValue)
+  if (marked)
+    container.setAttribute(scopeAttr, scopeValue)
 
   const restorePatch = patchDom ? patchDomInjection(container, scopeAttr, scopeValue) : () => {}
 
   // 独立运行（不在 qiankun 内）时给 body 兜底打标记
   const standalone = !findQiankunHead(container)
-  if (standalone) document.body.setAttribute(scopeAttr, scopeValue)
+  if (standalone)
+    document.body.setAttribute(scopeAttr, scopeValue)
 
   let disposed = false
   return {
     dispose() {
       // 幂等：qiankun unmount 与业务代码可能重复调用
-      if (disposed) return
+      if (disposed)
+        return
       disposed = true
       restorePatch()
-      if (marked) container.removeAttribute(scopeAttr)
-      if (standalone) document.body.removeAttribute(scopeAttr)
+      if (marked)
+        container.removeAttribute(scopeAttr)
+      if (standalone)
+        document.body.removeAttribute(scopeAttr)
     },
   }
 }

@@ -141,7 +141,7 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
 
     const contract = ctx.getContracts()[0]
     const payload = contract.typeDefs.find(def => def.name === 'ConfigFormFieldChangePayload')
-    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'value', 'values'])
+    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'address', 'scope', 'value', 'values'])
   }, 30_000)
 
   it('空目录 buildIndex → FAIL，不伪装为空索引 ready', async () => {

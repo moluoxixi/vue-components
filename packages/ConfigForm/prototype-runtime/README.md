@@ -13,10 +13,7 @@ pnpm add @moluoxixi/config-form-prototype-runtime
 
 ```ts
 import { PROTOTYPE_SESSION_VERSION } from '@moluoxixi/config-form-prototype-runtime'
-import {
-  initializePrototypeSession,
-  reducePrototypeSession,
-} from '@moluoxixi/config-form-prototype-runtime/session'
+import { initializePrototypeSession, reducePrototypeSession } from '@moluoxixi/config-form-prototype-runtime/session'
 import { PrototypeSurfaceHost } from '@moluoxixi/config-form-prototype-runtime/vue'
 import '@moluoxixi/config-form-prototype-runtime/vue/style'
 ```

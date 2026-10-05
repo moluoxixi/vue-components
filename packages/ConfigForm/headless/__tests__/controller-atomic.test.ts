@@ -23,7 +23,8 @@ const schema: ConfigFormValueSchema = {
 
 function fixture(options: Partial<ConfigFormControllerOptions<ConfigFormJsonObject>> = {}) {
   let values: ConfigFormJsonObject = {
-    title: 'initial', extra: true,
+    title: 'initial',
+    extra: true,
     rows: [
       { amount: 1, items: [{ detail: 10 }, { detail: 11 }] },
       { amount: 2, items: [{ detail: 20 }] },
@@ -35,7 +36,9 @@ function fixture(options: Partial<ConfigFormControllerOptions<ConfigFormJsonObje
   const onMetaChange = vi.fn()
   const onErrorsChange = vi.fn()
   const fields: ConfigFormNode<ConfigFormJsonObject, string>[] = schema.scopedFields.map(field => ({
-    component: 'input', id: field.nodeId, field: field.field,
+    component: 'input',
+    id: field.nodeId,
+    field: field.field,
   }))
   const controller: ConfigFormController<ConfigFormJsonObject> = createConfigFormController({
     fields: () => fields,
@@ -47,7 +50,10 @@ function fixture(options: Partial<ConfigFormControllerOptions<ConfigFormJsonObje
         observed.push(controller.getValues())
       },
     },
-    onChange, onLifecycle, onMetaChange, onErrorsChange,
+    onChange,
+    onLifecycle,
+    onMetaChange,
+    onErrorsChange,
     ...options,
   })
   return { controller, fields, observed, onChange, onLifecycle, onMetaChange, onErrorsChange, read: () => values }
@@ -57,13 +63,14 @@ function identities(controller: ConfigFormController<ConfigFormJsonObject>) {
   return controller.listFieldInstances().map(instance => instance.instanceKey).sort()
 }
 
-describe('Headless atomic value patches', () => {
+describe('headless atomic value patches', () => {
   it('publishes all root/nested changes once with no observable intermediate values', () => {
     const { controller, observed, onChange, onLifecycle, read } = fixture()
     const instances = controller.listFieldInstances('detail')
     const ids = identities(controller)
     controller.applyValuePatch({
-      set: { title: 'changed' }, remove: ['extra'],
+      set: { title: 'changed' },
+      remove: ['extra'],
       instances: [
         { address: instances[0]!.address, value: 30 },
         { address: instances[2]!.address, value: 40 },
@@ -83,7 +90,8 @@ describe('Headless atomic value patches', () => {
   })
 
   it.each(['invalid JSON', 'unknown field', 'invalid scope', 'duplicate address', 'root overlap', 'root removal overlap', 'invalid root topology'])(
-    'rejects %s without value, touched, dirty, error or notification side effects', (failure) => {
+    'rejects %s without value, touched, dirty, error or notification side effects',
+    (failure) => {
       const { controller, observed, onChange, onLifecycle, onMetaChange, onErrorsChange, read } = fixture()
       const first = controller.listFieldInstances('detail')[0]!
       const second = controller.listFieldInstances('detail')[1]!
@@ -98,13 +106,20 @@ describe('Headless atomic value patches', () => {
       onErrorsChange.mockClear()
       const entries = [{ address: first.address, value: 99 }, { address: second.address, value: 100 }]
       const patch: ConfigFormValuePatch = { set: { title: 'must not commit' }, instances: entries }
-      if (failure === 'invalid JSON') entries[1]!.value = undefined as never
-      if (failure === 'unknown field') entries[1]!.address = { nodeId: 'missing', scope: [] }
-      if (failure === 'invalid scope') entries[1]!.address = { ...second.address, scope: first.address.scope.slice(0, 1) }
-      if (failure === 'duplicate address') entries[1]!.address = first.address
-      if (failure === 'root overlap') patch.set!.rows = []
-      if (failure === 'root removal overlap') patch.remove = ['rows']
-      if (failure === 'invalid root topology') patch.set!.rows = 'invalid'
+      if (failure === 'invalid JSON')
+        entries[1]!.value = undefined as never
+      if (failure === 'unknown field')
+        entries[1]!.address = { nodeId: 'missing', scope: [] }
+      if (failure === 'invalid scope')
+        entries[1]!.address = { ...second.address, scope: first.address.scope.slice(0, 1) }
+      if (failure === 'duplicate address')
+        entries[1]!.address = first.address
+      if (failure === 'root overlap')
+        patch.set!.rows = []
+      if (failure === 'root removal overlap')
+        patch.remove = ['rows']
+      if (failure === 'invalid root topology')
+        patch.set!.rows = 'invalid'
       expect(() => controller.applyValuePatch(patch)).toThrow()
       expect(read()).toEqual(before)
       expect(controller.getValues()).toEqual(before)
@@ -145,7 +160,8 @@ describe('Headless atomic value patches', () => {
     const before = read()
     const ids = identities(controller)
     fields[0]!.reactions = [{
-      id: 'invalid-topology', when: { kind: 'literal', value: true },
+      id: 'invalid-topology',
+      when: { kind: 'literal', value: true },
       then: [{ kind: 'setValue', target: 'rows', value: { kind: 'literal', value: false } }],
     }]
     expect(() => controller.applyValuePatch({ set: { title: 'candidate' } })).toThrow()

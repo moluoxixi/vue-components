@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "customConditions": ["source"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "customConditions": ["source"],
     "strict": true,
     "declaration": true,
     "declarationMap": true,

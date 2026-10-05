@@ -1,4 +1,4 @@
-import type { ModelJsonValue, SurfaceGraph, SurfaceNode, SlotItem } from '@moluoxixi/config-form-model'
+import type { ModelJsonValue, SlotItem, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerJsonObject, DesignerJsonValue, DesignNodeLocation, DesignNodeVisit } from '../types'
 import { cloneConfigFormJsonValue } from '@moluoxixi/config-form-core'
 

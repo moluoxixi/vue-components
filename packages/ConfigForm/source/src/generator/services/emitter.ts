@@ -1690,7 +1690,7 @@ function configNodeSource(
   }
   if (node.kind === 'layout') {
     if (node.valueScope !== undefined)
-      lines.push(`${childIndent}valueScope: ${sourceJson(node.valueScope)},`)
+      lines.push(`${childIndent}valueScope: ${sourceJson(node.valueScope)} as const,`)
     lines.push(`${childIndent}slots: {`)
     for (const [slot, children] of Object.entries(node.slots).sort(([left], [right]) => left.localeCompare(right))) {
       lines.push(`${childIndent}  ${sourceString(slot)}: [`)
