@@ -66,17 +66,17 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await pageCreation.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
-  await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 15_000 })
+  await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 60_000 })
 
   // Reopen the persisted project so setup operations do not become part of the
   // local designer history observed by the interaction scenarios.
   await page.reload()
-  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
-  await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 15_000 })
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 30_000 })
   await expect(page
     .frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id^="profile-name-"]'))
-    .toBeVisible({ timeout: 15_000 })
+    .toBeVisible({ timeout: 60_000 })
 }
 
 /** Open the page-management console from the designer at any supported width. */

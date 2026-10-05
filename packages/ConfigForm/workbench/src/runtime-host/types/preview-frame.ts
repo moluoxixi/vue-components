@@ -9,6 +9,7 @@ import type {
 /** Parent-side props for the Experience Runtime Host iframe. */
 export interface ExperienceRuntimeHostFrameProps {
   adapter: WorkbenchAdapterId
+  breakpoint?: 'desktop' | 'tablet' | 'mobile'
   compilation: ProjectCompilation
   locale: string
   namespace?: string

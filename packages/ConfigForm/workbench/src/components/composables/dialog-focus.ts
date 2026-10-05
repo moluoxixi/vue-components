@@ -48,7 +48,9 @@ export function useWorkbenchDialogFocus(
       }
       dialogFocusEntries.push(entry)
       await nextTick()
-      if (dialog.value)
+      if (dialog.value?.hasAttribute('data-dialog-initial-focus'))
+        dialog.value.focus()
+      else if (dialog.value)
         focusableElements(dialog.value)[0]?.focus()
       return
     }
@@ -68,9 +70,12 @@ export function useWorkbenchDialogFocus(
   }, { immediate: true })
 
   onScopeDispose(() => {
-    if (entry)
-      removeEntry(entry)
+    const closing = entry
+    if (closing)
+      removeEntry(closing)
     entry = undefined
+    if (closing?.returnFocus?.isConnected)
+      closing.returnFocus.focus()
   })
 
   function handleKeydown(event: KeyboardEvent): void {

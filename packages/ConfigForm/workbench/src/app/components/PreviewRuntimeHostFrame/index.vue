@@ -57,6 +57,7 @@ function syncRuntime(): void {
     sessionId: props.sessionId,
     payload: {
       adapter: props.adapter,
+      ...(props.breakpoint ? { breakpoint: props.breakpoint } : {}),
       compilation: cloneWorkbenchJson(props.compilation),
       locale: props.locale,
       ...(props.namespace ? { namespace: props.namespace } : {}),
@@ -163,6 +164,7 @@ function handleMessage(event: MessageEvent<unknown>): void {
 watch(
   () => [
     props.adapter,
+    props.breakpoint,
     props.compilation,
     props.locale,
     props.namespace,
@@ -177,11 +179,12 @@ watch(
       && next[2] === previous[2]
       && next[3] === previous[3]
       && next[4] === previous[4]
-      && next[6] === previous[6]
+      && next[5] === previous[5]
+      && next[7] === previous[7]
     if (identityUnchanged
       && latestChildSessionFingerprint !== undefined
-      && sessionFingerprint(next[5]) === latestChildSessionFingerprint) {
-      liveSession = cloneWorkbenchJson(next[5])
+      && sessionFingerprint(next[6]) === latestChildSessionFingerprint) {
+      liveSession = cloneWorkbenchJson(next[6])
       return
     }
     syncRuntime()

@@ -29,6 +29,7 @@ import { cloneWorkbenchJson } from '../../utils'
 interface ExperienceSurfaceRendererProps {
   artifact: VueSurfaceRuntimeArtifact
   bindings: PrototypeVueSurfaceRendererBindings
+  breakpoint?: 'desktop' | 'tablet' | 'mobile'
   namespace?: string
 }
 
@@ -403,6 +404,7 @@ onBeforeUnmount(() => {
       class="surface-experience-form"
       mode="preview"
       v-bind="artifact.renderer"
+      :breakpoint="breakpoint"
       :on-semantic-activate="handleSemanticActivation"
       @field-change="handleFieldChange"
       @errors-change="emitState"

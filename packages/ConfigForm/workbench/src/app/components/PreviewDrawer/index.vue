@@ -15,12 +15,15 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
+import { useWorkbenchDialogFocus } from '../../../components/composables/dialog-focus'
 import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
 
 const props = defineProps<PreviewDrawerProps>()
 const emit = defineEmits<PreviewDrawerEmits>()
+const dialog = useTemplateRef<HTMLElement>('dialog')
+const focus = useWorkbenchDialogFocus(() => props.open, dialog, () => emit('close'))
 
 const locale = computed(() => createDesignerLocale(props.locale))
 const runtimeAvailable = computed(() => Boolean(
@@ -46,10 +49,14 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
 <template>
   <aside
     v-if="open"
+    ref="dialog"
     class="preview-dialog-shell"
     :class="{ 'is-expanded': expanded }"
     :aria-label="locale.t('preview.page', 'Page preview')"
     aria-labelledby="preview-dialog-title"
+    data-dialog-initial-focus
+    tabindex="-1"
+    @keydown="focus.handleKeydown"
   >
     <aside
       class="preview-pane"
@@ -113,6 +120,7 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
               v-if="runtimeAvailable && adapter && compilation && session"
               :key="`${adapter}:${sessionId}:${revision}`"
               :adapter="adapter"
+              :breakpoint="viewportPinned ? viewport : undefined"
               :compilation="compilation"
               :locale="locale.locale"
               :namespace="namespace"

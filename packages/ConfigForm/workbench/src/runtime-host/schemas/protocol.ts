@@ -496,10 +496,11 @@ export function isParentToRuntimeHostMessage(value: unknown): value is ParentToR
       return false
     }
     const payload = value.payload as Record<string, unknown>
-    if (!hasExactKeys(payload, ['adapter', 'compilation', 'locale', 'session'], ['namespace'])
+    if (!hasExactKeys(payload, ['adapter', 'compilation', 'locale', 'session'], ['breakpoint', 'namespace'])
       || !['antd-vue', 'element-plus'].includes(String(payload.adapter))
       || !isProjectCompilation(payload.compilation)
       || !isSafeText(payload.locale)
+      || (payload.breakpoint !== undefined && !['desktop', 'tablet', 'mobile'].includes(String(payload.breakpoint)))
       || (payload.namespace !== undefined && !isSafeText(payload.namespace))) {
       return false
     }

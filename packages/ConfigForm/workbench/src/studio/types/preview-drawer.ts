@@ -22,6 +22,7 @@ export interface PreviewDrawerProps {
   sessionId: string
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
+  viewportPinned?: boolean
 }
 
 export interface PreviewDrawerEmits {

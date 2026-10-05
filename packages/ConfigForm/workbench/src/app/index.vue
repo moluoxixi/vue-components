@@ -118,9 +118,11 @@ const {
   previewExpanded,
   previewOpen,
   previewViewport,
+  previewViewportPinned,
   resolvedTheme,
   selectMobileStudioView: selectMobileView,
   setPaletteFamily,
+  setPreviewViewport,
   setThemePreference,
   showNotice,
   studioLeftView,
@@ -627,7 +629,7 @@ watch(recoveryDrafts, (drafts) => {
       <PreviewDrawer
         v-if="previewOpen"
         v-model:expanded="previewExpanded"
-        v-model:viewport="previewViewport"
+        :viewport="previewViewport"
         :adapter="getCurrentAdapterId()"
         :compilation="previewCompilation"
         :locale="localeOptions"
@@ -637,12 +639,14 @@ watch(recoveryDrafts, (drafts) => {
         :session="previewPrototypeSession"
         :session-id="previewSessionId"
         :state="previewState"
+        :viewport-pinned="previewViewportPinned"
         @close="togglePreview"
         @error="handlePreviewRuntimeError"
         @instance-state="handlePreviewInstanceState"
         @mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
         @session="handlePreviewSession"
+        @update:viewport="setPreviewViewport"
       />
 
       <section

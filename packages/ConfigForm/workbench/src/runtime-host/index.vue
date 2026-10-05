@@ -117,6 +117,7 @@ const {
             :key="`${experienceGeneration}:${bindings.instance.instanceId}`"
             :artifact="experienceArtifacts[bindings.instance.surfaceId]!"
             :bindings="bindings"
+            :breakpoint="experience?.breakpoint"
             :namespace="namespace"
             @error="protocol.reportExperienceError"
             @state="postExperienceInstanceState"

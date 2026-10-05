@@ -60,6 +60,7 @@ export interface RuntimeHostDesignSyncPayloadV7 {
 
 export interface RuntimeHostExperienceSyncPayloadV7 {
   adapter: WorkbenchAdapterId
+  breakpoint?: 'desktop' | 'tablet' | 'mobile'
   compilation: ProjectCompilation
   locale: string
   namespace?: string

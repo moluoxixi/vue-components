@@ -211,33 +211,44 @@ function handleCatalogDrawerOpened(): void {
   drawerCatalog.value?.focusSearch()
 }
 
+function visibleCatalogDrawer(): HTMLElement | undefined {
+  return [...document.querySelectorAll<HTMLElement>('.template-catalog-drawer.el-drawer, .template-catalog-drawer .el-drawer')]
+    .filter((drawer) => {
+      const style = getComputedStyle(drawer)
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && drawer.getClientRects().length > 0
+    })
+    .at(-1)
+}
+
 function handleCatalogDrawerKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Tab')
     return
-  const drawer = document.querySelector<HTMLElement>(
-    '.template-catalog-drawer .el-drawer, .template-catalog-drawer',
-  )
-  const activeElement = event.target instanceof HTMLElement ? event.target : document.activeElement
+  const drawer = visibleCatalogDrawer()
   if (!drawer)
     return
   const focusable = [...drawer.querySelectorAll<HTMLElement>(
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-  )].filter(element => element.offsetParent !== null && !element.getAttribute('aria-hidden'))
+  )].filter((element) => {
+    const style = getComputedStyle(element)
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && element.getClientRects().length > 0
+      && !element.closest('[inert], [aria-hidden="true"]')
+  })
   if (focusable.length === 0)
     return
-  const currentIndex = focusable.indexOf(activeElement as HTMLElement)
-  if (currentIndex < 0) {
-    event.preventDefault()
-    const target = event.shiftKey ? focusable.at(-1) : focusable[0]
-    target?.focus()
-    return
-  }
-  const nextIndex = event.shiftKey ? currentIndex - 1 : currentIndex + 1
-  if (nextIndex >= 0 && nextIndex < focusable.length)
-    return
+
   event.preventDefault()
-  const target = event.shiftKey ? focusable.at(-1) : focusable[0]
-  target?.focus()
+  const current = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : undefined
+  const currentIndex = current ? focusable.indexOf(current) : -1
+  const nextIndex = event.shiftKey
+    ? currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1
+    : currentIndex < 0 || currentIndex >= focusable.length - 1 ? 0 : currentIndex + 1
+  focusable[nextIndex]?.focus()
 }
 
 function chooseMobileAction(action: 'openAppearance' | 'toggleLocale'): void {
@@ -411,7 +422,7 @@ watch(isMedium, (medium) => {
 
 onMounted(async () => {
   document.addEventListener('keydown', handleEscape)
-  window.addEventListener('keydown', handleCatalogDrawerKeydown, true)
+  document.addEventListener('keydown', handleCatalogDrawerKeydown, true)
   await loadCatalog()
   if (disposed)
     return
@@ -424,7 +435,7 @@ onBeforeUnmount(() => {
   disposed = true
   previewRequest += 1
   document.removeEventListener('keydown', handleEscape)
-  window.removeEventListener('keydown', handleCatalogDrawerKeydown, true)
+  document.removeEventListener('keydown', handleCatalogDrawerKeydown, true)
 })
 </script>
 

@@ -41,6 +41,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const previewOpen = ref(false)
   const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
+  const previewViewportPinned = ref(false)
   const creationOrigin = shallowRef<WorkbenchCreationOrigin>()
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
@@ -133,9 +134,18 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   }
 
   function togglePreview(): void {
+    if (!previewOpen.value && !previewViewportPinned.value) {
+      const width = typeof window === 'undefined' ? 1280 : window.innerWidth
+      previewViewport.value = width <= 960 ? 'mobile' : width <= 1200 ? 'tablet' : 'desktop'
+    }
     previewOpen.value = !previewOpen.value
     if (!previewOpen.value)
       previewExpanded.value = false
+  }
+
+  function setPreviewViewport(value: PreviewViewport): void {
+    previewViewport.value = value
+    previewViewportPinned.value = true
   }
 
   function closeAppearanceDrawer(): void {
@@ -223,10 +233,12 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     previewExpanded,
     previewOpen,
     previewViewport,
+    previewViewportPinned,
     resolvedTheme,
     selectMobileStudioView,
     setCreationOrigin,
     setPaletteFamily,
+    setPreviewViewport,
     setThemePreference,
     showNotice,
     studioLeftView,

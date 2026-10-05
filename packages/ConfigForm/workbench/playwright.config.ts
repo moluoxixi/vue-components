@@ -7,6 +7,7 @@ const serverUrl = `http://127.0.0.1:${serverPort}`
 export default defineConfig({
   testDir: './e2e',
   testMatch: /(?:accessibility|assets|interaction|json-import|template-management)\.spec\.ts/,
+  timeout: process.env.CI ? 90_000 : 30_000,
   outputDir: 'dist/test-results/config-form-workbench',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

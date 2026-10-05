@@ -19,9 +19,10 @@ async function exportJson(
   await page.getByRole('button', { name: 'Code', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await expect(sourcePane).toBeVisible()
+  await sourcePane.getByRole('button', { name: 'Download options', exact: true }).click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    sourcePane.getByRole('button', {
+    page.getByRole('menuitem', {
       name: scope === 'project' ? 'Export engineering project JSON' : 'Export current page JSON',
       exact: true,
     }).click(),

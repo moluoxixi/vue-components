@@ -18,6 +18,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
     placement="bottom-end"
     :width="344"
     trigger="click"
+    transition="none"
     :show-after="0"
     :hide-after="0"
     :teleported="true"

@@ -46,6 +46,7 @@ interface RuntimeHostGeometryPort {
 
 interface ExperienceState {
   adapter: 'antd-vue' | 'element-plus'
+  breakpoint?: 'desktop' | 'tablet' | 'mobile'
   compilation: ProjectCompilation
   session: PrototypeSessionV1
   sessionId: string
@@ -309,6 +310,7 @@ export function useRuntimeHostProtocol() {
     const nextSession = session.data
     experience.value = {
       adapter: message.payload.adapter,
+      ...(message.payload.breakpoint ? { breakpoint: message.payload.breakpoint } : {}),
       compilation: message.payload.compilation,
       session: nextSession,
       sessionId: message.sessionId,

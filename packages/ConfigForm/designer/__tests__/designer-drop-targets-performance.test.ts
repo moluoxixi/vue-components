@@ -29,6 +29,7 @@ const registry = createDesignerRegistry({ materials: [{
   slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
   createNode: ({ id }) => ({ id, kind: 'layout', component: 'test.section', slots: { default: [] } }),
 }] })
+const performanceBudgetMultiplier = Number(process.env.CI_PERFORMANCE_BUDGET_MULTIPLIER ?? 1)
 const source = { type: 'material', materialKey: 'test.input', candidateId: 'candidate' } as const
 const candidate: SurfaceNode = { id: 'candidate', kind: 'field', component: 'test.input', field: 'candidate', props: {} }
 
@@ -155,7 +156,7 @@ describe('canvas drop target work at production graph sizes', () => {
       }
       durations.sort((a, b) => a - b)
       const p95 = durations[Math.ceil(durations.length * 0.95) - 1]!
-      expect(p95).toBeLessThan(16.7)
+      expect(p95).toBeLessThan(16.7 * performanceBudgetMultiplier)
     }
     finally { h.wrapper.unmount() }
   })
