@@ -299,8 +299,10 @@ export function createProjectPersistenceSession(
 
   function runAutosave(): void {
     clearAutosaveTimers()
-    if (stopping || conflict || !editor.snapshot.dirty)
+    if (stopping || conflict)
       return
+    // Undo/redo can return to the saved cursor. A clean save still settles
+    // the pending status and removes recovery drafts without a new revision.
     void enqueueSave({ source: 'autosave', sealHistoryGroup: false })
   }
 

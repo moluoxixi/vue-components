@@ -334,6 +334,32 @@ describe('projectPersistenceSession', () => {
     await persistence.dispose()
   })
 
+  it.each(['undo', 'redo'] as const)('settles autosave and clears drafts after %s returns to the saved cursor', async (action) => {
+    const { clock, drafts, editor, persistence, repository } = await setup()
+    editor.execute(renameCommand('rename-draft', 'Draft'))
+    if (action === 'redo') {
+      await clock.advance(800)
+      await vi.waitFor(() => expect(persistence.snapshot.status).toBe('saved'))
+      editor.undo()
+    }
+    await clock.advance(250)
+    await vi.waitFor(() => expect(persistence.snapshot.draftCoverage).toBe('durable'))
+    const savedRevision = editor.snapshot.repositoryRevision
+
+    editor[action]()
+    expect(editor.snapshot.dirty).toBe(false)
+    await clock.advance(800)
+    await vi.waitFor(() => expect(persistence.snapshot.status).toBe('saved'))
+
+    expect(editor.snapshot.repositoryRevision).toBe(savedRevision)
+    expect(persistence.snapshot).toMatchObject({ beforeUnloadRequired: false, draftCoverage: 'none' })
+    await expect(drafts.get(persistence.draftId)).resolves.toBeUndefined()
+    await expect(repository.get(editor.snapshot.document.id)).resolves.toMatchObject({
+      document: { surfacesById: { home: { name: action === 'undo' ? 'Home' : 'Draft' } } },
+    })
+    await persistence.dispose()
+  })
+
   it('rebases a newer draft after a captured save and drains the next save', async () => {
     const base = createMemoryProjectRepository()
     let releaseCommit!: () => void
