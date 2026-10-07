@@ -3,14 +3,13 @@ import { useRouter } from 'vue-router'
 import { ProjectManager } from '../../../features/projects'
 import { ProjectCreationWorkspace } from '../../components'
 import { nextTick, ref, useTemplateRef } from 'vue'
-import { useCreationReturnFocus, useWorkbenchController, useWorkbenchManagementNav, useWorkbenchUiStore } from '../../composables'
+import { useCreationReturnFocus, useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import { projectCreatePath, projectPagesPath } from '../../navigation'
 import ManagementShell from './ManagementShell.vue'
 
 const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
 const router = useRouter()
-const nav = useWorkbenchManagementNav()
 const projectCreationOpen = ref(false)
 const projectCreation = useTemplateRef<{ focusName?: () => void }>('projectCreation')
 
@@ -54,11 +53,8 @@ function openCurrentProject(): void {
 
 <template>
   <ManagementShell
-    :active="nav.active.value"
-    :locale="controller.localeOptions.value"
     :palette="ui.paletteFamily.value"
     :theme="ui.resolvedTheme.value"
-    @select="nav.select"
   >
     <ProjectManager
       :controller="controller"

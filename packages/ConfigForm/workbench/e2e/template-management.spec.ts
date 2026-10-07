@@ -218,17 +218,19 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await page.keyboard.press('Escape')
   await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
 
-  // Both management consoles are one click apart, and the rail marks the active one.
-  const rail = page.getByRole('navigation', { name: 'Management' })
-  await expect(rail.getByRole('menuitem', { name: 'Page management', exact: true })).toHaveAttribute('aria-current', 'page')
-  await rail.getByRole('menuitem', { name: 'Projects', exact: true }).click()
+  // Page management belongs to the named project; global navigation offers no page shortcut.
+  await expect(pages.getByRole('heading', { level: 1 })).toHaveText('Element Plus profile form')
+  await expect(page.getByRole('navigation', { name: 'Management' })).toHaveCount(0)
+  await expect(pages.getByRole('combobox')).toHaveCount(0)
+  await pages.getByRole('button', { name: 'Back to projects', exact: true }).click()
   const projects = page.getByRole('region', { name: 'Projects', exact: true })
   await expect(projects).toBeVisible()
   await expect(page).toHaveURL(/#\/projects$/)
-  await expect(rail.getByRole('menuitem', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(pages).not.toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Page management', exact: true })).toHaveCount(0)
 
-  // The rail reaches page management again without reopening the project by hand.
-  await rail.getByRole('menuitem', { name: 'Page management', exact: true }).click()
+  // Re-enter page management by explicitly choosing the project.
+  await projects.locator(`[data-project-id="${decodeURIComponent(projectId)}"] [data-project-open]`).click()
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
@@ -245,6 +247,106 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await projects.locator('[data-project-open]').first().click()
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
+})
+
+test('requires a chosen project and scopes page browsing to that project', async ({ page }) => {
+  await expect(page.locator('.project-manager')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Management' })).toHaveCount(0)
+  await page.goto('/#/pages')
+  await expect(page).toHaveURL(/#\/projects$/)
+  await expect(page.locator('.page-manager')).toHaveCount(0)
+
+  await createProject(page, 'element')
+  const firstProjectId = page.url().match(/#\/projects\/([^/]+)\//)![1]
+  await openPageManagement(page)
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  await pages.getByRole('searchbox', { name: 'Search pages', exact: true }).fill('unmatched page')
+  await expect(pages.getByRole('listitem')).toHaveCount(0)
+  await pages.getByRole('button', { name: 'Back to projects', exact: true }).click()
+
+  await page.locator('[data-project-create]').first().click()
+  const dialog = page.locator('.project-creation-dialog:visible')
+  const projectName = 'Customer operations / 客户运营管理平台'
+  await dialog.getByRole('textbox', { name: 'Project name', exact: true }).fill(projectName)
+  await dialog.locator('[data-project-create-submit]').click()
+  await expect(pages.getByRole('heading', { level: 1 })).toHaveText(projectName)
+  await expect(pages.getByRole('listitem')).toHaveCount(0)
+  await expect(pages.getByRole('searchbox', { name: 'Search pages', exact: true })).toHaveValue('')
+  await expect(pages.getByRole('combobox')).toHaveCount(0)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(pages.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(pages.getByRole('button', { name: 'New page', exact: true }).first()).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await pages.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  await page.locator(`[data-project-id="${decodeURIComponent(firstProjectId)}"] [data-project-open]`).click()
+  await expect(pages.getByRole('heading', { level: 1 })).toHaveText('Element Plus profile form')
+  await expect(pages.getByRole('listitem')).toHaveCount(1)
+  await expect(pages.getByRole('searchbox', { name: 'Search pages', exact: true })).toHaveValue('')
+  await expectNoHorizontalOverflow(page)
+
+  // A current session must not turn an unscoped page URL into a recent-project shortcut.
+  await page.goto('/#/pages')
+  await expect(page).toHaveURL(/#\/projects$/)
+  await expect(page.locator('.page-manager')).toHaveCount(0)
+})
+
+test('keeps page previews, names, and actions usable when a project scrolls at narrow widths', async ({ page }) => {
+  await createProject(page, 'element')
+  await openPageManagement(page)
+  const pages = page.getByRole('main', { name: 'Page management', exact: true })
+  const cards = pages.getByRole('listitem')
+  for (const count of [2, 3]) {
+    await cards.first().getByRole('button', { name: /^Duplicate / }).click()
+    await expect(cards).toHaveCount(count)
+  }
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    await expect(pages.getByRole('heading', { level: 1 })).toBeInViewport()
+    await expect(pages.getByRole('searchbox', { name: 'Search pages', exact: true })).toBeInViewport()
+    await expect(pages.getByRole('button', { name: 'New page', exact: true })).toBeInViewport()
+    await expectNoHorizontalOverflow(page)
+
+    const geometry = await pages.locator('.page-manager__table').evaluate((table) => {
+      const cards = [...table.querySelectorAll('.page-manager__row')]
+      return {
+        scrolls: table.scrollHeight > table.clientHeight,
+        cards: cards.map((card, index) => {
+          const preview = card.querySelector('.page-manager__preview-button')!.getBoundingClientRect()
+          const name = card.querySelector('.page-manager__name-cell')!.getBoundingClientRect()
+          const actions = card.querySelector('.page-manager__actions')!.getBoundingClientRect()
+          return {
+            previewBottom: preview.bottom,
+            nameTop: name.top,
+            nameBottom: name.bottom,
+            actionsTop: actions.top,
+            actionsBottom: actions.bottom,
+            cardBottom: card.getBoundingClientRect().bottom,
+            nextTop: cards[index + 1]?.getBoundingClientRect().top,
+          }
+        }),
+      }
+    })
+    expect(geometry.scrolls).toBe(true)
+    for (const card of geometry.cards) {
+      expect(card.previewBottom).toBeLessThanOrEqual(card.nameTop + 1)
+      expect(card.nameBottom).toBeLessThanOrEqual(card.actionsTop + 1)
+      expect(card.actionsBottom).toBeLessThanOrEqual(card.cardBottom)
+      if (card.nextTop !== undefined)
+        expect(card.cardBottom).toBeLessThanOrEqual(card.nextTop)
+    }
+
+    // The last card's actions must actually work after scrolling, not just fit the viewport.
+    const lastCard = cards.last()
+    await lastCard.scrollIntoViewIfNeeded()
+    await expect(lastCard.locator('.page-manager__link')).toBeInViewport()
+    await lastCard.getByRole('button', { name: /^Edit / }).click()
+    const name = `Last page (${width}px)`
+    await lastCard.getByRole('textbox', { name: /^Page name for / }).fill(name)
+    await lastCard.getByRole('button', { name: /^Finish editing / }).click()
+    await expect(lastCard.locator('.page-manager__link-label')).toHaveText(name)
+  }
 })
 
 test('keeps long Registry diagnostics and the create action visible at 390px', async ({ page }) => {

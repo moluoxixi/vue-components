@@ -1,5 +1,5 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { ProjectSummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 
 /**
  * Page-management screen.
@@ -13,6 +13,5 @@ export interface SurfaceManagerPageProps {
   locale?: DesignerLocaleOptions
   palette: string
   project: ReadonlyProjectDocument
-  projects: ProjectSummary[]
   theme: string
 }

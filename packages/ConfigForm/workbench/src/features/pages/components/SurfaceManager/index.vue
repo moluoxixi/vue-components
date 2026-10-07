@@ -2,6 +2,7 @@
 import type { SurfaceManagerEmits, SurfaceManagerProps } from './types'
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   ArrowUpRight,
   Check,
@@ -9,7 +10,6 @@ import {
   Copy,
   Download,
   FilePlus2,
-  FolderKanban,
   Files,
   FileJson2,
   Home,
@@ -18,7 +18,6 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
-  X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -96,7 +95,8 @@ const filteredSurfaces = computed(() => {
 
 const pageStats = computed(() => ({
   pages: surfaces.value.filter(surface => surface.kind === 'page').length,
-  overlays: surfaces.value.filter(surface => surface.kind !== 'page').length,
+  dialogs: surfaces.value.filter(surface => surface.kind === 'dialog').length,
+  drawers: surfaces.value.filter(surface => surface.kind === 'drawer').length,
   total: surfaces.value.length,
 }))
 
@@ -143,11 +143,6 @@ function moveSurface(surfaceId: string, offset: number): void {
     emit('action', { type: 'surface.move', surfaceId, index: index + offset })
 }
 
-function selectProject(id: string): void {
-  if (id !== props.project.id)
-    emit('openProject', id)
-}
-
 function confirmDelete(): void {
   if (!pendingDeleteId.value)
     return
@@ -171,35 +166,27 @@ function exportPageSource(surfaceId: string): void {
 <template>
   <section class="page-manager" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
-      <div class="page-manager__header-copy">
-        <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
-          <ElButton link type="primary" class="page-manager__breadcrumb-link" @click="emit('openProjects')">
-            {{ locale.t('pageManager.projects', 'Projects') }}
-          </ElButton>
-          <span aria-hidden="true">/</span>
-          <span class="page-manager__breadcrumb-current">{{ project.name }}</span>
-        </nav>
-        <div class="page-manager__title-row">
-          <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Page management') }}</h2>
-          <span class="page-manager__project-chip"><FolderKanban :size="13" aria-hidden="true" />{{ locale.t('pageManager.projectBadge', 'Engineering project') }}</span>
-        </div>
-      </div>
+      <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
+        <ElButton native-type="button" link class="page-manager__breadcrumb-link" @click="emit('openProjects')">
+          <ArrowLeft :size="14" aria-hidden="true" />
+          {{ locale.t('pageManager.backToProjects', 'Back to projects') }}
+        </ElButton>
+        <span class="page-manager__breadcrumb-divider" aria-hidden="true">/</span>
+        <span aria-current="page">{{ locale.t('pageManager.title', 'Page management') }}</span>
+      </nav>
+      <h1 id="page-manager-title" class="page-manager__project-name">{{ project.name }}</h1>
       <div class="page-manager__header-summary" :aria-label="locale.t('pageManager.summary', 'Page summary')">
-        <span><strong>{{ pageStats.total }}</strong>{{ locale.t('pageManager.pageCountShort', 'pages') }}</span>
-        <span><strong>{{ pageStats.overlays }}</strong>{{ locale.t('pageManager.overlayCountShort', 'overlays') }}</span>
+        <span>{{ surfaceKindLabel('page') }}<strong>{{ pageStats.pages }}</strong></span>
+        <span>{{ surfaceKindLabel('dialog') }}<strong>{{ pageStats.dialogs }}</strong></span>
+        <span>{{ surfaceKindLabel('drawer') }}<strong>{{ pageStats.drawers }}</strong></span>
       </div>
-      <ElButton native-type="button" text circle :title="locale.t('pageManager.back', 'Back to designer')" :aria-label="locale.t('pageManager.back', 'Back to designer')" @click="emit('close')">
-        <X :size="18" aria-hidden="true" />
-      </ElButton>
     </header>
 
     <div class="page-manager__toolbar">
-      <label>
-        <span>{{ locale.t('pageManager.project', 'Engineering project') }}</span>
-        <ElSelect :model-value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Engineering project')" append-to="#workbench-overlays" @change="selectProject">
-          <ElOption v-for="item in projects" :key="item.id" :value="item.id" :label="`${item.name} · ${locale.t('pageManager.pageCount', '{count} pages', { count: item.surfaceCount })}`" />
-        </ElSelect>
-      </label>
+      <h2 class="page-manager__list-title">
+        {{ locale.t('pageManager.projectSurfaces', 'Project pages') }}
+        <span>{{ pageStats.total }}</span>
+      </h2>
       <label class="page-manager__search">
         <span class="sr-only">{{ locale.t('pageManager.search', 'Search pages') }}</span>
         <ElInput v-model="search" type="search" clearable :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
@@ -209,13 +196,13 @@ function exportPageSource(surfaceId: string): void {
         </ElInput>
       </label>
       <div class="page-manager__create-actions">
-        <ElButton data-create-trigger="page-manager-new-surface" native-type="button" type="primary" :disabled="busy" @click="emit('createSurface')">
-          <FilePlus2 :size="16" aria-hidden="true" />
-          {{ locale.t('pages.new', 'New page') }}
-        </ElButton>
         <ElButton data-create-trigger="page-manager-import-surface" native-type="button" :disabled="busy" @click="emit('importSurface')">
           <FileJson2 :size="16" aria-hidden="true" />
           {{ locale.t('pages.import', 'Import page') }}
+        </ElButton>
+        <ElButton data-create-trigger="page-manager-new-surface" native-type="button" type="primary" :disabled="busy" @click="emit('createSurface')">
+          <FilePlus2 :size="16" aria-hidden="true" />
+          {{ locale.t('pages.new', 'New page') }}
         </ElButton>
       </div>
     </div>

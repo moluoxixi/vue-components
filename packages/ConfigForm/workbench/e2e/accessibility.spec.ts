@@ -203,25 +203,23 @@ for (const adapter of ['element', 'antd'] as const) {
   })
 }
 
-test('keeps both management consoles accessible', async ({ page }) => {
+test('keeps project management and its page workspace accessible', async ({ page }) => {
   await createProject(page, 'element')
   await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
 
   const projects = page.getByRole('region', { name: 'Projects', exact: true })
   const pages = page.getByRole('main', { name: 'Page management', exact: true })
-  const rail = page.getByRole('navigation', { name: 'Management' })
   await expect(projects).toBeVisible()
-  await expect(rail.getByRole('menuitem', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page')
   await expectNoAccessibilityViolations(page, 'desktop project management')
 
-  await rail.getByRole('menuitem', { name: 'Page management', exact: true }).click()
+  await projects.locator('[data-project-open]').first().click()
   await expect(pages).toBeVisible()
   await expectNoAccessibilityViolations(page, 'desktop page management')
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectNoAccessibilityViolations(page, 'mobile page management')
 
-  await rail.getByRole('menuitem', { name: 'Projects', exact: true }).click()
+  await pages.getByRole('button', { name: 'Back to projects', exact: true }).click()
   await expect(projects).toBeVisible()
   await expectNoAccessibilityViolations(page, 'mobile project management')
 })

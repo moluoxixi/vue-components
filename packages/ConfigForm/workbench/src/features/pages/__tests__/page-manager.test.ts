@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { DOMWrapper, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { SurfaceManagerPage } from '..'
 import {
@@ -10,25 +10,10 @@ import {
 } from '../../../project/__tests__/fixtures'
 import { SurfaceManager } from '../components'
 
-function projectSummary(project: ProjectDocument) {
-  return {
-    homeSurfaceId: project.homeSurfaceId,
-    id: project.id,
-    name: project.name,
-    surfaceCount: project.surfaceOrder.length,
-    datasetCount: project.datasetOrder.length,
-    resourceCount: Object.keys(project.resources).length,
-    registryLock: project.registryLock,
-    repositoryRevision: 4,
-    updatedAt: '2026-08-31T00:00:00.000Z',
-  }
-}
-
 function mountManager(project: ProjectDocument) {
   return mount(SurfaceManager, {
     props: {
       project,
-      projects: [projectSummary(project)],
     },
   })
 }
@@ -38,14 +23,9 @@ function mountPage(project: ProjectDocument) {
     props: {
       palette: 'ink',
       project,
-      projects: [projectSummary(project)],
       theme: 'dark',
     },
   })
-}
-
-function overlayRoot(): DOMWrapper<Element> {
-  return new DOMWrapper(document.getElementById('workbench-overlays')!)
 }
 
 describe('page manager', () => {
@@ -111,8 +91,6 @@ describe('page manager', () => {
     ])
     expect(project.surfacesById.home!.name).toBe('Fixture project')
 
-    await wrapper.get('.el-select__wrapper').trigger('click')
-    expect(overlayRoot().find('.el-select-dropdown').exists()).toBe(true)
     wrapper.unmount()
   })
 
@@ -146,6 +124,22 @@ describe('page manager', () => {
     // offer a second entry for it.
     expect(wrapper.text()).not.toContain('New project')
     expect(wrapper.find('[data-create-trigger="page-manager-new-project"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('makes the owning project the main heading and only browses its pages', async () => {
+    const project = createProjectDocumentFixture({ name: 'Customer portal' })
+    const wrapper = mountPage(project)
+
+    expect(wrapper.get('h1').text()).toBe('Customer portal')
+    expect(wrapper.find('.el-select').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Back to designer"]').exists()).toBe(false)
+    expect(wrapper.findAll('[role="listitem"]')).toHaveLength(1)
+
+    await wrapper.get('input[aria-label="Search pages"]').setValue('absent page')
+    expect(wrapper.findAll('[role="listitem"]')).toHaveLength(0)
+    await wrapper.get('.page-manager__breadcrumb-link').trigger('click')
+    expect(wrapper.emitted('openProjects')).toHaveLength(1)
     wrapper.unmount()
   })
 

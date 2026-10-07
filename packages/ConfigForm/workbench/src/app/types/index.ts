@@ -1,7 +1,6 @@
 export type * from './appearance'
 export type * from './assets'
 export type * from './controller'
-export type * from './management'
 export type * from './route-sync'
 export type * from './topbar'
 export type * from './ui-store'
