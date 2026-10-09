@@ -1,19 +1,19 @@
 <script setup lang="ts">
+import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../../../features/templates'
 import type {
   PreparedTemplatePreview,
   ProjectTemplateCatalogEntry,
   ProjectTemplateCategory,
   TemplateEligibilityResult,
 } from '../../../project'
-import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../../../features/templates'
 import type { TemplateEligibilityCacheEntry, TemplateEligibilityDisplayStatus } from './types'
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   File,
-  LayoutGrid,
   Languages,
+  LayoutGrid,
   LibraryBig,
   MoreHorizontal,
   PanelLeftOpen,
@@ -23,15 +23,17 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { loadWorkbenchAdapter } from '../../../adapters'
-import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import {
   analyzeTemplateEligibility,
   builtInTemplateCatalogProvider,
   createTemplateCatalogService,
+  createUserTemplateStore,
   prepareTemplatePreview,
 } from '../../../project'
-import WorkbenchAppearancePopover from '../WorkbenchAppearancePopover.vue'
+import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import DesignRuntimeHostFrame from '../DesignRuntimeHostFrame/index.vue'
+import SurfacePresentationFrame from '../SurfacePresentationFrame.vue'
+import WorkbenchAppearancePopover from '../WorkbenchAppearancePopover.vue'
 import { JsonImportPane, TemplateCatalogPanel } from './components'
 import { useTemplateViewport } from './composables'
 
@@ -41,7 +43,8 @@ const emit = defineEmits<TemplateCreationWorkspaceEmits>()
 const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
 const locale = computed(() => createDesignerLocale(props.locale))
-const catalogService = createTemplateCatalogService([builtInTemplateCatalogProvider])
+const templateStore = createUserTemplateStore()
+const catalogService = createTemplateCatalogService([builtInTemplateCatalogProvider, templateStore.provider])
 const catalogDrawerTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('catalogDrawerTrigger')
 const drawerCatalog = useTemplateRef<{ focusSearch: () => void }>('drawerCatalog')
 const inlineCatalog = useTemplateRef<{ focusSearch: () => void, focusTemplate: (id: string) => void }>('inlineCatalog')
@@ -65,6 +68,7 @@ const previewError = ref('')
 const eligibility = ref<TemplateEligibilityResult>()
 const eligibilityCache = shallowRef<Record<string, TemplateEligibilityCacheEntry>>({})
 let previewRequest = 0
+let catalogRequest = 0
 let disposed = false
 
 const selectedTemplate = computed(() => templates.value.find(template => template.manifest.id === selectedId.value))
@@ -112,11 +116,7 @@ const filteredTemplates = computed(() => {
 
 const creationTitle = computed(() => props.target === 'project'
   ? locale.value.t('template.createProject', 'Create project')
-  : creationSurfaceKind.value === 'dialog'
-    ? locale.value.t('pages.createDialog', 'Create dialog')
-    : creationSurfaceKind.value === 'drawer'
-      ? locale.value.t('pages.createDrawer', 'Create drawer')
-      : locale.value.t('pages.createForm', 'Create form page'))
+  : locale.value.t('pages.fromTemplate', 'From template'))
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('template.createProjectAction', 'Create project')
   : creationSurfaceKind.value === 'dialog'
@@ -125,14 +125,14 @@ const createLabel = computed(() => props.target === 'project'
       ? locale.value.t('pages.createDrawerAction', 'Create drawer')
       : locale.value.t('pages.createFormAction', 'Create form page'))
 const createUnavailableReason = computed(() => {
-  if (loadingPreview.value)
-    return locale.value.t('template.checkingEligibility', 'Checking Registry requirements')
+  if (loadingPreview.value || loadingCatalog.value)
+    return locale.value.t('template.checkingEligibility', 'Preparing template')
   if (!selectedTemplate.value)
     return locale.value.t('template.selectRequired', 'Select a template first')
   if (previewError.value)
     return previewError.value
   if (!eligibility.value)
-    return locale.value.t('template.checkingEligibility', 'Checking Registry requirements')
+    return locale.value.t('template.checkingEligibility', 'Preparing template')
   return eligibility.value?.diagnostics[0]?.message
 })
 
@@ -358,41 +358,61 @@ async function createSelected(): Promise<void> {
 }
 
 async function loadCatalog(): Promise<void> {
+  const request = ++catalogRequest
   loadingCatalog.value = true
   catalogDiagnostics.value = []
   catalogFatalError.value = ''
   try {
     const result = await catalogService.load()
-    if (disposed)
+    if (disposed || request !== catalogRequest)
       return
-    templates.value = result.templates
-    eligibilityCache.value = {}
+    const candidates = result.templates.filter(template => props.target === 'project'
+      ? template.surface.kind === 'page'
+      : template.manifest.adapter === controller.currentProject.value?.registryLock.adapter)
+    const adapters = await Promise.all([...new Set(candidates.map(template => template.manifest.adapter))]
+      .map(async id => [id, await loadWorkbenchAdapter(id)] as const))
+    if (disposed || request !== catalogRequest)
+      return
+    const registryByAdapter = new Map(adapters)
+    templates.value = candidates.filter(template => analyzeTemplateEligibility(template, {
+      registry: registryByAdapter.get(template.manifest.adapter)!.registrySnapshot,
+      target: props.target,
+      ...(props.target === 'surface' && controller.currentProject.value
+        ? { targetLock: structuredClone(controller.currentProject.value.registryLock) }
+        : {}),
+    }).eligible)
+    eligibilityCache.value = Object.fromEntries(templates.value.map(template => [
+      eligibilityCacheKey(template.manifest.id),
+      { request: 0, status: 'eligible' as const },
+    ]))
     catalogDiagnostics.value = result.diagnostics.map(diagnostic => diagnostic.message)
-    if (!result.templates.some(template => template.manifest.id === selectedId.value)) {
+    if (!templates.value.some(template => template.manifest.id === selectedId.value)) {
       const preferredAdapter = props.target === 'surface'
         ? controller.currentProject.value?.registryLock.adapter
         : undefined
-      selectedId.value = (result.templates.find(template => template.manifest.adapter === preferredAdapter)
-        ?? result.templates[0])?.manifest.id ?? ''
+      selectedId.value = (templates.value.find(template => template.manifest.adapter === preferredAdapter)
+        ?? templates.value[0])?.manifest.id ?? ''
     }
   }
   catch (error) {
-    if (!disposed) {
+    if (!disposed && request === catalogRequest) {
       templates.value = []
       eligibilityCache.value = {}
       catalogFatalError.value = error instanceof Error ? error.message : String(error)
     }
   }
   finally {
-    if (!disposed)
+    if (!disposed && request === catalogRequest)
       loadingCatalog.value = false
   }
 }
 
 watch(
-  () => [selectedId.value, props.target, props.surfaceKind, controller.currentProject.value?.registryLock.fingerprint],
+  () => [selectedTemplate.value, props.surfaceKind],
   () => void prepareSelectedTemplate(),
 )
+
+watch(() => [props.target, controller.currentProject.value?.registryLock.fingerprint], () => void loadCatalog())
 
 watch(filteredTemplates, (available) => {
   if (available.some(template => template.manifest.id === selectedId.value))
@@ -433,7 +453,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true
+  catalogRequest += 1
   previewRequest += 1
+  templateStore.close()
   document.removeEventListener('keydown', handleEscape)
   document.removeEventListener('keydown', handleCatalogDrawerKeydown, true)
 })
@@ -501,8 +523,12 @@ onBeforeUnmount(() => {
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="template-mobile-action-popover" data-template-mobile-action-menu>
-              <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ locale.t('locale.switch', 'Switch language') }}</span></ElDropdownItem>
-              <ElDropdownItem command="openAppearance"><Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span></ElDropdownItem>
+              <ElDropdownItem command="toggleLocale">
+                <Languages :size="15" aria-hidden="true" /><span>{{ locale.t('locale.switch', 'Switch language') }}</span>
+              </ElDropdownItem>
+              <ElDropdownItem command="openAppearance">
+                <Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span>
+              </ElDropdownItem>
             </ElDropdownMenu>
           </template>
         </ElDropdown>
@@ -594,27 +620,35 @@ onBeforeUnmount(() => {
         <template v-if="selectedTemplate">
           <header class="template-detail-header">
             <div>
-              <button type="button" class="template-mobile-back" @click="showCatalog"><ArrowLeft :size="16" aria-hidden="true" />{{ locale.t('template.catalog', 'Catalog') }}</button>
+              <button type="button" class="template-mobile-back" @click="showCatalog">
+                <ArrowLeft :size="16" aria-hidden="true" />{{ locale.t('template.catalog', 'Catalog') }}
+              </button>
               <h2>{{ templateName(selectedTemplate) }}</h2>
               <p>{{ templateDescription(selectedTemplate) }}</p>
             </div>
             <dl>
-              <div><dt>{{ locale.t('template.adapter', 'Adapter') }}</dt><dd>{{ selectedTemplate.manifest.adapter }}</dd></div>
-              <div><dt>{{ locale.t('template.provider', 'Provider') }}</dt><dd>{{ selectedTemplate.providerId }}</dd></div>
+              <div><dt>{{ locale.t('library.adapter', 'Component library') }}</dt><dd>{{ selectedTemplate.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }}</dd></div>
+              <div><dt>{{ locale.t('library.kind', 'Template type') }}</dt><dd>{{ locale.t(`surface.kind.${selectedTemplate.surface.kind}`, selectedTemplate.surface.kind) }}</dd></div>
             </dl>
           </header>
 
           <div class="template-eligibility" :class="{ 'is-blocked': eligibility && !eligibility.eligible }">
-            <p v-if="loadingPreview" role="status">{{ locale.t('template.checkingEligibility', 'Checking Registry requirements') }}</p>
+            <p v-if="loadingPreview" role="status">
+              {{ locale.t('template.checkingEligibility', 'Preparing template') }}
+            </p>
             <template v-else-if="eligibility?.eligible">
               <CheckCircle2 :size="16" aria-hidden="true" />
-              <p><strong>{{ locale.t('template.eligible', 'Registry requirements met') }}</strong><span>{{ locale.t('template.eligibleHint', 'Schema and component contracts passed validation.') }}</span></p>
+              <p><strong>{{ locale.t('template.eligible', 'Ready to use') }}</strong><span>{{ locale.t('template.eligibleHint', 'This template works with the current component library.') }}</span></p>
             </template>
             <template v-else-if="eligibility">
               <AlertTriangle :size="16" aria-hidden="true" />
               <div role="alert">
                 <strong>{{ locale.t('template.ineligible', 'Cannot create with this Registry') }}</strong>
-                <ul><li v-for="diagnostic in eligibility.diagnostics" :key="`${diagnostic.code}:${diagnostic.path}`">{{ diagnostic.message }}</li></ul>
+                <ul>
+                  <li v-for="diagnostic in eligibility.diagnostics" :key="`${diagnostic.code}:${diagnostic.path}`">
+                    {{ diagnostic.message }}
+                  </li>
+                </ul>
                 <ElButton native-type="button" text size="small" @click="showCatalog">
                   <PanelLeftOpen :size="14" aria-hidden="true" />
                   {{ locale.t('template.browse', 'Browse templates') }}
@@ -624,31 +658,44 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="template-runtime-preview">
-            <p v-if="loadingPreview" class="template-state" role="status">{{ locale.t('template.preparingPreview', 'Preparing Runtime preview') }}</p>
+            <p v-if="loadingPreview" class="template-state" role="status">
+              {{ locale.t('template.preparingPreview', 'Loading design') }}
+            </p>
             <div v-else-if="previewError" class="template-preview-error" role="alert">
               <strong>{{ locale.t('template.previewFailed', 'Preview failed') }}</strong>
               <span>{{ previewError }}</span>
-              <ElButton native-type="button" @click="prepareSelectedTemplate">{{ locale.t('template.retryPreview', 'Retry preview') }}</ElButton>
+              <ElButton native-type="button" @click="prepareSelectedTemplate">
+                {{ locale.t('template.retryPreview', 'Retry preview') }}
+              </ElButton>
             </div>
-            <DesignRuntimeHostFrame
+            <SurfacePresentationFrame
               v-else-if="preview"
-              :adapter="preview.adapter"
-              :breakpoint="selectedTemplate?.manifest.preview.preferredViewport ?? 'desktop'"
-              :camera-scale="1"
-              :locale="locale.locale"
-              :model-value="preview.values"
-              :namespace="preview.namespace"
-              :resolve-compilation="resolvePreviewCompilation"
-              :title="locale.t('template.previewTitle', '{name} Runtime preview', { name: templateName(selectedTemplate) })"
-              variant="canvas"
-              @error="previewError = $event.message"
-            />
+              :surface="selectedTemplate.surface"
+              :breakpoint="selectedTemplate.manifest.preview.preferredViewport"
+            >
+              <DesignRuntimeHostFrame
+                :adapter="preview.adapter"
+                :breakpoint="selectedTemplate?.manifest.preview.preferredViewport ?? 'desktop'"
+                :camera-scale="1"
+                :locale="locale.locale"
+                :model-value="preview.values"
+                :namespace="preview.namespace"
+                :resolve-compilation="resolvePreviewCompilation"
+                :title="locale.t('template.previewTitle', '{name} Runtime preview', { name: templateName(selectedTemplate) })"
+                variant="canvas"
+                @error="previewError = $event.message"
+              />
+            </SurfacePresentationFrame>
           </div>
 
           <footer class="template-create-footer">
-            <p v-if="ui.message.value" role="alert">{{ ui.message.value }}</p>
-            <p v-else-if="createUnavailableReason" role="status">{{ createUnavailableReason }}</p>
-            <span v-else>{{ locale.t('template.ready', 'Ready to create an independent instance.') }}</span>
+            <p v-if="ui.message.value" role="alert">
+              {{ ui.message.value }}
+            </p>
+            <p v-else-if="createUnavailableReason" role="status">
+              {{ createUnavailableReason }}
+            </p>
+            <span v-else>{{ locale.t('template.ready', 'Create a copy and continue in the designer.') }}</span>
             <ElButton native-type="button" type="primary" :loading="submitting" :disabled="Boolean(createUnavailableReason) || controller.busy.value" @click="createSelected">
               {{ createLabel }}
             </ElButton>

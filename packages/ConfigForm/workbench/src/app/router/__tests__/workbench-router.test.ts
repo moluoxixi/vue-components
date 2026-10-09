@@ -14,6 +14,8 @@ import {
   projectsPath,
   readWorkbenchRouteTarget,
   shouldBlockProjectSwitch,
+  templateDesignPath,
+  templatesPath,
   WORKBENCH_PATHS,
   WORKBENCH_ROUTES,
 } from '..'
@@ -47,6 +49,13 @@ describe('workbench router', () => {
 
     await router.push(projectsPath())
     expect(router.currentRoute.value.name).toBe('projects')
+
+    await router.push(templatesPath())
+    expect(router.currentRoute.value.name).toBe('templates')
+    expect(readWorkbenchRouteTarget(router.currentRoute.value)).toEqual({})
+    await router.push(templateDesignPath('custom-a'))
+    expect(router.currentRoute.value.name).toBe('template-design')
+    expect(readWorkbenchRouteTarget(router.currentRoute.value)).toEqual({})
 
     await router.push(projectCreatePath('template'))
     expect(router.currentRoute.value.name).toBe('project-create')

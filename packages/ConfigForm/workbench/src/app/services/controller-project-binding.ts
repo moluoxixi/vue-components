@@ -112,6 +112,12 @@ export function createWorkbenchProjectBinding(options: {
       return
 
     designSession.accept(snapshot, nextSurfaceId, changeSet)
+    // A project may start with a dialog or drawer. Its design can be saved
+    // before a navigable home page exists for the project experience.
+    if (!snapshot.document.homeSurfaceId) {
+      previewSession.clear()
+      return
+    }
     const capture = exportService.capture()
     if (!capture) {
       previewSession.clear()

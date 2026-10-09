@@ -1,0 +1,78 @@
+.template-details-form {
+  display: grid;
+  gap: 20px;
+}
+.template-details-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--wb-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.template-details-form label small {
+  margin-left: 6px;
+  color: var(--wb-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.template-details-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.template-details-form legend {
+  margin-bottom: 10px;
+  color: var(--wb-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.template-kind-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.template-kind-options > .el-button {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 5px;
+  overflow: hidden;
+  border-color: var(--wb-separator);
+  background: var(--wb-surface);
+}
+.template-kind-options :deep(.el-button > span) {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+}
+.template-kind-options img {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+}
+.template-kind-options :deep(.el-button > span > span) {
+  padding-bottom: 6px;
+  font-size: 12px;
+}
+.template-kind-options > .el-button.is-selected {
+  border-color: var(--wb-accent);
+  box-shadow: 0 0 0 1px var(--wb-accent);
+  color: var(--wb-accent-text);
+}
+.template-details-hint {
+  margin: 0;
+  color: var(--wb-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.template-details-form footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+  gap: 8px;
+}
+.template-details-form footer .el-button + .el-button {
+  margin-left: 0;
+}

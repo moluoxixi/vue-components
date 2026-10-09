@@ -125,6 +125,22 @@
   gap: 6px;
 }
 
+.page-manager__new-group {
+  display: flex;
+  flex-shrink: 0;
+}
+.page-manager__new-group > .el-button {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.page-manager__new-group :deep(.el-dropdown > .el-button) {
+  min-width: 30px;
+  padding-inline: 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: var(--wb-separator);
+}
+
 .page-manager__table {
   display: grid;
   min-width: 0;
@@ -388,6 +404,7 @@
   }
   .page-manager__create-actions {
     grid-column: 1 / -1;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
   .page-manager__table {

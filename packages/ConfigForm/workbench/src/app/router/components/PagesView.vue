@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { TemplateDetails } from '../../../features/templates'
 import type { ProjectSurfaceAction } from '../../../project'
 import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TemplateCreationWorkspace } from '../../components'
 import { SurfaceManagerPage } from '../../../features/pages'
-import { downloadSurfaceTransfer } from '../../../project'
+import { createUserTemplateStore, downloadSurfaceTransfer, templateFromSurface } from '../../../project'
+import { TemplateCreationWorkspace } from '../../components'
 import {
   useCreationReturnFocus,
   useWorkbenchController,
@@ -16,6 +17,7 @@ import {
   readWorkbenchRouteTarget,
 } from '../../navigation'
 import ManagementShell from './ManagementShell.vue'
+import TemplateDetailsDialog from './TemplateDetailsDialog.vue'
 
 const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
@@ -29,6 +31,11 @@ const project = computed(() => {
 const pageCreationOpen = ref(false)
 const pageImportOpen = ref(false)
 const pageCreationKind = ref<'page' | 'dialog' | 'drawer'>('page')
+const templateSurfaceId = ref('')
+const templateDetailsOpen = ref(false)
+const savingTemplate = ref(false)
+const templateError = ref('')
+const templateSaved = ref(false)
 
 useCreationReturnFocus()
 
@@ -38,16 +45,58 @@ function openPage(pageId: string): void {
     void router.push(pageDesignPath(projectId, pageId))
 }
 
-function createSurface(): void {
+async function createSurface(kind: 'page' | 'dialog' | 'drawer' = 'page'): Promise<void> {
+  if (!project.value || controller.busy.value)
+    return
+  if (await controller.createSurface(kind))
+    await createdPage()
+}
+
+function useTemplate(): void {
   const projectId = project.value?.id
   if (!projectId)
     return
   pageCreationKind.value = 'page'
   pageCreationOpen.value = true
   ui.setCreationOrigin({
-    focusKey: 'page-manager-new-surface',
+    focusKey: 'page-manager-template',
     path: router.currentRoute.value.fullPath,
   })
+}
+
+function saveTemplate(surfaceId: string): void {
+  templateSurfaceId.value = surfaceId
+  templateError.value = ''
+  templateDetailsOpen.value = true
+}
+
+async function confirmSaveTemplate(details: TemplateDetails): Promise<void> {
+  const document = project.value
+  const surface = document?.surfacesById[templateSurfaceId.value]
+  if (!document || !surface || savingTemplate.value)
+    return
+  const store = createUserTemplateStore()
+  savingTemplate.value = true
+  try {
+    await store.put(templateFromSurface({
+      surface,
+      registryLock: document.registryLock,
+      name: details.name,
+      description: details.description,
+    }))
+    templateDetailsOpen.value = false
+    templateSaved.value = true
+  }
+  catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    templateError.value = reason.includes('identity reference')
+      ? controller.workbenchLocale.value.t('library.independentRequired', 'Templates need independent fields and options. Remove references to other pages, datasets, or resources before saving.')
+      : controller.workbenchLocale.value.t('library.saveFailed', 'Unable to save template: {reason}', { reason })
+  }
+  finally {
+    savingTemplate.value = false
+    store.close()
+  }
 }
 
 function importSurface(): void {
@@ -136,6 +185,8 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       :theme="ui.resolvedTheme.value"
       @action="runAction"
       @create-surface="createSurface"
+      @use-template="useTemplate"
+      @save-template="saveTemplate"
       @import-surface="importSurface"
       @export="exportPage"
       @export-source="exportPageSource"
@@ -162,7 +213,7 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       :close-on-click-modal="false"
       :close-on-press-escape="!controller.busy.value"
       :show-close="!controller.busy.value"
-      :title="controller.workbenchLocale.value.t('pages.createTitle', 'Create page')"
+      :title="controller.workbenchLocale.value.t('pages.fromTemplate', 'From template')"
     >
       <div class="page-creation-dialog__toolbar">
         <span>{{ controller.workbenchLocale.value.t('pages.kindLabel', 'Page type') }}</span>
@@ -179,15 +230,24 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       </div>
       <TemplateCreationWorkspace
         :can-close="true"
-        :initial-mode="'template'"
+        initial-mode="template"
         :locale="controller.localeOptions.value"
         :surface-kind="pageCreationKind"
-        :target="'surface'"
+        target="surface"
         @close="pageCreationOpen = false"
         @created="createdPage"
         @toggle-locale="ui.toggleLocale"
       />
     </ElDialog>
+    <TemplateDetailsDialog
+      v-model="templateDetailsOpen"
+      :busy="savingTemplate"
+      :error="templateError"
+      :initial-name="project?.surfacesById[templateSurfaceId]?.name"
+      :locale="controller.localeOptions.value"
+      @confirm="confirmSaveTemplate"
+    />
+    <ElAlert v-if="templateSaved" class="workbench-toast" type="success" :title="controller.workbenchLocale.value.t('library.saved', 'Template saved. Find it in Template management.')" show-icon closable role="status" @close="templateSaved = false" />
     <ElDialog
       v-model="pageImportOpen"
       class="page-creation-dialog"
@@ -202,9 +262,9 @@ async function exportPageSource(surfaceId: string): Promise<void> {
     >
       <TemplateCreationWorkspace
         :can-close="true"
-        :initial-mode="'json'"
+        initial-mode="json"
         :locale="controller.localeOptions.value"
-        :target="'surface'"
+        target="surface"
         @close="closePageImport"
         @created="importedPage"
         @toggle-locale="ui.toggleLocale"

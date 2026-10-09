@@ -5,7 +5,7 @@ import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
 
-const props = defineProps<{ scope: DesignSurfaceToolbarScope, locale?: DesignerLocaleOptions }>()
+const props = withDefaults(defineProps<{ scope: DesignSurfaceToolbarScope, locale?: DesignerLocaleOptions, showCompare?: boolean }>(), { showCompare: true })
 const emit = defineEmits<{ compare: [] }>()
 const locale = computed(() => createDesignerLocale(props.locale))
 </script>
@@ -133,6 +133,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
       </WorkbenchCommandHint>
     </div>
     <button
+      v-if="showCompare"
       type="button"
       class="mx-config-form-designer__icon-button"
       :aria-label="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"

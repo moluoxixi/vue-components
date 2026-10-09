@@ -442,6 +442,10 @@ function showDesign(): void {
 }
 
 function toggleWorkspacePreview(): void {
+  if (!previewOpen.value && !currentProject.value?.homeSurfaceId) {
+    showNotice({ message: workbenchLocale.value.t('preview.needsPage', 'Add a page to preview the project experience. Dialogs and drawers can already be designed and saved.'), tone: 'info' })
+    return
+  }
   if (!previewOpen.value)
     closeExportPreview()
   togglePreview()

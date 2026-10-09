@@ -13,6 +13,7 @@ import type { WorkbenchUiStore } from '../types'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   analyzeTemplateEligibility,
+  createBlankTemplate,
   createProjectTransferDocument,
   downloadProjectTransfer,
   instantiateEmptyProject,
@@ -219,6 +220,20 @@ export function createWorkbenchCreationCommands(options: {
     }
   }
 
+  async function createSurface(kind: ProjectDocument['surfacesById'][string]['kind'] = 'page'): Promise<boolean> {
+    const project = currentProject.value
+    if (!project)
+      return false
+    const adapter = project.registryLock.adapter
+    if (adapter !== 'element-plus' && adapter !== 'antd-vue')
+      return false
+    const name = workbenchLocale.value.t(`surface.new.${kind}`, kind === 'page' ? 'Untitled page' : kind === 'dialog' ? 'Untitled dialog' : 'Untitled drawer')
+    const template = createBlankTemplate(adapter, kind)
+    if (template.surface.kind !== 'page')
+      template.surface.presentation.title = name
+    return createSurfaceFromTemplate(template, name)
+  }
+
   async function prepareJsonImport(
     source: string,
     target: ConfigImportTarget,
@@ -390,6 +405,7 @@ export function createWorkbenchCreationCommands(options: {
     duplicateProject,
     exportProject,
     createSurfaceFromTemplate,
+    createSurface,
     createProjectFromTemplate,
     prepareJsonImport,
   }

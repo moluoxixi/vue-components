@@ -451,6 +451,7 @@ export function createWorkbenchController(
     createFromJsonImport: creationCommands.createFromJsonImport,
     createNamedCheckpoint: persistenceCommands.createNamedCheckpoint,
     createSurfaceFromTemplate: creationCommands.createSurfaceFromTemplate,
+    createSurface: creationCommands.createSurface,
     createProject: creationCommands.createProject,
     createProjectFromTemplate: creationCommands.createProjectFromTemplate,
     deleteProject: projectCommands.deleteProject,

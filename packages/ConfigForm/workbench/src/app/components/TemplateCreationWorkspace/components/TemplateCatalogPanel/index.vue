@@ -5,8 +5,8 @@ import type {
   ProjectTemplateCategory,
 } from '../../../../../project'
 import type { TemplateEligibilityDisplayStatus } from '../../types'
-import { nextTick, useTemplateRef } from 'vue'
 import { Search } from '@lucide/vue'
+import { nextTick, useTemplateRef } from 'vue'
 
 const props = defineProps<{
   catalogDiagnostics: readonly string[]
@@ -24,10 +24,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  clearFilters: []
-  retry: []
-  select: [id: string]
-  showDetails: []
+  'clearFilters': []
+  'retry': []
+  'select': [id: string]
+  'showDetails': []
   'update:category': [value: ProjectTemplateCategory | 'all']
   'update:providerId': [value: string]
   'update:query': [value: string]
@@ -42,12 +42,6 @@ function templateName(template: ProjectTemplateCatalogEntry): string {
 
 function templateDescription(template: ProjectTemplateCatalogEntry): string {
   return props.locale.t(`template.catalog.${template.manifest.id}.description`, template.manifest.description)
-}
-
-function categoryLabel(value: ProjectTemplateCategory): string {
-  return value === 'blank'
-    ? props.locale.t('template.categoryBlank', 'Blank')
-    : props.locale.t('template.categoryStarter', 'Starter')
 }
 
 function eligibilityLabel(status: TemplateEligibilityDisplayStatus): string {
@@ -118,7 +112,9 @@ defineExpose({ focusSearch, focusTemplate })
         :aria-label="locale.t('template.search', 'Search templates')"
         @update:model-value="emit('update:query', $event)"
       >
-        <template #prefix><Search :size="15" aria-hidden="true" /></template>
+        <template #prefix>
+          <Search :size="15" aria-hidden="true" />
+        </template>
       </ElInput>
       <div>
         <ElSelect
@@ -133,12 +129,12 @@ defineExpose({ focusSearch, focusTemplate })
         </ElSelect>
         <ElSelect
           :model-value="providerId"
-          :aria-label="locale.t('template.provider', 'Template provider')"
+          :aria-label="locale.t('template.provider', 'Template source')"
           append-to="#workbench-overlays"
           @update:model-value="emit('update:providerId', $event)"
         >
-          <ElOption value="all" :label="locale.t('template.providerAll', 'All providers')" />
-          <ElOption v-for="provider in providerOptions" :key="provider" :value="provider" :label="provider" />
+          <ElOption value="all" :label="locale.t('template.providerAll', 'All templates')" />
+          <ElOption v-for="provider in providerOptions" :key="provider" :value="provider" :label="provider === 'built-in' ? locale.t('library.builtIn', 'Built-in templates') : locale.t('library.personal', 'My templates')" />
         </ElSelect>
       </div>
       <span class="template-catalog-count" aria-live="polite">
@@ -147,19 +143,27 @@ defineExpose({ focusSearch, focusTemplate })
     </div>
 
     <div class="template-catalog-results">
-      <p v-if="loading" class="template-state" role="status">{{ locale.t('template.loading', 'Loading templates') }}</p>
+      <p v-if="loading" class="template-state" role="status">
+        {{ locale.t('template.loading', 'Loading templates') }}
+      </p>
 
       <div v-else-if="fatalError" class="template-catalog-fatal" role="alert">
         <strong>{{ locale.t('template.catalogFailed', 'Template catalog unavailable') }}</strong>
         <span>{{ fatalError }}</span>
-        <ElButton native-type="button" @click="emit('retry')">{{ locale.t('template.retryCatalog', 'Retry catalog') }}</ElButton>
+        <ElButton native-type="button" @click="emit('retry')">
+          {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+        </ElButton>
       </div>
 
       <template v-else>
         <div v-if="catalogDiagnostics.length" class="template-provider-error" role="alert">
-          <strong>{{ locale.t('template.providerWarning', 'Some template providers are unavailable') }}</strong>
-          <p v-for="diagnostic in catalogDiagnostics" :key="diagnostic">{{ diagnostic }}</p>
-          <ElButton native-type="button" size="small" @click="emit('retry')">{{ locale.t('template.retryCatalog', 'Retry catalog') }}</ElButton>
+          <strong>{{ locale.t('template.providerWarning', 'Some templates could not be loaded') }}</strong>
+          <p v-for="diagnostic in catalogDiagnostics" :key="diagnostic">
+            {{ diagnostic }}
+          </p>
+          <ElButton native-type="button" size="small" @click="emit('retry')">
+            {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+          </ElButton>
         </div>
 
         <div
@@ -185,7 +189,7 @@ defineExpose({ focusSearch, focusTemplate })
             <span class="template-catalog-copy">
               <strong>{{ templateName(template) }}</strong>
               <span>{{ templateDescription(template) }}</span>
-              <small>{{ categoryLabel(template.manifest.category) }} · {{ template.manifest.adapter }} · {{ template.providerId }}</small>
+              <small>{{ locale.t(`surface.kind.${template.surface.kind}`, template.surface.kind) }} · {{ template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ template.providerId === 'built-in' ? locale.t('library.builtIn', 'Built-in templates') : locale.t('library.personal', 'My templates') }}</small>
             </span>
             <span
               class="template-catalog-status"
@@ -199,13 +203,17 @@ defineExpose({ focusSearch, focusTemplate })
         <div v-else-if="templates.length" class="template-empty-state" role="status">
           <strong>{{ locale.t('template.noResults', 'No templates match these filters') }}</strong>
           <span>{{ locale.t('template.noResultsHint', 'Clear search or choose another category or provider.') }}</span>
-          <ElButton native-type="button" @click="emit('clearFilters')">{{ locale.t('template.clearFilters', 'Clear filters') }}</ElButton>
+          <ElButton native-type="button" @click="emit('clearFilters')">
+            {{ locale.t('template.clearFilters', 'Clear filters') }}
+          </ElButton>
         </div>
 
         <div v-else class="template-empty-state" role="status">
           <strong>{{ locale.t('template.noTemplates', 'No templates are available') }}</strong>
           <span>{{ locale.t('template.noTemplatesHint', 'Retry the catalog providers to load templates.') }}</span>
-          <ElButton native-type="button" @click="emit('retry')">{{ locale.t('template.retryCatalog', 'Retry catalog') }}</ElButton>
+          <ElButton native-type="button" @click="emit('retry')">
+            {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+          </ElButton>
         </div>
       </template>
     </div>

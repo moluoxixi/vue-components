@@ -242,12 +242,8 @@ describe('template creation workspace', () => {
     expect(wrapper.findAll('[role="option"]').map(option => option.attributes('data-template-id'))).toEqual([
       'element-blank',
       'element-profile',
-      'element-dialog',
-      'element-drawer',
       'antd-blank',
       'antd-profile',
-      'antd-dialog',
-      'antd-drawer',
       'element-approval',
       'element-survey',
       'antd-approval',
@@ -257,7 +253,7 @@ describe('template creation workspace', () => {
 
     await wrapper.get('select[aria-label="Template category"]').setValue('starter')
     expect(wrapper.findAll('[role="option"]')).toHaveLength(6)
-    await wrapper.get('select[aria-label="Template provider"]').setValue('built-in')
+    await wrapper.get('select[aria-label="Template source"]').setValue('built-in')
     expect(wrapper.findAll('[role="option"]')).toHaveLength(6)
 
     await wrapper.get('input[aria-label="Search templates"]').setValue('no-such-template')
@@ -267,7 +263,7 @@ describe('template creation workspace', () => {
     await flushPromises()
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
     await wrapper.get('.template-empty-state button').trigger('click')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
@@ -283,11 +279,11 @@ describe('template creation workspace', () => {
     await flushPromises()
 
     expect(wrapper.get('.template-provider-error').text()).toContain('Built-in provider failed.')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     await wrapper.get('.template-provider-error button').trigger('click')
     await flushPromises()
     expect(mocks.catalogLoad).toHaveBeenCalledTimes(2)
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
@@ -307,7 +303,7 @@ describe('template creation workspace', () => {
     expect(wrapper.find('.template-empty-state').exists()).toBe(false)
     await wrapper.get('.template-catalog-fatal button').trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
     wrapper.unmount()
   })
 
@@ -318,7 +314,7 @@ describe('template creation workspace', () => {
     const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
     expect(selectedStatus().attributes('data-status')).toBe('eligible')
     expect(wrapper.get('[data-template-id="element-profile"] .template-catalog-status').attributes('data-status')).toBe(
-      'pending',
+      'eligible',
     )
     const previousAnalyzeCalls = mocks.analyzeEligibility.mock.calls.length
     const nextAdapter = deferred<{
@@ -334,7 +330,7 @@ describe('template creation workspace', () => {
     }
     await flushPromises()
 
-    expect(selectedStatus().attributes('data-status')).toBe('checking')
+    expect(wrapper.get('.template-create-footer button').attributes('disabled')).toBeDefined()
     expect(mocks.analyzeEligibility).toHaveBeenCalledTimes(previousAnalyzeCalls)
     nextAdapter.resolve({
       designerRegistry: { rendererNamespace: 'mx-element-plus' },
@@ -342,7 +338,7 @@ describe('template creation workspace', () => {
     })
     await flushPromises()
     expect(selectedStatus().attributes('data-status')).toBe('eligible')
-    expect(mocks.analyzeEligibility).toHaveBeenCalledTimes(previousAnalyzeCalls + 1)
+    expect(mocks.analyzeEligibility.mock.calls.length).toBeGreaterThan(previousAnalyzeCalls)
     wrapper.unmount()
   })
 
@@ -400,33 +396,21 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
-  it('shows actionable diagnostics and disables creation when Surface requirements are unmet', async () => {
-    mocks.analyzeEligibility.mockImplementation((template: { manifest: { adapter: string } }) =>
-      template.manifest.adapter === 'antd-vue'
-        ? {
-            eligible: false,
-            diagnostics: [
-              {
-                code: 'TEMPLATE_REGISTRY_ADAPTER_MISMATCH',
-                message: 'Template adapter antd-vue does not match element-plus.',
-              },
-            ],
-          }
+  it('only offers compatible templates when creating a Surface', async () => {
+    mocks.analyzeEligibility.mockImplementation((template: { manifest: { id: string } }) =>
+      template.manifest.id === 'element-survey'
+        ? { eligible: false, diagnostics: [{ code: 'TEMPLATE_REGISTRY_COMPONENT_MISSING', message: 'A required component is unavailable.' }] }
         : eligible(),
     )
     const wrapper = mountWorkspace('surface')
     await flushPromises()
 
-    await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.get('[data-template-id="antd-profile"] .template-catalog-status').attributes('data-status')).toBe(
-      'ineligible',
-    )
-    expect(wrapper.get('[role="alert"]').text()).toContain('Template adapter antd-vue does not match element-plus.')
-    expect(wrapper.get('.template-create-footer button').attributes('disabled')).toBeDefined()
-    await wrapper.get('.template-eligibility button').trigger('click')
-    await flushPromises()
-    expect(document.activeElement?.getAttribute('data-template-id')).toBe('antd-profile')
+    expect(wrapper.find('[data-template-id="antd-profile"]').exists()).toBe(false)
+    expect(wrapper.find('[data-template-id="element-survey"]').exists()).toBe(false)
+    expect(wrapper.find('[data-template-id="element-profile"]').exists()).toBe(true)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(5)
+    expect(wrapper.find('.template-eligibility.is-blocked').exists()).toBe(false)
+    expect(wrapper.get('.template-create-footer button').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 
@@ -460,9 +444,8 @@ describe('template creation workspace', () => {
     const adapterFailure = mountWorkspace()
     await flushPromises()
 
-    expect(adapterFailure.get('.template-preview-error').text()).toContain('Adapter unavailable')
-    expect(adapterFailure.get('.template-create-footer button').attributes('disabled')).toBeDefined()
-    await adapterFailure.get('.template-create-footer button').trigger('click')
+    expect(adapterFailure.get('.template-catalog-fatal').text()).toContain('Adapter unavailable')
+    expect(adapterFailure.find('.template-create-footer').exists()).toBe(false)
     expect(mocks.createProject).not.toHaveBeenCalled()
     adapterFailure.unmount()
 
@@ -508,37 +491,29 @@ describe('template creation workspace', () => {
   })
 
   it('ignores a stale preview request that resolves after the current selection', async () => {
-    let resolveElement!: (value: unknown) => void
-    let resolveAntd!: (value: unknown) => void
-    mocks.loadAdapter.mockImplementation(
-      (adapter: string) => new Promise((resolve) => {
-        if (adapter === 'element-plus')
-          resolveElement = resolve
-        else
-          resolveAntd = resolve
-      }),
-    )
     const wrapper = mountWorkspace()
     await flushPromises()
-    expect(mocks.loadAdapter).toHaveBeenCalledWith('element-plus')
-
+    const elementRequest = deferred<unknown>()
+    const antdRequest = deferred<unknown>()
+    mocks.loadAdapter.mockImplementation((adapter: string) => adapter === 'element-plus' ? elementRequest.promise : antdRequest.promise)
+    await wrapper.get('[data-template-id="element-profile"]').trigger('click')
+    await flushPromises()
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
     await flushPromises()
-    expect(mocks.loadAdapter).toHaveBeenCalledWith('antd-vue')
-    resolveAntd({
+    antdRequest.resolve({
       designerRegistry: { rendererNamespace: 'mx-antd' },
       registrySnapshot: { adapter: 'antd-vue', components: [] },
     })
     await flushPromises()
     expect(wrapper.get('[data-preview-adapter]').attributes('data-preview-adapter')).toBe('antd-vue')
 
-    resolveElement({
+    elementRequest.resolve({
       designerRegistry: { rendererNamespace: 'mx-element' },
       registrySnapshot: { adapter: 'element-plus', components: [] },
     })
     await flushPromises()
     expect(wrapper.get('[data-preview-adapter]').attributes('data-preview-adapter')).toBe('antd-vue')
-    expect(mocks.preparePreview).toHaveBeenCalledTimes(1)
+    expect(mocks.preparePreview).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })
 })

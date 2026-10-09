@@ -1,11 +1,92 @@
 .management-shell {
-  display: flex;
+  display: grid;
+  grid-template-rows: 50px minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
   height: 100vh;
   color: var(--wb-text);
   background: var(--wb-bg);
+}
+
+.management-navigation {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+.management-navigation__brand {
+  display: flex;
+  align-items: center;
+  margin-right: 24px;
+  color: var(--wb-text-strong);
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.4px;
+}
+
+.management-navigation a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-bottom: 2px solid transparent;
+  color: var(--wb-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.management-navigation a:hover,
+.management-navigation a.is-active {
+  border-color: var(--wb-accent);
+  color: var(--wb-accent-text);
+  background: var(--wb-accent-soft);
+}
+
+.management-shell__content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.library-preview-dialog .el-dialog__body {
+  min-height: 360px;
+  max-height: calc(80vh - 100px);
+  overflow: auto;
+  background: var(--wb-bg);
+}
+.library-preview-dialog .surface-presentation-shell {
+  min-height: 360px;
+}
+.template-editor-state {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  color: var(--wb-text);
+  background: var(--wb-bg);
+}
+
+@media (max-width: 640px) {
+  .management-navigation {
+    padding: 0 12px;
+    gap: 4px;
+  }
+  .management-navigation__brand {
+    display: none;
+  }
+  .management-navigation a {
+    flex: 1;
+    padding: 0 8px;
+  }
 }
 
 .page-creation-dialog .el-dialog__body {

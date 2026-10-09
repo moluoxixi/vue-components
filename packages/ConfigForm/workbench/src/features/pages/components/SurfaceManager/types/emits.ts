@@ -2,7 +2,9 @@ import type { ProjectSurfaceAction } from '../../../../../project'
 
 export interface SurfaceManagerEmits {
   action: [action: ProjectSurfaceAction]
-  createSurface: []
+  createSurface: [kind?: 'page' | 'dialog' | 'drawer']
+  useTemplate: []
+  saveTemplate: [id: string]
   importSurface: []
   /** Export one page's transfer JSON. */
   export: [id: string]

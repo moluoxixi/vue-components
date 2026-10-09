@@ -60,7 +60,7 @@
   position: relative;
   display: flex;
   min-width: 100%;
-  min-height: 100%;
+  min-height: 420px;
   padding: 28px;
   align-items: flex-start;
   justify-content: center;
@@ -68,7 +68,11 @@
   background: var(--wb-bg);
 }
 
-.surface-presentation-mask { position: absolute; inset: 0; background: rgb(10 14 22 / 42%); }
+.surface-presentation-mask {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 14 22 / 42%);
+}
 
 .surface-presentation-panel {
   position: relative;
@@ -92,65 +96,74 @@
   border-bottom: 1px solid var(--wb-separator);
 }
 
-.surface-presentation-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.surface-presentation-header button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; place-items: center; color: var(--wb-muted); border: 0; background: transparent; }
-.surface-presentation-shell.is-drawer { padding: 0; }
-.surface-presentation-shell.is-drawer.is-right { justify-content: flex-end; }
-.surface-presentation-shell.is-drawer.is-left { justify-content: flex-start; }
-.surface-presentation-shell.is-drawer.is-top { align-items: flex-start; }
-.surface-presentation-shell.is-drawer.is-bottom { align-items: flex-end; }
-.surface-presentation-shell.is-drawer.is-top .surface-presentation-panel,
-.surface-presentation-shell.is-drawer.is-bottom .surface-presentation-panel { width: 100%; min-height: min(var(--surface-presentation-size), 100%); }
-.surface-presentation-shell.is-drawer.is-left .surface-presentation-panel,
-.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel { min-height: 100%; }
-
-.surface-presentation-shell:not(.is-page) {
-  position: relative;
-  display: flex;
-  min-width: 100%;
-  min-height: 100%;
-  padding: 28px;
-  align-items: flex-start;
-  justify-content: center;
-  overflow: auto;
-  background: var(--wb-bg);
-}
-
-.surface-presentation-mask { position: absolute; inset: 0; background: rgb(10 14 22 / 42%); }
-
-.surface-presentation-panel {
-  position: relative;
-  z-index: 1;
-  width: min(var(--surface-presentation-size), 100%);
-  max-width: 100%;
+.surface-presentation-header strong {
+  min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--wb-control-border);
-  border-radius: 6px;
-  background: var(--wb-elevated);
-  box-shadow: var(--wb-shadow-sheet);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.surface-presentation-header {
-  display: flex;
-  min-height: 44px;
-  padding: 0 14px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--wb-separator);
+.surface-presentation-header > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--wb-muted);
+  border: 0;
+  background: transparent;
 }
-
-.surface-presentation-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.surface-presentation-header button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; padding: 0; place-items: center; color: var(--wb-muted); border: 0; background: transparent; }
-.surface-presentation-shell.is-drawer { padding: 0; }
-.surface-presentation-shell.is-drawer.is-right { justify-content: flex-end; }
-.surface-presentation-shell.is-drawer.is-left { justify-content: flex-start; }
-.surface-presentation-shell.is-drawer.is-top { align-items: flex-start; }
-.surface-presentation-shell.is-drawer.is-bottom { align-items: flex-end; }
+.surface-presentation-shell.is-drawer {
+  padding: 0;
+}
+.surface-presentation-shell.is-drawer.is-right {
+  justify-content: flex-end;
+}
+.surface-presentation-shell.is-drawer.is-left {
+  justify-content: flex-start;
+}
+.surface-presentation-shell.is-drawer.is-top {
+  align-items: flex-start;
+}
+.surface-presentation-shell.is-drawer.is-bottom {
+  align-items: flex-end;
+}
 .surface-presentation-shell.is-drawer.is-top .surface-presentation-panel,
-.surface-presentation-shell.is-drawer.is-bottom .surface-presentation-panel { width: 100%; min-height: min(var(--surface-presentation-size), 100%); }
+.surface-presentation-shell.is-drawer.is-bottom .surface-presentation-panel {
+  width: 100%;
+  min-height: min(var(--surface-presentation-size), 100%);
+}
 .surface-presentation-shell.is-drawer.is-left .surface-presentation-panel,
-.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel { min-height: 100%; }
+.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel {
+  min-height: 100%;
+}
+
+.surface-presentation-empty {
+  position: absolute;
+  inset: 44px 16px 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: var(--wb-muted);
+  font-size: 13px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+.surface-presentation-panel:has(.surface-presentation-empty) iframe {
+  min-height: 260px;
+}
+.mx-config-form-designer__runtime-surface:has(
+    [data-surface-presentation='dialog'],
+    [data-surface-presentation='drawer']
+  )
+  > .mx-config-form-designer__canvas-empty {
+  display: none;
+}
+.surface-presentation-shell.is-drawer.is-left .surface-presentation-panel,
+.surface-presentation-shell.is-drawer.is-right .surface-presentation-panel {
+  min-height: 420px;
+}
 
 .workbench-message {
   position: fixed;
@@ -203,7 +216,7 @@
   box-shadow: var(--wb-shadow-toast);
 }
 
-.workspace-recovery-notice[data-tone="error"] {
+.workspace-recovery-notice[data-tone='error'] {
   border-color: var(--wb-danger);
 }
 
@@ -232,7 +245,6 @@
 }
 
 @media (max-width: 720px) and (pointer: coarse) {
-
   .workspace-recovery-notice {
     top: 56px;
     right: 8px;
@@ -253,14 +265,12 @@
   .workbench-app {
     grid-template-rows: 48px minmax(0, 1fr);
   }
-
 }
 
 @media (max-width: 700px) {
-
   .workbench-layout,
-.workbench-layout.is-preview-collapsed,
-.workbench-layout.is-preview-expanded {
+  .workbench-layout.is-preview-collapsed,
+  .workbench-layout.is-preview-expanded {
     display: block;
     min-height: 0;
   }
@@ -307,7 +317,7 @@
     background: transparent;
     font-size: 11px;
   }
-  .mobile-studio-dock button[aria-selected="true"] {
+  .mobile-studio-dock button[aria-selected='true'] {
     color: var(--wb-text-strong);
     border-top-color: var(--wb-accent);
     background: var(--wb-hover);

@@ -10,5 +10,7 @@ export {
   instantiateEmptyProject,
   instantiateTemplateProject,
   instantiateTemplateSurface,
+  instantiateTemplateSurfacePreviewProject,
   prepareTemplatePreview,
 } from './instantiate'
+export { copyTemplate, createBlankTemplate, templateFromSurface } from './library'

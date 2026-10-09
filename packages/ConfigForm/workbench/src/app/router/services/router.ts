@@ -12,6 +12,16 @@ import { WORKBENCH_PATHS } from '../../navigation'
  */
 export const WORKBENCH_ROUTES: readonly RouteRecordRaw[] = [
   {
+    path: WORKBENCH_PATHS.templates,
+    name: 'templates',
+    component: () => import('../components/TemplatesView.vue'),
+  },
+  {
+    path: WORKBENCH_PATHS.templateDesign,
+    name: 'template-design',
+    component: () => import('../components/TemplateDesignView.vue'),
+  },
+  {
     path: '/',
     redirect: WORKBENCH_PATHS.projects,
   },

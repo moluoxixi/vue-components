@@ -106,6 +106,23 @@ afterEach(() => {
 })
 
 describe('workbench template project creation transaction', () => {
+  it('creates and saves a dialog before the project has any pages', async () => {
+    const repository = durableRepository()
+    const { controller } = await setup(repository)
+    expect(await controller.createProject('Overlay first', 'element-plus')).toBe(true)
+    expect(await controller.createSurface('dialog')).toBe(true)
+    expect(controller.currentSurface.value?.kind).toBe('dialog')
+    expect(controller.currentProject.value?.homeSurfaceId).toBe('')
+    expect(controller.configError.value).toBe('')
+    expect(controller.designSession.compilation.value).toBeDefined()
+    await controller.saveProject()
+    expect(controller.dirty.value).toBe(false)
+    const persisted = await repository.get(controller.currentProject.value!.id)
+    expect(persisted?.document.surfaceOrder).toHaveLength(1)
+    expect(await controller.createSurface('page')).toBe(true)
+    expect(controller.currentProject.value?.homeSurfaceId).toBe(controller.currentSurfaceId.value)
+    expect(controller.previewSession.compilation.value).toBeDefined()
+  })
   it('exports staged resource bytes before autosave and after replacing a saved file', async () => {
     const repository = durableRepository()
     const { controller } = await setup(repository)

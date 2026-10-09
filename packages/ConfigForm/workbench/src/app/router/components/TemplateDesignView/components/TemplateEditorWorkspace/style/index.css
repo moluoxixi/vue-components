@@ -1,0 +1,109 @@
+.template-editor {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.template-editor:has(> .el-alert) {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+.template-editor__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+.template-editor__identity {
+  display: grid;
+  min-width: 0;
+  width: min(420px, 40vw);
+  gap: 5px;
+}
+.template-editor__identity > span {
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+.template-editor__identity :deep(.el-input__inner) {
+  color: var(--wb-text-strong);
+  font-size: 15px;
+  font-weight: 650;
+}
+.template-editor__actions {
+  display: flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 12px;
+}
+.template-editor__actions > .el-button + .el-button {
+  margin-left: 0;
+}
+.template-editor__header :deep(.el-button > span) {
+  gap: 6px;
+}
+.template-editor__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-muted);
+  font-size: 12px;
+}
+.template-editor__description {
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-surface);
+}
+.template-editor__description label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--wb-muted);
+  font-size: 12px;
+}
+.template-editor__description .el-input {
+  flex: 1;
+}
+.template-editor__mobile {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .template-editor {
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+  .template-editor:has(> .el-alert) {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  }
+  .template-editor__header {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .template-editor__identity {
+    width: 100%;
+  }
+  .template-editor__actions {
+    width: 100%;
+    grid-column: 1 / -1;
+    margin-left: 0;
+    gap: 10px;
+  }
+  .template-editor__status {
+    margin-right: auto;
+  }
+  .template-editor__presentation {
+    width: 32px;
+    padding: 0;
+  }
+  .template-editor__presentation-label {
+    display: none;
+  }
+  .template-editor__description {
+    padding: 8px 12px;
+  }
+  .template-editor__mobile {
+    display: block;
+    padding: 6px;
+    border-radius: 0;
+  }
+}

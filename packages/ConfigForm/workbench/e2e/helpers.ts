@@ -36,7 +36,7 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await expect(page.locator('.page-manager__row')).toHaveCount(0)
 
   // Create the profile page explicitly inside the empty project.
-  await page.locator('.page-manager__create-actions').getByRole('button', { name: 'New page', exact: true }).click()
+  await page.locator('.page-manager__create-actions').getByRole('button', { name: 'From template', exact: true }).click()
   const pageCreation = page.locator('.page-creation-dialog .template-creation-workspace')
   await pageCreation.locator('.template-workspace-layout').waitFor({ state: 'visible' })
   await page.waitForFunction(() => {
@@ -62,7 +62,7 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
     if (await mobileDetails.isVisible())
       await mobileDetails.click()
   }
-  await expect(pageCreation.getByText('Registry requirements met', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(pageCreation.getByText('Ready to use', { exact: true })).toBeVisible({ timeout: 15_000 })
   await pageCreation.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
@@ -95,15 +95,15 @@ export async function openPageManagement(page: Page): Promise<void> {
   await expect(page.locator('.page-manager')).toBeVisible()
 }
 
-/** Open the page creation dialog and optionally choose its surface kind. */
+/** Open the optional template creation dialog and optionally choose its surface kind. */
 export async function openPageCreation(
   page: Page,
   kind: 'form' | 'dialog' | 'drawer' = 'form',
 ): Promise<import('@playwright/test').Locator> {
   await openPageManagement(page)
   const manager = page.locator('.page-manager')
-  await manager.getByRole('button', { name: 'New page', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Create page', exact: true })
+  await manager.getByRole('button', { name: 'From template', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'From template', exact: true })
   await expect(dialog).toBeVisible()
   if (kind !== 'form') {
     const label = kind === 'dialog' ? 'Dialog' : 'Drawer'

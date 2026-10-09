@@ -46,7 +46,7 @@ export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSumma
 }
 
 export interface WorkbenchController extends
-  Pick<CreationCommands, 'createFromJsonImport' | 'createSurfaceFromTemplate' | 'createProject' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
+  Pick<CreationCommands, 'createFromJsonImport' | 'createSurface' | 'createSurfaceFromTemplate' | 'createProject' | 'createProjectFromTemplate' | 'duplicateProject' | 'exportProject' | 'prepareJsonImport'>,
   Pick<ProjectCommands, 'deleteProject' | 'removeProjectImage' | 'renameProject' | 'setProjectImage'>,
   AssetCommands,
   ThemeCommands,

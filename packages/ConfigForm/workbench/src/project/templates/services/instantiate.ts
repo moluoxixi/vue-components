@@ -104,7 +104,7 @@ export function instantiateEmptyProject(input: {
   })
 }
 
-function instantiateTemplateSurfacePreviewProject(
+export function instantiateTemplateSurfacePreviewProject(
   template: ProjectTemplateCatalogEntry,
   registryLock: RegistryLock,
   identityFactory: ProjectIdentityFactory = DEFAULT_PROJECT_IDENTITY_FACTORY,

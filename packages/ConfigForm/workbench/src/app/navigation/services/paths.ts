@@ -11,6 +11,8 @@ import type { WorkbenchRouteTarget } from '../types'
  */
 export const WORKBENCH_PATHS = Object.freeze({
   projects: '/projects',
+  templates: '/templates',
+  templateDesign: '/templates/:templateId/design',
   projectCreate: '/projects/new',
   projectImport: '/projects/import',
   projectPages: '/projects/:projectId/pages',
@@ -26,6 +28,14 @@ function encodeSegment(value: string): string {
 
 export function projectsPath(): string {
   return WORKBENCH_PATHS.projects
+}
+
+export function templatesPath(): string {
+  return WORKBENCH_PATHS.templates
+}
+
+export function templateDesignPath(templateId: string): string {
+  return `${WORKBENCH_PATHS.templates}/${encodeSegment(templateId)}/design`
 }
 
 export function projectCreatePath(mode: 'json' | 'template'): string {
