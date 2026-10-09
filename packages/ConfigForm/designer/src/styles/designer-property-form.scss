@@ -48,45 +48,47 @@
   max-width: 100%;
   min-height: 17px;
   padding: 0;
-  overflow: hidden;
   color: #394657;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 17px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-.mx-config-form-designer-property-form__field[data-inherited-label]:not([data-hint-label]) > .mx-config-form-designer-property-form__label::after {
+.mx-config-form-designer-property-form__field[data-inherited-label]:not([data-hint-label])
+  > .mx-config-form-designer-property-form__label::after {
   display: inline;
   margin-left: 4px;
   color: var(--mx-designer-muted);
-  content: "· " attr(data-inherited-label);
-  font-size: 10px;
+  content: '· ' attr(data-inherited-label);
+  font-size: 11px;
   font-weight: 500;
+}
+
+.mx-config-form-designer-property-form__field.is-simple:not(.is-control-boolean)[data-hint-label] {
+  grid-template-columns: minmax(0, 1fr) fit-content(55%);
+  column-gap: 8px;
 }
 
 .mx-config-form-designer-property-form__field[data-hint-label]::before {
   display: block;
-  max-width: 52%;
-  overflow: hidden;
+  min-width: 0;
   align-self: center;
   color: var(--mx-designer-muted);
   content: attr(data-hint-label);
   direction: ltr;
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   justify-self: end;
-  line-height: 17px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .mx-config-form-designer-property-form__field[data-hint-label] > .mx-config-form-designer-property-form__label {
-  max-width: 46%;
   grid-column: 1;
   grid-row: 1;
 }
@@ -100,6 +102,12 @@
   width: 100%;
   min-height: 34px;
   align-items: center;
+}
+
+.mx-config-form-designer-property-form__field.is-simple:not(.is-control-boolean)[data-hint-label]
+  > .mx-config-form-designer-property-form__control {
+  grid-column: 1 / -1;
+  grid-row: 2;
 }
 
 .mx-config-form-designer__property-control:not(.is-boolean) {

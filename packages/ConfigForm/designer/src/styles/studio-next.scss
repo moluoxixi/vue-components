@@ -51,7 +51,7 @@
   background: transparent;
   color: var(--mx-designer-muted);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 .mx-config-form-designer__selection-spine button:hover {
@@ -87,7 +87,7 @@
 .mx-config-form-designer__validation-lab {
   border-top: 1px solid var(--mx-designer-separator);
   padding-top: 12px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .mx-config-form-designer__validation-lab summary {
   display: flex;
@@ -132,7 +132,7 @@
 }
 .mx-config-form-designer__expression-playground {
   padding-top: 8px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .mx-config-form-designer__expression-playground summary {
   display: flex;

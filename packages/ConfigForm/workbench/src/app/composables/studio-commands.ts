@@ -20,6 +20,7 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
     const chinese = ui.localeId.value === 'zh-CN'
     const label = (zh: string, en: string) => (chinese ? zh : en)
     const readonly = controller.busy.value
+    const busyReason = label('正在处理项目，请稍候。', 'A project operation is in progress. Please wait.')
     const project = controller.currentProject.value
     if (!project)
       return []
@@ -31,6 +32,11 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
         group: label('项目', 'Project'),
         shortcut: 'Ctrl S',
         disabled: readonly || !controller.dirty.value || Boolean(controller.configError.value),
+        disabledReason: readonly
+          ? busyReason
+          : controller.configError.value
+            ? label('请先修复配置问题。', 'Resolve configuration issues before saving.')
+            : label('所有更改已保存。', 'All changes are saved.'),
         run: () => {
           void controller.saveProject()
         },
@@ -41,6 +47,7 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
         group: label('编辑', 'Edit'),
         shortcut: 'Ctrl Z',
         disabled: readonly || !history.canUndo,
+        disabledReason: readonly ? busyReason : label('还没有可以撤销的操作。', 'No changes to undo yet.'),
         run: () => {
           history.undo()
         },
@@ -51,6 +58,7 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
         group: label('编辑', 'Edit'),
         shortcut: 'Ctrl Shift Z',
         disabled: readonly || !history.canRedo,
+        disabledReason: readonly ? busyReason : label('没有可以重做的操作。', 'No changes to redo.'),
         run: () => {
           history.redo()
         },
@@ -87,6 +95,7 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
         label: label('从 JSON Schema 生成字段', 'Generate fields from JSON Schema'),
         group: label('数据', 'Data'),
         disabled: readonly,
+        disabledReason: busyReason,
         run: navigation.schema,
       },
       {
@@ -113,8 +122,9 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
         id: `insert:${material.key}`,
         label: label('插入 ', 'Insert ') + controller.workbenchLocale.value.materialTitle(material),
         group: label('组件', 'Materials'),
-        detail: material.key,
+        detail: controller.workbenchLocale.value.materialCategory(material),
         disabled: readonly,
+        disabledReason: busyReason,
         run: () => {
           navigation.showDesign()
           designer.value?.addMaterial(material.key)
@@ -128,7 +138,7 @@ export function useStudioCommands(designer: Readonly<Ref<DesignSurfaceExpose | n
           id: `surface:${id}`,
           label: surface.name,
           group: label('页面与浮层', 'Surfaces'),
-          detail: surface.kind,
+          detail: surface.kind === 'page' ? label('页面', 'Page') : surface.kind === 'dialog' ? label('弹窗', 'Dialog') : label('抽屉', 'Drawer'),
           run: () => {
             navigation.showDesign()
             controller.selectSurfaceFromDesigner(id)

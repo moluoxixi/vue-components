@@ -23,8 +23,15 @@
   border-bottom: 1px solid var(--wb-separator);
 }
 
-.designer-left-heading strong { font-size: 12px; font-weight: 600; }
-.designer-left-heading > span { color: var(--wb-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.designer-left-heading strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.designer-left-heading > span {
+  color: var(--wb-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 
 .designer-left-tabs {
   min-width: 0;
@@ -129,12 +136,12 @@
 }
 
 .designer-material-groups .el-collapse-item__header {
-  height: 32px;
+  height: 36px;
   padding: 0 4px;
   color: var(--wb-muted);
   background: transparent;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -203,7 +210,7 @@
 }
 
 .designer-material-button .mx-config-form-designer__palette-item-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   text-align: left;
 }
@@ -220,6 +227,10 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 700;
+}
+
+.designer-layers-scrollbar .studio-panel-empty {
+  min-height: 240px;
 }
 
 .designer-layers-scrollbar,
@@ -779,14 +790,13 @@
   font-size: 11px;
 }
 
-:is(.workbench-app, .workbench-overlays)[data-theme="light"] .designer-left-panel {
+:is(.workbench-app, .workbench-overlays)[data-theme='light'] .designer-left-panel {
   color: var(--wb-muted);
   border-color: var(--wb-separator);
   background: var(--wb-elevated);
 }
 
 @media (max-width: 700px) {
-
   .designer-left-panel {
     grid-template-rows: minmax(0, 1fr);
   }
@@ -798,10 +808,10 @@
 
 @media (max-width: 720px) and (pointer: coarse) {
   .designer-left-tabs button,
-.manage-data-button,
-.manage-pages-button,
-.designer-layers button,
-.designer-pages button {
+  .manage-data-button,
+  .manage-pages-button,
+  .designer-layers button,
+  .designer-pages button {
     min-height: 44px;
   }
   .designer-layer-actions .designer-layer-menu-trigger {

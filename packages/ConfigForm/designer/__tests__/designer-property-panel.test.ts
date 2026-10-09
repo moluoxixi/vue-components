@@ -330,7 +330,7 @@ describe('designer property panel lite Inspector', () => {
 
     const search = wrapper.get('[data-property-search]')
     expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
-      .toEqual(['essentials', 'layout', 'data', 'advanced'])
+      .toEqual(['essentials', 'layout', 'data', 'guidance', 'advanced'])
     await search.setValue('placeholder')
     expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
     expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(false)
@@ -384,6 +384,37 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('true')
     expect(wrapper.get('[data-property-group="essentials"] button').attributes('aria-expanded')).toBe('true')
     expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
+  })
+
+  it('reveals empty supporting text through search, preserves collapse choices, and edits multiple lines', async () => {
+    const first = field('first', 'test.input')
+    const second = field('second', 'test.input', { description: 'An existing description' })
+    const wrapper = mount(DesignerPropertyPanel, {
+      attachTo: document.body,
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([first, second]),
+        node: first,
+        material: fieldMaterial('test.input', [placeholderSetter]),
+        componentDefinition: contract('test.input'),
+        diagnostics: [],
+      },
+    })
+    const search = wrapper.get('[data-property-search]')
+    expect(wrapper.get('[data-property-group="guidance"] button').attributes('aria-expanded')).toBe('false')
+    expect(wrapper.get('textarea[aria-label="Description"]').isVisible()).toBe(false)
+    await search.setValue('Description')
+    const description = wrapper.get('textarea[aria-label="Description"]')
+    expect(description.isVisible()).toBe(true)
+    await description.setValue('First line\nSecond line')
+    await description.trigger('blur')
+    expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['first', ['description'], 'First line\nSecond line'])
+    await wrapper.get('button[aria-label="Clear property search"]').trigger('click')
+    expect(wrapper.get('[data-property-group="guidance"] button').attributes('aria-expanded')).toBe('false')
+    await wrapper.setProps({ graph: graph([first, second]), node: second })
+    expect(wrapper.get('[data-property-group="guidance"] button').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('textarea[aria-label="Description"]').isVisible()).toBe(true)
+    wrapper.unmount()
   })
 
   it('uses only compatible common setters for heterogeneous selections', async () => {

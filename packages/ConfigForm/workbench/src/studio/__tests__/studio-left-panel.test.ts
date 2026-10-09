@@ -69,7 +69,7 @@ describe('studio left panel', () => {
     expect(wrapper.find('.el-collapse.designer-material-groups').exists()).toBe(true)
     expect(wrapper.get('.designer-material-category').text()).toBe('Fields')
     await search.setValue('missing')
-    expect(wrapper.get('.el-empty').text()).toContain('No materials')
+    expect(wrapper.get('.studio-panel-empty').text()).toContain('No matching components')
     await search.setValue('Input')
     expect(wrapper.find('[data-specimen-node-id]').exists()).toBe(false)
     const material = wrapper.get('.el-button[data-material-key="test.input"]')

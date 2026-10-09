@@ -94,7 +94,7 @@ export function useDesignerPropertyEntries(
                 { description: 'Description', help: 'Help text', warning: 'Warning' }[key],
               ),
               path: [key],
-              control: 'text' as const,
+              control: 'textarea' as const,
             })),
           ]
         : []),

@@ -43,13 +43,15 @@ const assetQuery = ref('')
 const activeView = computed(() => props.activeView ?? internalActiveView.value)
 const layerTree = useTemplateRef<HTMLElement>('layerTree')
 const pageList = useTemplateRef<HTMLElement>('pageList')
+const materialSearch = useTemplateRef<{ focus: () => void }>('materialSearch')
+const layerSearch = useTemplateRef<{ focus: () => void }>('layerSearch')
 const locale = computed(() => createDesignerLocale(props.locale))
 const views = computed(() => [
-  { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
-  { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers') },
-  { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Surfaces') },
-  { icon: Paintbrush, id: 'theme' as const, label: locale.value.t('designer.view.theme', 'Theme') },
-  { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History') },
+  { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components'), shortLabel: locale.value.t('designer.rail.components', 'Add') },
+  { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers'), shortLabel: locale.value.t('designer.rail.layers', 'Layers') },
+  { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Surfaces'), shortLabel: locale.value.t('designer.rail.pages', 'Pages') },
+  { icon: Paintbrush, id: 'theme' as const, label: locale.value.t('designer.view.theme', 'Theme'), shortLabel: locale.value.t('designer.rail.theme', 'Theme') },
+  { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History'), shortLabel: locale.value.t('designer.rail.history', 'History') },
 ])
 const historyPositions = computed(() => {
   const history = props.history
@@ -86,6 +88,48 @@ const filteredMaterials = computed(() => {
       .includes(query),
   )
 })
+const materialEmptyState = computed(() => {
+  if (materialQuery.value.trim()) {
+    return {
+      title: locale.value.t('palette.noResults', 'No matching components'),
+      description: locale.value.t('palette.noResultsHint', 'Try another name or clear the search.'),
+    }
+  }
+  if (materialFilter.value === 'favorite') {
+    return {
+      title: locale.value.t('palette.emptyFavorites', 'No favorites yet'),
+      description: locale.value.t('palette.emptyFavoritesHint', 'Use the star next to a component to keep it here.'),
+    }
+  }
+  if (materialFilter.value === 'recent') {
+    return {
+      title: locale.value.t('palette.emptyRecent', 'No recently used components'),
+      description: locale.value.t('palette.emptyRecentHint', 'Components you add will appear here.'),
+    }
+  }
+  return {
+    title: locale.value.t('palette.empty', 'No materials'),
+    description: locale.value.t('palette.unavailable', 'This project has no available components.'),
+  }
+})
+
+function recoverMaterials(): void {
+  if (materialQuery.value.trim())
+    materialQuery.value = ''
+  else
+    materialFilter.value = 'all'
+  void nextTick(() => materialSearch.value?.focus())
+}
+
+function recoverLayers(): void {
+  if (layerQuery.value.trim()) {
+    layerQuery.value = ''
+    void nextTick(() => layerSearch.value?.focus())
+  }
+  else {
+    selectView('components')
+  }
+}
 const materialCategories = computed(() => [
   ...new Set(filteredMaterials.value.map(material => locale.value.materialCategory(material))),
 ])
@@ -395,15 +439,16 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
   <div class="designer-left-panel">
     <header class="designer-left-heading">
       <strong>{{ views.find((view) => view.id === activeView)?.label }}</strong>
-      <span v-if="activeView === 'components'">{{ materials.length }}</span>
-      <span v-else-if="activeView === 'layers'">{{ layers.length }}</span>
+      <span v-if="activeView === 'components'">{{ filteredMaterials.length }}</span>
+      <span v-else-if="activeView === 'layers'">{{ visibleLayers.length }}</span>
       <span v-else-if="activeView === 'pages'">{{ project.surfaceOrder.length }}</span>
     </header>
     <ElTabs class="designer-left-tabs" tab-position="left" :model-value="activeView" @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
         <template #label>
           <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label">
-            <component :is="view.icon" :size="14" aria-hidden="true" />
+            <component :is="view.icon" :size="18" aria-hidden="true" />
+            <small aria-hidden="true">{{ view.shortLabel }}</small>
           </span>
         </template>
       </ElTabPane>
@@ -411,6 +456,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
 
     <div v-if="activeView === 'components'" class="designer-components-panel">
       <ElInput
+        ref="materialSearch"
         v-model="materialQuery"
         class="designer-material-search"
         clearable
@@ -480,7 +526,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
                       :aria-label="`${locale.locale === 'zh-CN' ? '收藏' : 'Favorite'} ${materialTitle(material)}`"
                       @click="toggleFavorite(material.key)"
                     >
-                      <Star :size="12" :fill="favorites.includes(material.key) ? 'currentColor' : 'none'" />
+                      <Star :size="16" :fill="favorites.includes(material.key) ? 'currentColor' : 'none'" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -489,16 +535,30 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
           </ElScrollbar>
         </template>
       </DesignerPalette>
-      <ElEmpty v-else :description="locale.t('palette.empty', 'No materials')" :image-size="42" />
+      <div v-else class="studio-panel-empty" role="status">
+        <Search v-if="materialQuery.trim()" :size="26" aria-hidden="true" />
+        <Star v-else-if="materialFilter === 'favorite'" :size="26" aria-hidden="true" />
+        <History v-else-if="materialFilter === 'recent'" :size="26" aria-hidden="true" />
+        <Blocks v-else :size="26" aria-hidden="true" />
+        <strong>{{ materialEmptyState.title }}</strong>
+        <p>{{ materialEmptyState.description }}</p>
+        <ElButton v-if="materialQuery.trim() || materialFilter !== 'all'" native-type="button" @click="recoverMaterials">
+          {{ materialQuery.trim() ? locale.t('palette.clearSearch', 'Clear search') : locale.t('palette.browseAll', 'Browse all components') }}
+        </ElButton>
+      </div>
+      <p class="studio-material-hint">
+        {{ locale.t('palette.insertHint', 'Click to add · Drag to place') }}
+      </p>
     </div>
 
     <ElScrollbar v-else-if="activeView === 'layers'" class="designer-layers-scrollbar">
       <ElInput
+        ref="layerSearch"
         v-model="layerQuery"
         class="designer-material-search"
         clearable
         :aria-label="locale.locale === 'zh-CN' ? '搜索图层' : 'Search layers'"
-        :placeholder="locale.locale === 'zh-CN' ? '名称、字段或组件…' : 'Name, field or component…'"
+        :placeholder="locale.locale === 'zh-CN' ? '搜索图层…' : 'Search layers…'"
       >
         <template #prefix>
           <Search :size="14" />
@@ -591,7 +651,15 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
             </ElDropdown>
           </div>
         </div>
-        <ElEmpty v-if="layers.length === 0" :description="locale.t('layer.empty', 'No layers yet')" :image-size="42" />
+      </div>
+      <div v-if="!visibleLayers.length" class="studio-panel-empty" role="status">
+        <Search v-if="layerQuery.trim()" :size="26" aria-hidden="true" />
+        <Layers3 v-else :size="26" aria-hidden="true" />
+        <strong>{{ layerQuery.trim() ? locale.t('layer.noResults', 'No matching layers') : locale.t('layer.empty', 'No layers yet') }}</strong>
+        <p>{{ layerQuery.trim() ? locale.t('layer.noResultsHint', 'Try another name or clear the search.') : locale.t('layer.emptyHint', 'Add a component to start building this page.') }}</p>
+        <ElButton native-type="button" @click="recoverLayers">
+          {{ layerQuery.trim() ? locale.t('palette.clearSearch', 'Clear search') : locale.t('palette.browseAll', 'Browse all components') }}
+        </ElButton>
       </div>
     </ElScrollbar>
 

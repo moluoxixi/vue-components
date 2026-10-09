@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 
 type Panel = 'palette' | 'properties'
 const storageKey = 'config-form.designer.panel-sizes.v1'
-const defaults = { palette: 252, properties: 332 }
+const defaults = { palette: 272, properties: 332 }
 
 export function useDesignPanelSizes() {
   const widths = ref({ ...defaults })

@@ -9,7 +9,7 @@
   min-width: 0;
   overflow: hidden;
   color: #394657;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 17px;
   text-overflow: ellipsis;
@@ -24,13 +24,15 @@
   gap: 8px;
 }
 
-.mx-config-form-designer__setter:focus-within > .mx-config-form-designer__setter-label-row .mx-config-form-designer__setter-label {
+.mx-config-form-designer__setter:focus-within
+  > .mx-config-form-designer__setter-label-row
+  .mx-config-form-designer__setter-label {
   color: var(--mx-designer-accent);
 }
 
 .mx-config-form-designer__setter-hint {
   color: var(--mx-designer-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 

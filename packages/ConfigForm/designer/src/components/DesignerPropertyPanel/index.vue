@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { ChevronRight, Layers3, PanelsTopLeft, Search, SlidersHorizontal, X } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useDesignerLocale } from '../../locale'
 import {
   DesignerDataBindingEditor,
@@ -16,7 +16,7 @@ const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
 const locale = useDesignerLocale()
 const propertyQuery = ref('')
-type PropertyGroupId = 'essentials' | 'layout' | 'appearance' | 'data' | 'advanced'
+type PropertyGroupId = 'essentials' | 'layout' | 'appearance' | 'data' | 'guidance' | 'advanced'
 const collapsedPropertyGroups = ref(new Set<PropertyGroupId>())
 
 const {
@@ -73,7 +73,9 @@ const selectionContext = computed(() => {
 })
 function propertyGroupId(entry: (typeof propertyEntries.value.properties)[number]): PropertyGroupId {
   const path = entry.setter.path.join('.')
-  if (/^(?:field|label|description|help|warning)$/.test(path) || /\.(?:placeholder|disabled|readonly)$/.test(path))
+  if (/^(?:description|help|warning)$/.test(path))
+    return 'guidance'
+  if (/^(?:field|label)$/.test(path) || /\.(?:placeholder|disabled|readonly)$/.test(path))
     return 'essentials'
   if (path === 'span' || /\.(?:width|height|align|direction|gap|columns|labelWidth)$/.test(path))
     return 'layout'
@@ -90,6 +92,7 @@ function propertyGroupLabel(id: PropertyGroupId): string {
     layout: 'Layout',
     appearance: 'Appearance',
     data: 'Data',
+    guidance: 'Supporting text',
     advanced: 'Advanced',
   }
   return locale.t(`property.group.${id}`, labels[id])
@@ -116,7 +119,7 @@ const propertyGroups = computed(() => {
     entries.push(entry)
     entriesByGroup.set(id, entries)
   }
-  return (['essentials', 'layout', 'appearance', 'data', 'advanced'] as const)
+  return (['essentials', 'layout', 'appearance', 'data', 'guidance', 'advanced'] as const)
     .filter(id => entriesByGroup.has(id))
     .map(id => ({
       id,
@@ -133,21 +136,22 @@ watch(
   () => selectedNodes.value.map(node => node.id).join('\u0000'),
   () => {
     propertyQuery.value = ''
-    collapsedPropertyGroups.value = new Set()
+    const hasGuidance = propertyEntries.value.properties.some(entry =>
+      propertyGroupId(entry) === 'guidance' && typeof entry.value === 'string' && entry.value.trim(),
+    )
+    collapsedPropertyGroups.value = new Set<PropertyGroupId>(hasGuidance ? ['advanced'] : ['guidance', 'advanced'])
     selectPropertyTab('properties')
   },
+  { immediate: true },
 )
 watch(activeTab, (tab) => {
   if (tab !== 'properties')
     propertyQuery.value = ''
 })
-watch(hasPropertyQuery, (hasQuery) => {
-  if (hasQuery)
-    collapsedPropertyGroups.value = new Set()
-})
 
 function clearPropertyQuery(): void {
   propertyQuery.value = ''
+  void nextTick(() => propertyPanelRef.value?.querySelector<HTMLInputElement>('[data-property-search]')?.focus())
 }
 
 function isPropertyGroupCollapsed(id: PropertyGroupId): boolean {
@@ -252,7 +256,7 @@ defineExpose({ propertyPanelRef })
         v-model="propertyQuery"
         type="text"
         :aria-label="locale.t('property.searchProperties', 'Search properties')"
-        :placeholder="locale.t('property.searchPlaceholder', 'Search field, layout, or component settings...')"
+        :placeholder="locale.t('property.searchPlaceholder', 'Search settings…')"
         data-property-search
       >
       <output v-if="hasPropertyQuery" class="mx-config-form-designer__search-count" aria-live="polite">

@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import type { UploadFile } from 'element-plus'
 import type { ProjectSummary } from '@moluoxixi/config-form-model'
+import type { UploadFile } from 'element-plus'
 import type { ProjectImageInput, ProjectManagerEmits, ProjectManagerProps } from './types'
 import {
-  Copy,
+  ArrowUpRight,
   Code2,
+  Copy,
   Database,
   Download,
   FileJson2,
   FolderOpen,
   Image,
   Layers3,
+  LoaderCircle,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -26,6 +28,10 @@ const emit = defineEmits<ProjectManagerEmits>()
 const { controller, ui } = props
 const locale = computed(() => createDesignerLocale(controller.localeOptions.value))
 const query = ref('')
+const sort = ref<'updated' | 'name'>('updated')
+const openingId = ref<string>()
+const projectSearch = useTemplateRef<{ focus: () => void }>('projectSearch')
+const hasQuery = computed(() => query.value.trim().length > 0)
 const renameOpen = ref(false)
 const renameValue = ref('')
 const renameTarget = ref<ProjectSummary>()
@@ -38,10 +44,23 @@ let imageSyncToken = 0
 
 const filteredProjects = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase()
+  const collator = new Intl.Collator(locale.value.locale, { numeric: true, sensitivity: 'base' })
   return controller.projects.value.filter(project => !normalized
-    || project.name.toLocaleLowerCase().includes(normalized)
-    || project.registryLock.adapter.toLocaleLowerCase().includes(normalized))
+    || `${project.name} ${project.registryLock.adapter} ${adapterLabel(project.registryLock.adapter)}`.toLocaleLowerCase().includes(normalized))
+    .sort((a, b) => {
+      if (sort.value === 'updated') {
+        const difference = (Date.parse(b.updatedAt) || 0) - (Date.parse(a.updatedAt) || 0)
+        if (difference)
+          return difference
+      }
+      return collator.compare(a.name, b.name)
+    })
 })
+
+function clearSearch(): void {
+  query.value = ''
+  void nextTick(() => projectSearch.value?.focus())
+}
 
 function revokeProjectImage(projectId: string): void {
   const source = projectImageSources.value[projectId]
@@ -90,7 +109,7 @@ async function syncProjectImages(projects: readonly ProjectSummary[]): Promise<v
   }))
 }
 
-watch(() => controller.projects.value, projects => {
+watch(() => controller.projects.value, (projects) => {
   void syncProjectImages(projects)
 }, { immediate: true })
 
@@ -130,9 +149,17 @@ function adapterLabel(adapter: string): string {
 }
 
 async function openProject(project: ProjectSummary): Promise<void> {
-  await controller.requestOpenProject(project.id)
-  if (controller.currentProject.value?.id === project.id)
-    emit('open')
+  if (controller.busy.value || openingId.value)
+    return
+  openingId.value = project.id
+  try {
+    await controller.requestOpenProject(project.id)
+    if (controller.currentProject.value?.id === project.id)
+      emit('open')
+  }
+  finally {
+    openingId.value = undefined
+  }
 }
 
 function showRename(project: ProjectSummary): void {
@@ -214,7 +241,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
     <header class="project-manager__topbar">
       <div class="project-manager__topbar-context">
         <FolderOpen :size="16" aria-hidden="true" />
-        <span>{{ locale.t('projects.workspaceLabel', 'Engineering workspace') }}</span>
+        <span>{{ locale.t('projects.workspaceLabel', 'Project workspace') }}</span>
       </div>
       <div class="project-manager__commands">
         <ElButton v-if="controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
@@ -232,14 +259,16 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
       <div class="project-manager__heading">
         <div>
           <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
-          <p>{{ locale.t('projects.subtitle', 'Engineering projects with their pages, data, and resources.') }}</p>
+          <p>{{ locale.t('projects.subtitle', 'Manage your forms, pages and data. Pick a project to continue designing.') }}</p>
         </div>
-        <ElInput v-model="query" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
-          <template #prefix><Search :size="16" aria-hidden="true" /></template>
+        <ElInput ref="projectSearch" v-model="query" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
+          <template #prefix>
+            <Search :size="16" aria-hidden="true" />
+          </template>
         </ElInput>
       </div>
 
-      <section class="project-manager__overview" :aria-label="locale.t('projects.overview', 'Project overview')">
+      <section v-if="controller.projects.value.length" class="project-manager__overview" :aria-label="locale.t('projects.overview', 'Project overview')">
         <div class="project-manager__overview-intro">
           <span class="project-manager__overview-kicker">{{ locale.t('projects.overviewKicker', 'Workspace inventory') }}</span>
         </div>
@@ -251,20 +280,26 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         </div>
       </section>
 
-      <div class="project-manager__list-heading">
-        <div>
-          <h2>{{ locale.t('projects.listTitle', 'Engineering projects') }}</h2>
-          <span>{{ locale.t('projects.listCount', '{count} projects', { count: filteredProjects.length }) }}</span>
+      <div v-if="controller.projects.value.length" class="project-manager__list-heading">
+        <div class="project-manager__list-summary">
+          <h2>{{ locale.t('projects.listTitle', 'My projects') }}</h2>
+          <span role="status" aria-live="polite">{{ hasQuery ? locale.t('projects.filteredCount', '{count} of {total} projects', { count: filteredProjects.length, total: controller.projects.value.length }) : locale.t('projects.listCount', '{count} projects', { count: filteredProjects.length }) }}</span>
         </div>
         <span class="project-manager__list-rule" aria-hidden="true" />
+        <ElSelect v-model="sort" class="project-manager__sort" :aria-label="locale.t('projects.sort', 'Sort projects')" append-to="#workbench-overlays">
+          <ElOption value="updated" :label="locale.t('projects.sortUpdated', 'Recently updated')" />
+          <ElOption value="name" :label="locale.t('projects.sortName', 'Project name')" />
+        </ElSelect>
       </div>
 
-      <p v-if="!controller.initialized.value" class="project-manager__state" role="status">{{ locale.t('status.loading', 'Loading') }}</p>
+      <p v-if="!controller.initialized.value" class="project-manager__state" role="status">
+        {{ locale.t('status.loading', 'Loading') }}
+      </p>
       <div v-else-if="filteredProjects.length" class="project-manager__list">
-        <article v-for="project in filteredProjects" :key="project.id" class="project-row project-card" :data-project-id="project.id">
-          <button type="button" class="project-row__main project-card__main" :aria-label="project.name" data-project-open @click="openProject(project)">
+        <article v-for="project in filteredProjects" :key="project.id" class="project-row project-card" :class="{ 'is-opening': openingId === project.id }" :data-project-id="project.id">
+          <button type="button" class="project-row__main project-card__main" :aria-label="project.name" :aria-busy="openingId === project.id" :disabled="controller.busy.value || !!openingId" data-project-open @click="openProject(project)">
             <span class="project-card__preview" aria-hidden="true">
-              <img v-if="projectImageSource(project)" :src="projectImageSource(project)" alt="" />
+              <img v-if="projectImageSource(project)" :src="projectImageSource(project)" alt="">
               <span v-else class="project-card__preview-placeholder">
                 <FolderOpen :size="21" />
                 <strong>{{ project.name.trim().slice(0, 2).toUpperCase() }}</strong>
@@ -273,14 +308,19 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
             </span>
             <span class="project-card__body">
               <span class="project-card__title-row">
-                <strong>{{ project.name }}</strong>
+                <strong :title="project.name">{{ project.name }}</strong>
                 <span v-if="project.homeSurfaceId" class="project-card__status">{{ locale.t('projects.ready', 'Ready') }}</span>
               </span>
-              <small class="project-card__meta">{{ formatUpdatedAt(project.updatedAt) }}</small>
+              <small class="project-card__meta">{{ locale.t('projects.updated', 'Updated {date}', { date: formatUpdatedAt(project.updatedAt) }) }}</small>
               <span class="project-row__counts project-card__counts">
                 <span><Layers3 :size="13" aria-hidden="true" />{{ project.surfaceCount }} {{ locale.t('projects.surfaces', 'pages') }}</span>
                 <span><Database :size="13" aria-hidden="true" />{{ project.datasetCount }} {{ locale.t('projects.datasets', 'datasets') }}</span>
                 <span><Image :size="13" aria-hidden="true" />{{ project.resourceCount }} {{ locale.t('projects.resources', 'resources') }}</span>
+              </span>
+              <span class="project-card__open-state" :role="openingId === project.id ? 'status' : undefined">
+                <LoaderCircle v-if="openingId === project.id" :size="15" class="is-loading" aria-hidden="true" />
+                {{ openingId === project.id ? locale.t('projects.opening', 'Opening…') : locale.t('projects.open', 'Open project') }}
+                <ArrowUpRight v-if="openingId !== project.id" :size="15" aria-hidden="true" />
               </span>
             </span>
           </button>
@@ -299,15 +339,29 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
               </span>
             </ElUpload>
             <ElDropdown trigger="click" placement="bottom-end" append-to="#workbench-overlays" @command="runAction($event, project)">
-              <ElButton native-type="button" size="small" text circle :aria-label="locale.t('projects.moreActions', 'Project actions')"><MoreHorizontal :size="17" aria-hidden="true" /></ElButton>
+              <ElButton native-type="button" size="small" text circle :aria-label="locale.t('projects.moreActions', 'Project actions')">
+                <MoreHorizontal :size="17" aria-hidden="true" />
+              </ElButton>
               <template #dropdown>
                 <ElDropdownMenu>
-                  <ElDropdownItem command="rename"><Pencil :size="15" aria-hidden="true" />{{ locale.t('projects.rename', 'Rename') }}</ElDropdownItem>
-                  <ElDropdownItem command="duplicate"><Copy :size="15" aria-hidden="true" />{{ locale.t('projects.duplicate', 'Duplicate') }}</ElDropdownItem>
-                  <ElDropdownItem command="export"><Download :size="15" aria-hidden="true" />{{ locale.t('projects.export', 'Export project') }}</ElDropdownItem>
-                  <ElDropdownItem command="export-source"><Code2 :size="15" aria-hidden="true" />{{ locale.t('projects.exportSource', 'Export project source') }}</ElDropdownItem>
-                  <ElDropdownItem v-if="project.projectImage" command="remove-image"><Image :size="15" aria-hidden="true" />{{ locale.t('projects.removeImage', 'Remove image') }}</ElDropdownItem>
-                  <ElDropdownItem command="delete" divided><Trash2 :size="15" aria-hidden="true" />{{ locale.t('projects.delete', 'Delete') }}</ElDropdownItem>
+                  <ElDropdownItem command="rename">
+                    <Pencil :size="15" aria-hidden="true" />{{ locale.t('projects.rename', 'Rename') }}
+                  </ElDropdownItem>
+                  <ElDropdownItem command="duplicate">
+                    <Copy :size="15" aria-hidden="true" />{{ locale.t('projects.duplicate', 'Duplicate') }}
+                  </ElDropdownItem>
+                  <ElDropdownItem command="export">
+                    <Download :size="15" aria-hidden="true" />{{ locale.t('projects.export', 'Export project') }}
+                  </ElDropdownItem>
+                  <ElDropdownItem command="export-source">
+                    <Code2 :size="15" aria-hidden="true" />{{ locale.t('projects.exportSource', 'Export project source') }}
+                  </ElDropdownItem>
+                  <ElDropdownItem v-if="project.projectImage" command="remove-image">
+                    <Image :size="15" aria-hidden="true" />{{ locale.t('projects.removeImage', 'Remove image') }}
+                  </ElDropdownItem>
+                  <ElDropdownItem command="delete" divided>
+                    <Trash2 :size="15" aria-hidden="true" />{{ locale.t('projects.delete', 'Delete') }}
+                  </ElDropdownItem>
                 </ElDropdownMenu>
               </template>
             </ElDropdown>
@@ -315,14 +369,23 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         </article>
       </div>
       <div v-else class="project-manager__empty">
-        <div class="project-manager__empty-icon"><FolderOpen :size="26" aria-hidden="true" /></div>
-        <div>
-          <strong>{{ query ? locale.t('projects.noResults', 'No matching projects') : locale.t('projects.empty', 'No projects yet') }}</strong>
-          <p v-if="!query">{{ locale.t('projects.emptyBody', 'Create an engineering project to start arranging pages.') }}</p>
+        <div class="project-manager__empty-icon">
+          <Search v-if="hasQuery" :size="26" aria-hidden="true" /><FolderOpen v-else :size="26" aria-hidden="true" />
         </div>
-        <div v-if="!query" class="project-manager__empty-actions">
-          <ElButton native-type="button" @click="emit('create', 'json')"><FileJson2 :size="15" aria-hidden="true" />{{ locale.t('projects.import', 'Import JSON') }}</ElButton>
-          <ElButton native-type="button" type="primary" @click="emit('create', 'template')"><Plus :size="16" aria-hidden="true" />{{ locale.t('projects.create', 'New project') }}</ElButton>
+        <div>
+          <strong>{{ hasQuery ? locale.t('projects.noResults', 'No matching projects') : locale.t('projects.empty', 'Create your first project') }}</strong>
+          <p>{{ hasQuery ? locale.t('projects.noResultsHint', 'Try a project name or component library, or clear the search.') : locale.t('projects.emptyBody', 'Create a project, then start with a blank page or a template.') }}</p>
+        </div>
+        <ElButton v-if="hasQuery" native-type="button" @click="clearSearch">
+          {{ locale.t('projects.clearSearch', 'Clear search') }}
+        </ElButton>
+        <div v-else class="project-manager__empty-actions">
+          <ElButton native-type="button" @click="emit('create', 'json')">
+            <FileJson2 :size="15" aria-hidden="true" />{{ locale.t('projects.import', 'Import JSON') }}
+          </ElButton>
+          <ElButton native-type="button" type="primary" @click="emit('create', 'template')">
+            <Plus :size="16" aria-hidden="true" />{{ locale.t('projects.create', 'New project') }}
+          </ElButton>
         </div>
       </div>
     </section>
@@ -330,16 +393,24 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
     <ElDialog v-model="renameOpen" width="min(420px, calc(100vw - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.renameTitle', 'Rename project')" @opened="renameInput?.focus?.()">
       <ElInput ref="renameInput" v-model="renameValue" maxlength="160" show-word-limit :aria-label="locale.t('projects.name', 'Project name')" @keyup.enter="confirmRename" />
       <template #footer>
-        <ElButton native-type="button" @click="renameOpen = false">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
-        <ElButton native-type="button" type="primary" :loading="controller.busy.value" :disabled="!renameValue.trim()" @click="confirmRename">{{ locale.t('action.save', 'Save') }}</ElButton>
+        <ElButton native-type="button" @click="renameOpen = false">
+          {{ locale.t('action.cancel', 'Cancel') }}
+        </ElButton>
+        <ElButton native-type="button" type="primary" :loading="controller.busy.value" :disabled="!renameValue.trim()" @click="confirmRename">
+          {{ locale.t('action.save', 'Save') }}
+        </ElButton>
       </template>
     </ElDialog>
 
     <ElDialog v-model="deleteOpen" width="min(420px, calc(100vw - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.deleteTitle', 'Delete project')">
       <p>{{ locale.t('projects.deleteConfirm', 'Delete “{name}” and its local data? This cannot be undone.', { name: deleteTarget?.name ?? '' }) }}</p>
       <template #footer>
-        <ElButton native-type="button" @click="deleteOpen = false">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
-        <ElButton native-type="button" type="danger" :loading="controller.busy.value" @click="confirmDelete">{{ locale.t('projects.delete', 'Delete') }}</ElButton>
+        <ElButton native-type="button" @click="deleteOpen = false">
+          {{ locale.t('action.cancel', 'Cancel') }}
+        </ElButton>
+        <ElButton native-type="button" type="danger" :loading="controller.busy.value" @click="confirmDelete">
+          {{ locale.t('projects.delete', 'Delete') }}
+        </ElButton>
       </template>
     </ElDialog>
 

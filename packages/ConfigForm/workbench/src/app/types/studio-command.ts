@@ -5,5 +5,6 @@ export interface StudioCommand {
   detail?: string
   shortcut?: string
   disabled?: boolean
+  disabledReason?: string
   run: () => void
 }
