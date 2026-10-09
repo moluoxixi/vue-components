@@ -35,6 +35,9 @@ const PATCH_KEYS = new Set<ProjectNodePatchKey>([
   'extensions',
   'field',
   'label',
+  'description',
+  'help',
+  'warning',
   'required',
   'requiredMessage',
   'resourceBindings',
@@ -46,6 +49,9 @@ const FIELD_KEYS = new Set<ProjectNodePatchKey>([
   'defaultValue',
   'field',
   'label',
+  'description',
+  'help',
+  'warning',
   'required',
   'requiredMessage',
   'validateOn',
@@ -58,10 +64,19 @@ export function resolveProjectCommand(
   options: ApplyProjectDraftTransactionOptions = {},
 ): ProjectCommandResolution {
   if (!command.id.trim() || !command.label.trim()) {
-    return { success: false, diagnostics: [{ code: 'PROJECT_COMMAND_IDENTITY_INVALID', message: 'Commands require non-empty id and label values.' }] }
+    return {
+      success: false,
+      diagnostics: [
+        { code: 'PROJECT_COMMAND_IDENTITY_INVALID', message: 'Commands require non-empty id and label values.' },
+      ],
+    }
   }
-  if (command.actions.length === 0)
-    return { success: false, diagnostics: [{ code: 'PROJECT_COMMAND_EMPTY', message: 'Commands must contain at least one action.' }] }
+  if (command.actions.length === 0) {
+    return {
+      success: false,
+      diagnostics: [{ code: 'PROJECT_COMMAND_EMPTY', message: 'Commands must contain at least one action.' }],
+    }
+  }
 
   let current = document
   const operations: ProjectOperation[] = []
@@ -70,13 +85,21 @@ export function resolveProjectCommand(
       const resolved = resolveAction(current, action)
       if (resolved.length === 0)
         return
-      const staged = applyProjectCommandDraftTransaction(current, {
-        id: `${command.id}:resolve:${index}`,
-        label: command.label,
-        operations: resolved,
-      }, options)
-      if (!staged.success)
-        throw new ProjectCommandError(staged.diagnostics[0]?.code ?? 'PROJECT_COMMAND_INVALID', staged.diagnostics[0]?.message ?? 'Command is invalid.')
+      const staged = applyProjectCommandDraftTransaction(
+        current,
+        {
+          id: `${command.id}:resolve:${index}`,
+          label: command.label,
+          operations: resolved,
+        },
+        options,
+      )
+      if (!staged.success) {
+        throw new ProjectCommandError(
+          staged.diagnostics[0]?.code ?? 'PROJECT_COMMAND_INVALID',
+          staged.diagnostics[0]?.message ?? 'Command is invalid.',
+        )
+      }
       current = staged.document
       operations.push(...resolved)
     })
@@ -85,12 +108,14 @@ export function resolveProjectCommand(
     if (error instanceof ProjectCommandError) {
       return {
         success: false,
-        diagnostics: [{
-          code: error.code,
-          message: error.message,
-          ...(error.surfaceId ? { surfaceId: error.surfaceId } : {}),
-          ...(error.nodeId ? { nodeId: error.nodeId } : {}),
-        }],
+        diagnostics: [
+          {
+            code: error.code,
+            message: error.message,
+            ...(error.surfaceId ? { surfaceId: error.surfaceId } : {}),
+            ...(error.nodeId ? { nodeId: error.nodeId } : {}),
+          },
+        ],
       }
     }
     throw error
@@ -116,12 +141,14 @@ function resolveAction(document: ProjectDocument, action: ProjectCommandAction):
       return clone(action.operations)
     case 'node.patch': {
       const node = requireNode(document, action.surfaceId, action.nodeId)
-      return [{
-        type: 'node.settings',
-        surfaceId: action.surfaceId,
-        nodeId: action.nodeId,
-        settings: patchNodeSettings(node, action.patch, action.surfaceId),
-      }]
+      return [
+        {
+          type: 'node.settings',
+          surfaceId: action.surfaceId,
+          nodeId: action.nodeId,
+          settings: patchNodeSettings(node, action.patch, action.surfaceId),
+        },
+      ]
     }
     case 'node.resize': {
       requireNode(document, action.surfaceId, action.nodeId)
@@ -137,11 +164,7 @@ function resolveAction(document: ProjectDocument, action: ProjectCommandAction):
   }
 }
 
-function patchNodeSettings(
-  node: SurfaceNode,
-  patch: ProjectNodePatch,
-  surfaceId: string,
-): SurfaceNodeSettings {
+function patchNodeSettings(node: SurfaceNode, patch: ProjectNodePatch, surfaceId: string): SurfaceNodeSettings {
   if (patch.set !== undefined && (!patch.set || typeof patch.set !== 'object' || Array.isArray(patch.set)))
     fail('PROJECT_NODE_PATCH_SET_INVALID', 'Node patch set must be an object.', surfaceId, node.id)
   if (patch.unset !== undefined && !Array.isArray(patch.unset))
@@ -152,8 +175,14 @@ function patchNodeSettings(
   if (unknown)
     fail('PROJECT_NODE_PATCH_KEY_UNKNOWN', `Unknown node patch key: ${unknown}.`, surfaceId, node.id)
   const undefinedKey = Object.keys(set).find(key => (set as Record<string, unknown>)[key] === undefined)
-  if (undefinedKey)
-    fail('PROJECT_NODE_PATCH_VALUE_UNDEFINED', `Use unset instead of undefined for ${undefinedKey}.`, surfaceId, node.id)
+  if (undefinedKey) {
+    fail(
+      'PROJECT_NODE_PATCH_VALUE_UNDEFINED',
+      `Use unset instead of undefined for ${undefinedKey}.`,
+      surfaceId,
+      node.id,
+    )
+  }
   if (new Set(unset).size !== unset.length)
     fail('PROJECT_NODE_PATCH_UNSET_DUPLICATE', 'Node patch unset contains a duplicate key.', surfaceId, node.id)
   const conflict = unset.find(key => Object.hasOwn(set, key))
@@ -188,10 +217,22 @@ function duplicateNodeOperation(
   const nextIds = new Set<NodeId>()
   sourceIds.forEach((sourceId) => {
     const targetId = action.idMap[sourceId]
-    if (!targetId)
-      fail('PROJECT_DUPLICATE_MAPPING_INCOMPLETE', `Missing duplicated node id for ${sourceId}.`, action.surfaceId, sourceId)
-    if (nextIds.has(targetId) || Object.hasOwn(surface.graph.nodesById, targetId))
-      fail('PROJECT_DUPLICATE_MAPPING_CONFLICT', `Duplicated node id is not unique: ${targetId}.`, action.surfaceId, targetId)
+    if (!targetId) {
+      fail(
+        'PROJECT_DUPLICATE_MAPPING_INCOMPLETE',
+        `Missing duplicated node id for ${sourceId}.`,
+        action.surfaceId,
+        sourceId,
+      )
+    }
+    if (nextIds.has(targetId) || Object.hasOwn(surface.graph.nodesById, targetId)) {
+      fail(
+        'PROJECT_DUPLICATE_MAPPING_CONFLICT',
+        `Duplicated node id is not unique: ${targetId}.`,
+        action.surfaceId,
+        targetId,
+      )
+    }
     nextIds.add(targetId)
     idMap.set(sourceId, targetId)
   })
@@ -209,8 +250,14 @@ function duplicateNodeOperation(
         duplicated.valueScope.field = fieldMap.get(duplicated.valueScope.field) ?? duplicated.valueScope.field
       Object.values(duplicated.slots).forEach((items) => {
         items.forEach((item) => {
-          if (!sourceSet.has(item.nodeId))
-            fail('PROJECT_DUPLICATE_SUBTREE_INVALID', `Subtree references external node ${item.nodeId}.`, action.surfaceId, item.nodeId)
+          if (!sourceSet.has(item.nodeId)) {
+            fail(
+              'PROJECT_DUPLICATE_SUBTREE_INVALID',
+              `Subtree references external node ${item.nodeId}.`,
+              action.surfaceId,
+              item.nodeId,
+            )
+          }
           item.nodeId = idMap.get(item.nodeId)!
         })
       })
@@ -222,7 +269,12 @@ function duplicateNodeOperation(
     surfaceId: action.surfaceId,
     target: clone(action.target),
     subgraph: {
-      root: [{ nodeId: idMap.get(action.nodeId)!, placement: requireNodePlacement(document, action.surfaceId, action.nodeId) }],
+      root: [
+        {
+          nodeId: idMap.get(action.nodeId)!,
+          placement: requireNodePlacement(document, action.surfaceId, action.nodeId),
+        },
+      ],
       nodesById,
     },
   }
@@ -244,6 +296,9 @@ function settingsForNode(node: SurfaceNode): SurfaceNodeSettings {
     kind: 'field',
     field: node.field,
     ...(node.label !== undefined ? { label: node.label } : {}),
+    ...(node.description !== undefined ? { description: node.description } : {}),
+    ...(node.help !== undefined ? { help: node.help } : {}),
+    ...(node.warning !== undefined ? { warning: node.warning } : {}),
     ...(node.defaultValue !== undefined ? { defaultValue: clone(node.defaultValue) } : {}),
     ...(node.required !== undefined ? { required: node.required } : {}),
     ...(node.requiredMessage !== undefined ? { requiredMessage: node.requiredMessage } : {}),
@@ -263,8 +318,10 @@ function collectSubtreeIds(
   if (!node)
     return result
   result.add(nodeId)
-  if (node.kind === 'layout')
-    Object.values(node.slots).forEach(items => items.forEach(item => collectSubtreeIds(nodesById, item.nodeId, result)))
+  if (node.kind === 'layout') {
+    Object.values(node.slots).forEach(items => items.forEach(item => collectSubtreeIds(nodesById, item.nodeId, result)),
+    )
+  }
   return result
 }
 

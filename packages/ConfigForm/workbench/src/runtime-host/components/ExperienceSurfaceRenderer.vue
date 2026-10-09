@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  ConfigFormRendererExpose,
-  ConfigFormRendererProps,
-} from '@moluoxixi/config-form'
+import type { ConfigFormRendererExpose, ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type {
   MaterialSemanticTrigger,
@@ -15,15 +12,7 @@ import type { VueSurfaceRuntimeArtifact } from '@moluoxixi/config-form-vue-backe
 import type { RuntimeHostFormStateSnapshotV7 } from '../types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createPrototypeInstanceRuntimeSnapshot } from '@moluoxixi/config-form-prototype-runtime/session'
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  useTemplateRef,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 import { cloneWorkbenchJson } from '../../utils'
 
 interface ExperienceSurfaceRendererProps {
@@ -31,6 +20,7 @@ interface ExperienceSurfaceRendererProps {
   bindings: PrototypeVueSurfaceRendererBindings
   breakpoint?: 'desktop' | 'tablet' | 'mobile'
   namespace?: string
+  locale?: string
 }
 
 interface ExperienceSurfaceRendererStateEvent {
@@ -60,9 +50,7 @@ const emit = defineEmits<{
 const root = useTemplateRef<HTMLElement>('root')
 const renderer = useTemplateRef<ConfigFormRendererExpose<ModelJsonObject>>('renderer')
 const values = shallowRef<ModelJsonObject>(cloneWorkbenchJson(props.bindings.values))
-const projection = shallowRef<PrototypeInstanceProjectionV1>(
-  cloneWorkbenchJson(props.bindings.projection),
-)
+const projection = shallowRef<PrototypeInstanceProjectionV1>(cloneWorkbenchJson(props.bindings.projection))
 const focusedAddress = shallowRef<PrototypeNodeAddressV1>()
 const rendererRevision = ref(0)
 let disposed = false
@@ -75,13 +63,11 @@ const model = {
   },
 }
 
-function sameScope(
-  left: PrototypeNodeAddressV1['scope'],
-  right: PrototypeNodeAddressV1['scope'],
-): boolean {
-  return left.length === right.length && left.every((entry, index) => (
-    entry.scopeId === right[index]?.scopeId && entry.rowId === right[index]?.rowId
-  ))
+function sameScope(left: PrototypeNodeAddressV1['scope'], right: PrototypeNodeAddressV1['scope']): boolean {
+  return (
+    left.length === right.length
+    && left.every((entry, index) => entry.scopeId === right[index]?.scopeId && entry.rowId === right[index]?.rowId)
+  )
 }
 
 function sameRowPath(address: PrototypeNodeAddressV1, rowIds: readonly string[]): boolean {
@@ -91,9 +77,8 @@ function sameRowPath(address: PrototypeNodeAddressV1, rowIds: readonly string[])
 
 function primaryBindings(trigger: MaterialSemanticTrigger): PrimaryUiActionBinding[] {
   return props.bindings.surface.interactions.filter(
-    (interaction): interaction is PrimaryUiActionBinding => (
-      interaction.kind === 'primaryUiAction' && interaction.trigger === trigger
-    ),
+    (interaction): interaction is PrimaryUiActionBinding =>
+      interaction.kind === 'primaryUiAction' && interaction.trigger === trigger,
   )
 }
 
@@ -127,10 +112,15 @@ function addressFor(nodeId: string, element?: Element): PrototypeNodeAddressV1 |
   return address ? cloneWorkbenchJson(address) : undefined
 }
 
-function semanticSource(trigger: MaterialSemanticTrigger, event: Event): {
-  address: PrototypeNodeAddressV1
-  binding: PrimaryUiActionBinding
-} | undefined {
+function semanticSource(
+  trigger: MaterialSemanticTrigger,
+  event: Event,
+):
+  | {
+    address: PrototypeNodeAddressV1
+    binding: PrimaryUiActionBinding
+  }
+  | undefined {
   const bindings = primaryBindings(trigger)
   if (bindings.length === 0)
     return undefined
@@ -221,11 +211,7 @@ function projectionKey(address: PrototypeNodeAddressV1): string {
   }
 }
 
-function setNestedProperty(
-  target: Record<string, unknown>,
-  path: readonly string[],
-  value: unknown,
-): void {
+function setNestedProperty(target: Record<string, unknown>, path: readonly string[], value: unknown): void {
   let current = target
   path.forEach((segment, index) => {
     if (index === path.length - 1) {
@@ -275,10 +261,12 @@ function currentState(): RuntimeHostFormStateSnapshotV7 {
     fields,
     touched: fields.filter(field => currentRenderer?.getInstanceMeta(field.address).touched)
       .map(field => field.instanceKey),
-    validation: Object.fromEntries(fields.flatMap((field) => {
-      const errors = currentRenderer?.getInstanceErrors(field.address) ?? []
-      return errors.length > 0 ? [[field.instanceKey, [...errors]]] : []
-    })),
+    validation: Object.fromEntries(
+      fields.flatMap((field) => {
+        const errors = currentRenderer?.getInstanceErrors(field.address) ?? []
+        return errors.length > 0 ? [[field.instanceKey, [...errors]]] : []
+      }),
+    ),
     values: cloneWorkbenchJson(currentRenderer?.getValues() ?? values.value),
   }
 }
@@ -313,7 +301,9 @@ function focus(address: PrototypeNodeAddressV1): void {
     const fieldIndex = instances.findIndex(instance => sameScope(instance.address.scope, address.scope))
     const field = fieldIndex < 0 ? undefined : instances[fieldIndex]
     const shells = Array.from(root.value?.querySelectorAll<HTMLElement>('[data-field]') ?? [])
-      .filter(element => element.dataset.field === field?.field)
+      .filter(
+        element => element.dataset.field === field?.field,
+      )
     const shell = fieldIndex < 0 ? undefined : shells[fieldIndex]
     const target = shell?.querySelector<HTMLElement>(
       'input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -390,12 +380,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="runtime-host-experience-instance"
-    @click="handleActivate"
-    @submit="handleSubmit"
-  >
+  <div ref="root" class="runtime-host-experience-instance" @click="handleActivate" @submit="handleSubmit">
     <ConfigFormRenderer
       ref="renderer"
       :model="model"
@@ -403,6 +388,10 @@ onBeforeUnmount(() => {
       :reaction-projection="reactionProjection"
       class="surface-experience-form"
       mode="preview"
+      error-summary
+      :loading-text="locale === 'zh-CN' ? '加载中…' : 'Loading…'"
+      :validating-text="locale === 'zh-CN' ? '校验中…' : 'Validating…'"
+      :error-summary-label="locale === 'zh-CN' ? '请检查以下字段' : 'Please review the following fields'"
       v-bind="artifact.renderer"
       :breakpoint="breakpoint"
       :on-semantic-activate="handleSemanticActivation"

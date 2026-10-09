@@ -60,11 +60,16 @@ const ButtonStub = defineComponent({
     loading: Boolean,
   },
   setup(props, { attrs, slots }) {
-    return () => h('button', {
-      ...attrs,
-      disabled: props.disabled || props.loading,
-      type: 'button',
-    }, slots.default?.())
+    return () =>
+      h(
+        'button',
+        {
+          ...attrs,
+          disabled: props.disabled || props.loading,
+          type: 'button',
+        },
+        slots.default?.(),
+      )
   },
 })
 
@@ -99,11 +104,16 @@ const SelectStub = defineComponent({
   props: { modelValue: String },
   emits: ['update:modelValue'],
   setup(props, { attrs, emit, slots }) {
-    return () => h('select', {
-      ...attrs,
-      value: props.modelValue,
-      onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLSelectElement).value),
-    }, slots.default?.())
+    return () =>
+      h(
+        'select',
+        {
+          ...attrs,
+          value: props.modelValue,
+          onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLSelectElement).value),
+        },
+        slots.default?.(),
+      )
   },
 })
 
@@ -117,16 +127,19 @@ const RuntimeStub = defineComponent({
 })
 
 function stubMatchMedia(resolveMatches: (query: string) => boolean): void {
-  vi.stubGlobal('matchMedia', vi.fn((query: string): MediaQueryList => ({
-    matches: resolveMatches(query),
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(() => true),
-  })))
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string): MediaQueryList => ({
+      matches: resolveMatches(query),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(() => true),
+    })),
+  )
 }
 
 function eligible() {
@@ -235,13 +248,17 @@ describe('template creation workspace', () => {
       'antd-profile',
       'antd-dialog',
       'antd-drawer',
+      'element-approval',
+      'element-survey',
+      'antd-approval',
+      'antd-survey',
     ])
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
 
     await wrapper.get('select[aria-label="Template category"]').setValue('starter')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(2)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(6)
     await wrapper.get('select[aria-label="Template provider"]').setValue('built-in')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(2)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(6)
 
     await wrapper.get('input[aria-label="Search templates"]').setValue('no-such-template')
     expect(wrapper.get('[role="status"] strong').text()).toBe('No templates match these filters')
@@ -250,13 +267,13 @@ describe('template creation workspace', () => {
     await flushPromises()
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
     await wrapper.get('.template-empty-state button').trigger('click')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
     wrapper.unmount()
   })
 
   it('shows Provider diagnostics with a working catalog retry', async () => {
     mocks.catalogLoad.mockImplementationOnce(async () => {
-      const catalog = await mocks.actualCatalogLoad!() as { diagnostics: unknown[], templates: unknown[] }
+      const catalog = (await mocks.actualCatalogLoad!()) as { diagnostics: unknown[], templates: unknown[] }
       return {
         ...catalog,
         diagnostics: [{ code: 'TEMPLATE_PROVIDER_FAILED', message: 'Built-in provider failed.' }],
@@ -266,11 +283,11 @@ describe('template creation workspace', () => {
     await flushPromises()
 
     expect(wrapper.get('.template-provider-error').text()).toContain('Built-in provider failed.')
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
     await wrapper.get('.template-provider-error button').trigger('click')
     await flushPromises()
     expect(mocks.catalogLoad).toHaveBeenCalledTimes(2)
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
     wrapper.unmount()
   })
 
@@ -290,7 +307,7 @@ describe('template creation workspace', () => {
     expect(wrapper.find('.template-empty-state').exists()).toBe(false)
     await wrapper.get('.template-catalog-fatal button').trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('[role="option"]')).toHaveLength(8)
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(12)
     wrapper.unmount()
   })
 
@@ -300,7 +317,9 @@ describe('template creation workspace', () => {
 
     const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
     expect(selectedStatus().attributes('data-status')).toBe('eligible')
-    expect(wrapper.get('[data-template-id="element-profile"] .template-catalog-status').attributes('data-status')).toBe('pending')
+    expect(wrapper.get('[data-template-id="element-profile"] .template-catalog-status').attributes('data-status')).toBe(
+      'pending',
+    )
     const previousAnalyzeCalls = mocks.analyzeEligibility.mock.calls.length
     const nextAdapter = deferred<{
       designerRegistry: { rendererNamespace: string }
@@ -338,7 +357,7 @@ describe('template creation workspace', () => {
     await first.trigger('keydown', { key: 'End' })
     await flushPromises()
     const selected = wrapper.get('[role="option"][aria-selected="true"]')
-    expect(selected.attributes('data-template-id')).toBe('antd-drawer')
+    expect(selected.attributes('data-template-id')).toBe('antd-survey')
     expect(document.activeElement).toBe(selected.element)
 
     await selected.trigger('keydown', { key: 'Enter' })
@@ -386,18 +405,23 @@ describe('template creation workspace', () => {
       template.manifest.adapter === 'antd-vue'
         ? {
             eligible: false,
-            diagnostics: [{
-              code: 'TEMPLATE_REGISTRY_ADAPTER_MISMATCH',
-              message: 'Template adapter antd-vue does not match element-plus.',
-            }],
+            diagnostics: [
+              {
+                code: 'TEMPLATE_REGISTRY_ADAPTER_MISMATCH',
+                message: 'Template adapter antd-vue does not match element-plus.',
+              },
+            ],
           }
-        : eligible())
+        : eligible(),
+    )
     const wrapper = mountWorkspace('surface')
     await flushPromises()
 
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('[data-template-id="antd-profile"] .template-catalog-status').attributes('data-status')).toBe('ineligible')
+    expect(wrapper.get('[data-template-id="antd-profile"] .template-catalog-status').attributes('data-status')).toBe(
+      'ineligible',
+    )
     expect(wrapper.get('[role="alert"]').text()).toContain('Template adapter antd-vue does not match element-plus.')
     expect(wrapper.get('.template-create-footer button').attributes('disabled')).toBeDefined()
     await wrapper.get('.template-eligibility button').trigger('click')
@@ -461,9 +485,11 @@ describe('template creation workspace', () => {
 
   it('prevents Back and Escape from abandoning an in-flight creation', async () => {
     let resolveCreation!: (created: boolean) => void
-    mocks.createProject.mockImplementation(() => new Promise<boolean>((resolve) => {
-      resolveCreation = resolve
-    }))
+    mocks.createProject.mockImplementation(
+      () => new Promise<boolean>((resolve) => {
+        resolveCreation = resolve
+      }),
+    )
     const wrapper = mountWorkspace()
     await flushPromises()
 
@@ -484,12 +510,14 @@ describe('template creation workspace', () => {
   it('ignores a stale preview request that resolves after the current selection', async () => {
     let resolveElement!: (value: unknown) => void
     let resolveAntd!: (value: unknown) => void
-    mocks.loadAdapter.mockImplementation((adapter: string) => new Promise((resolve) => {
-      if (adapter === 'element-plus')
-        resolveElement = resolve
-      else
-        resolveAntd = resolve
-    }))
+    mocks.loadAdapter.mockImplementation(
+      (adapter: string) => new Promise((resolve) => {
+        if (adapter === 'element-plus')
+          resolveElement = resolve
+        else
+          resolveAntd = resolve
+      }),
+    )
     const wrapper = mountWorkspace()
     await flushPromises()
     expect(mocks.loadAdapter).toHaveBeenCalledWith('element-plus')
@@ -497,11 +525,17 @@ describe('template creation workspace', () => {
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
     await flushPromises()
     expect(mocks.loadAdapter).toHaveBeenCalledWith('antd-vue')
-    resolveAntd({ designerRegistry: { rendererNamespace: 'mx-antd' }, registrySnapshot: { adapter: 'antd-vue', components: [] } })
+    resolveAntd({
+      designerRegistry: { rendererNamespace: 'mx-antd' },
+      registrySnapshot: { adapter: 'antd-vue', components: [] },
+    })
     await flushPromises()
     expect(wrapper.get('[data-preview-adapter]').attributes('data-preview-adapter')).toBe('antd-vue')
 
-    resolveElement({ designerRegistry: { rendererNamespace: 'mx-element' }, registrySnapshot: { adapter: 'element-plus', components: [] } })
+    resolveElement({
+      designerRegistry: { rendererNamespace: 'mx-element' },
+      registrySnapshot: { adapter: 'element-plus', components: [] },
+    })
     await flushPromises()
     expect(wrapper.get('[data-preview-adapter]').attributes('data-preview-adapter')).toBe('antd-vue')
     expect(mocks.preparePreview).toHaveBeenCalledTimes(1)

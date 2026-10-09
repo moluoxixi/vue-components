@@ -1,34 +1,35 @@
 <script setup lang="ts">
 import type { ModelJsonValue, SafeExpression, SafeExpressionNode } from '@moluoxixi/config-form-model'
-import type {
-  DesignerExpressionPurpose,
-  DesignerInteractionFieldOption,
-  DesignerLiteralKind,
-} from '../../types'
+import type { DesignerExpressionPurpose, DesignerInteractionFieldOption, DesignerLiteralKind } from '../../types'
 import { safeExpressionSchema } from '@moluoxixi/config-form-model'
 import { ElCheckbox, ElInput, ElOption, ElSegmented, ElSelect } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../../../../../../locale'
+import DesignerConditionTree from './components/DesignerConditionTree.vue'
+import DesignerExpressionPlayground from './components/DesignerExpressionPlayground.vue'
 
-const props = withDefaults(defineProps<{
-  disabled?: boolean
-  fields: readonly DesignerInteractionFieldOption[]
-  label?: string
-  modelValue?: SafeExpression
-  optional?: boolean
-  purpose?: DesignerExpressionPurpose
-}>(), {
-  disabled: false,
-  optional: false,
-  purpose: 'condition',
-})
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean
+    fields: readonly DesignerInteractionFieldOption[]
+    label?: string
+    modelValue?: SafeExpression
+    optional?: boolean
+    purpose?: DesignerExpressionPurpose
+  }>(),
+  {
+    disabled: false,
+    optional: false,
+    purpose: 'condition',
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: SafeExpression | undefined]
 }>()
 
 const locale = useDesignerLocale()
-const mode = ref<'advanced' | 'simple'>('simple')
+const mode = ref<'advanced' | 'simple' | 'builder'>('simple')
 const fieldId = ref<string>()
 const operator = ref<'!=' | '<' | '<=' | '==' | '>' | '>='>('==')
 const literalKind = ref<DesignerLiteralKind>('string')
@@ -41,6 +42,9 @@ let syncedSignature = ''
 
 const modeOptions = computed(() => [
   { label: locale.t('interaction.expression.simple', 'Simple'), value: 'simple' },
+  ...(props.purpose === 'condition'
+    ? [{ label: locale.locale === 'zh-CN' ? '条件组' : 'Groups', value: 'builder' }]
+    : []),
   { label: locale.t('interaction.expression.advanced', 'Advanced JSON'), value: 'advanced' },
 ])
 
@@ -96,12 +100,14 @@ function setLiteralDraft(value: ModelJsonValue): boolean {
 
 function readSimpleCondition(expression: SafeExpression): boolean {
   const ast = expression.ast
-  if (ast.kind !== 'binary'
-    || !operatorOptions.includes(ast.operator as typeof operatorOptions[number])
+  if (
+    ast.kind !== 'binary'
+    || !operatorOptions.includes(ast.operator as (typeof operatorOptions)[number])
     || ast.left.kind !== 'reference'
     || ast.left.scope !== 'values'
     || ast.left.path.length !== 1
-    || ast.right.kind !== 'literal') {
+    || ast.right.kind !== 'literal'
+  ) {
     return false
   }
   const left = ast.left
@@ -137,10 +143,14 @@ function syncFromModel(value: SafeExpression | undefined): void {
 }
 
 watch(() => props.modelValue, syncFromModel, { deep: true, immediate: true })
-watch(() => props.fields, () => {
-  if (!fieldId.value || !props.fields.some(field => field.id === fieldId.value))
-    fieldId.value = props.fields[0]?.id
-}, { deep: true, immediate: true })
+watch(
+  () => props.fields,
+  () => {
+    if (!fieldId.value || !props.fields.some(field => field.id === fieldId.value))
+      fieldId.value = props.fields[0]?.id
+  },
+  { deep: true, immediate: true },
+)
 
 function simpleExpression(): SafeExpression | undefined {
   const literal = literalFromDraft()
@@ -162,6 +172,13 @@ function simpleExpression(): SafeExpression | undefined {
 }
 
 function emitExpression(value: SafeExpression | undefined): void {
+  if (value) {
+    const result = safeExpressionSchema.safeParse(value)
+    if (!result.success) {
+      advancedError.value = result.error.issues.map(issue => issue.message).join('; ')
+      return
+    }
+  }
   syncedSignature = signature(value)
   advancedDraft.value = value ? JSON.stringify(value, null, 2) : ''
   advancedError.value = ''
@@ -177,7 +194,23 @@ function commitSimple(): void {
 }
 
 function selectMode(value: string | number | boolean): void {
-  mode.value = value === 'advanced' ? 'advanced' : 'simple'
+  if (value === 'simple' && props.modelValue) {
+    const supported
+      = props.purpose === 'condition' ? readSimpleCondition(props.modelValue) : readSimpleValue(props.modelValue)
+    if (!supported) {
+      advancedError.value
+        = locale.locale === 'zh-CN'
+          ? '该表达式无法用单条件表示，请使用条件组或高级 JSON。'
+          : 'This expression cannot be represented as a single condition. Use Groups or Advanced JSON.'
+      return
+    }
+  }
+  mode.value = value === 'advanced' ? 'advanced' : value === 'builder' ? 'builder' : 'simple'
+  if (mode.value === 'builder') {
+    if (!props.modelValue)
+      commitSimple()
+    return
+  }
   if (mode.value === 'advanced') {
     const expression = props.modelValue ?? simpleExpression()
     advancedDraft.value = expression ? JSON.stringify(expression, null, 2) : ''
@@ -220,7 +253,9 @@ function applyAdvanced(): void {
 
 <template>
   <div class="mx-config-form-designer__expression-editor" :data-expression-purpose="purpose">
-    <div v-if="label" class="mx-config-form-designer__expression-heading">{{ label }}</div>
+    <div v-if="label" class="mx-config-form-designer__expression-heading">
+      {{ label }}
+    </div>
     <ElCheckbox v-if="optional" :model-value="enabled" :disabled="disabled" @update:model-value="toggleEnabled">
       {{ locale.t('interaction.condition.enabled', 'Use condition') }}
     </ElCheckbox>
@@ -241,7 +276,10 @@ function applyAdvanced(): void {
             :model-value="fieldId"
             :disabled="disabled || fields.length === 0"
             :aria-label="locale.t('interaction.condition.field', 'Condition field')"
-            @update:model-value="fieldId = $event; commitSimple()"
+            @update:model-value="
+              fieldId = $event;
+              commitSimple();
+            "
           >
             <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
           </ElSelect>
@@ -249,7 +287,10 @@ function applyAdvanced(): void {
             :model-value="operator"
             :disabled="disabled"
             :aria-label="locale.t('interaction.condition.operator', 'Condition operator')"
-            @update:model-value="operator = $event; commitSimple()"
+            @update:model-value="
+              operator = $event;
+              commitSimple();
+            "
           >
             <ElOption v-for="item in operatorOptions" :key="item" :value="item" :label="item" />
           </ElSelect>
@@ -258,7 +299,10 @@ function applyAdvanced(): void {
           :model-value="literalKind"
           :disabled="disabled"
           :aria-label="locale.t('interaction.value.type', 'Value type')"
-          @update:model-value="literalKind = $event; commitSimple()"
+          @update:model-value="
+            literalKind = $event;
+            commitSimple();
+          "
         >
           <ElOption v-for="item in literalKindOptions" :key="item.value" :value="item.value" :label="item.label" />
         </ElSelect>
@@ -267,7 +311,10 @@ function applyAdvanced(): void {
           :model-value="literalBoolean"
           :disabled="disabled"
           :aria-label="locale.t('interaction.value.literal', 'Value')"
-          @update:model-value="literalBoolean = $event; commitSimple()"
+          @update:model-value="
+            literalBoolean = $event;
+            commitSimple();
+          "
         >
           <ElOption :value="true" :label="locale.t('value.true', 'True')" />
           <ElOption :value="false" :label="locale.t('value.false', 'False')" />
@@ -284,6 +331,13 @@ function applyAdvanced(): void {
         />
       </div>
 
+      <DesignerConditionTree
+        v-else-if="mode === 'builder' && modelValue"
+        :model-value="modelValue.ast"
+        :fields="fields"
+        :disabled="disabled"
+        @update:model-value="emitExpression({ version: 1, ast: $event })"
+      />
       <div v-else class="mx-config-form-designer__expression-advanced">
         <ElInput
           v-model="advancedDraft"
@@ -294,13 +348,19 @@ function applyAdvanced(): void {
           :class="{ 'is-error': advancedError }"
           @input="advancedError = ''"
         />
-        <p v-if="advancedError" class="mx-config-form-designer__interaction-error" role="alert">
-          {{ advancedError }}
-        </p>
-        <button type="button" class="mx-config-form-designer__interaction-command" :disabled="disabled" @click="applyAdvanced">
+        <button
+          type="button"
+          class="mx-config-form-designer__interaction-command"
+          :disabled="disabled"
+          @click="applyAdvanced"
+        >
           {{ locale.t('action.apply', 'Apply') }}
         </button>
       </div>
+      <p v-if="advancedError" class="mx-config-form-designer__interaction-error" role="alert">
+        {{ advancedError }}
+      </p>
+      <DesignerExpressionPlayground :expression="modelValue" />
     </template>
   </div>
 </template>

@@ -11,10 +11,7 @@ import type {
   ProjectCompilation,
   SurfaceCompilation,
 } from '@moluoxixi/config-form-compiler'
-import type {
-  ConfigFormScopedFieldDefinition,
-  ConfigFormValueScopeDefinition,
-} from '@moluoxixi/config-form-core'
+import type { ConfigFormScopedFieldDefinition, ConfigFormValueScopeDefinition } from '@moluoxixi/config-form-core'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 
@@ -91,6 +88,7 @@ export interface VueRuntimeRendererConfig {
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
   labelWidth?: number
+  density?: 'compact' | 'comfortable'
   responsive?: ConfigFormResponsiveLayout
 }
 
@@ -109,8 +107,7 @@ export interface VueSurfaceRuntimeArtifact {
 }
 
 export type CompileCanonicalSurfaceRuntimeInput
-  = | { compilation: SurfaceCompilation, surfaceId?: never }
-    | { compilation: ProjectCompilation, surfaceId: string }
+  = { compilation: SurfaceCompilation, surfaceId?: never } | { compilation: ProjectCompilation, surfaceId: string }
 
 export type VueRuntimeDiagnosticSeverity = 'error' | 'warning'
 

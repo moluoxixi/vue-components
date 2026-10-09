@@ -10,11 +10,7 @@ import type {
   WorkbenchUiStoreOptions,
 } from '../types'
 import { computed, ref, shallowRef, watch } from 'vue'
-import {
-  readWorkbenchLocalePreference,
-  resolveWorkbenchLocale,
-  writeWorkbenchLocalePreference,
-} from '../../locale'
+import { readWorkbenchLocalePreference, resolveWorkbenchLocale, writeWorkbenchLocalePreference } from '../../locale'
 import { WORKBENCH_APPEARANCE_VERSION } from '../constants'
 import {
   readWorkbenchAppearancePreference,
@@ -22,13 +18,12 @@ import {
   resolveWorkbenchTheme,
   writeWorkbenchAppearancePreference,
 } from '../services'
+import { createEditorSession } from './editor-session'
 
 function initialLocale(options: Readonly<WorkbenchUiStoreOptions>): WorkbenchLocaleId {
   if (options.locale?.locale)
     return resolveWorkbenchLocale(options.locale.locale)
-  const persisted = readWorkbenchLocalePreference(
-    typeof localStorage === 'undefined' ? undefined : localStorage,
-  )
+  const persisted = readWorkbenchLocalePreference(typeof localStorage === 'undefined' ? undefined : localStorage)
   if (persisted)
     return persisted
   return resolveWorkbenchLocale(typeof navigator === 'undefined' ? undefined : navigator.language)
@@ -36,6 +31,7 @@ function initialLocale(options: Readonly<WorkbenchUiStoreOptions>): WorkbenchLoc
 
 export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions>) {
   const appearance = readWorkbenchAppearancePreference(resolveWorkbenchAppearanceStorage())
+  const editorSession = createEditorSession()
   const mobileStudioView = ref<MobileStudioView>('canvas')
   const studioLeftView = ref<StudioLeftView>('components')
   const previewOpen = ref(false)
@@ -45,6 +41,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const creationOrigin = shallowRef<WorkbenchCreationOrigin>()
   const exportPreviewMode = ref<'source' | 'config'>()
   const exportDialogLoaded = ref(false)
+  const mode = computed(() => (exportPreviewMode.value ? 'handoff' : previewOpen.value ? 'experience' : 'design'))
   const appearanceDrawerOpen = ref(false)
   const themePreference = ref<WorkbenchThemePreference>(appearance.themePreference)
   const paletteFamily = ref<WorkbenchPaletteFamily>(appearance.paletteFamily)
@@ -168,49 +165,68 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     localeId.value = localeId.value === 'zh-CN' ? 'en-US' : 'zh-CN'
   }
 
-  watch(localeId, (value) => {
-    writeWorkbenchLocalePreference(
-      value,
-      typeof localStorage === 'undefined' ? undefined : localStorage,
-    )
-    if (typeof document !== 'undefined')
-      document.documentElement.lang = value
-  }, { immediate: true })
+  watch(
+    localeId,
+    (value) => {
+      writeWorkbenchLocalePreference(value, typeof localStorage === 'undefined' ? undefined : localStorage)
+      if (typeof document !== 'undefined')
+        document.documentElement.lang = value
+    },
+    { immediate: true },
+  )
 
-  watch(themePreference, (value, _previous, onCleanup) => {
-    if (value !== 'system' || typeof window === 'undefined' || typeof window.matchMedia !== 'function')
-      return
-    const query = window.matchMedia('(prefers-color-scheme: dark)')
-    const syncSystemTheme = (event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void => {
-      systemPrefersDark.value = event.matches
-    }
-    syncSystemTheme(query)
-    query.addEventListener('change', syncSystemTheme)
-    onCleanup(() => query.removeEventListener('change', syncSystemTheme))
-  }, { immediate: true })
+  watch(
+    themePreference,
+    (value, _previous, onCleanup) => {
+      if (value !== 'system' || typeof window === 'undefined' || typeof window.matchMedia !== 'function')
+        return
+      const query = window.matchMedia('(prefers-color-scheme: dark)')
+      const syncSystemTheme = (event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void => {
+        systemPrefersDark.value = event.matches
+      }
+      syncSystemTheme(query)
+      query.addEventListener('change', syncSystemTheme)
+      onCleanup(() => query.removeEventListener('change', syncSystemTheme))
+    },
+    { immediate: true },
+  )
 
-  watch([themePreference, paletteFamily], ([nextThemePreference, nextPaletteFamily]) => {
-    writeWorkbenchAppearancePreference({
-      version: WORKBENCH_APPEARANCE_VERSION,
-      themePreference: nextThemePreference,
-      paletteFamily: nextPaletteFamily,
-    }, resolveWorkbenchAppearanceStorage())
-  }, { immediate: true })
+  watch(
+    [themePreference, paletteFamily],
+    ([nextThemePreference, nextPaletteFamily]) => {
+      writeWorkbenchAppearancePreference(
+        {
+          version: WORKBENCH_APPEARANCE_VERSION,
+          themePreference: nextThemePreference,
+          paletteFamily: nextPaletteFamily,
+        },
+        resolveWorkbenchAppearanceStorage(),
+      )
+    },
+    { immediate: true },
+  )
 
-  watch([resolvedTheme, paletteFamily], ([nextTheme, nextPaletteFamily]) => {
-    if (typeof document === 'undefined')
-      return
-    document.documentElement.setAttribute('data-theme', nextTheme)
-    document.documentElement.setAttribute('data-palette', nextPaletteFamily)
-    const overlay = document.getElementById('workbench-overlays')
-    overlay?.setAttribute('data-theme', nextTheme)
-    overlay?.setAttribute('data-palette', nextPaletteFamily)
-  }, { immediate: true })
+  watch(
+    [resolvedTheme, paletteFamily],
+    ([nextTheme, nextPaletteFamily]) => {
+      if (typeof document === 'undefined')
+        return
+      document.documentElement.setAttribute('data-theme', nextTheme)
+      document.documentElement.setAttribute('data-palette', nextPaletteFamily)
+      const overlay = document.getElementById('workbench-overlays')
+      overlay?.setAttribute('data-theme', nextTheme)
+      overlay?.setAttribute('data-palette', nextPaletteFamily)
+    },
+    { immediate: true },
+  )
 
-  watch(() => options.locale?.locale, (value) => {
-    if (value)
-      localeId.value = resolveWorkbenchLocale(value)
-  })
+  watch(
+    () => options.locale?.locale,
+    (value) => {
+      if (value)
+        localeId.value = resolveWorkbenchLocale(value)
+    },
+  )
 
   return {
     appearanceDrawerOpen,
@@ -222,6 +238,8 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     creationOrigin,
     exportDialogLoaded,
     exportPreviewMode,
+    editorSession,
+    mode,
     localeId,
     message,
     mobileStudioView,

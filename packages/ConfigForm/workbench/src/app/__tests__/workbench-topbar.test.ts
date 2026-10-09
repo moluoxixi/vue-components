@@ -34,7 +34,7 @@ describe('workbench topbar', () => {
     })
 
     expect(wrapper.find('button[aria-label="Export"]').exists()).toBe(false)
-    await wrapper.get('button[aria-label="Code"]').trigger('click')
+    await wrapper.get('button[aria-label="Handoff"]').trigger('click')
     expect(wrapper.emitted('export')).toEqual([['source']])
     wrapper.unmount()
   })
@@ -60,11 +60,7 @@ describe('workbench topbar', () => {
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
     const overlays = overlayRoot()
     const saveItems = overlays.findAll('[data-save-menu] [role="menuitem"]')
-    expect(saveItems.map(item => item.text())).toEqual([
-      'Save now',
-      'Create named checkpoint',
-      'Version history',
-    ])
+    expect(saveItems.map(item => item.text())).toEqual(['Save now', 'Create named checkpoint', 'Version history'])
     await saveItems[0]!.trigger('click')
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[1]!.trigger('click')
@@ -113,13 +109,20 @@ describe('workbench topbar', () => {
 
   it('switches workspace modes through their commands and reports the active view', async () => {
     const wrapper = mount(WorkbenchTopbar, {
-      props: { project, currentSurface, localeId: 'en-US', paletteFamily: 'ink', statusLabel: 'Saved', themePreference: 'light' },
+      props: {
+        project,
+        currentSurface,
+        localeId: 'en-US',
+        paletteFamily: 'ink',
+        statusLabel: 'Saved',
+        themePreference: 'light',
+      },
     })
     expect(wrapper.get('button[aria-label="Design"]').attributes('aria-pressed')).toBe('true')
-    await wrapper.get('button[aria-label="Code"]').trigger('click')
+    await wrapper.get('button[aria-label="Handoff"]').trigger('click')
     expect(wrapper.emitted('export')).toEqual([['source']])
     await wrapper.setProps({ sourceOpen: true })
-    expect(wrapper.get('button[aria-label="Code"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('button[aria-label="Handoff"]').attributes('aria-pressed')).toBe('true')
     expect(wrapper.get('button[aria-label="Design"]').attributes('aria-pressed')).toBe('false')
     await wrapper.get('button[aria-label="Design"]').trigger('click')
     expect(wrapper.emitted('showDesign')).toHaveLength(1)
@@ -172,9 +175,7 @@ describe('workbench topbar', () => {
 
     const trigger = wrapper.get('button[aria-label="More actions"]')
     await trigger.trigger('click')
-    const appearance = overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').find(
-      item => item.text() === 'Open appearance settings',
-    )!
+    const appearance = overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').find(item => item.text() === 'Open appearance settings')!
     await appearance.trigger('click')
     expect(wrapper.emitted('openAppearance')).toHaveLength(1)
     expect(document.activeElement).toBe(trigger.element)

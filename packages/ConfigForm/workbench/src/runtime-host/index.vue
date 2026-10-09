@@ -36,28 +36,30 @@ const {
   updateModel,
 } = protocol
 const model = { read: () => modelValue.value, write: updateModel }
-const runtimeErrorTitle = computed(() => WORKBENCH_MESSAGES[
-  runtimeLocale.value === 'zh-CN' ? 'zh-CN' : 'en-US'
-]['preview.runtimeError'])
-const prototypeArtifacts = computed(() => Object.fromEntries(
-  Object.keys(experienceArtifacts.value).map(surfaceId => [surfaceId, {
-    surfaceId,
-    component: markRaw(ExperienceSurfaceRenderer),
-  }]),
-))
+const runtimeErrorTitle = computed(
+  () => WORKBENCH_MESSAGES[
+    runtimeLocale.value === 'zh-CN' ? 'zh-CN' : 'en-US'
+  ]['preview.runtimeError'],
+)
+const prototypeArtifacts = computed(() =>
+  Object.fromEntries(
+    Object.keys(experienceArtifacts.value).map(surfaceId => [
+      surfaceId,
+      {
+        surfaceId,
+        component: markRaw(ExperienceSurfaceRenderer),
+      },
+    ]),
+  ),
+)
 const themeStyle = computed(() => projectThemeStyle(
   runtimeMode.value === 'experience'
     ? experience.value?.compilation.ir.theme
     : design.value?.compilation.theme,
-))
-const {
-  designEditor,
-  handleDesignContextMenu,
-  handleDesignPointerDown,
-  postDesignPointer,
-  stage,
-  stageStyle,
-} = geometry
+),
+)
+const { designEditor, handleDesignContextMenu, handleDesignPointerDown, postDesignPointer, stage, stageStyle }
+  = geometry
 </script>
 
 <template>
@@ -77,12 +79,7 @@ const {
       <strong>{{ runtimeErrorTitle }}</strong>
       <p>{{ runtimeError }}</p>
     </div>
-    <div
-      v-if="runtimeMode === 'design' && active"
-      ref="stage"
-      class="runtime-host-stage"
-      :style="stageStyle"
-    >
+    <div v-if="runtimeMode === 'design' && active" ref="stage" class="runtime-host-stage" :style="stageStyle">
       <ConfigFormRenderer
         :key="runtimeSessionKey"
         ref="renderer"
@@ -100,10 +97,7 @@ const {
         @meta-change="protocol.postRuntimeState()"
       />
     </div>
-    <div
-      v-else-if="runtimeMode === 'experience' && experience && experienceContext"
-      class="runtime-host-stage"
-    >
+    <div v-else-if="runtimeMode === 'experience' && experience && experienceContext" class="runtime-host-stage">
       <PrototypeSurfaceHost
         ref="prototypeHost"
         :artifacts-by-surface-id="prototypeArtifacts"
@@ -118,6 +112,7 @@ const {
             :artifact="experienceArtifacts[bindings.instance.surfaceId]!"
             :bindings="bindings"
             :breakpoint="experience?.breakpoint"
+            :locale="runtimeLocale"
             :namespace="namespace"
             @error="protocol.reportExperienceError"
             @state="postExperienceInstanceState"

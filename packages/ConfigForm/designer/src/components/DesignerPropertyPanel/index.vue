@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { ChevronRight, Layers3, PanelsTopLeft, Search, SlidersHorizontal, X } from '@lucide/vue'
-import { useDesignerLocale } from '../../locale'
-import { DesignerDataBindingEditor, DesignerInteractionEditor, DesignerPropertyForm, DesignerResponsiveSettings } from './components'
-import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
 import { computed, ref, watch } from 'vue'
+import { useDesignerLocale } from '../../locale'
+import {
+  DesignerDataBindingEditor,
+  DesignerInteractionEditor,
+  DesignerPropertyForm,
+  DesignerResponsiveSettings,
+} from './components'
+import DesignerValidationLab from './components/DesignerValidationLab.vue'
+import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
 
 const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
 const locale = useDesignerLocale()
 const propertyQuery = ref('')
-type PropertyGroupId = 'field' | 'layout' | 'component'
+type PropertyGroupId = 'essentials' | 'layout' | 'appearance' | 'data' | 'advanced'
 const collapsedPropertyGroups = ref(new Set<PropertyGroupId>())
 
 const {
@@ -29,20 +35,14 @@ const {
   onUpdatePaths: (nodeIds, path, value) => emit('updatePaths', nodeIds, path, value),
 })
 
-const {
-  activeTab,
-  handlePropertyTabKeydown,
-  propertyPanelRef,
-  propertyTabId,
-  propertyTabPanelId,
-  selectPropertyTab,
-} = useDesignerPropertyTabs({
-  identity: () => JSON.stringify({
-    sections: propertyTabs.value.map(tab => [tab.id, tab.editable]),
-    selection: selectedNodes.value.map(node => [node.id, node.component, node.kind]),
-  }),
-  tabs: () => propertyTabs.value,
-})
+const { activeTab, handlePropertyTabKeydown, propertyPanelRef, propertyTabId, propertyTabPanelId, selectPropertyTab }
+  = useDesignerPropertyTabs({
+    identity: () => JSON.stringify({
+      sections: propertyTabs.value.map(tab => [tab.id, tab.editable]),
+      selection: selectedNodes.value.map(node => [node.id, node.component, node.kind]),
+    }),
+    tabs: () => propertyTabs.value,
+  })
 
 const selectionTitle = computed(() => selectedNodes.value.length > 1
   ? locale.t('property.selectedCount', '{count} selected', { count: selectedNodes.value.length })
@@ -52,12 +52,14 @@ const selectionTitle = computed(() => selectedNodes.value.length > 1
       : primaryMaterial.value
         ? locale.materialTitle(primaryMaterial.value)
         : selectedNodes.value[0].component
-    : locale.t('property.form', 'Form'))
+    : locale.t('property.form', 'Form'),
+)
 const selectionKind = computed(() => selectedNodes.value.length > 1
   ? locale.t('property.multipleSelection', 'Multiple selection')
   : primaryMaterial.value
     ? locale.materialCategory(primaryMaterial.value)
-    : locale.t('property.form', 'Form'))
+    : locale.t('property.form', 'Form'),
+)
 const selectionContext = computed(() => {
   const selected = selectedNodes.value[0]
   if (selectedNodes.value.length > 1)
@@ -69,21 +71,28 @@ const selectionContext = computed(() => {
     ? `${title} · ${selected.field}`
     : `${locale.t('property.componentScope', 'Component')} · ${selected.component}`
 })
-function propertyGroupId(entry: typeof propertyEntries.value.properties[number]): PropertyGroupId {
-  const rootPath = entry.setter.path[0]
-  if (rootPath === 'field' || rootPath === 'label')
-    return 'field'
-  if (rootPath === 'span')
+function propertyGroupId(entry: (typeof propertyEntries.value.properties)[number]): PropertyGroupId {
+  const path = entry.setter.path.join('.')
+  if (/^(?:field|label|description|help|warning)$/.test(path) || /\.(?:placeholder|disabled|readonly)$/.test(path))
+    return 'essentials'
+  if (path === 'span' || /\.(?:width|height|align|direction|gap|columns|labelWidth)$/.test(path))
     return 'layout'
-  return 'component'
+  if (path === 'defaultValue' || /\.(?:options|multiple|clearable|filterable|data|items)$/.test(path))
+    return 'data'
+  if (/\.(?:size|type|color|border|round|plain|shadow|showLabel|label)$/.test(path))
+    return 'appearance'
+  return 'advanced'
 }
 
 function propertyGroupLabel(id: PropertyGroupId): string {
-  return locale.t(`property.group.${id}`, id === 'field'
-    ? 'Field settings'
-    : id === 'layout'
-      ? 'Layout'
-      : 'Component properties')
+  const labels = {
+    essentials: 'Essentials',
+    layout: 'Layout',
+    appearance: 'Appearance',
+    data: 'Data',
+    advanced: 'Advanced',
+  }
+  return locale.t(`property.group.${id}`, labels[id])
 }
 
 const visiblePropertyEntries = computed(() => {
@@ -107,7 +116,7 @@ const propertyGroups = computed(() => {
     entries.push(entry)
     entriesByGroup.set(id, entries)
   }
-  return (['field', 'layout', 'component'] as const)
+  return (['essentials', 'layout', 'appearance', 'data', 'advanced'] as const)
     .filter(id => entriesByGroup.has(id))
     .map(id => ({
       id,
@@ -115,14 +124,19 @@ const propertyGroups = computed(() => {
       entries: entriesByGroup.get(id)!,
     }))
 })
-const showPropertySearch = computed(() => activeTab.value === 'properties' && propertyEntries.value.properties.length >= 5)
+const showPropertySearch = computed(
+  () => activeTab.value === 'properties' && propertyEntries.value.properties.length >= 5,
+)
 const hasPropertyQuery = computed(() => propertyQuery.value.trim().length > 0)
 
-watch(() => selectedNodes.value.map(node => node.id).join('\u0000'), () => {
-  propertyQuery.value = ''
-  collapsedPropertyGroups.value = new Set()
-  selectPropertyTab('properties')
-})
+watch(
+  () => selectedNodes.value.map(node => node.id).join('\u0000'),
+  () => {
+    propertyQuery.value = ''
+    collapsedPropertyGroups.value = new Set()
+    selectPropertyTab('properties')
+  },
+)
 watch(activeTab, (tab) => {
   if (tab !== 'properties')
     propertyQuery.value = ''
@@ -149,7 +163,10 @@ function togglePropertyGroup(id: PropertyGroupId): void {
   collapsedPropertyGroups.value = next
 }
 
-function updateDatasetBinding(bindingKey: string, reference: DesignerPropertyPanelEmits['updateDatasetBinding'][2]): void {
+function updateDatasetBinding(
+  bindingKey: string,
+  reference: DesignerPropertyPanelEmits['updateDatasetBinding'][2],
+): void {
   if (props.node)
     emit('updateDatasetBinding', props.node.id, bindingKey, reference)
 }
@@ -173,10 +190,27 @@ defineExpose({ propertyPanelRef })
 </script>
 
 <template>
-  <aside ref="propertyPanelRef" class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
+  <aside
+    ref="propertyPanelRef"
+    class="mx-config-form-designer__properties"
+    :aria-label="locale.t('property.properties', 'Properties')"
+  >
     <header class="mx-config-form-designer__property-heading">
-      <span class="mx-config-form-designer__property-mark" :data-node-kind="selectedNodes[0]?.kind ?? 'form'" aria-hidden="true">
-        <component :is="selectedNodes.length > 1 ? Layers3 : selectedNodes.length === 0 ? PanelsTopLeft : primaryMaterial?.icon ?? SlidersHorizontal" :size="16" />
+      <span
+        class="mx-config-form-designer__property-mark"
+        :data-node-kind="selectedNodes[0]?.kind ?? 'form'"
+        aria-hidden="true"
+      >
+        <component
+          :is="
+            selectedNodes.length > 1
+              ? Layers3
+              : selectedNodes.length === 0
+                ? PanelsTopLeft
+                : (primaryMaterial?.icon ?? SlidersHorizontal)
+          "
+          :size="16"
+        />
       </span>
       <span class="mx-config-form-designer__property-identity">
         <strong :title="selectionTitle">{{ selectionTitle }}</strong>
@@ -184,7 +218,11 @@ defineExpose({ propertyPanelRef })
       </span>
       <span v-if="selectedNodes.length" class="mx-config-form-designer__selection-kind">{{ selectionKind }}</span>
     </header>
-    <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
+    <div
+      class="mx-config-form-designer__tabs"
+      role="tablist"
+      :aria-label="locale.t('property.views', 'Property views')"
+    >
       <button
         v-for="tab in propertyTabs"
         :id="propertyTabId(tab.id)"
@@ -218,7 +256,12 @@ defineExpose({ propertyPanelRef })
         data-property-search
       >
       <output v-if="hasPropertyQuery" class="mx-config-form-designer__search-count" aria-live="polite">
-        {{ locale.t('property.searchResultCount', '{visible} / {total}', { visible: visiblePropertyEntries.length, total: propertyEntries.properties.length }) }}
+        {{
+          locale.t('property.searchResultCount', '{visible} / {total}', {
+            visible: visiblePropertyEntries.length,
+            total: propertyEntries.properties.length,
+          })
+        }}
       </output>
       <button
         v-if="hasPropertyQuery"
@@ -284,7 +327,9 @@ defineExpose({ propertyPanelRef })
             >
               <ChevronRight :size="14" aria-hidden="true" />
               <span>{{ group.label }}</span>
-              <span class="mx-config-form-designer__property-group-count" aria-hidden="true">{{ group.entries.length }}</span>
+              <span class="mx-config-form-designer__property-group-count" aria-hidden="true">{{
+                group.entries.length
+              }}</span>
             </button>
             <div
               v-show="!isPropertyGroupCollapsed(group.id)"
@@ -305,10 +350,17 @@ defineExpose({ propertyPanelRef })
             </div>
           </section>
         </template>
-        <div v-if="tab.id === 'properties' && hasPropertyQuery && propertyGroups.length === 0" class="mx-config-form-designer__property-empty" data-property-empty role="status">
+        <div
+          v-if="tab.id === 'properties' && hasPropertyQuery && propertyGroups.length === 0"
+          class="mx-config-form-designer__property-empty"
+          data-property-empty
+          role="status"
+        >
           <Search :size="15" aria-hidden="true" />
           <span>{{ locale.t('property.emptySearch', 'No properties match this search.') }}</span>
-          <button type="button" @click="clearPropertyQuery">{{ locale.t('property.clearSearch', 'Clear search') }}</button>
+          <button type="button" @click="clearPropertyQuery">
+            {{ locale.t('property.clearSearch', 'Clear search') }}
+          </button>
         </div>
         <DesignerDataBindingEditor
           v-if="tab.id === 'properties' && selectedNodes.length === 1"
@@ -321,6 +373,10 @@ defineExpose({ propertyPanelRef })
           @save-options="saveOptionsAsDataset"
           @update-dataset="updateDatasetBinding"
           @update-resource="updateResourceBinding"
+        />
+        <DesignerValidationLab
+          v-if="tab.id === 'validation' && selectedNodes.length === 1 && node?.kind === 'field'"
+          :node="node"
         />
       </template>
       <template v-else>
@@ -343,7 +399,11 @@ defineExpose({ propertyPanelRef })
       </template>
     </div>
 
-    <ul v-if="selectedDiagnostics.length" class="mx-config-form-designer__property-diagnostics" :aria-label="locale.t('property.diagnostics', 'Diagnostics')">
+    <ul
+      v-if="selectedDiagnostics.length"
+      class="mx-config-form-designer__property-diagnostics"
+      :aria-label="locale.t('property.diagnostics', 'Diagnostics')"
+    >
       <li v-for="(diagnostic, index) in selectedDiagnostics" :key="`${diagnostic.code}-${index}`">
         {{ diagnostic.message }}
       </li>

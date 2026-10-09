@@ -23,7 +23,10 @@ async function expectNoAccessibilityViolations(page: Page, state: string): Promi
   expect(summary, `${state} accessibility violations`).toEqual([])
 }
 
-async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promise<Record<string, Record<string, string>>> {
+async function runtimeStyleFingerprint(
+  page: Page,
+  frameSelector: string,
+): Promise<Record<string, Record<string, string>>> {
   return page.frameLocator(frameSelector).locator('[data-config-node-id^="profile-name-"]').first().evaluate((node) => {
     const input = node.querySelector('input')
     const label = node.querySelector('label')
@@ -54,7 +57,7 @@ async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promi
 
 async function openProjectCreation(page: Page): Promise<void> {
   const dialog = page.locator('.project-creation-dialog:visible')
-  if (!await dialog.isVisible()) {
+  if (!(await dialog.isVisible())) {
     const newProject = page.locator('[data-project-create]').first()
     await expect(newProject).toBeVisible({ timeout: 15_000 })
     await newProject.click()
@@ -144,11 +147,12 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(inspectorTab).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('[data-workspace-panel="properties"]')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('complementary', { name: 'Properties' })).toBeVisible({ timeout: 10_000 })
-    await expect(page.locator('.mx-config-form-designer__properties .mx-config-form-designer__tabs > [role="tab"]'))
-      .toHaveText(['Properties', 'Validation', 'Interactions'])
+    await expect(
+      page.locator('.mx-config-form-designer__properties .mx-config-form-designer__tabs > [role="tab"]'),
+    ).toHaveText(['Properties', 'Validation', 'Interactions'])
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
-    await page.getByRole('button', { name: 'Code', exact: true }).click()
+    await page.getByRole('button', { name: 'Handoff', exact: true }).click()
     const sourcePane = page.locator('.source-pane')
     await expect(sourcePane).toBeVisible()
     await sourcePane.getByRole('button', { name: 'Files', exact: true }).click()
@@ -167,7 +171,9 @@ test('keeps the 900px light-theme overflow menu accessible', async ({ page }) =>
 })
 
 for (const adapter of ['element', 'antd'] as const) {
-  test(`keeps ${adapter} Design and Preview runtime computed styles independent from Workbench theme`, async ({ page }) => {
+  test(`keeps ${adapter} Design and Preview runtime computed styles independent from Workbench theme`, async ({
+    page,
+  }) => {
     test.slow()
     await createProject(page, adapter)
     const designSelector = 'iframe[data-design-runtime-variant="canvas"]'

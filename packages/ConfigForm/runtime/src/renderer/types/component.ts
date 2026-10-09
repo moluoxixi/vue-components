@@ -23,15 +23,15 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     onSubmit?: (values: TValues) => unknown
   }
 
-export type ConfigFormRendererComponentInstance<
-  TValues extends ConfigFormValues = ConfigFormValues,
-> = ConfigFormRendererExpose<TValues> & {
-  $emit: ConfigFormRendererEmits<TValues>
-  $props: ConfigFormRendererComponentProps<TValues>
-  $slots: {
-    default?: (props: ConfigFormDefaultSlotContext<TValues>) => unknown
+export type ConfigFormRendererComponentInstance<TValues extends ConfigFormValues = ConfigFormValues>
+  = ConfigFormRendererExpose<TValues> & {
+    $emit: ConfigFormRendererEmits<TValues>
+    $props: ConfigFormRendererComponentProps<TValues>
+    $slots: {
+      default?: (props: ConfigFormDefaultSlotContext<TValues>) => unknown
+      actions?: (props: ConfigFormDefaultSlotContext<TValues>) => unknown
+    }
   }
-}
 
 interface ConfigFormRendererComponentSetup<TValues extends ConfigFormValues> {
   attrs: Record<string, unknown>

@@ -4,12 +4,7 @@ import type {
   ConfigFormResponsiveLayout,
   ConfigFormSurfaceRuntimePlan,
 } from '@moluoxixi/config-form'
-import type {
-  CompiledRuleSet,
-  RuleCompileContext,
-  RuleDiagnostic,
-  RuleSet,
-} from '@moluoxixi/zod3-to-rule'
+import type { CompiledRuleSet, RuleCompileContext, RuleDiagnostic, RuleSet } from '@moluoxixi/zod3-to-rule'
 import type {
   CanonicalRuntimeElementNode,
   CanonicalRuntimeFieldNode,
@@ -28,12 +23,7 @@ import {
   hasOnlyCurrentCanonicalSurfaceKeys,
 } from '@moluoxixi/config-form-compiler'
 import { queryDatasetView } from '@moluoxixi/config-form-model'
-import {
-  compileRules,
-  parseRuleSet,
-  RuleCompileError,
-  rulesToZod,
-} from '@moluoxixi/zod3-to-rule'
+import { compileRules, parseRuleSet, RuleCompileError, rulesToZod } from '@moluoxixi/zod3-to-rule'
 import { getRuntimeNodeFragmentCache } from '../state'
 import { createVueRuntimeDiagnostic, hasVueRuntimeErrors } from '../utils'
 
@@ -44,11 +34,13 @@ function compilationContractDiagnostics(
   const irVersion = surfaceScoped ? compilation.key.irVersion : compilation.ir.version
   const diagnostics: VueRuntimeDiagnostic[] = []
   if (irVersion !== CANONICAL_PROJECT_IR_VERSION) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_IR_VERSION_UNSUPPORTED',
-      `Unsupported Canonical IR version: ${String(irVersion)}. Expected ${CANONICAL_PROJECT_IR_VERSION}.`,
-      surfaceScoped ? ['key', 'irVersion'] : ['ir', 'version'],
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_VERSION_UNSUPPORTED',
+        `Unsupported Canonical IR version: ${String(irVersion)}. Expected ${CANONICAL_PROJECT_IR_VERSION}.`,
+        surfaceScoped ? ['key', 'irVersion'] : ['ir', 'version'],
+      ),
+    )
   }
 
   const compilerVersions = [
@@ -59,11 +51,13 @@ function compilationContractDiagnostics(
   ]
   for (const { path, value } of compilerVersions) {
     if (value !== CONFIG_FORM_COMPILER_VERSION) {
-      diagnostics.push(createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED',
-        `Unsupported compiler version: ${String(value)}. Expected ${CONFIG_FORM_COMPILER_VERSION}.`,
-        path,
-      ))
+      diagnostics.push(
+        createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_COMPILER_VERSION_UNSUPPORTED',
+          `Unsupported compiler version: ${String(value)}. Expected ${CONFIG_FORM_COMPILER_VERSION}.`,
+          path,
+        ),
+      )
     }
   }
 
@@ -75,20 +69,19 @@ function compilationContractDiagnostics(
       }))
   for (const { surface, path } of surfaces) {
     if (!hasOnlyCurrentCanonicalSurfaceKeys(surface)) {
-      diagnostics.push(createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED',
-        'Canonical Surface contains fields outside the current IR contract.',
-        path,
-      ))
+      diagnostics.push(
+        createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_IR_SHAPE_UNSUPPORTED',
+          'Canonical Surface contains fields outside the current IR contract.',
+          path,
+        ),
+      )
     }
   }
   return diagnostics
 }
 
-function createRuleContext(
-  ruleSet: RuleSet,
-  resolver: VueRuntimeBindingResolver,
-): RuleCompileContext {
+function createRuleContext(ruleSet: RuleSet, resolver: VueRuntimeBindingResolver): RuleCompileContext {
   const custom: RuleCompileContext['custom'] = {}
   for (const rule of ruleSet.rules) {
     if (rule.kind !== 'custom')
@@ -100,11 +93,7 @@ function createRuleContext(
   return { custom }
 }
 
-function ruleDiagnostic(
-  source: RuleDiagnostic,
-  path: Array<string | number>,
-  nodeId: string,
-): VueRuntimeDiagnostic {
+function ruleDiagnostic(source: RuleDiagnostic, path: Array<string | number>, nodeId: string): VueRuntimeDiagnostic {
   return createVueRuntimeDiagnostic(
     source.code,
     source.message,
@@ -161,18 +150,18 @@ function diagnoseDefaultBase(
     rules: [],
   }).safeParse(node.defaultValue)
   if (!result.success) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_DEFAULT_BASE_INVALID',
-      result.error.issues[0]?.message ?? 'Default value does not satisfy the field base type.',
-      [...path, 'defaultValue'],
-      node.id,
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_DEFAULT_BASE_INVALID',
+        result.error.issues[0]?.message ?? 'Default value does not satisfy the field base type.',
+        [...path, 'defaultValue'],
+        node.id,
+      ),
+    )
   }
 }
 
-function cloneNodeMetadata(
-  node: CanonicalRuntimeNode,
-): Record<string, unknown> | undefined {
+function cloneNodeMetadata(node: CanonicalRuntimeNode): Record<string, unknown> | undefined {
   if (!node.extensions)
     return undefined
   const extensions = structuredClone(node.extensions) as Record<string, unknown>
@@ -192,22 +181,27 @@ function compileNodeBase(
   for (const [bindingKey, reference] of Object.entries(node.datasetBindings ?? {})) {
     const dataset = datasetsById[reference.datasetId]
     if (!dataset) {
-      diagnostics.push(createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_DATASET_UNKNOWN',
-        `Dataset binding references an unavailable Dataset: ${reference.datasetId}.`,
-        [...path, 'datasetBindings', bindingKey, 'datasetId'],
-        node.id,
-      ))
+      diagnostics.push(
+        createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_DATASET_UNKNOWN',
+          `Dataset binding references an unavailable Dataset: ${reference.datasetId}.`,
+          [...path, 'datasetBindings', bindingKey, 'datasetId'],
+          node.id,
+        ),
+      )
       continue
     }
     const projected = queryDatasetView(dataset, reference.projection, reference.query)
     if (!projected.success) {
-      diagnostics.push(...projected.diagnostics.map(item => createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_DATASET_PROJECTION_INVALID',
-        item.message,
-        ['datasetsById', reference.datasetId, ...(item.path ?? [])],
-        node.id,
-      )))
+      diagnostics.push(
+        ...projected.diagnostics.map(item => createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_DATASET_PROJECTION_INVALID',
+          item.message,
+          ['datasetsById', reference.datasetId, ...(item.path ?? [])],
+          node.id,
+        ),
+        ),
+      )
       continue
     }
     props[bindingKey] = structuredClone(projected.data.items)
@@ -238,6 +232,9 @@ function compileField(
     ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.description === undefined ? {} : { description: node.description }),
+    ...(node.help === undefined ? {} : { help: node.help }),
+    ...(node.warning === undefined ? {} : { warning: node.warning }),
     ...(node.defaultValue === undefined
       ? {}
       : { defaultValue: structuredClone(node.defaultValue) }),
@@ -289,33 +286,37 @@ function compileNode(
   const path = ['nodesById', nodeId]
   const node = surface.nodesById[nodeId]
   if (!node) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_IR_NODE_UNKNOWN',
-      `Canonical Surface references an unknown node: ${nodeId}`,
-      path,
-      nodeId,
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_NODE_UNKNOWN',
+        `Canonical Surface references an unknown node: ${nodeId}`,
+        path,
+        nodeId,
+      ),
+    )
     return undefined
   }
   if (ancestors.has(nodeId)) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_IR_CYCLE',
-      `Canonical Surface contains a node cycle at ${nodeId}.`,
-      path,
-      nodeId,
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_CYCLE',
+        `Canonical Surface contains a node cycle at ${nodeId}.`,
+        path,
+        nodeId,
+      ),
+    )
     return undefined
   }
-  if (
-    node.placement.parentId !== expected.parentId
-    || node.placement.slot !== expected.slot
-  ) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_IR_PLACEMENT_MISMATCH',
-      `Canonical placement does not match the rendered relation for node ${nodeId}.`,
-      [...path, 'placement'],
-      nodeId,
-    ))
+  if (node.placement.parentId !== expected.parentId
+    || node.placement.slot !== expected.slot) {
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_IR_PLACEMENT_MISMATCH',
+        `Canonical placement does not match the rendered relation for node ${nodeId}.`,
+        [...path, 'placement'],
+        nodeId,
+      ),
+    )
     return undefined
   }
 
@@ -329,33 +330,37 @@ function compileNode(
   const diagnosticStart = diagnostics.length
   const binding = resolver.resolveBinding(node.component)
   if (!binding) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_BINDING_UNAVAILABLE',
-      `Vue Runtime binding is unavailable for component ${node.component}.`,
-      [...path, 'component'],
-      nodeId,
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_BINDING_UNAVAILABLE',
+        `Vue Runtime binding is unavailable for component ${node.component}.`,
+        [...path, 'component'],
+        nodeId,
+      ),
+    )
     return undefined
   }
   if (binding.kind !== node.kind) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_BINDING_KIND_MISMATCH',
-      `Vue Runtime binding ${node.component} does not support node kind ${node.kind}.`,
-      [...path, 'kind'],
-      nodeId,
-    ))
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_BINDING_KIND_MISMATCH',
+        `Vue Runtime binding ${node.component} does not support node kind ${node.kind}.`,
+        [...path, 'kind'],
+        nodeId,
+      ),
+    )
     return undefined
   }
-  if (
-    binding.contractVersion !== node.componentVersion
-    || binding.contractFingerprint !== node.componentFingerprint
-  ) {
-    diagnostics.push(createVueRuntimeDiagnostic(
-      'VUE_RUNTIME_BINDING_IDENTITY_MISMATCH',
-      `Vue Runtime binding identity does not match Canonical IR for component ${node.component}.`,
-      [...path, 'componentFingerprint'],
-      nodeId,
-    ))
+  if (binding.contractVersion !== node.componentVersion
+    || binding.contractFingerprint !== node.componentFingerprint) {
+    diagnostics.push(
+      createVueRuntimeDiagnostic(
+        'VUE_RUNTIME_BINDING_IDENTITY_MISMATCH',
+        `Vue Runtime binding identity does not match Canonical IR for component ${node.component}.`,
+        [...path, 'componentFingerprint'],
+        nodeId,
+      ),
+    )
     return undefined
   }
 
@@ -372,16 +377,26 @@ function compileNode(
     compiled = {
       ...compileNodeBase(node, binding, datasetsById, path, diagnostics),
       ...(node.valueScope === undefined ? {} : { valueScope: structuredClone(node.valueScope) }),
-      slots: Object.fromEntries(Object.entries(node.slots).map(([slotName, childIds]) => [
-        slotName,
-        childIds.flatMap((childId) => {
-          const child = compileNode(surface, datasetsById, childId, resolver, diagnostics, {
-            parentId: node.id,
-            slot: slotName,
-          }, nextAncestors)
-          return child ? [child] : []
-        }),
-      ])),
+      slots: Object.fromEntries(
+        Object.entries(node.slots).map(([slotName, childIds]) => [
+          slotName,
+          childIds.flatMap((childId) => {
+            const child = compileNode(
+              surface,
+              datasetsById,
+              childId,
+              resolver,
+              diagnostics,
+              {
+                parentId: node.id,
+                slot: slotName,
+              },
+              nextAncestors,
+            )
+            return child ? [child] : []
+          }),
+        ]),
+      ),
     } as unknown as ConfigFormRendererNode
   }
 
@@ -422,6 +437,7 @@ function rendererConfig(
     ...(form.inline === undefined ? {} : { inline: form.inline }),
     ...(form.columns === undefined ? {} : { columns: form.columns }),
     ...(form.gap === undefined ? {} : { gap: form.gap }),
+    ...(form.density === undefined ? {} : { density: form.density }),
     ...(form.fieldSpan === undefined ? {} : { fieldSpan: form.fieldSpan }),
     ...(form.labelPosition === undefined ? {} : { labelPosition: form.labelPosition }),
     ...(form.labelWidth === undefined ? {} : { labelWidth: form.labelWidth }),
@@ -446,11 +462,13 @@ export function compileCanonicalSurfaceRuntime(
   if (!surfaceId) {
     return {
       success: false,
-      diagnostics: [createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_SURFACE_ID_REQUIRED',
-        'ProjectCompilation runtime input requires a surface id.',
-        ['surfaceId'],
-      )],
+      diagnostics: [
+        createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_SURFACE_ID_REQUIRED',
+          'ProjectCompilation runtime input requires a surface id.',
+          ['surfaceId'],
+        ),
+      ],
     }
   }
 
@@ -460,11 +478,13 @@ export function compileCanonicalSurfaceRuntime(
   if (!surface) {
     return {
       success: false,
-      diagnostics: [createVueRuntimeDiagnostic(
-        'VUE_RUNTIME_IR_SURFACE_UNKNOWN',
-        `Canonical project does not contain Surface: ${surfaceId}`,
-        ['surfacesById', surfaceId],
-      )],
+      diagnostics: [
+        createVueRuntimeDiagnostic(
+          'VUE_RUNTIME_IR_SURFACE_UNKNOWN',
+          `Canonical project does not contain Surface: ${surfaceId}`,
+          ['surfacesById', surfaceId],
+        ),
+      ],
     }
   }
 
@@ -474,10 +494,18 @@ export function compileCanonicalSurfaceRuntime(
 
   const diagnostics: VueRuntimeDiagnostic[] = []
   const fields = surface.rootIds.flatMap((nodeId) => {
-    const compiled = compileNode(surface, datasetsById, nodeId, resolver, diagnostics, {
-      parentId: null,
-      slot: null,
-    }, new Set())
+    const compiled = compileNode(
+      surface,
+      datasetsById,
+      nodeId,
+      resolver,
+      diagnostics,
+      {
+        parentId: null,
+        slot: null,
+      },
+      new Set(),
+    )
     return compiled ? [compiled] : []
   })
   if (hasVueRuntimeErrors(diagnostics))

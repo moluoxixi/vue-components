@@ -48,16 +48,13 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'runtime': ['index.vue'],
   'source': [],
   'vue-backend': ['index.ts'],
-  'workbench': [
-    'adapter-styles.d.ts',
-    'App.vue',
-    'components.d.ts',
-    'main.ts',
-  ],
+  'workbench': ['adapter-styles.d.ts', 'App.vue', 'components.d.ts', 'main.ts'],
 }
 const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
+  // A JSON Schema annotation name, unrelated to application code versioning.
+  'workbench/src/features/schema/services/json-schema.ts': ['deprecated'],
 }
 
 function collectProductTextFiles(directory: string): string[] {
@@ -220,10 +217,12 @@ describe('workbench production architecture boundary', () => {
     ]
     const productionFiles = collectProductTextFiles(configFormRoot).filter((path) => {
       const normalized = relative(configFormRoot, path).replaceAll('\\', '/')
-      return !normalized.includes('/__tests__/')
+      return (
+        !normalized.includes('/__tests__/')
         && !normalized.includes('/e2e/')
         && !normalized.endsWith('.test.ts')
         && !normalized.endsWith('.md')
+      )
     }).concat(join(repositoryRoot, 'scripts', 'verify-config-form-adapter-packages.mjs'))
     const removedDomainTokens = [
       ['Config', 'Form', 'Flow'].join(''),
@@ -362,8 +361,8 @@ describe('workbench production architecture boundary', () => {
     })
     const allSourceDirectories = packageSourceRoots.flatMap(({ sourceRoot }) => collectProductDirectories(sourceRoot))
     const productDirectorySet = new Set(allSourceDirectories)
-    const responsibilityDirectories = allSourceDirectories
-      .filter(directory => responsibilityDirectoryNames.has(basename(directory)))
+    const responsibilityDirectories = allSourceDirectories.filter(directory => responsibilityDirectoryNames.has(basename(directory)),
+    )
     const featureRoots = allSourceDirectories.filter((directory) => {
       if (!existsSync(join(directory, 'index.ts')) || responsibilityDirectoryNames.has(basename(directory)))
         return false
@@ -375,17 +374,21 @@ describe('workbench production architecture boundary', () => {
         .filter(entry => entry.isFile() && entry.name !== 'index.ts' && entry.name !== 'index.vue')
         .map(entry => `${root}/${entry.name}`)
     })
-    const missingLocalEntries = [...new Set([
-      ...packageSourceRoots.flatMap(({ sourceRoot }) => readdirSync(sourceRoot, { withFileTypes: true })
-        .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(sourceRoot, entry.name))
-        .filter(directory => productDirectorySet.has(directory))),
-      ...responsibilityDirectories,
-      ...featureRoots.flatMap(directory => readdirSync(directory, { withFileTypes: true })
-        .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
-        .map(entry => join(directory, entry.name))
-        .filter(child => productDirectorySet.has(child))),
-    ])]
+    const missingLocalEntries = [
+      ...new Set([
+        ...packageSourceRoots.flatMap(({ sourceRoot }) => readdirSync(sourceRoot, { withFileTypes: true })
+          .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
+          .map(entry => join(sourceRoot, entry.name))
+          .filter(directory => productDirectorySet.has(directory)),
+        ),
+        ...responsibilityDirectories,
+        ...featureRoots.flatMap(directory => readdirSync(directory, { withFileTypes: true })
+          .filter(entry => entry.isDirectory() && !entry.name.startsWith('__'))
+          .map(entry => join(directory, entry.name))
+          .filter(child => productDirectorySet.has(child)),
+        ),
+      ]),
+    ]
       .filter(directory => !sourceRootDirectoryEntryExceptions.has(normalizedRelative(configFormRoot, directory)))
       .filter(directory => !hasLocalEntry(directory))
       .map(directory => normalizedRelative(configFormRoot, directory))
@@ -451,19 +454,21 @@ describe('workbench production architecture boundary', () => {
       })
     })
     const removedRuntimeSubpath = ['@moluoxixi/config-form', 'renderer'].join('/')
-    const currentPublicFiles = [...new Set([
-      ...productionFiles,
-      ...collectProductTextFiles(join(repositoryRoot, 'packages', 'components', 'src')),
-      ...collectProductTextFiles(configFormRoot).filter((path) => {
-        const normalized = normalizedRelative(configFormRoot, path)
-        return normalized.endsWith('/README.md')
-          || normalized === 'README.md'
-          || normalized.endsWith('/package.json')
-      }),
-      join(repositoryRoot, 'README.md'),
-      join(repositoryRoot, 'packages', 'components', 'README.md'),
-      join(repositoryRoot, 'packages', 'components', 'package.json'),
-    ])]
+    const currentPublicFiles = [
+      ...new Set([
+        ...productionFiles,
+        ...collectProductTextFiles(join(repositoryRoot, 'packages', 'components', 'src')),
+        ...collectProductTextFiles(configFormRoot).filter((path) => {
+          const normalized = normalizedRelative(configFormRoot, path)
+          return normalized.endsWith('/README.md')
+            || normalized === 'README.md'
+            || normalized.endsWith('/package.json')
+        }),
+        join(repositoryRoot, 'README.md'),
+        join(repositoryRoot, 'packages', 'components', 'README.md'),
+        join(repositoryRoot, 'packages', 'components', 'package.json'),
+      ]),
+    ]
     const subpathHits = currentPublicFiles
       .filter(path => readFileSync(path, 'utf8').includes(removedRuntimeSubpath))
       .map(path => normalizedRelative(configFormRoot, path))
@@ -517,10 +522,14 @@ describe('workbench production architecture boundary', () => {
       .filter(path => readFileSync(path, 'utf8').includes(configFormToken))
       .map(path => normalizedRelative(componentsRoot, path))
 
-    expect(removedDirectories.filter(path => existsSync(path) && collectProductTextFiles(path).length > 0)).toEqual([])
+    expect(removedDirectories.filter(path => existsSync(path) && collectProductTextFiles(path).length > 0)).toEqual(
+      [],
+    )
     expect(removedFiles.filter(path => existsSync(path))).toEqual([])
     expect(removedExports.filter(path => Object.hasOwn(manifest.exports ?? {}, path))).toEqual([])
-    expect(Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@moluoxixi/config-form'))).toEqual([])
+    expect(
+      Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@moluoxixi/config-form')),
+    ).toEqual([])
     expect(sourceHits).toEqual([])
   })
 
@@ -600,7 +609,10 @@ describe('workbench production architecture boundary', () => {
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
     const drawer = readFileSync(new URL('../components/PreviewDrawer/index.vue', import.meta.url), 'utf8')
     const host = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
-    const hostProtocol = readFileSync(new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url), 'utf8')
+    const hostProtocol = readFileSync(
+      new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url),
+      'utf8',
+    )
     const protocol = readFileSync(new URL('../../runtime-host/types/protocol.ts', import.meta.url), 'utf8')
 
     expect(drawer).toContain('PreviewRuntimeHostFrame')
@@ -643,21 +655,23 @@ describe('workbench production architecture boundary', () => {
     const persistence = readFileSync(new URL('../../features/persistence/index.vue', import.meta.url), 'utf8')
     const appRoot = join(configFormRoot, 'workbench/src/app')
     const featureAppImports = collectProductionTextFiles(join(configFormRoot, 'workbench/src/features'))
-      .flatMap((path) => {
-        const source = readFileSync(path, 'utf8')
-        const specifiers = [
-          ...source.matchAll(/\bfrom\s*['"]([^'"]+)['"]/g),
-          ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g),
-        ].map(match => match[1]!)
-        return specifiers.flatMap((specifier) => {
-          if (!specifier.startsWith('.'))
-            return []
-          const target = resolve(dirname(path), specifier)
-          return target === appRoot || target.startsWith(`${appRoot}${sep}`)
-            ? [`${normalizedRelative(configFormRoot, path)} -> ${specifier}`]
-            : []
-        })
-      })
+      .flatMap(
+        (path) => {
+          const source = readFileSync(path, 'utf8')
+          const specifiers = [
+            ...source.matchAll(/\bfrom\s*['"]([^'"]+)['"]/g),
+            ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g),
+          ].map(match => match[1]!)
+          return specifiers.flatMap((specifier) => {
+            if (!specifier.startsWith('.'))
+              return []
+            const target = resolve(dirname(path), specifier)
+            return target === appRoot || target.startsWith(`${appRoot}${sep}`)
+              ? [`${normalizedRelative(configFormRoot, path)} -> ${specifier}`]
+              : []
+          })
+        },
+      )
 
     expect(shell).toContain(':controller="controller"')
     expect(persistence).toContain('const controller = props.controller')
@@ -753,9 +767,15 @@ describe('workbench production architecture boundary', () => {
     const creationView = readFileSync(new URL('../router/components/CreationView.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
-    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
+    const workspace = readFileSync(
+      new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url),
+      'utf8',
+    )
     const routerSource = readFileSync(new URL('../router/services/router.ts', import.meta.url), 'utf8')
-    const projectCreationView = readFileSync(new URL('../router/components/ProjectCreationView.vue', import.meta.url), 'utf8')
+    const projectCreationView = readFileSync(
+      new URL('../router/components/ProjectCreationView.vue', import.meta.url),
+      'utf8',
+    )
 
     expect(app).toContain('<RouterView')
     expect(creationView).toContain('TemplateCreationWorkspace')

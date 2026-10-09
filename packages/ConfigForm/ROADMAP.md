@@ -29,6 +29,13 @@ TypeScript 维护。当前实现不保留 pages/surfaces 双模型，也不恢�
 
 ## 迁移阶段
 
+本轮工作流升级已落地：设计/体验/交付导航、命令中心、面板尺寸偏好、物料收藏与最近使用、
+大纲过滤/折叠、属性分组、校验/表达式实验室、统一问题定位、数据表格与 CSV 导入、
+可视映射/查询预览、平面 JSON Schema 生成、审批/问卷模板，以及三断点对照和布局复制。
+Runtime 增加字段支持文本、密度、错误摘要/定位、状态反馈与 actions 插槽，CSS/Tailwind
+源码输出同步支持文本和密度。未增加旧版本 Reader 或模板迁移。具体边界见
+[审核指南](./STUDIO-REVIEW.md)。
+
 ### 1. 产品与领域合同
 
 固化 Studio、Designer、Runtime、Prototype Runtime 与 Source 的职责，定义 Surface、

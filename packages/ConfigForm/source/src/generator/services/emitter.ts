@@ -1,9 +1,5 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
-import type {
-  ModelJsonObject,
-  ModelJsonValue,
-  ProjectTheme,
-} from '@moluoxixi/config-form-model'
+import type { ModelJsonObject, ModelJsonValue, ProjectTheme } from '@moluoxixi/config-form-model'
 import type {
   ConfigBindingFileSetV1,
   RawSourceFileSetV1,
@@ -25,7 +21,7 @@ import { readProjectImageResourceId } from '@moluoxixi/config-form-model'
 import { readSourceFileSet } from '../validation'
 import { sourceDatasetViewKey as datasetViewKey } from './datasets'
 import { createSourceInitialValues } from './initial-values'
-import { rawFormCellClass, rawFormContentClass } from './raw-form-layout'
+import { rawFormCellClass, rawFormCellCssClass, rawFormContentClass, rawFormLayoutCss } from './raw-form-layout'
 import { rawValidationModuleSource, rawValidatorNames } from './raw-validation'
 import { rawValidationComposableSource } from './raw-validation-runtime'
 import {
@@ -383,9 +379,11 @@ function activate(item: DatasetItem, index: number): void {
 function resourcesSource(resources: CollectedSourceResources): string {
   const lines = [...resources.values]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([resourceId, resource]) => resource.kind === 'url'
-      ? `  ${sourceString(resourceId)}: ${sourceString(resource.url)},`
-      : `  ${sourceString(resourceId)}: new URL(${sourceString(`../assets/${resource.fileName}`)}, import.meta.url).href,`)
+    .map(([resourceId, resource]) =>
+      resource.kind === 'url'
+        ? `  ${sourceString(resourceId)}: ${sourceString(resource.url)},`
+        : `  ${sourceString(resourceId)}: new URL(${sourceString(`../assets/${resource.fileName}`)}, import.meta.url).href,`,
+    )
   return `export const resources = {
 ${lines.join('\n')}
 } as const
@@ -401,9 +399,13 @@ function configFormItemComponentSource(): string {
   return `<script setup lang="ts">
 withDefaults(defineProps<{
   label?: string
+  description?: string
+  help?: string
+  warning?: string
   required?: boolean
   errors?: readonly string[]
   errorId?: string
+  helpId?: string
   labelPosition?: 'left' | 'top'
 }>(), {
   errors: () => [],
@@ -424,6 +426,11 @@ withDefaults(defineProps<{
     <div v-else class="min-w-0" data-config-form-control data-config-form-item-control>
       <slot />
     </div>
+    <div v-if="description || help || warning" :id="helpId" class="grid gap-y-1.5" :class="label && labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-supporting>
+      <p v-if="description" class="m-0 text-xs text-slate-600" data-config-form-description>{{ description }}</p>
+      <p v-if="help" class="m-0 text-xs text-slate-600" data-config-form-help>{{ help }}</p>
+      <p v-if="warning" class="m-0 text-xs text-amber-700" data-config-form-warning>{{ warning }}</p>
+    </div>
     <p v-for="(message, index) in errors" :id="index === 0 ? errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" :class="label && labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-error role="alert">
       {{ message }}
     </p>
@@ -438,16 +445,17 @@ function rawFieldControlId(
   resolution: SourceComponentResolution,
   context: EmitContext,
 ): string {
-  const configured = [
-    node.props.id,
-    resolution.staticProps?.id,
-  ].find((value): value is string => typeof value === 'string' && value.length > 0)
+  const configured = [node.props.id, resolution.staticProps?.id].find(
+    (value): value is string => typeof value === 'string' && value.length > 0,
+  )
   if (configured)
     return configured
   if (surface.valueScopes.length === 0) {
-    const fields = uniqueSlugs(Object.values(surface.nodesById)
-      .filter((item): item is SourceFieldNode => item.kind === 'field')
-      .map(item => item.field))
+    const fields = uniqueSlugs(
+      Object.values(surface.nodesById)
+        .filter((item): item is SourceFieldNode => item.kind === 'field')
+        .map(item => item.field),
+    )
     return `${context.surfaceDirectories.get(surface.id)}-${fields.get(node.field)}-control`
   }
   return `field-${safeSlug(node.id, 'field')}-control`
@@ -471,7 +479,8 @@ function nodeProperties(
   valueSource = 'values',
 ): ExpressionProperty[] {
   const values = new Map<string, string>()
-  for (const [key, value] of Object.entries(resolution.staticProps ?? {}).sort(([left], [right]) => left.localeCompare(right)))
+  for (const [key, value] of Object.entries(resolution.staticProps ?? {}).sort(([left], [right]) => left.localeCompare(right),
+  ))
     values.set(key, sourceAttributeJson(value))
   for (const [key, value] of Object.entries(node.props).sort(([left], [right]) => left.localeCompare(right)))
     values.set(key, sourceAttributeJson(value))
@@ -485,7 +494,8 @@ function nodeProperties(
     values.set(key, `${view}.items`)
     values.set(`${key}Total`, `${view}.total`)
   }
-  for (const [key, reference] of Object.entries(node.resourceBindings ?? {}).sort(([left], [right]) => left.localeCompare(right)))
+  for (const [key, reference] of Object.entries(node.resourceBindings ?? {}).sort(([left], [right]) => left.localeCompare(right),
+  ))
     values.set(key, `resources[${sourceAttributeString(reference.resourceId)}]`)
   if (node.kind === 'field' && resolution.valueProp)
     values.set(resolution.valueProp, `${valueSource}[${sourceAttributeString(node.field)}]`)
@@ -519,20 +529,20 @@ function bindExpression(properties: readonly ExpressionProperty[], projectedNode
 function rawAttributes(properties: readonly ExpressionProperty[], projectedNodeId?: string): string[] {
   if (projectedNodeId)
     return [bindExpression(properties, projectedNodeId)]
-  return properties.map(({ key, expression }) => {
-    if (key === 'text')
-      return ''
-    const literal = /^'([^']*)'$/u.exec(expression)
-    return literal && !literal[1]!.includes('\\')
-      ? ` ${kebabCase(key)}="${literal[1]}"`
-      : ` :${kebabCase(key)}="${expression}"`
-  }).filter(Boolean)
+  return properties
+    .map(({ key, expression }) => {
+      if (key === 'text')
+        return ''
+      const literal = /^'([^']*)'$/u.exec(expression)
+      return literal && !literal[1]!.includes('\\')
+        ? ` ${kebabCase(key)}="${literal[1]}"`
+        : ` :${kebabCase(key)}="${expression}"`
+    })
+    .filter(Boolean)
 }
 
 function businessFieldAccess(valueSource: string, field: string): string {
-  return /^[a-z_$][\w$]*$/iu.test(field)
-    ? `${valueSource}.${field}`
-    : `${valueSource}[${sourceAttributeString(field)}]`
+  return /^[a-z_$][\w$]*$/iu.test(field) ? `${valueSource}.${field}` : `${valueSource}[${sourceAttributeString(field)}]`
 }
 
 function rawOpeningTag(tag: string, attributes: readonly string[], indent: string, selfClosing: boolean): string[] {
@@ -540,7 +550,11 @@ function rawOpeningTag(tag: string, attributes: readonly string[], indent: strin
   const closing = selfClosing ? ' />' : '>'
   if (present.join('').length < 90)
     return [`${indent}<${tag}${present.join('')}${closing}`]
-  return [`${indent}<${tag}`, ...present.map(attribute => `${indent}  ${attribute.trim()}`), `${indent}${closing.trim()}`]
+  return [
+    `${indent}<${tag}`,
+    ...present.map(attribute => `${indent}  ${attribute.trim()}`),
+    `${indent}${closing.trim()}`,
+  ]
 }
 
 function fieldModelType(node: SourceFieldNode, resolution: SourceComponentResolution): string | undefined {
@@ -563,9 +577,15 @@ function fieldModelType(node: SourceFieldNode, resolution: SourceComponentResolu
   return undefined
 }
 
-function usesDirectModel(surface: SourceSurface, node: SourceFieldNode, resolution: SourceComponentResolution): boolean {
-  return surface.valueScopes.length === 0 && valueInteractions(surface).length === 0
+function usesDirectModel(
+  surface: SourceSurface,
+  node: SourceFieldNode,
+  resolution: SourceComponentResolution,
+): boolean {
+  return (
+    surface.valueScopes.length === 0 && valueInteractions(surface).length === 0
     && resolution.valueProp !== undefined && resolution.trigger === `update:${resolution.valueProp}`
+  )
 }
 
 function renderTag(resolution: SourceComponentResolution): string {
@@ -619,14 +639,16 @@ function emittedInteractions(surface: SourceSurface, context: EmitContext): Emit
       }
       usedNames.add(listenerName)
     }
-    return [{
-      binding,
-      handlerName,
-      listenerName,
-      listenerProp: listener.listenerProp,
-      templateEvent: binding.trigger === 'submit' ? `${listener.event}.prevent` : listener.event,
-      ...(listener.item.kind === 'argument' ? { itemArgumentIndex: listener.item.index } : {}),
-    }]
+    return [
+      {
+        binding,
+        handlerName,
+        listenerName,
+        listenerProp: listener.listenerProp,
+        templateEvent: binding.trigger === 'submit' ? `${listener.event}.prevent` : listener.event,
+        ...(listener.item.kind === 'argument' ? { itemArgumentIndex: listener.item.index } : {}),
+      },
+    ]
   })
 }
 
@@ -731,9 +753,14 @@ function requiredInteractionFields(
   return Object.values(surface.nodesById)
     .filter((node): node is SourceFieldNode => node.kind === 'field')
     .filter(node => !requested || requested.has(node.id))
-    .filter(node => node.required === true
-      || stateInteractions(surface).some(rule => rule.target.kind === 'state'
-        && rule.target.nodeId === node.id && rule.target.key === 'required'))
+    .filter(
+      node =>
+        node.required === true
+        || stateInteractions(surface).some(
+          rule => rule.target.kind === 'state'
+            && rule.target.nodeId === node.id && rule.target.key === 'required',
+        ),
+    )
     .map(node => ({
       field: node.field,
       nodeId: node.id,
@@ -764,9 +791,16 @@ function resultCallbackSource(
     lines.push('      const resultValue = demoResult.value')
     lines.push('      const resultPatch: Record<string, unknown> = {}')
     for (const assignment of resultBinding.assignments) {
-      lines.push(`      resultPatch[${sourceString(fieldName(surface, assignment.targetFieldId))}] = ${expressionSource(assignment.value, valuesSource, 'resultValue')}`)
+      lines.push(
+        `      resultPatch[${sourceString(fieldName(surface, assignment.targetFieldId))}] = ${expressionSource(assignment.value, valuesSource, 'resultValue')}`,
+      )
     }
-    lines.push(`      setDemoFields(resultPatch, ${sourceJson(resultBinding.assignments.map(assignment => assignment.targetFieldId), 0)})`)
+    lines.push(
+      `      setDemoFields(resultPatch, ${sourceJson(
+        resultBinding.assignments.map(assignment => assignment.targetFieldId),
+        0,
+      )})`,
+    )
     lines.push('    }')
   }
   lines.push('  }')
@@ -791,11 +825,14 @@ function interactionHandlersSource(
     const lines = [`async function ${handlerName}(item?: unknown): Promise<void> {`]
     if (binding.validate && validationSource) {
       lines.push(
-        `  if (!(await ${validationSource}.validate(${sourceJson({
-          surfaceId: surface.id,
-          scope: binding.validate.scope,
-          fieldIds: binding.validate.fieldIds ?? [],
-        }, 0)})))`,
+        `  if (!(await ${validationSource}.validate(${sourceJson(
+          {
+            surfaceId: surface.id,
+            scope: binding.validate.scope,
+            fieldIds: binding.validate.fieldIds ?? [],
+          },
+          0,
+        )})))`,
         '    return',
       )
     }
@@ -804,9 +841,11 @@ function interactionHandlersSource(
     }
     const action = binding.action
     if (action.kind === 'navigate') {
-      lines.push(directRouter
-        ? `  await router.push({ name: ${sourceString(action.targetSurfaceId)} })`
-        : `  await ${actionSource}.navigate(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)})`)
+      lines.push(
+        directRouter
+          ? `  await router.push({ name: ${sourceString(action.targetSurfaceId)} })`
+          : `  await ${actionSource}.navigate(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)})`,
+      )
     }
     else if (action.kind === 'back') {
       lines.push(`  ${directRouter ? 'router' : actionSource}.back()`)
@@ -814,12 +853,16 @@ function interactionHandlersSource(
     else if (action.kind === 'open') {
       const callback = resultCallbackSource(surface, action, valuesSource)
       const callbackArgument = callback ? `, ${callback}` : ''
-      lines.push(`  ${actionSource}.open(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)}${callbackArgument})`)
+      lines.push(
+        `  ${actionSource}.open(${sourceString(action.targetSurfaceId)}, ${parameterBindingsSource(action.parameters, valuesSource)}${callbackArgument})`,
+      )
     }
     else if (action.kind === 'closeCurrent') {
-      lines.push(action.result
-        ? `  ${actionSource}.closeCurrent({ name: ${sourceString(action.result.name)}, value: ${expressionSource(action.result.value, valuesSource)} })`
-        : `  ${actionSource}.closeCurrent()`)
+      lines.push(
+        action.result
+          ? `  ${actionSource}.closeCurrent({ name: ${sourceString(action.result.name)}, value: ${expressionSource(action.result.value, valuesSource)} })`
+          : `  ${actionSource}.closeCurrent()`,
+      )
     }
     else {
       lines.push(`  ${actionSource}.closeAll()`)
@@ -827,11 +870,13 @@ function interactionHandlersSource(
     lines.push('}')
     functions.push(lines.join('\n'))
     if (itemArgumentIndex !== undefined) {
-      functions.push([
-        `function ${listenerName}(...demoArgs: unknown[]): Promise<void> {`,
-        `  return ${handlerName}(demoArgs[${itemArgumentIndex}])`,
-        '}',
-      ].join('\n'))
+      functions.push(
+        [
+          `function ${listenerName}(...demoArgs: unknown[]): Promise<void> {`,
+          `  return ${handlerName}(demoArgs[${itemArgumentIndex}])`,
+          '}',
+        ].join('\n'),
+      )
     }
   }
   return functions.join('\n\n')
@@ -894,7 +939,9 @@ function nodeUsesValueScope(surface: SourceSurface, nodeId: string): boolean {
 }
 
 function assertSupportedInteractionScopes(surface: SourceSurface): void {
-  const valueRules = surface.interactions.filter((interaction): interaction is SourceValueInteraction => interaction.kind === 'valueChange')
+  const valueRules = surface.interactions.filter(
+    (interaction): interaction is SourceValueInteraction => interaction.kind === 'valueChange',
+  )
   const edges = new Map<string, string[]>()
   for (const rule of valueRules) {
     for (const dependency of rule.dependencies)
@@ -962,21 +1009,22 @@ function assertSupportedInteractionScopes(surface: SourceSurface): void {
 }
 
 function stateInteractions(surface: SourceSurface): SourceStateInteraction[] {
-  return surface.interactions.filter((interaction): interaction is SourceStateInteraction => interaction.kind === 'stateProjection')
+  return surface.interactions.filter(
+    (interaction): interaction is SourceStateInteraction => interaction.kind === 'stateProjection',
+  )
 }
 
 function valueInteractions(surface: SourceSurface): SourceValueInteraction[] {
-  return surface.interactions.filter((interaction): interaction is SourceValueInteraction => interaction.kind === 'valueChange')
+  return surface.interactions.filter(
+    (interaction): interaction is SourceValueInteraction => interaction.kind === 'valueChange',
+  )
 }
 
 function surfaceFunctionSuffix(surface: SourceSurface, context: EmitContext): string {
   return pascalIdentifier(context.surfaceDirectories.get(surface.id) ?? surface.id, 'Surface')
 }
 
-function uniqueRuleFunctionNames(
-  surface: SourceSurface,
-  suffix: string,
-): ReadonlyMap<string, string> {
+function uniqueRuleFunctionNames(surface: SourceSurface, suffix: string): ReadonlyMap<string, string> {
   const names = new Map<string, string>()
   const used = new Set<string>()
   valueInteractions(surface).forEach((rule, index) => {
@@ -1001,15 +1049,14 @@ function valueSettlementFunctionName(surface: SourceSurface, context: EmitContex
   return `settle${surfaceFunctionSuffix(surface, context)}DemoValues`
 }
 
-function valueDependencyHandlerNames(
-  surface: SourceSurface,
-  context: EmitContext,
-): ReadonlyMap<string, string> {
+function valueDependencyHandlerNames(surface: SourceSurface, context: EmitContext): ReadonlyMap<string, string> {
   const dependencies = [...new Set(valueInteractions(surface).flatMap(rule => rule.dependencies))].sort()
-  return new Map(dependencies.map((nodeId, index) => [
-    nodeId,
-    `handle${surfaceFunctionSuffix(surface, context)}${pascalIdentifier(nodeId, 'Field')}ValueChange${index + 1}`,
-  ]))
+  return new Map(
+    dependencies.map((nodeId, index) => [
+      nodeId,
+      `handle${surfaceFunctionSuffix(surface, context)}${pascalIdentifier(nodeId, 'Field')}ValueChange${index + 1}`,
+    ]),
+  )
 }
 
 function surfaceInteractionFunctionsSource(surface: SourceSurface, context: EmitContext): string {
@@ -1091,7 +1138,9 @@ function surfaceInteractionFunctionsSource(surface: SourceSurface, context: Emit
       '  const staged = structuredClone(candidateValues)',
       '  const changed = new Set(changedNodeIds.filter((nodeId) => {',
       '    switch (nodeId) {',
-      ...allFields.map(node => `      case ${sourceString(node.id)}: return demoRecordValueChanged(previousValues, candidateValues, ${sourceString(node.field)})`),
+      ...allFields.map(
+        node => `      case ${sourceString(node.id)}: return demoRecordValueChanged(previousValues, candidateValues, ${sourceString(node.field)})`,
+      ),
       '      default: return false',
       '    }',
       '  }))',
@@ -1172,68 +1221,86 @@ function renderRawNode(
   const tag = renderTag(resolution)
   const indent = '  '.repeat(depth)
   const projected = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id)
-  const visible = stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
-    && interaction.target.kind === 'state' && interaction.target.key === 'visible')
+  const visible = stateInteractions(surface).some(
+    interaction => interaction.target.nodeId === node.id
+      && interaction.target.kind === 'state' && interaction.target.key === 'visible',
+  )
   const fieldControlId = node.kind === 'field' ? rawFieldControlId(surface, node, resolution, context) : undefined
   const fieldErrorId = fieldControlId ? `${fieldControlId}-error` : undefined
+  const fieldHelpId = fieldControlId && node.kind === 'field' && (node.description || node.help || node.warning) ? `${fieldControlId}-help` : undefined
   const requiredBaseline = node.kind === 'field' && fieldRequired(node).required === true
-  const projectedRequired = node.kind === 'field' && stateInteractions(surface).some(interaction => interaction.target.nodeId === node.id
-    && interaction.target.kind === 'state' && interaction.target.key === 'required')
-  const requiredExpression = node.kind === 'field'
-    ? projectedRequired
-      ? `reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}`
-      : String(requiredBaseline)
-    : undefined
+  const projectedRequired
+    = node.kind === 'field'
+      && stateInteractions(surface).some(
+        interaction => interaction.target.nodeId === node.id
+          && interaction.target.kind === 'state' && interaction.target.key === 'required',
+      )
+  const requiredExpression
+    = node.kind === 'field'
+      ? projectedRequired
+        ? `reactionProjection.states[${sourceAttributeString(node.id)}]?.required ?? ${requiredBaseline}`
+        : String(requiredBaseline)
+      : undefined
   const directModel = node.kind === 'field' && usesDirectModel(surface, node, resolution)
-  const cellClass = context.style.target === 'tailwind-v4' ? rawFormCellClass(surface, node.id) : ''
-  const childOptionsKey = resolution.options?.mode === 'children'
-    ? Object.keys(node.datasetBindings ?? {}).sort()[0] ?? 'options'
-    : undefined
+  const cellClass
+    = context.style.target === 'tailwind-v4' ? rawFormCellClass(surface, node.id) : rawFormCellCssClass(surface, node.id)
+  const childOptionsKey
+    = resolution.options?.mode === 'children'
+      ? (Object.keys(node.datasetBindings ?? {}).sort()[0] ?? 'options')
+      : undefined
   const properties = nodeProperties(surface, node, resolution, context.style, valueSource)
-    .filter(property => !(directModel && property.key === resolution.valueProp)
-      && property.key !== 'aria-required'
-      && property.key !== childOptionsKey && property.key !== `${childOptionsKey}Total`)
+    .filter(
+      property => !(directModel && property.key === resolution.valueProp)
+        && property.key !== 'aria-required'
+        && property.key !== childOptionsKey && property.key !== `${childOptionsKey}Total`,
+    )
   if (cellClass && node.kind !== 'field') {
     const existing = properties.find(property => property.key === 'class')
     if (existing)
       existing.expression = `[${existing.expression}, ${sourceAttributeString(cellClass)}]`
-    else
-      properties.push({ key: 'class', expression: sourceAttributeString(cellClass) })
+    else properties.push({ key: 'class', expression: sourceAttributeString(cellClass) })
   }
-  const attributes = [
-    ...rawAttributes(properties, projected ? node.id : undefined),
-  ]
+  const attributes = [...rawAttributes(properties, projected ? node.id : undefined)]
   if (directModel) {
     const modelDirective = resolution.valueProp === 'modelValue' ? 'v-model' : `v-model:${kebabCase(resolution.valueProp!)}`
     attributes.push(` ${modelDirective}="${businessFieldAccess(valueSource, node.field)}"`)
   }
   if (fieldControlId) {
-    const configuredId = (
-      (typeof node.props.id === 'string' && node.props.id.length > 0)
-      || (typeof resolution.staticProps?.id === 'string' && resolution.staticProps.id.length > 0)
-    )
+    const configuredId
+      = (typeof node.props.id === 'string' && node.props.id.length > 0)
+        || (typeof resolution.staticProps?.id === 'string' && resolution.staticProps.id.length > 0)
     if (!configuredId)
       attributes.push(` id="${escapeHtml(fieldControlId)}"`)
     if (requiredBaseline || projectedRequired)
       attributes.push(` :aria-required="${requiredExpression}"`)
     if (rawNeedsValidation(surface, context)) {
       attributes.push(` :aria-invalid="validationErrors[${sourceAttributeString(node.id)}]?.length ? true : undefined"`)
-      attributes.push(` :aria-describedby="validationErrors[${sourceAttributeString(node.id)}]?.length ? ${sourceAttributeString(fieldErrorId!)} : undefined"`)
+      attributes.push(
+        fieldHelpId
+          ? ` :aria-describedby="[${sourceAttributeString(fieldHelpId)}, validationErrors[${sourceAttributeString(node.id)}]?.length ? ${sourceAttributeString(fieldErrorId!)} : undefined].filter(Boolean).join(' ')"`
+          : ` :aria-describedby="validationErrors[${sourceAttributeString(node.id)}]?.length ? ${sourceAttributeString(fieldErrorId!)} : undefined"`,
+      )
+    }
+    else if (fieldHelpId) {
+      attributes.push(` aria-describedby="${escapeHtml(fieldHelpId)}"`)
     }
   }
   if (visible && node.kind !== 'field')
     attributes.push(` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`)
   if (node.kind === 'field' && resolution.trigger) {
-    const changeValidation = rawNeedsValidation(surface, context) && node.validateOn.includes('change')
-      ? `validateFields([${sourceAttributeString(node.id)}])`
-      : ''
+    const changeValidation
+      = rawNeedsValidation(surface, context) && node.validateOn.includes('change')
+        ? `validateFields([${sourceAttributeString(node.id)}])`
+        : ''
     if (directModel) {
       if (changeValidation)
         attributes.push(` @${kebabCase(resolution.trigger)}="${changeValidation}"`)
     }
     else {
       const update = `updateValue(${valueSource}, ${sourceAttributeString(node.field)}, ${sourceAttributeString(node.id)}, $event)`
-      attributes.push(` @${kebabCase(resolution.trigger)}="${update}${changeValidation ? `; ${changeValidation}` : ''}"`)
+      attributes.push(
+        ` @${kebabCase(resolution.trigger)}="${update}${changeValidation ? `; ${changeValidation}` : ''}"`,
+      )
     }
   }
   if (
@@ -1262,10 +1329,14 @@ function renderRawNode(
       const suffix = pascalIdentifier(node.id, 'Scope')
       const rowName = `scopeRow${suffix}`
       const indexName = `scopeIndex${suffix}`
-      attributes.push(` v-for="(${rowName}, ${indexName}) in demoArray(${valueSource}[${sourceAttributeString(node.valueScope.field)}], ${sourceAttributeString(node.id)})"`)
-      attributes.push(node.valueScope.itemKey
-        ? ` :key="String(${rowName}[${sourceAttributeString(node.valueScope.itemKey)}] ?? ${indexName})"`
-        : ` :key="${indexName}"`)
+      attributes.push(
+        ` v-for="(${rowName}, ${indexName}) in demoArray(${valueSource}[${sourceAttributeString(node.valueScope.field)}], ${sourceAttributeString(node.id)})"`,
+      )
+      attributes.push(
+        node.valueScope.itemKey
+          ? ` :key="String(${rowName}[${sourceAttributeString(node.valueScope.itemKey)}] ?? ${indexName})"`
+          : ` :key="${indexName}"`,
+      )
       childValueSource = rowName
     }
     for (const [slot, childIds] of Object.entries(node.slots).sort(([left], [right]) => left.localeCompare(right))) {
@@ -1293,7 +1364,11 @@ function renderRawNode(
   if (context.style.target === 'tailwind-v4') {
     const itemAttributes = [
       ...(node.label ? [` label="${escapeHtml(node.label)}"`] : []),
+      ...(['description', 'help', 'warning'] as const).flatMap(key =>
+        node[key] ? [` ${key}="${escapeHtml(node[key])}"`] : [],
+      ),
       ...(requiredBaseline || projectedRequired ? [` :required="${requiredExpression}"`] : []),
+      ...(fieldHelpId ? [` help-id="${escapeHtml(fieldHelpId)}"`] : []),
       ...(cellClass ? [` class="${cellClass}"`] : []),
       ...(surface.form.labelPosition === 'top' ? [' label-position="top"'] : []),
       ...(rawNeedsValidation(surface, context) ? [` error-id="${escapeHtml(fieldErrorId!)}"`] : []),
@@ -1302,7 +1377,17 @@ function renderRawNode(
         : []),
     ]
     return [
-      ...rawOpeningTag('ConfigFormItem', [...itemAttributes, ...(visible ? [` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`] : [])], indent, false),
+      ...rawOpeningTag(
+        'ConfigFormItem',
+        [
+          ...itemAttributes,
+          ...(visible
+            ? [` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"`]
+            : []),
+        ],
+        indent,
+        false,
+      ),
       ...componentLines.map(line => `  ${line}`),
       `${indent}</ConfigFormItem>`,
     ]
@@ -1314,11 +1399,22 @@ function renderRawNode(
       : `<span class="${classes.fieldRequired}" aria-hidden="true">*</span>`
     : ''
   return [
-    `${indent}<div class="${classes.field}"${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
-    ...(node.label ? [`${indent}  <span class="${classes.fieldLabel}">${escapeHtml(node.label)}${requiredMarker}</span>`] : []),
+    `${indent}<div class="${[classes.field, cellClass].filter(Boolean).join(' ')}"${visible ? ` v-if="reactionProjection.states[${sourceAttributeString(node.id)}]?.visible !== false"` : ''}>`,
+    ...(node.label
+      ? [`${indent}  <label for="${escapeHtml(fieldControlId!)}" class="${classes.fieldLabel}">${escapeHtml(node.label)}${requiredMarker}</label>`]
+      : []),
     ...componentLines.map(line => `  ${line}`),
+    ...(fieldHelpId
+      ? [
+          `${indent}  <div id="${escapeHtml(fieldHelpId)}" data-config-form-supporting>`,
+          ...(['description', 'help', 'warning'] as const).flatMap(key => node[key] ? [`${indent}    <p v-pre data-config-form-${key}>${escapeHtml(node[key])}</p>`] : []),
+          `${indent}  </div>`,
+        ]
+      : []),
     ...(rawNeedsValidation(surface, context)
-      ? [`${indent}  <span v-if="validationErrors[${sourceAttributeString(node.id)}]?.length" class="${classes.fieldError}" role="alert">{{ validationErrors[${sourceAttributeString(node.id)}]?.[0] }}</span>`]
+      ? [
+          `${indent}  <span v-if="validationErrors[${sourceAttributeString(node.id)}]?.length" id="${escapeHtml(fieldErrorId!)}" class="${classes.fieldError}" role="alert">{{ validationErrors[${sourceAttributeString(node.id)}]?.[0] }}</span>`,
+        ]
       : []),
     `${indent}</div>`,
   ]
@@ -1337,9 +1433,11 @@ function surfaceUsesRender(
 }
 
 function surfaceParameterDefaults(surface: SourceSurface): Record<string, unknown> {
-  return Object.fromEntries(surface.parameters.flatMap(parameter => (
-    parameter.defaultValue === undefined ? [] : [[parameter.name, parameter.defaultValue]]
-  )))
+  return Object.fromEntries(
+    surface.parameters.flatMap(parameter =>
+      parameter.defaultValue === undefined ? [] : [[parameter.name, parameter.defaultValue]],
+    ),
+  )
 }
 
 function interactionUtilitiesSource(valuesSource: string, setDemoFieldsBody: string): string {
@@ -1388,12 +1486,16 @@ function fieldScopeChain(
 }
 
 function rawNeedsValidation(surface: SourceSurface, context: EmitContext): boolean {
-  return validationFields(surface, context).length > 0
+  return (
+    validationFields(surface, context).length > 0
     || Object.values(surface.nodesById).some(node => node.kind === 'field' && node.required === true)
-    || stateInteractions(surface).some(interaction => (
-      interaction.target.kind === 'state' && interaction.target.key === 'required'
-    ))
-    || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction' && interaction.validate !== undefined)
+    || stateInteractions(surface).some(
+      interaction => interaction.target.kind === 'state' && interaction.target.key === 'required',
+    )
+    || surface.interactions.some(
+      interaction => interaction.kind === 'primaryUiAction' && interaction.validate !== undefined,
+    )
+  )
 }
 
 function surfaceRootTag(surface: SourceSurface): 'main' | 'div' {
@@ -1424,13 +1526,19 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
     const resolution = componentForNode(node, context.components)
     return resolution.trigger && !usesDirectModel(surface, node, resolution)
   })
-  const needsFieldSetter = valueRules.length > 0 || interactions.some(({ binding }) => (
-    binding.action.kind === 'open' && binding.action.onResults?.some(result => result.assignments.length > 0)
-  ))
-  const needsParameters = surface.parameters.length > 0 || surface.interactions.some(interaction => (
-    interactionExpressions(interaction).some(expression => expressionNodes(expression.ast)
-      .some(node => node.kind === 'reference' && node.scope === 'parameters'))
-  ))
+  const needsFieldSetter
+    = valueRules.length > 0
+      || interactions.some(
+        ({ binding }) =>
+          binding.action.kind === 'open' && binding.action.onResults?.some(result => result.assignments.length > 0),
+      )
+  const needsParameters
+    = surface.parameters.length > 0
+      || surface.interactions.some(interaction =>
+        interactionExpressions(interaction).some(expression => expressionNodes(expression.ast)
+          .some(node => node.kind === 'reference' && node.scope === 'parameters'),
+        ),
+      )
   const parameterSource = needsParameters ? 'parameters.value' : '{}'
   const vueImports = [
     ...(needsParameters || stateRules.length > 0 ? ['computed'] : []),
@@ -1456,20 +1564,24 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
       ? ['import { useFormValidation } from \'./composables/useFormValidation\'']
       : []),
     ...(interactions.length > 0
-      ? [needsNavigationBridge ? 'import { useDemoNavigation } from \'../../demo-navigation.ts\'' : 'import { useRouter } from \'vue-router\'']
+      ? [
+          needsNavigationBridge ? 'import { useDemoNavigation } from \'../../demo-navigation.ts\'' : 'import { useRouter } from \'vue-router\'',
+        ]
       : []),
     ...(usesExpressions ? [demoValueImport] : []),
     ...(generatedValueImports.length > 0
       ? [`import { ${generatedValueImports.join(', ')} } from '../../demo-values.ts'`]
       : []),
-    ...[...namedImports].sort(([left], [right]) => left.localeCompare(right)).map(([moduleSpecifier, names]) => (
-      `import { ${[...names].sort().join(', ')} } from ${sourceString(moduleSpecifier)}`
-    )),
+    ...[...namedImports].sort(([left], [right]) => left.localeCompare(right)).map(
+      ([moduleSpecifier, names]) =>
+        `import { ${[...names].sort().join(', ')} } from ${sourceString(moduleSpecifier)}`,
+    ),
     ...(surfaceUses(surface, 'datasetBindings') ? ['import { datasetViews } from \'../../data/datasets.ts\''] : []),
     ...(surfaceUses(surface, 'resourceBindings') ? ['import { resources } from \'../../data/resources.ts\''] : []),
   ]
-  const setDemoFieldsBody = valueRules.length > 0
-    ? `const previousValues = structuredClone(toRaw(values))
+  const setDemoFieldsBody
+    = valueRules.length > 0
+      ? `const previousValues = structuredClone(toRaw(values))
   const candidateValues = { ...previousValues, ...structuredClone(patch) }
   const settledValues = ${valueSettlementFunctionName(surface, context)}(previousValues, candidateValues, changedNodeIds, ${parameterSource})
   Object.keys(values).forEach((field) => {
@@ -1477,16 +1589,18 @@ function rawSurfaceSource(surface: SourceSurface, context: EmitContext): string 
       delete values[field]
   })
   Object.assign(values, settledValues)`
-    : 'Object.assign(values, structuredClone(patch))'
+      : 'Object.assign(values, structuredClone(patch))'
   const interactionScript = `
 
-${interactions.length > 0 ? needsNavigationBridge ? 'const navigation = useDemoNavigation()\n' : 'const router = useRouter()\n' : ''}
+${interactions.length > 0 ? (needsNavigationBridge ? 'const navigation = useDemoNavigation()\n' : 'const router = useRouter()\n') : ''}
 
-${needsFieldSetter
-  ? `function setDemoFields(patch: Readonly<Record<string, unknown>>, changedNodeIds: readonly string[] = []): void {
+${
+  needsFieldSetter
+    ? `function setDemoFields(patch: Readonly<Record<string, unknown>>, changedNodeIds: readonly string[] = []): void {
   ${setDemoFieldsBody}
 }`
-  : ''}
+    : ''
+}
 
 ${interactionHandlersSource(
   surface,
@@ -1497,10 +1611,11 @@ ${interactionHandlersSource(
   needsValidation ? 'validation' : undefined,
   !needsNavigationBridge,
 )}`
-  const projectionScript = stateRules.length > 0
-    ? `
+  const projectionScript
+    = stateRules.length > 0
+      ? `
 const reactionProjection = computed(() => ${stateProjectionFunctionName(surface, context)}(values, ${parameterSource}))`
-    : ''
+      : ''
   const scopeUtilities = surface.valueScopes.length === 0
     ? ''
     : `
@@ -1538,9 +1653,10 @@ ${modelFields.map(node => `  ${/^[a-z_$][\w$]*$/iu.test(node.field) ? node.field
 }
 `
     : ''
-  const valuesScript = fields.length > 0
-    ? `const values = reactive<FormValues>(${sourceJson(initialValues)})`
-    : interactions.length > 0 || stateRules.length > 0 ? 'const values: Record<string, unknown> = {}' : ''
+  const valuesScript
+    = fields.length > 0
+      ? `const values = reactive<FormValues>(${sourceJson(initialValues)})`
+      : interactions.length > 0 || stateRules.length > 0 ? 'const values: Record<string, unknown> = {}' : ''
   const updateScript = needsValueUpdate
     ? `
 
@@ -1572,7 +1688,7 @@ ${body.join('\n')}
     </div>
   </${rootTag}>
 </template>
-`
+${context.style.target === 'css' ? `\n<style scoped>\n${rawFormLayoutCss(surface)}\n</style>\n` : ''}`
 }
 
 function fieldRequired(node: SourceFieldNode): { required?: boolean, message?: string } {
@@ -1582,29 +1698,23 @@ function fieldRequired(node: SourceFieldNode): { required?: boolean, message?: s
   }
 }
 
-function validationFields(
-  surface: SourceSurface,
-  context: EmitContext,
-): readonly SourceValidationFieldEmission[] {
+function validationFields(surface: SourceSurface, context: EmitContext): readonly SourceValidationFieldEmission[] {
   const plan = context.validation.surfaces.find(item => item.surfaceId === surface.id)
   if (!plan)
     throw new Error(`Validation emission plan is missing Surface ${surface.id}.`)
   return plan.fields
 }
 
-function validationIdentifier(
-  surface: SourceSurface,
-  context: EmitContext,
-  nodeId: string,
-): string | undefined {
+function validationIdentifier(surface: SourceSurface, context: EmitContext, nodeId: string): string | undefined {
   const index = validationFields(surface, context).findIndex(item => item.nodeId === nodeId)
   return index < 0 ? undefined : `compiledValidation${index + 1}`
 }
 
 function compiledValidationSource(surface: SourceSurface, context: EmitContext): string {
-  return validationFields(surface, context).map((field, index) => (
-    `const compiledValidation${index + 1} = ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName}(${sourceJson(field.ruleSet as unknown as ModelJsonValue)})`
-  )).join('\n')
+  return validationFields(surface, context).map(
+    (field, index) =>
+      `const compiledValidation${index + 1} = ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName}(${sourceJson(field.ruleSet as unknown as ModelJsonValue)})`,
+  ).join('\n')
 }
 
 function configNodeSource(
@@ -1626,7 +1736,9 @@ function configNodeSource(
     `${childIndent}component: ${sourceString(resolution.configComponent)},`,
   ]
   const properties = nodeProperties(surface, node, resolution, context.style)
-    .filter(property => !(node.kind === 'field' && property.key === resolution.valueProp))
+    .filter(
+      property => !(node.kind === 'field' && property.key === resolution.valueProp),
+    )
   const listeners = new Map<string, string[]>()
   for (const interaction of interactions.filter(item => item.binding.nodeId === node.id)) {
     const handlers = listeners.get(interaction.listenerProp) ?? []
@@ -1640,9 +1752,7 @@ function configNodeSource(
   }
   for (const [key, handlers] of listeners) {
     if (handlers.length !== 1) {
-      throw new Error(
-        `ConfigForm binding cannot preserve multiple listeners for ${surface.id}/${node.id}/${key}.`,
-      )
+      throw new Error(`ConfigForm binding cannot preserve multiple listeners for ${surface.id}/${node.id}/${key}.`)
     }
     properties.push({
       key,
@@ -1667,6 +1777,10 @@ function configNodeSource(
     lines.push(`${childIndent}field: ${sourceString(node.field)},`)
     if (node.label !== undefined)
       lines.push(`${childIndent}label: ${sourceString(node.label)},`)
+    for (const key of ['description', 'help', 'warning'] as const) {
+      if (node[key] !== undefined)
+        lines.push(`${childIndent}${key}: ${sourceString(node[key])},`)
+    }
     if (node.defaultValue !== undefined)
       lines.push(`${childIndent}defaultValue: ${sourceJson(node.defaultValue)},`)
     if (node.validateOn.length > 0)
@@ -1738,7 +1852,9 @@ export interface ConfigBindingValidation {
 
 function bindingEntrySource(context: BindingEmitContext): string {
   const styleImports = [...new Set(context.binding.styleImports)].sort()
-  const lines = [context.style.bindingEntrySource(styleImports.map(style => `import ${sourceString(style)}`)).trimEnd()]
+  const lines = [
+    context.style.bindingEntrySource(styleImports.map(style => `import ${sourceString(style)}`)).trimEnd(),
+  ]
   for (const surfaceId of context.compilation.ir.surfaceOrder) {
     const surface = context.compilation.ir.surfacesById[surfaceId]
     if (!surface)
@@ -1777,7 +1893,9 @@ function bindingConfigSource(surface: SourceSurface, context: BindingEmitContext
   const compiledValidations = validationFields(surface, context)
   const imports = [
     ...(compiledValidations.length > 0
-      ? [`import { ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName} } from ${sourceString(SOURCE_CONFIG_FORM_RULE_COMPILER.moduleSpecifier)}`]
+      ? [
+          `import { ${SOURCE_CONFIG_FORM_RULE_COMPILER.importName} } from ${sourceString(SOURCE_CONFIG_FORM_RULE_COMPILER.moduleSpecifier)}`,
+        ]
       : []),
     ...(interactions.length > 0
       ? ['import type { ConfigBindingActions, ConfigBindingValidation } from \'../../host.ts\'']
@@ -1797,8 +1915,9 @@ function bindingConfigSource(surface: SourceSurface, context: BindingEmitContext
 }
 
 `
-  const setDemoFieldsBody = valueRules.length > 0
-    ? `const candidateValues = { ...values.value, ...structuredClone(patch) }
+  const setDemoFieldsBody
+    = valueRules.length > 0
+      ? `const candidateValues = { ...values.value, ...structuredClone(patch) }
     try {
       const settledValues = ${valueSettlementFunctionName(surface, context)}(committedValues, candidateValues, changedNodeIds, parameters.value)
       values.value = settledValues
@@ -1808,13 +1927,17 @@ function bindingConfigSource(surface: SourceSurface, context: BindingEmitContext
       values.value = structuredClone(committedValues)
       throw error
     }`
-    : 'values.value = { ...values.value, ...structuredClone(patch) }'
-  const valueHandlerSource = [...valueHandlers].map(([nodeId, handlerName]) => (
-    `  function ${handlerName}(): void {\n    setDemoFields({}, [${sourceString(nodeId)}])\n  }`
-  )).join('\n\n')
-  const projectionStates = stateRules.length > 0
-    ? `${stateProjectionFunctionName(surface, context)}(values.value, parameters.value).states`
-    : '{}'
+      : 'values.value = { ...values.value, ...structuredClone(patch) }'
+  const valueHandlerSource = [...valueHandlers]
+    .map(
+      ([nodeId, handlerName]) =>
+        `  function ${handlerName}(): void {\n    setDemoFields({}, [${sourceString(nodeId)}])\n  }`,
+    )
+    .join('\n\n')
+  const projectionStates
+    = stateRules.length > 0
+      ? `${stateProjectionFunctionName(surface, context)}(values.value, parameters.value).states`
+      : '{}'
   const interactionSource = !hasContext
     ? ''
     : `  const { ${interactions.length > 0 ? 'actions, validation, ' : ''}parameters, values } = context
@@ -1834,8 +1957,9 @@ ${interactionHandlersSource(
 ${valueHandlerSource}
 
 `
-  const projectionExport = stateRules.length > 0
-    ? `export function createReactionProjection(
+  const projectionExport
+    = stateRules.length > 0
+      ? `export function createReactionProjection(
   values: Readonly<Record<string, unknown>>,
   parameters: Readonly<Record<string, unknown>>,
 ) {
@@ -1843,7 +1967,7 @@ ${valueHandlerSource}
 }
 
 `
-    : ''
+      : ''
   const validationDeclarations = compiledValidationSource(surface, context)
   const bindingAttrs = context.style.bindingAttributes()
   const formConfig = {
@@ -1888,8 +2012,9 @@ const parameters = computed<Record<string, unknown>>(() => ({
 const values = shallowRef<Record<string, unknown>>(structuredClone(initialModel))
 const model = ${context.binding.model.importName}(values)
 
-${interactions.length > 0
-  ? `interface ConfigBindingFormExpose {
+${
+  interactions.length > 0
+    ? `interface ConfigBindingFormExpose {
   validate: () => Promise<boolean>
   listFieldInstances: (nodeId?: string) => readonly {
     address: { nodeId: string, scope: readonly { scopeId: string, rowId: string }[] }
@@ -1923,7 +2048,8 @@ const validation: ConfigBindingValidation = {
 }
 
 `
-  : ''}const fields = createFields(${hasContext ? `{ ${interactions.length > 0 ? 'actions: surfaceProps.actions, validation, ' : ''}parameters, values }` : ''})
+    : ''
+}const fields = createFields(${hasContext ? `{ ${interactions.length > 0 ? 'actions: surfaceProps.actions, validation, ' : ''}parameters, values }` : ''})
 ${stateRules.length > 0 ? 'const reactionProjection = computed(() => createReactionProjection(values.value, parameters.value))\n' : ''}
 </script>
 
@@ -1949,11 +2075,12 @@ function routerSource(compilation: ProjectCompilation, directories: ReadonlyMap<
     const surface = compilation.ir.surfacesById[surfaceId]
     return surface?.kind === 'page' ? [surface] : []
   })
-  const routes = pages.map(page => (
-    `    { path: ${sourceString(page.route)}, name: ${sourceString(page.id)}, component: () => import('./surfaces/${directories.get(page.id)}/Surface.vue') },`
-  ))
+  const routes = pages.map(
+    page =>
+      `    { path: ${sourceString(page.route)}, name: ${sourceString(page.id)}, component: () => import('./surfaces/${directories.get(page.id)}/Surface.vue') },`,
+  )
   const home = compilation.ir.surfacesById[compilation.ir.homeSurfaceId]
-  const homeRoute = home?.kind === 'page' ? home.route : pages[0]?.route ?? '/'
+  const homeRoute = home?.kind === 'page' ? home.route : (pages[0]?.route ?? '/')
   const homeRedirect = homeRoute === '/'
     ? []
     : [`    { path: '/', redirect: ${sourceString(homeRoute)} },`]
@@ -2160,10 +2287,12 @@ export function demoRecordValueChanged(
 `
 
 function demoNavigationSource(compilation: ProjectCompilation): string {
-  const pageRoutes = Object.fromEntries(compilation.ir.surfaceOrder.flatMap((surfaceId) => {
-    const surface = compilation.ir.surfacesById[surfaceId]
-    return surface?.kind === 'page' ? [[surface.id, surface.route]] : []
-  }))
+  const pageRoutes = Object.fromEntries(
+    compilation.ir.surfaceOrder.flatMap((surfaceId) => {
+      const surface = compilation.ir.surfacesById[surfaceId]
+      return surface?.kind === 'page' ? [[surface.id, surface.route]] : []
+    }),
+  )
   return `import type { InjectionKey, ShallowRef } from 'vue'
 import type { HistoryState, Router } from 'vue-router'
 import { inject, provide, shallowReactive, shallowRef } from 'vue'
@@ -2386,9 +2515,10 @@ function overlaySource(
         bottom: classes.overlayPanelDrawerBottom,
       }[presentation.placement]
     : ''
-  const panelClass = presentation.kind === 'dialog'
-    ? `${classes.overlayPanel} ${classes.overlayPanelDialog}`
-    : `${classes.overlayPanel} ${classes.overlayPanelDrawer} ${drawerPlacementClass}`
+  const panelClass
+    = presentation.kind === 'dialog'
+      ? `${classes.overlayPanel} ${classes.overlayPanelDialog}`
+      : `${classes.overlayPanel} ${classes.overlayPanelDrawer} ${drawerPlacementClass}`
   return `    <dialog
       v-if="overlay.surfaceId === ${sourceAttributeString(surface.id)}"
       class="${classes.overlay}${maskClass}"
@@ -2430,9 +2560,10 @@ import { RouterView } from 'vue-router'
 `
   }
   const componentNames = new Map(overlays.map((surface, index) => [surface.id, `OverlaySurface${index + 1}`]))
-  const overlayImports = overlays.map(surface => (
-    `import ${componentNames.get(surface.id)} from './surfaces/${directories.get(surface.id)}/Surface.vue'`
-  ))
+  const overlayImports = overlays.map(
+    surface =>
+      `import ${componentNames.get(surface.id)} from './surfaces/${directories.get(surface.id)}/Surface.vue'`,
+  )
   const renderedOverlays = overlays.map(surface => overlaySource(surface, componentNames.get(surface.id)!, context.style)).join('\n')
   return `<script setup lang="ts">
 import { nextTick } from 'vue'
@@ -2487,10 +2618,7 @@ ${renderedOverlays}
 `
 }
 
-function rawMainSource(
-  components: ReadonlyMap<string, SourceComponentResolution>,
-  style: SourceStyleBackend,
-): string {
+function rawMainSource(components: ReadonlyMap<string, SourceComponentResolution>, style: SourceStyleBackend): string {
   const libraries = new Map<string, NonNullable<SourceComponentResolution['library']>>()
   const styles = new Set<string>()
   for (const resolution of components.values()) {
@@ -2501,8 +2629,11 @@ function rawMainSource(
         styles.add(resolution.library.stylesheet)
     }
   }
-  const orderedLibraries = [...libraries.values()].sort((left, right) => left.packageName.localeCompare(right.packageName))
-  const imports = orderedLibraries.map(library => `import ${library.plugin} from ${sourceString(library.packageName)}`)
+  const orderedLibraries = [...libraries.values()].sort((left, right) => left.packageName.localeCompare(right.packageName),
+  )
+  const imports = orderedLibraries.map(
+    library => `import ${library.plugin} from ${sourceString(library.packageName)}`,
+  )
   const styleImports = [...styles].sort().map(style => `import ${sourceString(style)}`)
   return style.rawEntrySource({
     imports,
@@ -2519,19 +2650,27 @@ function sourceSurfaces(context: EmitContext): SourceSurface[] {
 }
 
 function rawNeedsNavigationBridge(context: EmitContext): boolean {
-  return sourceSurfaces(context).some(surface => surface.kind !== 'page' || surface.parameters.length > 0
-    || surface.interactions.some(interaction => interaction.kind === 'primaryUiAction'
-      && (interaction.action.kind === 'open' || interaction.action.kind === 'closeCurrent' || interaction.action.kind === 'closeAll'
-        || (interaction.action.kind === 'navigate' && interaction.action.parameters.length > 0))))
+  return sourceSurfaces(context).some(
+    surface =>
+      surface.kind !== 'page' || surface.parameters.length > 0
+      || surface.interactions.some(
+        interaction => interaction.kind === 'primaryUiAction'
+          && (interaction.action.kind === 'open' || interaction.action.kind === 'closeCurrent' || interaction.action.kind === 'closeAll'
+            || (interaction.action.kind === 'navigate' && interaction.action.parameters.length > 0)),
+      ),
+  )
 }
 
 function demoValueFiles(context: EmitContext): SourceTextFile[] {
   const surfaces = sourceSurfaces(context)
-  const needsDemoValues = surfaces.some(surface => (
-    stateInteractions(surface).length > 0
-    || valueInteractions(surface).length > 0
-    || emittedInteractions(surface, context).some(interaction => interactionExpressions(interaction.binding).length > 0)
-  ))
+  const needsDemoValues = surfaces.some(
+    surface =>
+      stateInteractions(surface).length > 0
+      || valueInteractions(surface).length > 0
+      || emittedInteractions(surface, context).some(
+        interaction => interactionExpressions(interaction.binding).length > 0,
+      ),
+  )
   if (!needsDemoValues)
     return []
   const interactionFunctions = surfaces
@@ -2564,7 +2703,13 @@ function rawCommonFiles(context: EmitContext): SourceTextFile[] {
       ? [textFile('src/components/ConfigFormItem.vue', 'vue', configFormItemComponentSource())]
       : []),
     ...(surfaces.some(surface => surfaceUses(surface, 'datasetBindings'))
-      ? [textFile('src/data/datasets.ts', 'typescript', `export const datasetViews = ${sourceJson(context.datasets.views as unknown as ModelJsonValue)} as const\n`)]
+      ? [
+          textFile(
+            'src/data/datasets.ts',
+            'typescript',
+            `export const datasetViews = ${sourceJson(context.datasets.views as unknown as ModelJsonValue)} as const\n`,
+          ),
+        ]
       : []),
     ...(surfaces.some(surface => surfaceUses(surface, 'resourceBindings'))
       ? [textFile('src/data/resources.ts', 'typescript', resourcesSource(context.resources))]
@@ -2626,20 +2771,24 @@ export function emitRawProject(
     return [
       textFile(`src/surfaces/${directory}/Surface.vue`, 'vue', rawSurfaceSource(surface, context)),
       ...(rawValidatorNames(surface).size > 0
-        ? [textFile(
-            `src/surfaces/${directory}/validation.ts`,
-            'typescript',
-            rawValidationModuleSource(surface, validationFields(surface, context), {
-              includeZod: style.target === 'tailwind-v4',
-            }),
-          )]
+        ? [
+            textFile(
+              `src/surfaces/${directory}/validation.ts`,
+              'typescript',
+              rawValidationModuleSource(surface, validationFields(surface, context), {
+                includeZod: style.target === 'tailwind-v4',
+              }),
+            ),
+          ]
         : []),
       ...(rawNeedsValidation(surface, context)
-        ? [textFile(
-            `src/surfaces/${directory}/composables/useFormValidation.ts`,
-            'typescript',
-            rawValidationComposableSource(surface, stateInteractions(surface).length > 0),
-          )]
+        ? [
+            textFile(
+              `src/surfaces/${directory}/composables/useFormValidation.ts`,
+              'typescript',
+              rawValidationComposableSource(surface, stateInteractions(surface).length > 0),
+            ),
+          ]
         : []),
     ]
   })
@@ -2648,12 +2797,21 @@ export function emitRawProject(
     ...surfaceFiles,
     ...resources.files,
     ...projectFavicon(context).files,
-    textFile('package.json', 'json', packageManifest(compilation.ir.name, {
-      ...dependencies,
-      ...(style.target === 'tailwind-v4' && validation.surfaces.some(surface => surface.fields.length > 0)
-        ? RAW_ZOD_DEPENDENCY
-        : {}),
-    }, true, style)),
+    textFile(
+      'package.json',
+      'json',
+      packageManifest(
+        compilation.ir.name,
+        {
+          ...dependencies,
+          ...(style.target === 'tailwind-v4' && validation.surfaces.some(surface => surface.fields.length > 0)
+            ? RAW_ZOD_DEPENDENCY
+            : {}),
+        },
+        true,
+        style,
+      ),
+    ),
     textFile('src/main.ts', 'typescript', rawMainSource(components, style)),
   ])
 }
@@ -2668,7 +2826,16 @@ export function emitBindingProject(
   style: SourceStyleBackend,
 ): ConfigBindingFileSetV1 {
   const surfaceDirectories = uniqueSlugs(compilation.ir.surfaceOrder)
-  const context: BindingEmitContext = { compilation, components, datasets, resources, surfaceDirectories, binding, validation, style }
+  const context: BindingEmitContext = {
+    compilation,
+    components,
+    datasets,
+    resources,
+    surfaceDirectories,
+    binding,
+    validation,
+    style,
+  }
   const surfaceFiles = compilation.ir.surfaceOrder.flatMap((surfaceId) => {
     const surface = compilation.ir.surfacesById[surfaceId]
     if (!surface)
@@ -2683,9 +2850,18 @@ export function emitBindingProject(
     ...bindingCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,
-    textFile('package.json', 'json', packageManifest(compilation.ir.name, {
-      ...binding.dependencies,
-      ...bindingValidationDependencies(context),
-    }, false, style)),
+    textFile(
+      'package.json',
+      'json',
+      packageManifest(
+        compilation.ir.name,
+        {
+          ...binding.dependencies,
+          ...bindingValidationDependencies(context),
+        },
+        false,
+        style,
+      ),
+    ),
   ])
 }

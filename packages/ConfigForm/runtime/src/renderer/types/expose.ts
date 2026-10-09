@@ -7,47 +7,50 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type { ConfigFormSurfaceRuntimeLoadOptions, ConfigFormSurfaceRuntimeOptionState } from '../../runtime'
 
-export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = ConfigFormValues>
-  extends Pick<
-    ConfigFormController<TValues>,
-    | 'appendRow'
-    | 'applyFieldInstanceChange'
-    | 'clearInstanceValidate'
-    | 'clearValidate'
-    | 'duplicateRow'
-    | 'getErrors'
-    | 'getFieldMeta'
-    | 'getInstanceErrors'
-    | 'getInstanceKey'
-    | 'getInstanceMeta'
-    | 'getInstanceValue'
-    | 'getIssues'
-    | 'getMeta'
-    | 'getValidating'
-    | 'getValue'
-    | 'getValues'
-    | 'insertRow'
-    | 'isInstanceValidating'
-    | 'listFieldInstances'
-    | 'listRows'
-    | 'moveRow'
-    | 'removeRow'
-    | 'resetFields'
-    | 'setErrors'
-    | 'setInstanceTouched'
-    | 'setInstanceValue'
-    | 'setTouched'
-    | 'setValue'
-    | 'setValues'
-    | 'submit'
-    | 'validate'
-    | 'validateField'
-    | 'validateInstance'
-  > {
+export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = ConfigFormValues> extends Pick<
+  ConfigFormController<TValues>,
+  | 'appendRow'
+  | 'applyFieldInstanceChange'
+  | 'clearInstanceValidate'
+  | 'clearValidate'
+  | 'duplicateRow'
+  | 'getErrors'
+  | 'getFieldMeta'
+  | 'getInstanceErrors'
+  | 'getInstanceKey'
+  | 'getInstanceMeta'
+  | 'getInstanceValue'
+  | 'getIssues'
+  | 'getMeta'
+  | 'getValidating'
+  | 'getValue'
+  | 'getValues'
+  | 'insertRow'
+  | 'isInstanceValidating'
+  | 'listFieldInstances'
+  | 'listRows'
+  | 'moveRow'
+  | 'removeRow'
+  | 'resetFields'
+  | 'setErrors'
+  | 'setInstanceTouched'
+  | 'setInstanceValue'
+  | 'setTouched'
+  | 'setValue'
+  | 'setValues'
+  | 'submit'
+  | 'validate'
+  | 'validateField'
+  | 'validateInstance'
+> {
   getVariables: () => Readonly<Record<string, unknown>>
   /** Latest started consumer for this source/scope; per-field state uses getOptionState. */
   getDataSourceState: (sourceId: string, options?: { scope?: ConfigFormScopePath }) => ConfigFormDataSourceState
-  loadDataSource: (sourceId: string, options?: ConfigFormSurfaceRuntimeLoadOptions) => Promise<ConfigFormDataSourceState>
+  loadDataSource: (
+    sourceId: string,
+    options?: ConfigFormSurfaceRuntimeLoadOptions,
+  ) => Promise<ConfigFormDataSourceState>
   getOptionState: (address: ConfigFormFieldAddress) => ConfigFormSurfaceRuntimeOptionState | undefined
   scrollToField: (field: ConfigFormFieldKey<TValues> | string) => void
+  scrollToFirstError: () => void
 }

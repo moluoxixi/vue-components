@@ -2,32 +2,25 @@
 import type { DatasetReference } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
-import type {
-  DesignSurfaceEmits,
-  DesignSurfaceExpose,
-  DesignSurfaceProps,
-  DesignSurfaceSlots,
-} from './types'
-import {
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-  X,
-} from '@lucide/vue'
+import type { DesignSurfaceEmits, DesignSurfaceExpose, DesignSurfaceProps, DesignSurfaceSlots } from './types'
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
-import {
-  createDesignPreviewModel,
-  findDesignNode,
-} from '../../graph'
+import { DESIGNER_EXPRESSION_EVALUATOR_KEY } from '../../expression'
+import { createDesignPreviewModel, findDesignNode } from '../../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../../locale'
 import { DesignerCanvas } from '../DesignerCanvas'
-import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
+import {
+  createDesignerDesignSession,
+  createDesignerMaterialCandidate,
+  DESIGNER_SESSION_KEY,
+} from '../DesignerCanvas/services'
 import { DesignerCommandHint } from '../DesignerCommandHint'
 import DesignerPalette from '../DesignerPalette'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
+import DesignerSelectionSpine from './components/DesignerSelectionSpine.vue'
 import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
+import { useDesignPanelSizes } from './composables/use-design-panel-sizes'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
   datasets: () => [],
@@ -37,10 +30,15 @@ const props = withDefaults(defineProps<DesignSurfaceProps>(), {
 })
 const emit = defineEmits<DesignSurfaceEmits>()
 defineSlots<DesignSurfaceSlots>()
-
+const { widths, panelStyle, startResize, resizeWithKeyboard } = useDesignPanelSizes()
 const locale = reactive(createDesignerLocale(props.locale))
 provide(DESIGNER_LOCALE_KEY, locale)
-watch(() => props.locale, value => Object.assign(locale, createDesignerLocale(value)), { deep: true })
+provide(DESIGNER_EXPRESSION_EVALUATOR_KEY, () => props.expressionEvaluator)
+watch(
+  () => props.locale,
+  value => Object.assign(locale, createDesignerLocale(value)),
+  { deep: true },
+)
 
 const {
   activeBreakpoint,
@@ -85,19 +83,26 @@ const controller = useDesignerController({
 const designSession = createDesignerDesignSession(controller, {
   commitMaterial: (source, target) => {
     const candidate = createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
-    if (!candidate || !controller.dispatch({
-      id: `drop-${source.candidateId}`,
-      label: 'Insert component',
-      actions: [{
-        type: 'operation.apply',
-        operations: [{
-          type: 'node.insert',
-          surfaceId: props.surfaceId,
-          subgraph: candidate.subgraph,
-          target,
-        }],
-      }],
-    })) {
+    if (
+      !candidate
+      || !controller.dispatch({
+        id: `drop-${source.candidateId}`,
+        label: 'Insert component',
+        actions: [
+          {
+            type: 'operation.apply',
+            operations: [
+              {
+                type: 'node.insert',
+                surfaceId: props.surfaceId,
+                subgraph: candidate.subgraph,
+                target,
+              },
+            ],
+          },
+        ],
+      })
+    ) {
       return
     }
     controller.select(candidate.node.id)
@@ -115,15 +120,26 @@ onBeforeUnmount(designSession.dispose)
 // Double clicking a canvas node promotes it into the inspector: narrow and
 // medium layouts reveal the properties panel, and the first property control
 // receives focus so editing can start immediately.
-async function handleCanvasInspect(nodeId: string): Promise<void> {
+async function handleCanvasInspect(nodeId: string, path?: readonly (string | number)[]): Promise<void> {
   controller.select(nodeId)
   if (workspaceMode.value === 'narrow')
     activeWorkspaceView.value = 'properties'
   else if (workspaceMode.value === 'medium')
     mediumPanel.value = 'properties'
+  else if (!isSidePanelOpen('properties'))
+    toggleWorkspacePanel('properties')
+  await nextTick()
+  const tab = path?.some(key => ['required', 'requiredMessage', 'validation', 'validateOn'].includes(String(key)))
+    ? 'validation'
+    : path?.includes('interactions')
+      ? 'interactions'
+      : 'properties'
+  rootRef.value?.querySelector<HTMLButtonElement>(`[data-property-tab="${tab}"]`)?.click()
   await nextTick()
   rootRef.value
-    ?.querySelector<HTMLElement>('[data-workspace-panel="properties"] input, [data-workspace-panel="properties"] select, [data-workspace-panel="properties"] textarea, [data-workspace-panel="properties"] button')
+    ?.querySelector<HTMLElement>(
+      '[data-workspace-panel="properties"] input, [data-workspace-panel="properties"] select, [data-workspace-panel="properties"] textarea, [data-workspace-panel="properties"] button',
+    )
     ?.focus({ preventScroll: false })
 }
 
@@ -150,17 +166,27 @@ function dragTargetLabel(target: DesignerDropTarget | undefined): string {
   const parent = findDesignNode(controller.graph.value, target.parentId)?.node
   const parentMaterial = parent ? props.registry.getMaterial(parent.component) : undefined
   const parentLabel = parentMaterial ? locale.materialTitle(parentMaterial) : target.parentId
-  const slot = target.slot && parentMaterial
-    ? locale.materialSlotTitle(parentMaterial, target.slot, target.slot)
-    : target.slot ?? locale.t('drag.defaultSlot', 'default slot')
-  return locale.t('drag.targetSlot', 'in {parent}, {slot}, position {position}', { parent: parentLabel, slot, position })
+  const slot
+    = target.slot && parentMaterial
+      ? locale.materialSlotTitle(parentMaterial, target.slot, target.slot)
+      : (target.slot ?? locale.t('drag.defaultSlot', 'default slot'))
+  return locale.t('drag.targetSlot', 'in {parent}, {slot}, position {position}', {
+    parent: parentLabel,
+    slot,
+    position,
+  })
 }
 
 function formatDragAnnouncement(announcement: DesignerDragAnnouncement): string {
   const item = dragSourceLabel(announcement.source)
   const target = dragTargetLabel(announcement.target)
-  if (announcement.type === 'picked-up')
-    return locale.t('drag.pickedUp', 'Picked up {item}, currently {target}. Use arrow keys to choose a destination, Space to drop, or Escape to cancel.', { item, target })
+  if (announcement.type === 'picked-up') {
+    return locale.t(
+      'drag.pickedUp',
+      'Picked up {item}, currently {target}. Use arrow keys to choose a destination, Space to drop, or Escape to cancel.',
+      { item, target },
+    )
+  }
   if (announcement.type === 'target')
     return locale.t('drag.targetChanged', '{item} will be placed {target}.', { item, target })
   if (announcement.type === 'dropped')
@@ -180,9 +206,12 @@ const selectionAnnouncement = computed(() => {
     return ''
   const node = findDesignNode(controller.graph.value, ids[0]!)?.node
   const material = node ? props.registry.getMaterial(node.component) : undefined
-  const label = node?.kind === 'field'
-    ? node.label || node.field
-    : material ? locale.materialTitle(material) : node?.component ?? ids[0]!
+  const label
+    = node?.kind === 'field'
+      ? node.label || node.field
+      : material
+        ? locale.materialTitle(material)
+        : (node?.component ?? ids[0]!)
   return locale.t('node.selected', 'Selected {label}', { label })
 })
 const runtimeProjection = computed(() => ({
@@ -251,6 +280,8 @@ function commitNodeMove(nodeId: string, target: DesignerDropTarget): void {
 }
 
 defineExpose<DesignSurfaceExpose>({
+  addMaterial,
+  inspect: handleCanvasInspect,
   moveNodeRelative,
   performNodeAction: controller.performNodeAction,
   redo: handleRedo,
@@ -265,6 +296,7 @@ defineExpose<DesignSurfaceExpose>({
   <div
     ref="rootRef"
     class="mx-config-form-designer mx-config-form-design-surface"
+    :style="panelStyle"
     :data-active-view="activeWorkspaceView"
     :data-palette-open="isSidePanelOpen('palette')"
     :data-properties-open="isSidePanelOpen('properties')"
@@ -274,18 +306,68 @@ defineExpose<DesignSurfaceExpose>({
     @keydown="handleRootKeydown"
   >
     <header class="mx-config-form-designer__toolbar">
-      <strong>{{ locale.t('designer.title', 'Form Designer') }}</strong>
+      <DesignerSelectionSpine
+        :graph="controller.graph.value"
+        :registry="registry"
+        :selected-ids="controller.selectedIds.value"
+        :surface-name="surface?.name ?? locale.t('property.form', 'Form')"
+        :breakpoint="activeBreakpoint"
+        @select="controller.select($event)"
+      />
       <div class="mx-config-form-designer__toolbar-controls">
-        <div v-if="workspaceMode !== 'narrow'" class="mx-config-form-designer__sidebar-actions" role="group" :aria-label="locale.t('designer.sidebars', 'Designer sidebars')">
-          <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="palette" :aria-controls="`${workspaceId}-palette-panel`" :aria-expanded="isSidePanelOpen('palette')" :aria-label="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" :title="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" @click="toggleWorkspacePanel('palette')">
+        <div
+          v-if="workspaceMode !== 'narrow'"
+          class="mx-config-form-designer__sidebar-actions"
+          role="group"
+          :aria-label="locale.t('designer.sidebars', 'Designer sidebars')"
+        >
+          <button
+            type="button"
+            class="mx-config-form-designer__icon-button"
+            data-sidebar-trigger="palette"
+            :aria-controls="`${workspaceId}-palette-panel`"
+            :aria-expanded="isSidePanelOpen('palette')"
+            :aria-label="
+              isSidePanelOpen('palette')
+                ? locale.t('designer.hidePalette', 'Hide materials')
+                : locale.t('designer.showPalette', 'Show materials')
+            "
+            :title="
+              isSidePanelOpen('palette')
+                ? locale.t('designer.hidePalette', 'Hide materials')
+                : locale.t('designer.showPalette', 'Show materials')
+            "
+            @click="toggleWorkspacePanel('palette')"
+          >
             <PanelLeftClose v-if="isSidePanelOpen('palette')" :size="17" aria-hidden="true" />
             <PanelLeftOpen v-else :size="17" aria-hidden="true" />
-            <span class="mx-config-form-designer__sidebar-label">{{ locale.t('designer.view.palette', 'Components') }}</span>
+            <span class="mx-config-form-designer__sidebar-label">{{
+              locale.t('designer.view.palette', 'Components')
+            }}</span>
           </button>
-          <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="properties" :aria-controls="`${workspaceId}-properties-panel`" :aria-expanded="isSidePanelOpen('properties')" :aria-label="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" :title="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" @click="toggleWorkspacePanel('properties')">
+          <button
+            type="button"
+            class="mx-config-form-designer__icon-button"
+            data-sidebar-trigger="properties"
+            :aria-controls="`${workspaceId}-properties-panel`"
+            :aria-expanded="isSidePanelOpen('properties')"
+            :aria-label="
+              isSidePanelOpen('properties')
+                ? locale.t('designer.hideProperties', 'Hide properties')
+                : locale.t('designer.showProperties', 'Show properties')
+            "
+            :title="
+              isSidePanelOpen('properties')
+                ? locale.t('designer.hideProperties', 'Hide properties')
+                : locale.t('designer.showProperties', 'Show properties')
+            "
+            @click="toggleWorkspacePanel('properties')"
+          >
             <PanelRightClose v-if="isSidePanelOpen('properties')" :size="17" aria-hidden="true" />
             <PanelRightOpen v-else :size="17" aria-hidden="true" />
-            <span class="mx-config-form-designer__sidebar-label">{{ locale.t('designer.view.properties', 'Properties') }}</span>
+            <span class="mx-config-form-designer__sidebar-label">{{
+              locale.t('designer.view.properties', 'Properties')
+            }}</span>
           </button>
         </div>
         <slot name="toolbar" v-bind="toolbarScope" />
@@ -293,27 +375,91 @@ defineExpose<DesignSurfaceExpose>({
     </header>
 
     <div class="mx-config-form-designer__workspace">
-      <nav v-if="workspaceMode === 'narrow' && workspaceNavigation === 'internal'" class="mx-config-form-designer__workspace-tabs" role="tablist" :aria-label="locale.t('designer.workspaceViews', 'Designer views')">
-        <button v-for="view in workspaceViews" :id="`${workspaceId}-${view.id}-tab`" :key="view.id" type="button" role="tab" :aria-controls="`${workspaceId}-${view.id}-panel`" :aria-selected="activeWorkspaceView === view.id" :data-workspace-tab="view.id" :tabindex="activeWorkspaceView === view.id ? 0 : -1" @click="activeWorkspaceView = view.id" @keydown="handleWorkspaceTabKeydown($event, view.id)">
+      <nav
+        v-if="workspaceMode === 'narrow' && workspaceNavigation === 'internal'"
+        class="mx-config-form-designer__workspace-tabs"
+        role="tablist"
+        :aria-label="locale.t('designer.workspaceViews', 'Designer views')"
+      >
+        <button
+          v-for="view in workspaceViews"
+          :id="`${workspaceId}-${view.id}-tab`"
+          :key="view.id"
+          type="button"
+          role="tab"
+          :aria-controls="`${workspaceId}-${view.id}-panel`"
+          :aria-selected="activeWorkspaceView === view.id"
+          :data-workspace-tab="view.id"
+          :tabindex="activeWorkspaceView === view.id ? 0 : -1"
+          @click="activeWorkspaceView = view.id"
+          @keydown="handleWorkspaceTabKeydown($event, view.id)"
+        >
           {{ locale.t(`designer.view.${view.id}`, view.label) }}
         </button>
       </nav>
 
-      <section :id="`${workspaceId}-palette-panel`" class="mx-config-form-designer__workspace-panel is-palette" data-workspace-panel="palette" :hidden="isWorkspacePanelHidden('palette')" :inert="isWorkspacePanelHidden('palette') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined">
+      <section
+        :id="`${workspaceId}-palette-panel`"
+        class="mx-config-form-designer__workspace-panel is-palette"
+        data-workspace-panel="palette"
+        :hidden="isWorkspacePanelHidden('palette')"
+        :inert="isWorkspacePanelHidden('palette') ? true : undefined"
+        :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined"
+      >
+        <div
+          v-if="workspaceMode === 'desktop'"
+          class="mx-config-form-designer__panel-resizer is-palette"
+          role="separator"
+          tabindex="0"
+          aria-orientation="vertical"
+          :aria-label="locale.t('panel.resizeNavigator', 'Resize navigator')"
+          :aria-valuenow="widths.palette"
+          :aria-valuemin="220"
+          :aria-valuemax="480"
+          @pointerdown="startResize($event, 'palette')"
+          @keydown="resizeWithKeyboard($event, 'palette')"
+        />
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
           <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
-            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')">
+            <button
+              type="button"
+              class="mx-config-form-designer__icon-button"
+              data-drawer-control="palette"
+              :aria-label="locale.t('action.close', 'Close')"
+              :title="locale.t('action.close', 'Close')"
+              @click="closeMediumPanel('palette')"
+            >
               <X :size="17" aria-hidden="true" />
             </button>
           </DesignerCommandHint>
         </div>
-        <slot name="palette" :materials="registry.listMaterials()" :add-material="addMaterial" :readonly="readonly" :form="controller.graph.value.form">
-          <DesignerPalette :materials="registry.listMaterials()" :registry="registry" :form="controller.graph.value.form" :readonly="readonly" @add-material="addMaterial" />
+        <slot
+          name="palette"
+          :materials="registry.listMaterials()"
+          :add-material="addMaterial"
+          :readonly="readonly"
+          :form="controller.graph.value.form"
+        >
+          <DesignerPalette
+            :materials="registry.listMaterials()"
+            :registry="registry"
+            :form="controller.graph.value.form"
+            :readonly="readonly"
+            @add-material="addMaterial"
+          />
         </slot>
       </section>
 
-      <section :id="`${workspaceId}-canvas-panel`" class="mx-config-form-designer__workspace-panel is-canvas" data-workspace-panel="canvas" tabindex="-1" :hidden="isWorkspacePanelHidden('canvas')" :inert="isWorkspacePanelHidden('canvas') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined">
+      <section
+        :id="`${workspaceId}-canvas-panel`"
+        class="mx-config-form-designer__workspace-panel is-canvas"
+        data-workspace-panel="canvas"
+        tabindex="-1"
+        :hidden="isWorkspacePanelHidden('canvas')"
+        :inert="isWorkspacePanelHidden('canvas') ? true : undefined"
+        :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined"
+      >
         <DesignerCanvas
           :command-hint="commandHint"
           :graph="controller.graph.value"
@@ -343,16 +489,51 @@ defineExpose<DesignSurfaceExpose>({
         </DesignerCanvas>
       </section>
 
-      <section :id="`${workspaceId}-properties-panel`" class="mx-config-form-designer__workspace-panel is-properties" data-workspace-panel="properties" :hidden="isWorkspacePanelHidden('properties')" :inert="isWorkspacePanelHidden('properties') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined">
+      <section
+        :id="`${workspaceId}-properties-panel`"
+        class="mx-config-form-designer__workspace-panel is-properties"
+        data-workspace-panel="properties"
+        :hidden="isWorkspacePanelHidden('properties')"
+        :inert="isWorkspacePanelHidden('properties') ? true : undefined"
+        :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined"
+      >
+        <div
+          v-if="workspaceMode === 'desktop'"
+          class="mx-config-form-designer__panel-resizer is-properties"
+          role="separator"
+          tabindex="0"
+          aria-orientation="vertical"
+          :aria-label="locale.t('panel.resizeInspector', 'Resize inspector')"
+          :aria-valuenow="widths.properties"
+          :aria-valuemin="220"
+          :aria-valuemax="480"
+          @pointerdown="startResize($event, 'properties')"
+          @keydown="resizeWithKeyboard($event, 'properties')"
+        />
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
           <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
-            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')">
+            <button
+              type="button"
+              class="mx-config-form-designer__icon-button"
+              data-drawer-control="properties"
+              :aria-label="locale.t('action.close', 'Close')"
+              :title="locale.t('action.close', 'Close')"
+              @click="closeMediumPanel('properties')"
+            >
               <X :size="17" aria-hidden="true" />
             </button>
           </DesignerCommandHint>
         </div>
-        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">
+        <slot
+          name="properties"
+          :graph="controller.graph.value"
+          :node="controller.selectedNode.value"
+          :nodes="controller.selectedNodes.value"
+          :material="controller.selectedMaterial.value"
+          :diagnostics="controller.diagnostics.value"
+          :component-definition="selectedComponentDefinition"
+        >
           <DesignerPropertyPanel
             :graph="controller.graph.value"
             :node="controller.selectedNode.value"
@@ -385,10 +566,15 @@ defineExpose<DesignSurfaceExpose>({
       </section>
     </div>
 
-    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{ dragAnnouncement }}</span>
-    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{ selectionAnnouncement }}</span>
+    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{
+      dragAnnouncement
+    }}</span>
+    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{
+      selectionAnnouncement
+    }}</span>
     <footer class="mx-config-form-designer__status" aria-live="polite">
-      <span v-if="controller.diagnostics.value.length">{{ locale.t('status.issues', '{count} issues', { count: controller.diagnostics.value.length }) }} · {{ controller.diagnostics.value[0]?.message }}</span>
+      <span v-if="controller.diagnostics.value.length">{{ locale.t('status.issues', '{count} issues', { count: controller.diagnostics.value.length }) }} ·
+        {{ controller.diagnostics.value[0]?.message }}</span>
       <span v-else>{{ locale.t('status.ready', 'Ready') }}</span>
     </footer>
   </div>

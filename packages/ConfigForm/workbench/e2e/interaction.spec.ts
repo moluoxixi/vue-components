@@ -33,10 +33,12 @@ function rectsIntersect(
   left: DragGeometry & { x: number, y: number },
   right: DragGeometry & { x: number, y: number },
 ): boolean {
-  return left.x < right.x + right.width
+  return (
+    left.x < right.x + right.width
     && left.x + left.width > right.x
     && left.y < right.y + right.height
     && left.y + left.height > right.y
+  )
 }
 
 async function expectTopbarFits(page: Page): Promise<void> {
@@ -65,21 +67,21 @@ async function expectTopbarFits(page: Page): Promise<void> {
 }
 
 async function expectVisibleWorkspacePanelsDoNotOverlap(page: Page): Promise<void> {
-  const geometry = await page.locator([
-    '.designer-left-panel',
-    '.mx-config-form-designer__canvas',
-    '.mx-config-form-designer__properties',
-  ].join(',')).evaluateAll((elements) => {
-    const viewportWidth = document.documentElement.clientWidth
-    const boxes = elements.flatMap((element) => {
-      const style = getComputedStyle(element)
-      const rect = element.getBoundingClientRect()
-      return style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0
-        ? []
-        : [{ height: rect.height, width: rect.width, x: rect.x, y: rect.y }]
+  const geometry = await page
+    .locator(
+      ['.designer-left-panel', '.mx-config-form-designer__canvas', '.mx-config-form-designer__properties'].join(','),
+    )
+    .evaluateAll((elements) => {
+      const viewportWidth = document.documentElement.clientWidth
+      const boxes = elements.flatMap((element) => {
+        const style = getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        return style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0
+          ? []
+          : [{ height: rect.height, width: rect.width, x: rect.x, y: rect.y }]
+      })
+      return { boxes, viewportWidth }
     })
-    return { boxes, viewportWidth }
-  })
 
   for (const box of geometry.boxes) {
     expect(box.x).toBeGreaterThanOrEqual(-1)
@@ -100,7 +102,12 @@ async function chooseResponsiveTopbarAction(page: Page, width: number, name: str
   await page.getByRole('menuitem', { name }).click()
 }
 
-async function chooseElementOption(page: Page, container: Locator, selectName: string, optionName: string): Promise<void> {
+async function chooseElementOption(
+  page: Page,
+  container: Locator,
+  selectName: string,
+  optionName: string,
+): Promise<void> {
   const combobox = container.getByRole('combobox', { name: selectName, exact: true })
   const listboxId = await combobox.getAttribute('aria-controls')
   expect(listboxId).toBeTruthy()
@@ -145,9 +152,11 @@ async function installRuntimeHostErrorCapture(page: Page): Promise<void> {
 }
 
 async function readRuntimeHostErrors(page: Page): Promise<string[]> {
-  return page.evaluate(() => [...((window as typeof window & {
-    mxConfigFormRuntimeErrors?: string[]
-  }).mxConfigFormRuntimeErrors ?? [])])
+  return page.evaluate(() => [
+    ...((window as typeof window & {
+      mxConfigFormRuntimeErrors?: string[]
+    }).mxConfigFormRuntimeErrors ?? []),
+  ])
 }
 
 function previewRuntime(page: Page): FrameLocator {
@@ -181,7 +190,10 @@ async function runtimeNodeSignature(node: Locator): Promise<{
   })
 }
 
-async function visibleBox(locator: Locator, options: { timeout?: number } = {}): Promise<DragGeometry & { x: number, y: number }> {
+async function visibleBox(
+  locator: Locator,
+  options: { timeout?: number } = {},
+): Promise<DragGeometry & { x: number, y: number }> {
   await expect(locator).toBeVisible({ timeout: options.timeout })
   await expect.poll(async () => Boolean(await locator.boundingBox()), {
     timeout: options.timeout,
@@ -220,10 +232,15 @@ async function pointerDrop(
   const sourceBox = await visibleBox(source)
   const targetBox = await attachedBox(target)
 
-  await page.mouse.move(sourceBox.x + Math.min(24, sourceBox.width / 2), sourceBox.y + Math.min(24, sourceBox.height / 2))
+  await page.mouse.move(
+    sourceBox.x + Math.min(24, sourceBox.width / 2),
+    sourceBox.y + Math.min(24, sourceBox.height / 2),
+  )
   await page.mouse.down()
   await page.mouse.move(sourceBox.x + sourceBox.width + 12, sourceBox.y + sourceBox.height / 2, { steps: 4 })
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + Math.min(targetBox.height / 2, 72), { steps: 12 })
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + Math.min(targetBox.height / 2, 72), {
+    steps: 12,
+  })
 
   const candidate = designRuntime(page).locator('[data-config-node-state~="candidate"]')
   const candidateBox = await attachedBox(candidate)
@@ -311,15 +328,16 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
       labelClientWidth: label?.clientWidth ?? 0,
       labelScrollWidth: label?.scrollWidth ?? 0,
     }
-  }))
+  }),
+  )
   for (const tab of navigationGeometry)
     expect(tab.labelScrollWidth).toBeLessThanOrEqual(tab.labelClientWidth + 1)
 
   const materials = page.locator(`[data-material-row-key^="${prefix}."]`)
   await expect(materials).toHaveCount(expectedCount)
-  const materialKeys = await materials.evaluateAll(elements => elements.map(element => (
-    element.getAttribute('data-material-row-key')
-  )))
+  const materialKeys = await materials.evaluateAll(elements =>
+    elements.map(element => element.getAttribute('data-material-row-key')),
+  )
   expect(materialKeys).toHaveLength(expectedCount)
 
   for (const materialKey of materialKeys) {
@@ -340,8 +358,12 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
     expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
     expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
     await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
-    await expect(material.locator('svg, .mx-config-form-designer__palette-icon, .designer-material-kind')).toHaveCount(1)
-    await expect(material.locator('[data-specimen-node-id], .mx-config-form-designer__palette-item-preview')).toHaveCount(0)
+    await expect(material.locator('svg, .mx-config-form-designer__palette-icon, .designer-material-kind')).toHaveCount(
+      1,
+    )
+    await expect(
+      material.locator('[data-specimen-node-id], .mx-config-form-designer__palette-item-preview'),
+    ).toHaveCount(0)
   }
 }
 
@@ -356,15 +378,18 @@ async function expectInspectorTabGeometry(page: Page, expectedPanelWidth?: numbe
   await expect(panel).toBeVisible()
   await tabs.last().click()
   await expect(tabs.last()).toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => panel.evaluate((element) => {
-    const track = element.querySelector<HTMLElement>('.mx-config-form-designer__tabs')
-    const active = track?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-    if (!track || !active)
-      return false
-    const trackRect = track.getBoundingClientRect()
-    const activeRect = active.getBoundingClientRect()
-    return activeRect.left >= trackRect.left - 1 && activeRect.right <= trackRect.right + 1
-  })).toBe(true)
+  await expect
+    .poll(() => panel.evaluate((element) => {
+      const track = element.querySelector<HTMLElement>('.mx-config-form-designer__tabs')
+      const active = track?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      if (!track || !active)
+        return false
+      const trackRect = track.getBoundingClientRect()
+      const activeRect = active.getBoundingClientRect()
+      return activeRect.left >= trackRect.left - 1 && activeRect.right <= trackRect.right + 1
+    }),
+    )
+    .toBe(true)
 
   const geometry = await panel.evaluate((element) => {
     const panelRect = element.getBoundingClientRect()
@@ -401,7 +426,9 @@ async function expectInspectorTabGeometry(page: Page, expectedPanelWidth?: numbe
   expect(geometry.track.flexWrap).toBe('nowrap')
   expect(geometry.track.overflowX).toBe('auto')
   expect(geometry.track.scrollWidth).toBeGreaterThanOrEqual(geometry.track.clientWidth)
-  expect(Math.max(...geometry.tabRects.map(rect => rect.top)) - Math.min(...geometry.tabRects.map(rect => rect.top))).toBeLessThanOrEqual(1)
+  expect(
+    Math.max(...geometry.tabRects.map(rect => rect.top)) - Math.min(...geometry.tabRects.map(rect => rect.top)),
+  ).toBeLessThanOrEqual(1)
   for (const tab of geometry.tabRects) {
     expect(tab.width).toBeGreaterThan(0)
     expect(tab.height).toBeGreaterThan(0)
@@ -427,7 +454,8 @@ async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> 
         }
       }),
     }
-  }))
+  }),
+  )
   for (const row of geometry) {
     expect(row.setters).toHaveLength(3)
     expect(row.setters[1]!.top).toBeGreaterThanOrEqual(row.setters[0]!.bottom - 1)
@@ -482,7 +510,10 @@ test('authors, persists, restores, and executes a primary interaction through St
   await interactionEditor.getByRole('button', { name: 'Add primary action', exact: true }).click()
   const rule = interactionEditor.locator('[data-interaction-id]').last()
   await expect(rule).toBeVisible()
-  await expect(interactionEditor.locator('[data-interaction-filter="primaryUiAction"]')).toHaveAttribute('aria-pressed', 'true')
+  await expect(interactionEditor.locator('[data-interaction-filter="primaryUiAction"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
   await expect(interactionEditor.locator('[data-interaction-kind]')).toHaveCount(1)
   await interactionEditor.locator('[data-interaction-filter="all"]').click()
   await expect(interactionEditor.locator('[data-interaction-kind]')).toHaveCount(3)
@@ -518,7 +549,9 @@ test('authors, persists, restores, and executes a primary interaction through St
   const actionListboxId = await action.getAttribute('aria-controls')
   expect(actionListboxId).toBeTruthy()
   await rule.locator('.el-select__wrapper:has(input[aria-label="Action"])').click()
-  await page.locator(`[id="${actionListboxId}"]`).getByRole('option', { name: /^open$/i }).click()
+  await page.locator(`[id="${actionListboxId}"]`)
+    .getByRole('option', { name: /^open$/i })
+    .click()
   await expect(rule.getByRole('combobox', { name: 'Target surface', exact: true })).toBeVisible()
   await expect(rule).toContainText('Element Plus blank dialog')
 
@@ -560,7 +593,8 @@ test('authors, persists, restores, and executes a primary interaction through St
 
 const visualCases = [
   ...(['ink', 'morandi', 'cyber', 'glass'] as const).flatMap(palette =>
-    (['light', 'dark'] as const).map(theme => ({ height: 1000, locale: 'en' as const, palette, theme, width: 1440 }))),
+    (['light', 'dark'] as const).map(theme => ({ height: 1000, locale: 'en' as const, palette, theme, width: 1440 })),
+  ),
   { height: 900, locale: 'zh', palette: 'ink', theme: 'light', width: 900 },
   { height: 900, locale: 'en', palette: 'morandi', theme: 'dark', width: 900 },
   { height: 844, locale: 'en', palette: 'cyber', theme: 'light', width: 390 },
@@ -623,7 +657,7 @@ test('provides focus and Escape command hints, including disabled reasons and re
   await expect(tooltip).toHaveCount(1)
   await expect(tooltip).toHaveText('Zoom out · -')
 
-  for (let attempt = 0; attempt < 8 && await zoomOut.getAttribute('aria-disabled') !== 'true'; attempt += 1)
+  for (let attempt = 0; attempt < 8 && (await zoomOut.getAttribute('aria-disabled')) !== 'true'; attempt += 1)
     await zoomOut.click()
   await expect(zoomOut).toHaveAttribute('aria-disabled', 'true')
   await page.locator('.workbench-layout').hover({ position: { x: 2, y: 2 } })
@@ -657,7 +691,7 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await page.setViewportSize({ width: 900, height: 900 })
   await expectTopbarFits(page)
   const save = page.getByRole('button', { name: 'Save options' })
-  const sourceButton = page.getByRole('button', { name: 'Code', exact: true })
+  const sourceButton = page.getByRole('button', { name: 'Handoff', exact: true })
   await expect(save).toBeVisible()
   await expect(sourceButton).toBeVisible()
   await expect(save.locator('.topbar-command-label')).toHaveText('Save')
@@ -682,29 +716,29 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await menu.getByRole('menuitem', { name: 'Switch to Chinese' }).click()
   await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toHaveText('保存')
-  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '交付' })).toBeVisible()
   await expect(page.locator('.mx-config-form-designer__sidebar-label')).toHaveText(['组件', '属性'])
   await expectTopbarFits(page)
 
   await page.setViewportSize({ width: 641, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toBeVisible()
-  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '交付' })).toBeVisible()
   await expect(page.locator('.mobile-studio-dock')).toBeVisible()
 
   await page.setViewportSize({ width: 640, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
-  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '交付' })).toBeVisible()
   await expect(page.locator('.mobile-studio-dock')).toBeVisible()
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '交付' })).toBeVisible()
   await expect(page.getByRole('button', { name: '显示预览' })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
-  await expect(page.getByRole('button', { name: '源码' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '交付' })).toBeVisible()
   const mobileDockMetrics = await page.locator('.mobile-studio-dock button').evaluateAll(buttons => buttons.map((button) => {
     const rect = button.getBoundingClientRect()
     return {
@@ -712,7 +746,8 @@ test('keeps status and lower-priority commands reachable without topbar overflow
       height: rect.height,
       width: rect.width,
     }
-  }))
+  }),
+  )
   expect(mobileDockMetrics).toHaveLength(6)
   expect(mobileDockMetrics.every(item => item.fontSize === '11px')).toBe(true)
   expect(mobileDockMetrics.every(item => item.height >= 44 && item.width >= 44)).toBe(true)
@@ -739,12 +774,17 @@ test('keeps the empty canvas hint out of runtime geometry and removes it after a
   await page.keyboard.press('Delete')
   const empty = page.locator('.mx-config-form-designer__canvas-empty')
   await expect(empty).toHaveText('Drag or click a component on the left to add a field')
-  expect(await empty.evaluate(element => ({
-    pointerEvents: getComputedStyle(element).pointerEvents,
-    position: getComputedStyle(element).position,
-  }))).toEqual({ pointerEvents: 'none', position: 'absolute' })
+  expect(
+    await empty.evaluate(element => ({
+      pointerEvents: getComputedStyle(element).pointerEvents,
+      position: getComputedStyle(element).position,
+    })),
+  ).toEqual({ pointerEvents: 'none', position: 'absolute' })
   expectSameRect(await visibleBox(sheet), before)
-  await expect(page.locator('.mx-config-form-designer__canvas')).toHaveAttribute('aria-describedby', await empty.getAttribute('id') ?? '')
+  await expect(page.locator('.mx-config-form-designer__canvas')).toHaveAttribute(
+    'aria-describedby',
+    (await empty.getAttribute('id')) ?? '',
+  )
 
   await page.getByRole('tab', { name: 'Components' }).click()
   await page.locator('[data-material-key="element.input"]').click()
@@ -793,7 +833,9 @@ for (const adapter of [
   { id: 'element', name: 'Element' },
   { id: 'antd', name: 'Ant' },
 ] as const) {
-  test(`keeps ${adapter.name} keyboard editing, undo notice, and local history on one project timeline`, async ({ page }) => {
+  test(`keeps ${adapter.name} keyboard editing, undo notice, and local history on one project timeline`, async ({
+    page,
+  }) => {
     await createProject(page, adapter.id)
     await page.getByRole('tab', { name: 'Layers' }).click()
 
@@ -871,7 +913,7 @@ for (const adapter of [
       await page.locator(`[data-material-key="${adapter.id}.${material}"]`).click()
       await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
       if (material === 'input')
-        await expectInspectorTabGeometry(page, 304)
+        await expectInspectorTabGeometry(page, 332)
     }
   })
 
@@ -892,10 +934,12 @@ for (const adapter of [
     await page.mouse.click(sheetBox.x + sheetBox.width - 20, sheetBox.y + Math.min(sheetBox.height - 20, 420))
     await expect(sheet).not.toBeFocused()
     await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(0)
-    expect(await designInput.evaluate((element) => {
-      element.focus()
-      return document.activeElement === element
-    })).toBe(false)
+    expect(
+      await designInput.evaluate((element) => {
+        element.focus()
+        return document.activeElement === element
+      }),
+    ).toBe(false)
     await expect(runtimeForm.locator(':focus')).toHaveCount(0)
     await selectCanvasNode(page, nameNode, designInput)
     await expect(canvas).toHaveAttribute('data-editor-overlay-mode', 'selected')
@@ -918,7 +962,7 @@ for (const adapter of [
     await expect(propertyHeading).toBeVisible()
     await expect(propertyHeading).not.toContainText('element.input')
     await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
-    await expectInspectorTabGeometry(page, 304)
+    await expectInspectorTabGeometry(page, 332)
 
     const nodeToolbar = selection.getByRole('toolbar', { name: 'Node actions' })
     await expect(nodeToolbar.locator('[data-node-toolbar-button]')).toHaveCount(4)
@@ -978,14 +1022,18 @@ for (const adapter of [
     await page.getByRole('button', { name: 'Show preview' }).click()
     const reopenedInput = previewRuntime(page).locator('[data-config-node-id^="profile-name-"] input').first()
     await expect(reopenedInput).toBeVisible()
-    expect(await reopenedInput.evaluate((element) => {
-      const style = getComputedStyle(element)
-      return { backgroundColor: style.backgroundColor, color: style.color }
-    })).toEqual(runtimeStyle)
+    expect(
+      await reopenedInput.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { backgroundColor: style.backgroundColor, color: style.color }
+      }),
+    ).toEqual(runtimeStyle)
   })
 }
 
-test('keeps pointer candidates, drag visuals, committed nodes, and Preview on the same Element runtime tree', async ({ page }) => {
+test('keeps pointer candidates, drag visuals, committed nodes, and Preview on the same Element runtime tree', async ({
+  page,
+}) => {
   test.slow()
   await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
@@ -994,7 +1042,9 @@ test('keeps pointer candidates, drag visuals, committed nodes, and Preview on th
   const flex = await pointerDrop(page, 'element.flex', section.node)
   const input = await pointerDrop(page, 'element.input', flex.node)
   await expect(input.node.locator('.el-input')).toBeVisible()
-  await expect(section.node.locator(`[data-config-node-id="${flex.nodeId}"] [data-config-node-id="${input.nodeId}"]`)).toBeVisible()
+  await expect(
+    section.node.locator(`[data-config-node-id="${flex.nodeId}"] [data-config-node-id="${input.nodeId}"]`),
+  ).toBeVisible()
 
   await page.getByRole('button', { name: 'Show preview' }).click()
   const previewInput = previewRuntime(page).locator(`[data-config-node-id="${input.nodeId}"]`)
@@ -1066,7 +1116,7 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(propertiesPanel).toBeVisible()
     await expect(selection).toBeFocused()
     await expectInspectorTabs(page, ['Properties', 'Validation', 'Interactions'])
-    await expectInspectorTabGeometry(page, 304)
+    await expectInspectorTabGeometry(page, 332)
     await selection.focus()
     await page.keyboard.press('Escape')
     await expect(propertiesPanel).toBeHidden()
@@ -1217,11 +1267,17 @@ for (const adapter of [
     await expect(inspector.getByRole('textbox', { name: 'Default value', exact: true })).toHaveValue('Ada')
     await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
     const restoredValidation = inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
-    await expect(restoredValidation.getByRole('textbox', { name: 'Required message', exact: true })).toHaveValue('Name is required')
+    await expect(restoredValidation.getByRole('textbox', { name: 'Required message', exact: true })).toHaveValue(
+      'Name is required',
+    )
     await expect(restoredValidation.locator('.el-switch:has(input[aria-label="Required"]) input')).toBeChecked()
     await expect(restoredValidation.getByRole('checkbox', { name: 'Blur', exact: true })).toBeChecked()
-    await expect(restoredValidation.locator('.el-switch:has(input[aria-label="Enable validation"]) input')).toBeChecked()
-    await expect(restoredValidation.locator('.el-select__wrapper:has(input[aria-label="Rule 1 type"])')).toContainText('Pattern')
+    await expect(
+      restoredValidation.locator('.el-switch:has(input[aria-label="Enable validation"]) input'),
+    ).toBeChecked()
+    await expect(restoredValidation.locator('.el-select__wrapper:has(input[aria-label="Rule 1 type"])')).toContainText(
+      'Pattern',
+    )
     await expect(restoredValidation.getByRole('textbox', { name: 'Rule 1 pattern', exact: true })).toHaveValue('^Ada$')
 
     const restoredRevision = await readRepositoryRevision(page)
@@ -1239,9 +1295,10 @@ for (const adapter of [
     await page.getByRole('tab', { name: 'Layers', exact: true }).click()
     await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await inspector.getByRole('tab', { name: 'Validation', exact: true }).click()
-    await expect(inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
-      .getByRole('textbox', { name: 'Required message', exact: true }))
-      .toHaveValue(`${adapter.name} name is required`)
+    await expect(
+      inspector.getByRole('tabpanel', { name: 'Validation', exact: true })
+        .getByRole('textbox', { name: 'Required message', exact: true }),
+    ).toHaveValue(`${adapter.name} name is required`)
     await expect(designRuntime(page).locator('.runtime-host-error')).toHaveCount(0)
     expect(await readRuntimeHostErrors(page)).toEqual([])
     expect(browserErrors).toEqual([])
@@ -1257,7 +1314,7 @@ test('has no Events, Flow, or Automation entry and keeps Designer JSON function-
   await expect(page.getByRole('link', { name: forbidden })).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: forbidden })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await expect(sourcePane.getByRole('button', { name: forbidden })).toHaveCount(0)
   await sourcePane.getByRole('button', { name: 'Download options', exact: true }).click()
@@ -1271,7 +1328,8 @@ test('has no Events, Flow, or Automation entry and keeps Designer JSON function-
 
   const forbiddenRoutes = await page.locator('[href]').evaluateAll(elements => elements
     .map(element => element.getAttribute('href') ?? '')
-    .filter(href => /(?:^|\/)(?:events?|flows?|automation)(?:\/|$|[?#])/i.test(href)))
+    .filter(href => /(?:^|\/)(?:events?|flows?|automation)(?:\/|$|[?#])/i.test(href)),
+  )
   expect(forbiddenRoutes).toEqual([])
 })
 
@@ -1302,11 +1360,10 @@ test('keeps Dataset-authored mock data local in Design and Preview', async ({ pa
   const datasetName = dialog.getByRole('textbox', { name: 'Dataset name', exact: true })
   await datasetName.fill('Runtime options')
   await datasetName.press('Tab')
-  await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify([
-    { label: 'China', value: 'cn' },
-  ]))
+  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify([{ label: 'China', value: 'cn' }]))
   await dialog.locator('[data-asset-dataset-save]').click()
-  await expect(dialog.getByRole('status')).toContainText('Dataset saved.')
+  await expect(dialog.locator('.asset-manager__status')).toContainText('Dataset saved.')
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
   await expect(page.getByRole('button', { name: 'Open dataset Runtime options', exact: true })).toBeVisible()
@@ -1345,7 +1402,7 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
   expect(responsiveVariables.active).toBe(responsiveVariables.mobile)
 
   const stageBox = await visibleBox(stage)
-  for (let index = 0; index < await cells.count(); index += 1) {
+  for (let index = 0; index < (await cells.count()); index += 1) {
     const cellBox = await visibleBox(cells.nth(index))
     expect(cellBox.x).toBeGreaterThanOrEqual(stageBox.x - 1)
     expect(cellBox.x + cellBox.width).toBeLessThanOrEqual(stageBox.x + stageBox.width + 1)
@@ -1393,7 +1450,11 @@ test('separates the intrinsic canvas frame from fit, manual zoom, and pan state'
 
   await page.getByRole('button', { name: 'Actual size' }).click()
   await expect(canvas).toHaveAttribute('data-camera-scale', '1')
-  for (const [breakpoint, width] of [['Desktop', 900], ['Tablet', 720], ['Mobile', 390]] as const) {
+  for (const [breakpoint, width] of [
+    ['Desktop', 900],
+    ['Tablet', 720],
+    ['Mobile', 390],
+  ] as const) {
     await page.getByRole('button', { name: breakpoint, exact: true }).click()
     await expect(sheet).toHaveAttribute('data-intrinsic-width', String(width))
     const frame = await sheet.evaluate((element) => {
@@ -1460,10 +1521,12 @@ test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench'
 
   await page.getByRole('button', { name: 'Mobile' }).click()
   await expect(sheet).toHaveAttribute('data-intrinsic-width', '390')
-  expect(await sheet.evaluate(element => ({
-    padding: getComputedStyle(element).padding,
-    width: getComputedStyle(element).width,
-  }))).toEqual({ padding: '28px', width: '390px' })
+  expect(
+    await sheet.evaluate(element => ({
+      padding: getComputedStyle(element).padding,
+      width: getComputedStyle(element).width,
+    })),
+  ).toEqual({ padding: '28px', width: '390px' })
 
   await page.getByRole('button', { name: 'Desktop' }).click()
   await page.getByRole('button', { name: 'Fit canvas' }).click()
@@ -1528,14 +1591,17 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
   const labelControl = properties.getByRole('textbox', { name: 'Label', exact: true })
   const defaultValueControl = properties.getByRole('textbox', { name: 'Default value', exact: true })
-  const geometry = await Promise.all([labelControl, defaultValueControl].map(control => control.evaluate((element) => {
-    const field = element.closest('.mx-config-form-designer-property-form__field')
-    const root = element.closest('.el-input')
-    return {
-      fieldHeight: field?.getBoundingClientRect().height ?? 0,
-      rootClass: root?.className ?? '',
-    }
-  })))
+  const geometry = await Promise.all(
+    [labelControl, defaultValueControl].map(control => control.evaluate((element) => {
+      const field = element.closest('.mx-config-form-designer-property-form__field')
+      const root = element.closest('.el-input')
+      return {
+        fieldHeight: field?.getBoundingClientRect().height ?? 0,
+        rootClass: root?.className ?? '',
+      }
+    }),
+    ),
+  )
   expect(Math.abs(geometry[0]!.fieldHeight - geometry[1]!.fieldHeight)).toBeLessThanOrEqual(1)
   expect(geometry[1]!.rootClass).toContain('mx-config-form-designer__property-control')
 
@@ -1595,8 +1661,11 @@ test('edits pixel form sizes and keeps responsive number controls inside the Ins
   await gap.focus()
 
   const runtime = designRuntime(page)
-  await expect.poll(() => runtime.locator('[data-config-form-responsive-layout]').evaluate(element =>
-    getComputedStyle(element).gap)).toBe('20px')
+  await expect
+    .poll(() => runtime.locator('[data-config-form-responsive-layout]').evaluate(element =>
+      getComputedStyle(element).gap),
+    )
+    .toBe('20px')
   const runtimeField = runtime.locator('[data-field]').first()
   await expect.poll(() => runtimeField.evaluate(element => getComputedStyle(element).gridTemplateColumns))
     .toMatch(/^144px /)
@@ -1627,7 +1696,8 @@ test('edits pixel form sizes and keeps responsive number controls inside the Ins
       decreaseLeft: decreaseRect?.left ?? 0,
       increaseRight: increaseRect?.right ?? 0,
     }
-  }))
+  }),
+  )
   expect(geometry.map(control => control.ariaMax)).toEqual(['24', '24', '480', '24', '12', '480', '24', '1', '480'])
   expect(geometry.map(control => control.ariaMin)).toEqual(['1', '1', '0', '1', '1', '0', '1', '1', '0'])
   for (const control of geometry) {
@@ -1640,8 +1710,10 @@ test('edits pixel form sizes and keeps responsive number controls inside the Ins
 test('lets Element Plus own the material search focus frame', async ({ page }) => {
   await createProject(page, 'element')
   const search = page.getByRole('textbox', { name: 'Search materials' })
-  const restingShadow = await search.evaluate(element =>
-    getComputedStyle(element.closest('.el-input__wrapper')!).boxShadow)
+  const restingShadow = await search.evaluate(
+    element =>
+      getComputedStyle(element.closest('.el-input__wrapper')!).boxShadow,
+  )
   await search.focus()
   await search.press('Shift+Tab')
   await page.keyboard.press('Tab')
@@ -1675,8 +1747,10 @@ test('pins the selected Preview viewport when the host window is wider', async (
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
   const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
-  const activeColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim())
-  const mobileColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-columns-mobile').trim())
+  const activeColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim(),
+  )
+  const mobileColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-columns-mobile').trim(),
+  )
 
   await expect(stage).toHaveAttribute('data-viewport', 'mobile')
   expect(activeColumns).toBe(mobileColumns)
@@ -1710,13 +1784,16 @@ test('restores Preview focus and removes the closed drawer from Canvas hit testi
   await expect(page.locator('.preview-drawer-overlay')).toHaveCount(0)
   const node = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   const nodeBox = await visibleBox(node)
-  const parentHitClasses = await page.evaluate(({ x, y }) => document
-    .elementsFromPoint(x, y)
-    .map(element => element.className)
-    .filter(value => typeof value === 'string'), {
-    x: nodeBox.x + nodeBox.width / 2,
-    y: nodeBox.y + nodeBox.height / 2,
-  })
+  const parentHitClasses = await page.evaluate(
+    ({ x, y }) => document
+      .elementsFromPoint(x, y)
+      .map(element => element.className)
+      .filter(value => typeof value === 'string'),
+    {
+      x: nodeBox.x + nodeBox.width / 2,
+      y: nodeBox.y + nodeBox.height / 2,
+    },
+  )
   expect(parentHitClasses.join(' ')).not.toContain('preview-drawer')
 
   await selectCanvasNode(page, node, node.locator('input').first())
@@ -1759,11 +1836,16 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   expect(Math.abs(searchBox.x - panelBox.x - 10)).toBeLessThanOrEqual(1)
   expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 10)).toBeLessThanOrEqual(1)
   const materialGrid = page.locator('.designer-material-list').first()
-  expect(await materialGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(1)
-  expect(await page.locator('.designer-material-button .mx-config-form-designer__palette-item-name').evaluateAll(names => names.every((name) => {
-    const element = name as HTMLElement
-    return element.clientWidth > 80 && element.scrollWidth <= element.clientWidth
-  }))).toBe(true)
+  expect(
+    await materialGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length),
+  ).toBe(1)
+  expect(
+    await page.locator('.designer-material-button .mx-config-form-designer__palette-item-name').evaluateAll(names => names.every((name) => {
+      const element = name as HTMLElement
+      return element.clientWidth > 80 && element.scrollWidth <= element.clientWidth
+    }),
+    ),
+  ).toBe(true)
 
   await page.getByRole('tab', { name: 'Layers' }).click()
   const firstLayer = page.getByRole('treeitem').first()
@@ -1816,7 +1898,7 @@ test('exports pinned source and config files through the readonly workspace', as
   page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await createProject(page, 'element')
 
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await expect(sourcePane.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
   await sourcePane.getByRole('treeitem', { name: 'main.ts', exact: true }).click()
@@ -1879,7 +1961,7 @@ test('resolves export utility colors from every Workbench palette and theme', as
       await setAppearance(page, theme, palette)
       await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-palette', palette)
       await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-theme', theme)
-      await page.getByRole('button', { name: 'Code', exact: true }).click()
+      await page.getByRole('button', { name: 'Handoff', exact: true }).click()
       const sourcePane = page.locator('.source-pane')
       await expect(sourcePane).toBeVisible()
 
@@ -1940,7 +2022,7 @@ test('keeps raw and ConfigForm exports read-only and dependency-distinct', async
   page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await createProject(page, 'element')
 
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await sourcePane.getByRole('treeitem', { name: 'package.json', exact: true }).click()
   const sourceEditor = sourcePane.getByRole('region', { name: 'Read-only source: package.json' })
@@ -1957,14 +2039,16 @@ test('keeps raw and ConfigForm exports read-only and dependency-distinct', async
   expect(browserErrors).toEqual([])
 })
 
-test('downloads the selected source shape and styling for a page while project ZIP includes both pages', async ({ page }) => {
+test('downloads the selected source shape and styling for a page while project ZIP includes both pages', async ({
+  page,
+}) => {
   test.slow()
   await createProject(page, 'element')
   const creation = await openPageCreation(page)
   await creation.getByRole('option', { name: /Element Plus profile/ }).click()
   await creation.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await expect(sourcePane.locator('.view-lines').first()).toBeVisible()
 
@@ -1973,7 +2057,9 @@ test('downloads the selected source shape and styling for a page while project Z
     if (!path)
       throw new Error('The browser download did not produce a ZIP.')
     const entries = unzipSync(await readFile(path))
-    return Object.fromEntries(Object.entries(entries).map(([path, bytes]) => [path.slice(path.indexOf('/') + 1), strFromU8(bytes)]))
+    return Object.fromEntries(
+      Object.entries(entries).map(([path, bytes]) => [path.slice(path.indexOf('/') + 1), strFromU8(bytes)]),
+    )
   }
   const [projectDownload] = await Promise.all([
     page.waitForEvent('download'),

@@ -6,6 +6,7 @@ ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工
 
 - 目标产品边界见 [PRODUCT.md](./PRODUCT.md)。
 - 当前实现、迁移阶段和目标版本见 [ROADMAP.md](./ROADMAP.md)。
+- 本轮工作流升级的试用步骤、验证记录和限制见 [STUDIO-REVIEW.md](./STUDIO-REVIEW.md)。
 
 ## 当前实现
 
@@ -16,6 +17,15 @@ Page/Dialog/Drawer 共享 `SurfaceGraph`，每次 Experience 打开由 Prototype
 隔离的 `SurfaceInstance`。Designer 仍聚焦一个 Surface，Inspector 提供
 `properties`、`validation` 与 `interactions`；Studio 应用壳负责项目、Surface、Dataset、
 Resource、主题、Design/Experience 和源码导出。
+
+本轮升级将工作区组织为设计、体验与交付三个入口。设计侧提供命令中心、可调整面板、
+物料收藏/最近使用、可搜索大纲、属性分组、校验实验室、安全条件树和三个断点的实际
+渲染对照；体验侧可检查每个 Surface 实例的值与状态并重置会话。数据资产支持表格、
+CSV/JSON 导入、可视映射和查询预览，平面 JSON Schema 可以先审核映射再一次性插入字段。
+
+字段 `description/help/warning` 与表单 `density` 贯穿 Model、Compiler、Runtime 和源码。
+生产 Runtime 另提供错误摘要、首次错误定位、加载/校验状态及可固定的 `actions` 插槽。
+这些 Runtime 展示选项由宿主 API 配置，Studio 不把它们全部序列化为表单设置。
 
 当前可用分层：
 

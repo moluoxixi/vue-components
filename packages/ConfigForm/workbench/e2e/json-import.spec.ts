@@ -12,11 +12,8 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
   expect(width.scroll).toBe(width.client)
 }
 
-async function exportJson(
-  page: import('@playwright/test').Page,
-  scope: 'project' | 'surface',
-): Promise<string> {
-  await page.getByRole('button', { name: 'Code', exact: true }).click()
+async function exportJson(page: import('@playwright/test').Page, scope: 'project' | 'surface'): Promise<string> {
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')
   await expect(sourcePane).toBeVisible()
   await sourcePane.getByRole('button', { name: 'Download options', exact: true }).click()
@@ -27,9 +24,7 @@ async function exportJson(
       exact: true,
     }).click(),
   ])
-  expect(download.suggestedFilename()).toMatch(
-    scope === 'project' ? /\.project\.json$/ : /\.surface\.json$/,
-  )
+  expect(download.suggestedFilename()).toMatch(scope === 'project' ? /\.project\.json$/ : /\.surface\.json$/)
   return readDownloadText(download)
 }
 

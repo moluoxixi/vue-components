@@ -330,13 +330,13 @@ describe('designer property panel lite Inspector', () => {
 
     const search = wrapper.get('[data-property-search]')
     expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
-      .toEqual(['field', 'layout', 'component'])
+      .toEqual(['essentials', 'layout', 'data', 'advanced'])
     await search.setValue('placeholder')
     expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
     expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
-      .toEqual(['component'])
-    expect(wrapper.get('.mx-config-form-designer__search-count').text()).toBe('1 / 8')
+      .toEqual(['essentials'])
+    expect(wrapper.get('.mx-config-form-designer__search-count').text()).toBe('1 / 11')
 
     await search.setValue('maxlength')
     expect(wrapper.find('input[aria-label="Max length"]').exists()).toBe(true)
@@ -375,14 +375,14 @@ describe('designer property panel lite Inspector', () => {
     })
 
     await wrapper.get('[data-property-tab="interactions"]').trigger('click')
-    const componentGroup = wrapper.get('[data-property-group="component"] button')
+    const componentGroup = wrapper.get('[data-property-group="essentials"] button')
     await componentGroup.trigger('click')
     expect(componentGroup.attributes('aria-expanded')).toBe('false')
 
     await wrapper.setProps({ graph: graph([second]), node: second })
 
     expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('true')
-    expect(wrapper.get('[data-property-group="component"] button').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('[data-property-group="essentials"] button').attributes('aria-expanded')).toBe('true')
     expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
   })
 
@@ -627,7 +627,7 @@ describe('designer property panel lite Inspector', () => {
       },
     })
 
-    expect(wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]')
+    expect(wrapper.get('[data-breakpoint="desktop"] .mx-config-form-designer-property-form__field[title="Field span"]')
       .attributes('data-hint-label')).toBe('12 / 24 · 1/2')
   })
 

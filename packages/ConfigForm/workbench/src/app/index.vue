@@ -1,31 +1,30 @@
 <script setup lang="ts">
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
-import type { DatasetReference, ProjectSurface } from '@moluoxixi/config-form-model'
-import type { CSSProperties } from 'vue'
+import type { DatasetReference, NodeSubgraph } from '@moluoxixi/config-form-model'
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { MobileStudioView, WorkbenchExportCommand } from './types'
-import {
-  Blocks,
-  Copy,
-  Files,
-  Layers3,
-  Monitor,
-  Paintbrush,
-  Redo2,
-  RefreshCw,
-  SlidersHorizontal,
-  Smartphone,
-  Tablet,
-  Trash2,
-  Undo2,
-  X,
-} from '@lucide/vue'
+import type { StudioDiagnostic } from './types/editor-session'
+import { Blocks, Files, Layers3, Monitor, Paintbrush, RefreshCw, SlidersHorizontal, Undo2 } from '@lucide/vue'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
-import { DesignSurface } from '@moluoxixi/config-form-designer'
+import { createInsertCommand, DesignSurface } from '@moluoxixi/config-form-designer'
+
+import { initializePrototypeProjectSession } from '@moluoxixi/config-form-prototype-runtime/session'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
-import { DesignRuntimeHostFrame, PreviewDrawer, ProjectThemeEditor, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
+import {
+  DesignRuntimeHostFrame,
+  PreviewDrawer,
+  ProjectThemeEditor,
+  StudioLeftPanel,
+  WorkbenchCommandHint,
+  WorkbenchTopbar,
+} from './components'
+import StudioCommandPalette from './components/StudioCommandPalette.vue'
+import StudioDesignRuntime from './components/StudioDesignRuntime.vue'
+import StudioDesignToolbar from './components/StudioDesignToolbar.vue'
+import StudioIssuesDock from './components/StudioIssuesDock.vue'
+import StudioResponsiveCompare from './components/StudioResponsiveCompare.vue'
 import {
   useWorkbenchController,
   useWorkbenchDesignSession,
@@ -33,14 +32,20 @@ import {
   useWorkbenchPreviewSession,
   useWorkbenchUiStore,
 } from './composables'
-import {
-  projectPagesPath,
-  projectsPath,
-} from './navigation'
+import { useStudioCommands } from './composables/studio-commands'
+import { projectPagesPath, projectsPath } from './navigation'
+import { evaluateStudioExpression } from './services/expression-preview'
+import { normalizeDiagnostics, uniqueDiagnostics } from './state/editor-session'
 
-const SourceWorkspace = defineAsyncComponent(() => import('../features/export').then(module => module.SourceWorkspace))
-const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog))
-const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog))
+const SourceWorkspace = defineAsyncComponent(() => import('../features/export').then(module => module.SourceWorkspace),
+)
+const AssetManagerDialog = defineAsyncComponent(() => import('../features/assets').then(module => module.AssetManagerDialog),
+)
+const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence').then(module => module.PersistenceDialog),
+)
+const SchemaImportDialog = defineAsyncComponent(() =>
+  import('./components/SchemaImportDialog/index.vue'),
+)
 
 const router = useRouter()
 const controller = useWorkbenchController()
@@ -80,6 +85,11 @@ const {
 } = controller
 const persistenceDialogMode = ref<PersistenceDialogMode>()
 const assetManagerOpen = ref(false)
+const schemaImportOpen = ref(false)
+const responsiveCompareOpen = ref(false)
+const existingFields = computed(() =>
+  Object.values(currentGraph.value?.nodesById ?? {}).flatMap(node => (node.kind === 'field' ? [node.field] : [])),
+)
 const assetSelection = ref<{ id?: string, kind?: 'dataset' | 'resource' }>({})
 const {
   candidateDiagnostic,
@@ -99,10 +109,7 @@ const {
   session: previewPrototypeSession,
   sessionId: previewSessionId,
 } = previewSession
-const {
-  capture: captureExportSnapshotInput,
-  getCompilation: getCurrentExportCompilation,
-} = exportService
+const { capture: captureExportSnapshotInput, getCompilation: getCurrentExportCompilation } = exportService
 const {
   clearNotice,
   closeExportPreview,
@@ -133,39 +140,132 @@ const {
 
 const designer = useTemplateRef<DesignSurfaceExpose>('designer')
 const mobileDock = useTemplateRef<HTMLElement>('mobileDock')
-const currentOverlaySurface = computed(() => {
-  const surface = currentSurface.value
-  return surface && surface.kind !== 'page' ? surface : undefined
+const { commandOpen, issuesOpen, designerDiagnostics, exportDiagnostics } = ui.editorSession
+const studioDiagnostics = computed(() =>
+  uniqueDiagnostics([
+    ...designerDiagnostics.value,
+    ...normalizeDiagnostics(designSession.diagnostics.value, 'compiler', currentSurfaceId.value),
+    ...normalizeDiagnostics(candidateDiagnostic.value ? [candidateDiagnostic.value] : [], 'preview'),
+    ...normalizeDiagnostics(previewSession.diagnostics.value, 'preview'),
+    ...normalizeDiagnostics(exportService.diagnostics.value, 'export'),
+    ...exportDiagnostics.value,
+    ...(previewSession.error.value
+      ? [
+          {
+            code: 'PREVIEW_HOST_ERROR',
+            message: previewSession.error.value.message,
+            severity: 'error' as const,
+            origin: 'preview' as const,
+          },
+        ]
+      : []),
+  ]),
+)
+const { studioCommands } = useStudioCommands(designer, {
+  showDesign,
+  experience: toggleWorkspacePreview,
+  handoff: () => {
+    void handleExportCommand('source')
+  },
+  assets: showAssetManager,
+  schema: () => {
+    showDesign()
+    schemaImportOpen.value = true
+  },
 })
-const designerDatasets = computed(() => currentProject.value?.datasetOrder
-  .map(id => currentProject.value?.datasetsById[id])
-  .filter(dataset => dataset !== undefined) ?? [])
+
+watch(currentSurfaceId, () => {
+  designerDiagnostics.value = []
+})
+watch(
+  () => currentProject.value?.id,
+  () => {
+    exportDiagnostics.value = []
+  },
+)
+
+async function locateDiagnostic(item: StudioDiagnostic): Promise<void> {
+  if (item.datasetId || item.resourceId) {
+    showAssetManager(item.datasetId ? 'dataset' : 'resource', item.datasetId ?? item.resourceId)
+    return
+  }
+  showDesign()
+  if (item.surfaceId && currentProject.value?.surfacesById[item.surfaceId])
+    selectSurfaceFromDesigner(item.surfaceId)
+  await nextTick()
+  if (item.nodeId)
+    await designer.value?.inspect(item.nodeId, item.path)
+}
+
+async function importSchemaFields(subgraph: NodeSubgraph): Promise<void> {
+  if (busy.value || !currentSurfaceId.value)
+    return
+  const result = designerCommandControl.execute(
+    createInsertCommand(
+      currentSurfaceId.value,
+      subgraph,
+      { parentId: null },
+      { label: 'Generate fields from JSON Schema' },
+    ),
+  )
+  if (result.changed) {
+    schemaImportOpen.value = false
+    await nextTick()
+    if (subgraph.root[0])
+      await designer.value?.inspect(subgraph.root[0].nodeId)
+    ui.notify(
+      workbenchLocale.value.locale === 'zh-CN'
+        ? `已生成 ${subgraph.root.length} 个字段，可整体撤销。`
+        : `Generated ${subgraph.root.length} fields. Undo restores the form.`,
+    )
+  }
+  else {
+    ui.notify(result.diagnostics[0]?.message ?? 'Schema import was rejected.')
+  }
+}
+
+function resetExperience(): void {
+  const compilation = previewCompilation.value
+  if (!compilation)
+    return
+  const id = crypto.randomUUID()
+  const initialized = initializePrototypeProjectSession({
+    compilation,
+    homeInstanceId: `home-${id}`,
+    createRowId: () => crypto.randomUUID(),
+  })
+  if (initialized.success) {
+    previewSession.accept({
+      compilation,
+      revision: previewRevision.value,
+      session: initialized.data,
+      sessionId: `experience-${id}`,
+    })
+  }
+  else {
+    ui.notify(initialized.diagnostics[0]?.message ?? 'Experience reset failed')
+  }
+}
+const designerDatasets = computed(
+  () => currentProject.value?.datasetOrder
+    .map(id => currentProject.value?.datasetsById[id])
+    .filter(dataset => dataset !== undefined) ?? [],
+)
 const designerResources = computed(() => Object.values(currentProject.value?.resources ?? {})
-  .sort((left, right) => left.name.localeCompare(right.name)))
+  .sort((left, right) => left.name.localeCompare(right.name)),
+)
 const mobileStudioViews = computed(() => [
   { icon: Blocks, id: 'components' as const, label: workbenchLocale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: workbenchLocale.value.t('designer.view.layers', 'Layers') },
   { icon: Monitor, id: 'canvas' as const, label: workbenchLocale.value.t('designer.view.canvas', 'Canvas') },
-  { icon: SlidersHorizontal, id: 'inspector' as const, label: workbenchLocale.value.t('designer.view.inspector', 'Inspector') },
+  {
+    icon: SlidersHorizontal,
+    id: 'inspector' as const,
+    label: workbenchLocale.value.t('designer.view.inspector', 'Inspector'),
+  },
   { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Surfaces') },
   { icon: Paintbrush, id: 'theme' as const, label: workbenchLocale.value.t('designer.view.theme', 'Theme') },
 ])
-
-function presentationLength(surface: Exclude<ProjectSurface, { kind: 'page' }>, breakpoint: string): string {
-  const responsive = surface.kind === 'dialog' ? surface.presentation.width : surface.presentation.size
-  const value = breakpoint === 'mobile'
-    ? responsive.mobile ?? responsive.tablet ?? responsive.desktop
-    : breakpoint === 'tablet'
-      ? responsive.tablet ?? responsive.desktop
-      : responsive.desktop
-  return `${value.value}${value.unit}`
-}
-
-function presentationStyle(surface: ProjectSurface | undefined, breakpoint: string): CSSProperties {
-  if (!surface || surface.kind === 'page')
-    return {}
-  return { '--surface-presentation-size': presentationLength(surface, breakpoint) } as CSSProperties
-}
 
 function selectMobileStudioView(view: MobileStudioView): void {
   selectMobileView(view)
@@ -195,9 +295,11 @@ function handleMobileStudioKeydown(event: KeyboardEvent, view: MobileStudioView)
   event.preventDefault()
   const nextView = ids[nextIndex]!
   selectMobileStudioView(nextView)
-  void nextTick(() => mobileDock.value
-    ?.querySelector<HTMLButtonElement>(`[data-mobile-studio-tab="${nextView}"]`)
-    ?.focus())
+  void nextTick(() =>
+    mobileDock.value
+      ?.querySelector<HTMLButtonElement>(`[data-mobile-studio-tab="${nextView}"]`)
+      ?.focus(),
+  )
 }
 
 function selectDesignerLayer(nodeId: string, mode: DesignerSelectionMode): void {
@@ -218,8 +320,11 @@ function handleDesignerNotice(messageText: string, undo?: () => boolean): void {
           action: {
             label: workbenchLocale.value.t('action.undo', 'Undo'),
             run: () => {
-              if (!undo())
-                ui.notify(workbenchLocale.value.t('history.undoUnavailable', 'This deletion can no longer be undone here.'))
+              if (!undo()) {
+                ui.notify(
+                  workbenchLocale.value.t('history.undoUnavailable', 'This deletion can no longer be undone here.'),
+                )
+              }
             },
           },
         }
@@ -227,10 +332,7 @@ function handleDesignerNotice(messageText: string, undo?: () => boolean): void {
   })
 }
 
-function moveDesignerLayer(
-  action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent',
-  nodeId: string,
-): void {
+function moveDesignerLayer(action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent', nodeId: string): void {
   designer.value?.performNodeAction(action, nodeId)
 }
 
@@ -275,26 +377,21 @@ async function handleExportCommand(command: WorkbenchExportCommand): Promise<voi
   catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     showNotice({
-      message: workbenchLocale.value.t(
-        'export.transferFailed',
-        'Unable to export JSON: {reason}',
-        { reason },
-      ),
+      message: workbenchLocale.value.t('export.transferFailed', 'Unable to export JSON: {reason}', { reason }),
       tone: 'error',
     })
   }
 }
 
-function handleDatasetBinding(
-  nodeId: string,
-  bindingKey: string,
-  reference: DatasetReference | undefined,
-): void {
+function handleDatasetBinding(nodeId: string, bindingKey: string, reference: DatasetReference | undefined): void {
   const changed = setDatasetBinding(currentSurfaceId.value, nodeId, bindingKey, reference)
   showNotice({
     message: changed
       ? workbenchLocale.value.t('data.dataset.saved', 'Dataset binding saved.')
-      : workbenchLocale.value.t('data.dataset.rejected', 'Dataset binding was rejected. Check its projection and query.'),
+      : workbenchLocale.value.t(
+          'data.dataset.rejected',
+          'Dataset binding was rejected. Check its projection and query.',
+        ),
     tone: changed ? 'success' : 'error',
   })
 }
@@ -313,7 +410,10 @@ function handleSaveOptionsAsDataset(nodeId: string, bindingKey: string, name: st
   const datasetId = saveOptionsAsDataset(currentSurfaceId.value, nodeId, bindingKey, name)
   showNotice({
     message: datasetId
-      ? workbenchLocale.value.t('data.options.saved', 'Inline options were saved as a Dataset and bound to this component.')
+      ? workbenchLocale.value.t(
+          'data.options.saved',
+          'Inline options were saved as a Dataset and bound to this component.',
+        )
       : workbenchLocale.value.t('data.options.rejected', 'Inline options could not be saved as a Dataset.'),
     tone: datasetId ? 'success' : 'error',
   })
@@ -376,10 +476,14 @@ function handleRecoveryAction(action: 'fork' | 'reload' | 'versions'): void {
   showPersistenceDialog('versions')
 }
 
-watch(recoveryDrafts, (drafts) => {
-  if (drafts.length > 0 && !persistenceDialogMode.value)
-    persistenceDialogMode.value = 'recovery'
-}, { immediate: true })
+watch(
+  recoveryDrafts,
+  (drafts) => {
+    if (drafts.length > 0 && !persistenceDialogMode.value)
+      persistenceDialogMode.value = 'recovery'
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -416,6 +520,7 @@ watch(recoveryDrafts, (drafts) => {
       @toggle-locale="toggleLocale"
       @toggle-preview="toggleWorkspacePreview"
       @show-design="showDesign"
+      @open-commands="commandOpen = true"
     />
 
     <section
@@ -446,6 +551,7 @@ watch(recoveryDrafts, (drafts) => {
             :surface-id="currentSurfaceId"
             :component-registry="componentRegistry"
             :datasets="designerDatasets"
+            :expression-evaluator="evaluateStudioExpression"
             :command-hint="WorkbenchCommandHint"
             :command-control="designerCommandControl"
             :history-control="designerHistoryControl"
@@ -458,54 +564,15 @@ watch(recoveryDrafts, (drafts) => {
             workspace-navigation="external"
             :surfaces="Object.values(currentProject.surfacesById)"
             @notice="handleDesignerNotice"
+            @diagnostics="designerDiagnostics = normalizeDiagnostics($event, 'model', currentSurfaceId)"
             @selection-set-change="selectedDesignerIds = $event"
             @update-dataset-binding="handleDatasetBinding"
             @update-resource-binding="handleResourceBinding"
             @save-options-as-dataset="handleSaveOptionsAsDataset"
             @materialize-options-snapshot="handleMaterializeOptions"
           >
-            <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
-              <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
-                <WorkbenchCommandHint :label="workbenchLocale.t('action.undo', 'Undo')" shortcut="Ctrl/Cmd+Z" :disabled-reason="!canUndo ? workbenchLocale.t('action.undoUnavailable', 'No operation to undo') : undefined">
-                  <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canUndo ? 'true' : undefined" :title="workbenchLocale.t('action.undoShortcut', 'Undo (Ctrl/Cmd+Z)')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" aria-keyshortcuts="Control+Z Meta+Z" @click="canUndo && undo()">
-                    <Undo2 :size="17" aria-hidden="true" />
-                  </button>
-                </WorkbenchCommandHint>
-                <WorkbenchCommandHint :label="workbenchLocale.t('action.redo', 'Redo')" shortcut="Ctrl/Cmd+Shift+Z" :disabled-reason="!canRedo ? workbenchLocale.t('action.redoUnavailable', 'No operation to redo') : undefined">
-                  <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canRedo ? 'true' : undefined" :title="workbenchLocale.t('action.redoShortcut', 'Redo (Ctrl/Cmd+Shift+Z)')" :aria-label="workbenchLocale.t('action.redo', 'Redo')" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" @click="canRedo && redo()">
-                    <Redo2 :size="17" aria-hidden="true" />
-                  </button>
-                </WorkbenchCommandHint>
-                <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
-                <WorkbenchCommandHint :label="workbenchLocale.t('node.copySelection', 'Copy selection')" shortcut="Ctrl/Cmd+D" :disabled-reason="!canEditSelection ? workbenchLocale.t('node.selectionRequired', 'Select a component first') : undefined">
-                  <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canEditSelection ? 'true' : undefined" :title="workbenchLocale.t('node.copySelectionShortcut', 'Copy selection (Ctrl/Cmd+D)')" :aria-label="workbenchLocale.t('node.copySelection', 'Copy selection')" aria-keyshortcuts="Control+D Meta+D" @click="canEditSelection && copySelection()">
-                    <Copy :size="16" aria-hidden="true" />
-                  </button>
-                </WorkbenchCommandHint>
-                <WorkbenchCommandHint :label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" shortcut="Delete" :disabled-reason="!canEditSelection ? workbenchLocale.t('node.selectionRequired', 'Select a component first') : undefined">
-                  <button type="button" class="mx-config-form-designer__icon-button is-danger" :aria-disabled="!canEditSelection ? 'true' : undefined" :title="workbenchLocale.t('node.deleteSelectionShortcut', 'Delete selection (Delete)')" :aria-label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" aria-keyshortcuts="Delete Backspace" @click="canEditSelection && removeSelection()">
-                    <Trash2 :size="16" aria-hidden="true" />
-                  </button>
-                </WorkbenchCommandHint>
-                <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
-                <div class="mx-config-form-designer__segmented" role="group" :aria-label="workbenchLocale.t('canvas.viewport', 'Canvas viewport')">
-                  <WorkbenchCommandHint :label="workbenchLocale.t('canvas.desktop', 'Desktop')">
-                    <button type="button" :class="{ 'is-active': breakpoint === 'desktop' }" :aria-pressed="breakpoint === 'desktop'" :title="workbenchLocale.t('canvas.desktop', 'Desktop')" :aria-label="workbenchLocale.t('canvas.desktop', 'Desktop')" @click="selectBreakpoint('desktop')">
-                      <Monitor :size="15" aria-hidden="true" />
-                    </button>
-                  </WorkbenchCommandHint>
-                  <WorkbenchCommandHint :label="workbenchLocale.t('canvas.tablet', 'Tablet')">
-                    <button type="button" :class="{ 'is-active': breakpoint === 'tablet' }" :aria-pressed="breakpoint === 'tablet'" :title="workbenchLocale.t('canvas.tablet', 'Tablet')" :aria-label="workbenchLocale.t('canvas.tablet', 'Tablet')" @click="selectBreakpoint('tablet')">
-                      <Tablet :size="15" aria-hidden="true" />
-                    </button>
-                  </WorkbenchCommandHint>
-                  <WorkbenchCommandHint :label="workbenchLocale.t('canvas.mobile', 'Mobile')">
-                    <button type="button" :class="{ 'is-active': breakpoint === 'mobile' }" :aria-pressed="breakpoint === 'mobile'" :title="workbenchLocale.t('canvas.mobile', 'Mobile')" :aria-label="workbenchLocale.t('canvas.mobile', 'Mobile')" @click="selectBreakpoint('mobile')">
-                      <Smartphone :size="15" aria-hidden="true" />
-                    </button>
-                  </WorkbenchCommandHint>
-                </div>
-              </div>
+            <template #toolbar="scope">
+              <StudioDesignToolbar :scope="scope" :locale="localeOptions" @compare="responsiveCompareOpen = true" />
             </template>
 
             <template #palette="{ materials, addMaterial, readonly, form }">
@@ -523,7 +590,9 @@ watch(recoveryDrafts, (drafts) => {
                 :selected-ids="selectedDesignerIds"
                 @add-material="addMaterial"
                 @arrange-layer="moveDesignerLayer"
-                @move-layer="(nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)"
+                @move-layer="
+                  (nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)
+                "
                 @jump-history="jumpDesignerHistory"
                 @manage-assets="showAssetManager"
                 @manage-surfaces="showSurfaceManager"
@@ -541,69 +610,18 @@ watch(recoveryDrafts, (drafts) => {
               </StudioLeftPanel>
             </template>
             <template #runtime="scope">
-              <div
-                class="surface-presentation-shell"
-                :class="[
-                  `is-${currentSurface?.kind ?? 'page'}`,
-                  currentSurface?.kind === 'drawer' ? `is-${currentSurface.presentation.placement}` : '',
-                ]"
-                :data-surface-presentation="currentSurface?.kind"
-                :style="presentationStyle(currentSurface, scope.breakpoint)"
-              >
-                <div v-if="currentOverlaySurface?.presentation.mask" class="surface-presentation-mask" aria-hidden="true" />
-                <section v-if="currentOverlaySurface" class="surface-presentation-panel" :aria-label="currentOverlaySurface.presentation.title">
-                  <header class="surface-presentation-header">
-                    <strong>{{ currentOverlaySurface.presentation.title }}</strong>
-                    <button v-if="currentOverlaySurface.presentation.close.button" type="button" disabled aria-hidden="true">
-                      <X :size="16" />
-                    </button>
-                  </header>
-                  <DesignRuntimeHostFrame
-                    :adapter="getCurrentAdapterId()"
-                    :breakpoint="scope.breakpoint"
-                    :camera-scale="scope.cameraScale"
-                    :candidate-id="scope.candidateId"
-                    :candidate-uses-fallback="scope.candidateUsesFallback"
-                    :command="scope.command"
-                    :locale="workbenchLocale.locale"
-                    :model-value="scope.model"
-                    :namespace="registry.rendererNamespace"
-                    :resolve-compilation="getDesignRuntimeCompilation"
-                    :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
-                    variant="canvas"
-                    @error="message = $event.message"
-                    @geometry="scope.bridge.updateGeometry"
-                    @context-menu="scope.bridge.contextMenu"
-                    @pointer-cancel="scope.bridge.pointerCancel"
-                    @pointer-down="scope.bridge.pointerDown"
-                    @pointer-move="scope.bridge.pointerMove"
-                    @pointer-up="scope.bridge.pointerUp"
-                  />
-                </section>
-                <DesignRuntimeHostFrame
-                  v-else
-                  :adapter="getCurrentAdapterId()"
-                  :breakpoint="scope.breakpoint"
-                  :camera-scale="scope.cameraScale"
-                  :candidate-id="scope.candidateId"
-                  :candidate-uses-fallback="scope.candidateUsesFallback"
-                  :command="scope.command"
-                  :locale="workbenchLocale.locale"
-                  :model-value="scope.model"
-                  :namespace="registry.rendererNamespace"
-                  :resolve-compilation="getDesignRuntimeCompilation"
-                  :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
-                  variant="canvas"
-                  @error="message = $event.message"
-                  @geometry="scope.bridge.updateGeometry"
-                  @context-menu="scope.bridge.contextMenu"
-                  @pointer-cancel="scope.bridge.pointerCancel"
-                  @pointer-down="scope.bridge.pointerDown"
-                  @pointer-move="scope.bridge.pointerMove"
-                  @pointer-up="scope.bridge.pointerUp"
-                />
-              </div>
+              <StudioDesignRuntime
+                :surface="currentSurface"
+                :scope="scope"
+                :adapter="getCurrentAdapterId()"
+                :locale="workbenchLocale.locale"
+                :namespace="registry.rendererNamespace"
+                :resolve-compilation="getDesignRuntimeCompilation"
+                :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
+                @error="message = $event.message"
+              />
             </template>
+
             <template #dragVisual="scope">
               <DesignRuntimeHostFrame
                 :adapter="getCurrentAdapterId()"
@@ -624,6 +642,12 @@ watch(recoveryDrafts, (drafts) => {
             </template>
           </DesignSurface>
         </div>
+        <StudioIssuesDock
+          v-model:open="issuesOpen"
+          :diagnostics="studioDiagnostics"
+          :locale="localeId"
+          @locate="locateDiagnostic"
+        />
       </section>
 
       <PreviewDrawer
@@ -640,6 +664,8 @@ watch(recoveryDrafts, (drafts) => {
         :session-id="previewSessionId"
         :state="previewState"
         :viewport-pinned="previewViewportPinned"
+        :instance-states="previewSession.instanceStates.value"
+        @reset="resetExperience"
         @close="togglePreview"
         @error="handlePreviewRuntimeError"
         @instance-state="handlePreviewInstanceState"
@@ -649,11 +675,7 @@ watch(recoveryDrafts, (drafts) => {
         @update:viewport="setPreviewViewport"
       />
 
-      <section
-        v-if="exportPreviewMode"
-        class="source-pane"
-        :aria-label="workbenchLocale.t('workbench.code', 'Source')"
-      >
+      <section v-if="exportPreviewMode" class="source-pane" :aria-label="workbenchLocale.t('workbench.code', 'Source')">
         <SourceWorkspace
           v-if="exportDialogLoaded"
           :capture="captureExportSnapshotInput"
@@ -663,12 +685,19 @@ watch(recoveryDrafts, (drafts) => {
           :surface-id="currentSurfaceId"
           :theme="resolvedTheme"
           @notice="showNotice($event)"
+          @diagnostics="exportDiagnostics = normalizeDiagnostics($event, 'export')"
           @update:mode="openExportPreview"
         />
       </section>
     </section>
 
-    <nav v-if="currentProject" ref="mobileDock" class="mobile-studio-dock" role="tablist" :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')">
+    <nav
+      v-if="currentProject"
+      ref="mobileDock"
+      class="mobile-studio-dock"
+      role="tablist"
+      :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')"
+    >
       <button
         v-for="view in mobileStudioViews"
         :key="view.id"
@@ -694,6 +723,7 @@ watch(recoveryDrafts, (drafts) => {
       :locale="localeOptions"
       :project="currentProject"
     />
+    <StudioCommandPalette v-model:open="commandOpen" :commands="studioCommands" :locale="localeId" />
 
     <PersistenceDialog
       :controller="controller"
@@ -702,6 +732,19 @@ watch(recoveryDrafts, (drafts) => {
     />
 
     <Teleport to="#workbench-overlays">
+      <StudioResponsiveCompare
+        v-if="currentProject && responsiveCompareOpen"
+        v-model="responsiveCompareOpen"
+        :locale="localeOptions"
+      />
+      <SchemaImportDialog
+        v-if="currentProject && schemaImportOpen"
+        v-model="schemaImportOpen"
+        :adapter="getCurrentAdapterId()"
+        :existing-fields="existingFields"
+        :locale="localeOptions"
+        @apply="importSchemaFields"
+      />
       <ElAlert
         v-if="workspaceRecoveryNotice"
         class="workspace-recovery-notice"
@@ -752,7 +795,14 @@ watch(recoveryDrafts, (drafts) => {
         class="workbench-message"
         :type="candidateDiagnostic ? 'warning' : 'info'"
         :closable="false"
-        :title="candidateDiagnostic ? workbenchLocale.t('canvas.candidateFailed', 'Preview could not be calculated. Try again; your project can still be saved.') : message"
+        :title="
+          candidateDiagnostic
+            ? workbenchLocale.t(
+              'canvas.candidateFailed',
+              'Preview could not be calculated. Try again; your project can still be saved.',
+            )
+            : message
+        "
         :description="candidateDiagnostic?.message"
         role="status"
         aria-live="polite"

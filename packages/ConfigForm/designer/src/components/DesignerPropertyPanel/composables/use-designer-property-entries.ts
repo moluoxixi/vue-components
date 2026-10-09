@@ -36,7 +36,7 @@ export function useDesignerPropertyEntries(
   callbacks: UseDesignerPropertyEntriesCallbacks,
 ) {
   const locale = useDesignerLocale()
-  const selectedNodes = computed(() => props.nodes?.length ? props.nodes : props.node ? [props.node] : [])
+  const selectedNodes = computed(() => (props.nodes?.length ? props.nodes : props.node ? [props.node] : []))
   const capabilityInputs = computed(() => selectedNodes.value.map(node => ({
     node,
     material: node.id === props.node?.id && props.material
@@ -45,7 +45,8 @@ export function useDesignerPropertyEntries(
     contract: node.id === props.node?.id && props.componentDefinition
       ? props.componentDefinition
       : props.getComponentDefinition?.(node.component),
-  })))
+  })),
+  )
   const projection = computed(() => resolveInspectorCapabilities(capabilityInputs.value))
   const primaryMaterial = computed(() => capabilityInputs.value[0]?.material)
   const propertyTabs = computed(() => projection.value.sections
@@ -53,15 +54,19 @@ export function useDesignerPropertyEntries(
     .map(section => ({
       ...section,
       label: sectionLabel(section.id),
-    })))
+    })),
+  )
   const resolvedLayout = computed(() => resolveConfigFormLayout(
     props.graph.form.columns,
     props.graph.form.fieldSpan,
     props.graph.form.responsive,
     props.breakpoint ?? 'desktop',
-  ))
-  const isRootNode = computed(() => selectedNodes.value.length > 0
-    && selectedNodes.value.every(node => findDesignNode(props.graph, node.id)?.parentId === null))
+  ),
+  )
+  const isRootNode = computed(
+    () => selectedNodes.value.length > 0
+      && selectedNodes.value.every(node => findDesignNode(props.graph, node.id)?.parentId === null),
+  )
   const spanFractionHint = computed(() => {
     if (!isRootNode.value)
       return undefined
@@ -82,29 +87,44 @@ export function useDesignerPropertyEntries(
         ? [
             { key: 'field', label: locale.t('property.field', 'Field'), path: ['field'], control: 'text' as const },
             { key: 'label', label: locale.t('property.label', 'Label'), path: ['label'], control: 'text' as const },
+            ...(['description', 'help', 'warning'] as const).map(key => ({
+              key,
+              label: locale.t(
+                `property.${key}`,
+                { description: 'Description', help: 'Help text', warning: 'Warning' }[key],
+              ),
+              path: [key],
+              control: 'text' as const,
+            })),
           ]
         : []),
       ...(isRootNode.value
-        ? [{
-            key: 'span',
-            label: locale.t('property.span', 'Span'),
-            path: ['span'],
-            control: 'number' as const,
-            min: 1,
-            max: resolvedLayout.value.columns,
-            step: 1,
-          }]
+        ? [
+            {
+              key: 'span',
+              label: locale.t('property.span', 'Span'),
+              path: ['span'],
+              control: 'number' as const,
+              min: 1,
+              max: resolvedLayout.value.columns,
+              step: 1,
+            },
+          ]
         : []),
     ]
   })
 
-  const propertySetters = computed(() => [
-    ...basePropertySetters.value,
-    ...projection.value.commonSetters
-      .filter(setter => !['required', 'requiredMessage', 'validation', 'validateOn'].includes(setter.path[0] ?? ''))
-      .map(setter => localizeSetter(setter)),
-  ].filter((setter, index, entries) => entries
-    .findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
+  const propertySetters = computed(() =>
+    [
+      ...basePropertySetters.value,
+      ...projection.value.commonSetters
+        .filter(setter => !['required', 'requiredMessage', 'validation', 'validateOn'].includes(setter.path[0] ?? ''))
+        .map(setter => localizeSetter(setter)),
+    ].filter(
+      (setter, index, entries) => entries
+        .findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index,
+    ),
+  )
 
   const selectedDiagnostics = computed(() => {
     if (selectedNodes.value.length === 0)
@@ -179,9 +199,11 @@ export function useDesignerPropertyEntries(
   ): ValidationSetterContext | undefined {
     if (node.kind !== 'field' || material?.kind !== 'field')
       return undefined
-    const valueSetter = material.setters.find(setter => setter.valueKind
-      && setter.path.length === 1
-      && setter.path[0] === 'defaultValue')
+    const valueSetter = material.setters.find(
+      setter => setter.valueKind
+        && setter.path.length === 1
+        && setter.path[0] === 'defaultValue',
+    )
     if (!valueSetter?.valueKind)
       return undefined
     return {
@@ -214,19 +236,31 @@ export function useDesignerPropertyEntries(
     const context = commonValidationContext.value
     return [
       { key: 'required', label: locale.t('property.required', 'Required'), path: ['required'], control: 'boolean' },
-      { key: 'requiredMessage', label: locale.t('property.requiredMessage', 'Required message'), path: ['requiredMessage'], control: 'text' },
+      {
+        key: 'requiredMessage',
+        label: locale.t('property.requiredMessage', 'Required message'),
+        path: ['requiredMessage'],
+        control: 'text',
+      },
       ...(context
-        ? [{
-            key: 'validation',
-            label: locale.t('property.rules', 'Rules'),
-            path: ['validation'],
-            control: 'validation' as const,
-            valueKind: context.valueKind,
-            options: context.options,
-            optionValueTypes: context.optionValueTypes,
-          }]
+        ? [
+            {
+              key: 'validation',
+              label: locale.t('property.rules', 'Rules'),
+              path: ['validation'],
+              control: 'validation' as const,
+              valueKind: context.valueKind,
+              options: context.options,
+              optionValueTypes: context.optionValueTypes,
+            },
+          ]
         : []),
-      { key: 'validateOn', label: locale.t('validation.triggers', 'Validate on'), path: ['validateOn'], control: 'validateOn' },
+      {
+        key: 'validateOn',
+        label: locale.t('validation.triggers', 'Validate on'),
+        path: ['validateOn'],
+        control: 'validateOn',
+      },
     ]
   })
 
@@ -258,6 +292,10 @@ export function useDesignerPropertyEntries(
   const formSetters = computed(() => [
     formSetter('readonly', locale.t('property.readonly', 'Readonly'), 'boolean'),
     formSetter('inline', locale.t('property.inline', 'Inline'), 'boolean'),
+    formSetter('density', locale.t('property.density', 'Density'), 'select', [
+      { label: locale.t('option.comfortable', 'Comfortable'), value: 'comfortable' },
+      { label: locale.t('option.compact', 'Compact'), value: 'compact' },
+    ]),
     formSetter('labelPosition', locale.t('property.labelPosition', 'Label position'), 'select', [
       { label: locale.t('option.left', 'Left'), value: 'left' },
       { label: locale.t('option.top', 'Top'), value: 'top' },
@@ -304,8 +342,17 @@ export function useDesignerPropertyEntries(
 
   const formEntries = computed(() => formSetters.value.map(setter => ({
     setter,
-    value: readFormValue(setter),
-  })))
+    value: setter.key === 'density' ? readFormValue(setter) ?? 'comfortable' : readFormValue(setter),
+    ...(setter.key === 'gap'
+      ? {
+          inheritedValue: props.graph.form.density === 'compact' ? '8px' : '16px',
+          hint: props.graph.form.gap === undefined
+            ? locale.t('property.gapFromDensity', 'Uses the density default; clear a custom value to restore it.')
+            : locale.t('property.gapExplicit', 'A custom gap takes precedence over density. Clear it to use the preset.'),
+        }
+      : {}),
+  })),
+  )
 
   return {
     commitForm,

@@ -1,8 +1,5 @@
 import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
-import type {
-  ProjectCompilation,
-  SurfaceCompilation,
-} from '@moluoxixi/config-form-compiler'
+import type { ProjectCompilation, SurfaceCompilation } from '@moluoxixi/config-form-compiler'
 import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type {
   PrototypeProjectContextV1,
@@ -24,20 +21,13 @@ import type {
   RuntimeHostPayloadV7,
   RuntimeHostToParentMessageV7,
 } from '../types'
-import {
-  createPrototypeProjectContext,
-  readPrototypeSession,
-} from '@moluoxixi/config-form-prototype-runtime/session'
+import { createPrototypeProjectContext, readPrototypeSession } from '@moluoxixi/config-form-prototype-runtime/session'
 import { compileCanonicalSurfaceRuntime } from '@moluoxixi/config-form-vue-backend'
 import { nextTick, onBeforeUnmount, onErrorCaptured, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 import { loadWorkbenchRuntimeAdapter } from '../../adapters'
 import { cloneWorkbenchJson } from '../../utils'
 import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../constants'
-import {
-  acceptsRuntimeHostMessageEvent,
-  isParentToRuntimeHostMessage,
-  isRuntimeHostJsonObject,
-} from '../schemas'
+import { acceptsRuntimeHostMessageEvent, isParentToRuntimeHostMessage, isRuntimeHostJsonObject } from '../schemas'
 
 interface RuntimeHostGeometryPort {
   reset: () => void
@@ -70,7 +60,12 @@ export function useRuntimeHostProtocol() {
   const experienceArtifacts = shallowRef<Record<string, VueSurfaceRuntimeArtifact>>({})
   const experienceContext = shallowRef<PrototypeProjectContextV1>()
   const experienceGeneration = ref(0)
-  const runtimeState = shallowRef<RuntimeHostFormStateSnapshotV7>({ fields: [], touched: [], validation: {}, values: {} })
+  const runtimeState = shallowRef<RuntimeHostFormStateSnapshotV7>({
+    fields: [],
+    touched: [],
+    validation: {},
+    values: {},
+  })
   const targetOrigin = window.location.origin
   let hostId = ''
   let currentProjectId = ''
@@ -83,6 +78,15 @@ export function useRuntimeHostProtocol() {
   let acceptedSync = false
   let geometryPort: RuntimeHostGeometryPort = { reset: () => {}, sync: async () => {} }
   const instanceRevisions = new Map<string, number>()
+  const pendingInstanceStates = new Map<
+    string,
+    {
+      focusedAddress?: RuntimeHostInstanceStatePayloadV7['focusedAddress']
+      instanceId: string
+      state: RuntimeHostFormStateSnapshotV7
+      surfaceId: string
+    }
+  >()
 
   function baseMessage(): RuntimeHostMessageBaseV7 {
     return {
@@ -102,11 +106,14 @@ export function useRuntimeHostProtocol() {
   function postMessage(message: RuntimeHostPayloadV7<RuntimeHostToParentMessageV7>): void {
     if (!hostId || !currentProjectId || !currentRevision)
       return
-    window.parent.postMessage({
-      ...baseMessage(),
-      sequence: ++childSequence,
-      ...message,
-    }, targetOrigin)
+    window.parent.postMessage(
+      {
+        ...baseMessage(),
+        sequence: ++childSequence,
+        ...message,
+      },
+      targetOrigin,
+    )
   }
 
   function fieldInstances(): RuntimeHostFieldInstanceV7[] {
@@ -131,10 +138,12 @@ export function useRuntimeHostProtocol() {
       values,
       touched: fields.filter(field => currentRenderer?.getInstanceMeta(field.address).touched)
         .map(field => field.instanceKey),
-      validation: Object.fromEntries(fields.flatMap((field) => {
-        const errors = currentRenderer?.getInstanceErrors(field.address) ?? []
-        return errors.length > 0 ? [[field.instanceKey, [...errors]]] : []
-      })),
+      validation: Object.fromEntries(
+        fields.flatMap((field) => {
+          const errors = currentRenderer?.getInstanceErrors(field.address) ?? []
+          return errors.length > 0 ? [[field.instanceKey, [...errors]]] : []
+        }),
+      ),
     }
   }
 
@@ -187,7 +196,10 @@ export function useRuntimeHostProtocol() {
       adapter.runtimeResolver,
     )
     if (!result.success) {
-      reportError(result.diagnostics[0]?.code ?? 'RUNTIME_COMPILE_FAILED', result.diagnostics.map(item => item.message).join('\n'))
+      reportError(
+        result.diagnostics[0]?.code ?? 'RUNTIME_COMPILE_FAILED',
+        result.diagnostics.map(item => item.message).join('\n'),
+      )
       return false
     }
     active.value = result
@@ -204,10 +216,7 @@ export function useRuntimeHostProtocol() {
       return false
     const artifacts: Record<string, VueSurfaceRuntimeArtifact> = {}
     for (const nextSurfaceId of compilation.ir.surfaceOrder) {
-      const result = compileCanonicalSurfaceRuntime(
-        { compilation, surfaceId: nextSurfaceId },
-        adapter.runtimeResolver,
-      )
+      const result = compileCanonicalSurfaceRuntime({ compilation, surfaceId: nextSurfaceId }, adapter.runtimeResolver)
       if (!result.success) {
         reportError(
           result.diagnostics[0]?.code ?? 'RUNTIME_COMPILE_FAILED',
@@ -229,9 +238,7 @@ export function useRuntimeHostProtocol() {
       return
     experience.value = { ...current, session: snapshot.session }
     const activeInstanceId = snapshot.session.overlayStack.at(-1) ?? snapshot.session.pageHistory.at(-1)
-    surfaceId.value = activeInstanceId
-      ? snapshot.session.instancesById[activeInstanceId]?.surfaceId ?? ''
-      : ''
+    surfaceId.value = activeInstanceId ? (snapshot.session.instancesById[activeInstanceId]?.surfaceId ?? '') : ''
     for (const liveInstanceId of instanceRevisions.keys()) {
       if (!snapshot.session.instancesById[liveInstanceId])
         instanceRevisions.delete(liveInstanceId)
@@ -248,7 +255,9 @@ export function useRuntimeHostProtocol() {
     })
   }
 
-  async function acceptSync(message: Extract<ParentToRuntimeHostMessageV7, { type: 'design.sync' | 'experience.sync' }>): Promise<void> {
+  async function acceptSync(
+    message: Extract<ParentToRuntimeHostMessageV7, { type: 'design.sync' | 'experience.sync' }>,
+  ): Promise<void> {
     if (message.sequence <= latestSyncSequence)
       return
     latestSyncSequence = message.sequence
@@ -258,6 +267,7 @@ export function useRuntimeHostProtocol() {
     currentProjectId = message.projectId
     currentRevision = message.revision
     instanceRevisions.clear()
+    pendingInstanceStates.clear()
     geometryPort.reset()
     runtimeError.value = ''
     runtimeLocale.value = message.payload.locale
@@ -273,7 +283,12 @@ export function useRuntimeHostProtocol() {
       experienceContext.value = undefined
       experienceArtifacts.value = {}
       experienceGeneration.value += 1
-      const compiled = await compileSurface(message.payload.compilation, message.surfaceId, message.payload.adapter, message.sequence)
+      const compiled = await compileSurface(
+        message.payload.compilation,
+        message.surfaceId,
+        message.payload.adapter,
+        message.sequence,
+      )
       if (!compiled)
         return
       await nextTick()
@@ -318,14 +333,8 @@ export function useRuntimeHostProtocol() {
     experienceContext.value = context.data
     experienceGeneration.value += 1
     const activeInstanceId = nextSession.overlayStack.at(-1) ?? nextSession.pageHistory.at(-1)
-    surfaceId.value = activeInstanceId
-      ? nextSession.instancesById[activeInstanceId]?.surfaceId ?? ''
-      : ''
-    const compiled = await compileExperience(
-      message.payload.compilation,
-      message.payload.adapter,
-      message.sequence,
-    )
+    surfaceId.value = activeInstanceId ? (nextSession.instancesById[activeInstanceId]?.surfaceId ?? '') : ''
+    const compiled = await compileExperience(message.payload.compilation, message.payload.adapter, message.sequence)
     if (!compiled)
       return
     await nextTick()
@@ -334,6 +343,8 @@ export function useRuntimeHostProtocol() {
     postMessage({ type: 'mounted', mode: 'experience' })
     postMessage({ type: 'ready', mode: 'experience' })
     acceptedSync = true
+    for (const event of pendingInstanceStates.values()) postExperienceInstanceState(event)
+    pendingInstanceStates.clear()
   }
 
   function dispatchExperience(command: PrototypeSessionCommand): void {
@@ -364,8 +375,11 @@ export function useRuntimeHostProtocol() {
     if (!acceptedSync || message.projectId !== currentProjectId || message.revision !== currentRevision)
       return
     if (message.type === 'design.state') {
-      if (runtimeMode.value !== 'design' || message.surfaceId !== surfaceId.value || message.sequence <= latestStateSequence)
+      if (
+        runtimeMode.value !== 'design' || message.surfaceId !== surfaceId.value || message.sequence <= latestStateSequence
+      ) {
         return
+      }
       lastParentSequence = message.sequence
       latestStateSequence = message.sequence
       runtimeState.value = cloneWorkbenchJson(message.payload)
@@ -404,11 +418,17 @@ export function useRuntimeHostProtocol() {
     state: RuntimeHostFormStateSnapshotV7
     surfaceId: string
   }): void {
-    if (runtimeMode.value !== 'experience' || !experience.value || !acceptedSync)
+    if (runtimeMode.value !== 'experience' || !experience.value)
       return
     const instance = experience.value.session.instancesById[event.instanceId]
     if (!instance || instance.surfaceId !== event.surfaceId)
       return
+    // Child renderers mount before the host handshake completes. Deliver their
+    // latest initial state after mounted/ready, preserving the identity guard.
+    if (!acceptedSync) {
+      pendingInstanceStates.set(event.instanceId, cloneWorkbenchJson(event))
+      return
+    }
     const nextRevision = (instanceRevisions.get(event.instanceId) ?? 0) + 1
     const payload: RuntimeHostInstanceStatePayloadV7 = {
       ...cloneWorkbenchJson(event.state),

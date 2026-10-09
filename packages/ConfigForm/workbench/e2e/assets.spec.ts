@@ -36,7 +36,14 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 async function expectAssetDialogFits(dialog: import('@playwright/test').Locator): Promise<void> {
   const bounds = await dialog.locator('.asset-manager-dialog').evaluate((root) => {
     const rect = root.getBoundingClientRect()
-    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: innerWidth, height: innerHeight }
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      width: innerWidth,
+      height: innerHeight,
+    }
   })
   expect(bounds.left).toBeGreaterThanOrEqual(0)
   expect(bounds.right).toBeLessThanOrEqual(bounds.width)
@@ -47,7 +54,11 @@ async function expectAssetDialogFits(dialog: import('@playwright/test').Locator)
 async function expectThemeFieldsFit(theme: import('@playwright/test').Locator): Promise<void> {
   const overflowing = await theme.evaluate((root) => {
     const panel = root.getBoundingClientRect()
-    return [...root.querySelectorAll<HTMLElement>('.designer-theme-field > .el-select, .designer-theme-field > .el-input-number')]
+    return [
+      ...root.querySelectorAll<HTMLElement>(
+        '.designer-theme-field > .el-select, .designer-theme-field > .el-input-number',
+      ),
+    ]
       .filter((field) => {
         const bounds = field.getBoundingClientRect()
         if (bounds.width <= 0 || bounds.height <= 0)
@@ -63,32 +74,45 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('authors Dataset and Resource assets, then applies a project theme across Design and Experience', async ({ page }) => {
+test('authors Dataset and Resource assets, then applies a project theme across Design and Experience', async ({
+  page,
+}) => {
   await openProjectCreation(page)
   await createProject(page, 'element')
   const dialog = await openAssetManager(page)
 
   await dialog.locator('.asset-manager__empty-actions').getByRole('button', { name: 'Create dataset', exact: true }).click()
   const datasetName = dialog.getByRole('textbox', { name: 'Dataset name', exact: true })
-  const datasetRows = JSON.stringify([{
-    id: 'one',
-    meta: { label: 'One', disabled: true },
-    tags: ['a'],
-  }], null, 2)
+  const datasetRows = JSON.stringify(
+    [
+      {
+        id: 'one',
+        meta: { label: 'One', disabled: true },
+        tags: ['a'],
+      },
+    ],
+    null,
+    2,
+  )
+  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
   await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(datasetRows)
   await datasetName.fill('People')
   await datasetName.press('Tab')
   await expect(dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true })).toHaveValue(datasetRows)
   await dialog.locator('[data-asset-dataset-save]').click()
-  await expect(dialog.getByRole('status')).toContainText('Dataset saved.')
+  await expect(dialog.locator('.asset-manager__status')).toContainText('Dataset saved.')
   await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
-  await expect(dialog.locator('[data-asset-dataset-table]')).toContainText('{"label":"One","disabled":true}')
-  await expect(dialog.locator('[data-asset-dataset-table]')).toContainText('["a"]')
+  await expect(dialog.getByRole('textbox', { name: '1 / meta', exact: true })).toHaveValue(
+    '{"label":"One","disabled":true}',
+  )
+  await expect(dialog.getByRole('textbox', { name: '1 / tags', exact: true })).toHaveValue('["a"]')
   await dialog.getByRole('tab', { name: 'Default projection', exact: true }).click()
   const projection = { kind: 'options', valuePath: ['id'], labelPath: ['meta', 'label'] }
+  await dialog.getByText('Advanced JSON', { exact: true }).click()
   await dialog.getByRole('textbox', { name: 'Dataset default projection JSON', exact: true }).fill(JSON.stringify(projection))
   await dialog.getByRole('button', { name: 'Save projection', exact: true }).click()
-  await expect(dialog.getByRole('status')).toContainText('Default projection saved.')
+  await expect(dialog.locator('.asset-manager__status')).toContainText('Default projection saved.')
+  await expect(dialog.getByRole('button', { name: 'Discard draft', exact: true })).toHaveCount(0)
 
   const [datasetDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -98,7 +122,11 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   expect(datasetTransfer).toMatchObject({
     kind: 'config-form-dataset',
     version: 1,
-    dataset: { name: 'People', rows: [{ id: 'one', meta: { label: 'One', disabled: true } }], defaultProjection: projection },
+    dataset: {
+      name: 'People',
+      rows: [{ id: 'one', meta: { label: 'One', disabled: true } }],
+      defaultProjection: projection,
+    },
   })
   await dialog.locator('[data-asset-dataset-import-file] input[type="file"]').setInputFiles({
     name: 'people.config-form-dataset.json',
@@ -113,7 +141,7 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   await dialog.getByRole('textbox', { name: 'Resource integrity', exact: true }).fill('sha256-demo')
   await dialog.getByRole('textbox', { name: 'Resource name', exact: true }).fill('Product API')
   await dialog.getByRole('button', { name: 'Save URL', exact: true }).click()
-  await expect(dialog.getByRole('status')).toContainText('Resource saved.')
+  await expect(dialog.locator('.asset-manager__status')).toContainText('Resource saved.')
 
   const [resourceDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -146,7 +174,11 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   await expect(embedded).toContainText(String(file.byteLength))
   await expect(embedded).toContainText(hash)
 
-  const replacement = { name: 'logo-updated.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><title>Updated</title></svg>') }
+  const replacement = {
+    name: 'logo-updated.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><title>Updated</title></svg>'),
+  }
   const replaceFile = dialog.getByRole('button', { name: 'Replace file', exact: true })
   await dialog.locator('[data-asset-resource-replacement-file] input[type="file"]').setInputFiles(replacement)
   await expect(dialog.locator('.asset-manager__pending-file')).toContainText(replacement.name)
@@ -157,7 +189,7 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   await dialog.locator('[data-asset-resource-replacement-file] input[type="file"]').setInputFiles(replacement)
   await replaceFile.click()
   await expect(embedded).toContainText(replacement.name)
-  await expect(dialog.getByRole('status')).toContainText('Resource saved.')
+  await expect(dialog.locator('.asset-manager__status')).toContainText('Resource saved.')
   await expect(replaceFile).toBeDisabled()
 
   for (let index = 0; index < 2; index++) {
@@ -218,7 +250,7 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
   await dialog.getByRole('tab', { name: 'Asset list', exact: true }).click()
   await expect(dialog.locator('[data-asset-navigation]')).toBeVisible()
   await dialog.getByRole('button', { name: 'New Dataset', exact: true }).click()
-  await expect(dialog.locator('[data-asset-dataset-save]')).toBeVisible()
+  await expect(dialog.locator('[data-dataset-table-save]')).toBeVisible()
   await expectAssetDialogFits(dialog)
   const editorBody = dialog.locator('.asset-manager__editor-body')
   const editorScroll = await editorBody.evaluate((element) => {
@@ -226,7 +258,7 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
     return { scrollTop: element.scrollTop, maxScrollTop: element.scrollHeight - element.clientHeight }
   })
   expect(editorScroll.scrollTop).toBeGreaterThan(0)
-  await expect(dialog.locator('[data-asset-dataset-save]')).toBeInViewport()
+  await expect(dialog.locator('[data-dataset-table-save]')).toBeInViewport()
   await dialog.getByRole('tab', { name: 'Details', exact: true }).press('ArrowLeft')
   await expect(dialog.getByRole('tab', { name: 'Asset list', exact: true })).toBeFocused()
   await expect(dialog.locator('[data-asset-navigation]')).toBeVisible()
@@ -244,11 +276,14 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
   await expectThemeFieldsFit(theme)
   await theme.getByRole('tab', { name: 'Shadows', exact: true }).click()
   const themeContent = theme.locator('.el-tabs__content')
-  await expect.poll(() => themeContent.evaluate(element => ({
-    clientHeight: element.clientHeight,
-    scrollHeight: element.scrollHeight,
-    overflowY: getComputedStyle(element).overflowY,
-  }))).toMatchObject({ overflowY: 'auto' })
+  await expect
+    .poll(() => themeContent.evaluate(element => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    })),
+    )
+    .toMatchObject({ overflowY: 'auto' })
   await expect.poll(() => themeContent.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
   const scrollState = await themeContent.evaluate((element) => {
     const maxScrollTop = element.scrollHeight - element.clientHeight

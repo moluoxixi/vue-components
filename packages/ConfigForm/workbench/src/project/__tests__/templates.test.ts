@@ -47,7 +47,6 @@ describe('project templates', () => {
     expect(element.surfacesById.home?.graph).toMatchObject({
       version: SURFACE_GRAPH_VERSION,
       form: {
-        gap: '16px',
         labelWidth: 120,
         responsive: {
           mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
@@ -55,6 +54,8 @@ describe('project templates', () => {
         },
       },
     })
+    expect(element.surfacesById.home?.graph.form).not.toHaveProperty('gap')
+    expect(antd.surfacesById.home?.graph.form).not.toHaveProperty('gap')
     expect(Object.values(element.surfacesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'element.input' }),
     ]))

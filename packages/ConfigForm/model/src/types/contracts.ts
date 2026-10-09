@@ -50,6 +50,7 @@ export interface FormSettings {
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
   labelWidth?: number
+  density?: 'compact' | 'comfortable'
   responsive?: ResponsiveLayout
 }
 
@@ -198,6 +199,10 @@ export interface SurfaceFieldNode extends SurfaceNodeBase {
   kind: 'field'
   field: string
   label?: string
+  /** Supporting text displayed next to the control. */
+  description?: string
+  help?: string
+  warning?: string
   defaultValue?: ModelJsonValue
   required?: boolean
   requiredMessage?: string
@@ -335,8 +340,7 @@ export interface SurfaceOutputDefinition {
 
 export type SafeExpressionReferenceScope = 'values' | 'parameters' | 'result' | 'item'
 export type SafeExpressionFunction
-  = | 'coalesce' | 'length' | 'trim' | 'lower' | 'upper'
-    | 'includes' | 'startsWith' | 'endsWith'
+  = 'coalesce' | 'length' | 'trim' | 'lower' | 'upper' | 'includes' | 'startsWith' | 'endsWith'
 
 export type SafeExpressionNode
   = | { kind: 'literal', value: ModelJsonValue }
@@ -560,6 +564,10 @@ export interface FieldNodeSettings extends CommonNodeSettings {
   kind: 'field'
   field: string
   label?: string
+  /** Supporting text displayed next to the control. */
+  description?: string
+  help?: string
+  warning?: string
   defaultValue?: ModelJsonValue
   required?: boolean
   requiredMessage?: string
@@ -585,7 +593,11 @@ export type ProjectOperation
     | { type: 'surface.move', surfaceId: SurfaceId, index: number }
     | { type: 'surface.rename', surfaceId: SurfaceId, name: string }
     | { type: 'surface.route', surfaceId: SurfaceId, route: string }
-    | { type: 'surface.presentation', surfaceId: SurfaceId, presentation: ProjectDialogSurface['presentation'] | ProjectDrawerSurface['presentation'] }
+    | {
+      type: 'surface.presentation'
+      surfaceId: SurfaceId
+      presentation: ProjectDialogSurface['presentation'] | ProjectDrawerSurface['presentation']
+    }
     | { type: 'surface.parameters', surfaceId: SurfaceId, parameters: SurfaceParameterDefinition[] }
     | { type: 'surface.outputs', surfaceId: SurfaceId, outputs: SurfaceOutputDefinition[] }
     | { type: 'surface.interactions', surfaceId: SurfaceId, interactions: PrototypeInteraction[] }
@@ -619,6 +631,9 @@ export interface ProjectNodePatchValues {
   field: string
   label: string
   required: boolean
+  description: string
+  help: string
+  warning: string
   requiredMessage: string
   resourceBindings: Record<string, StaticResourceReference>
   validateOn: ValidateTrigger | ValidateTrigger[]
@@ -654,8 +669,7 @@ export interface ProjectCommand {
 }
 
 export type ProjectCommandResolution
-  = | { success: true, transaction: ProjectTransaction }
-    | { success: false, diagnostics: ModelDiagnostic[] }
+  = { success: true, transaction: ProjectTransaction } | { success: false, diagnostics: ModelDiagnostic[] }
 
 export interface ProjectTransaction {
   id: string
@@ -770,8 +784,7 @@ export interface ResourceTransferContentV1 {
 }
 
 export type ResourceTransferPayloadV1
-  = | { resource: ProjectEmbeddedResource, content: ResourceTransferContentV1 }
-    | { resource: ProjectUrlResource }
+  = { resource: ProjectEmbeddedResource, content: ResourceTransferContentV1 } | { resource: ProjectUrlResource }
 
 export interface ResourceTransferEnvelopeV1 {
   kind: 'config-form-resource'
@@ -780,8 +793,7 @@ export interface ResourceTransferEnvelopeV1 {
 }
 
 export type ResourceTransferReadResultV1
-  = | { resource: ProjectEmbeddedResource, bytes: Uint8Array }
-    | { resource: ProjectUrlResource }
+  = { resource: ProjectEmbeddedResource, bytes: Uint8Array } | { resource: ProjectUrlResource }
 
 export type ResourceTransferWriteInputV1
   = | { resource: DeepReadonly<ProjectEmbeddedResource>, bytes: Uint8Array }
@@ -832,8 +844,7 @@ export interface SurfaceTransferWriteInputV1 extends ProjectTransferWriteInputV1
 }
 
 export type ContractResult<T>
-  = | { success: true, data: T, diagnostics: [] }
-    | { success: false, diagnostics: ModelDiagnostic[] }
+  = { success: true, data: T, diagnostics: [] } | { success: false, diagnostics: ModelDiagnostic[] }
 
 export type ProjectReferenceTargetKind = 'surface' | 'dataset' | 'resource' | 'node'
 export type ProjectReferenceSourceKind

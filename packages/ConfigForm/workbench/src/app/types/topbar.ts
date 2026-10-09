@@ -28,6 +28,7 @@ export interface WorkbenchTopbarEmits {
   openProjects: []
   openSurfaces: []
   openVersions: []
+  openCommands: []
   createCheckpoint: []
   save: []
   showDesign: []

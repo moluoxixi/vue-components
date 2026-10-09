@@ -43,12 +43,7 @@ import {
   markValidatedProjectDocument,
 } from '../services/transactions/services/publication'
 import { analyzeSurfaceValueScopes } from '../services/value-scope'
-import {
-  identifierSchema,
-  registryFingerprintSchema,
-  registryKeySchema,
-  registryVersionSchema,
-} from './identity'
+import { identifierSchema, registryFingerprintSchema, registryKeySchema, registryVersionSchema } from './identity'
 import { registryLockFingerprint } from './registry-identity'
 
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -75,15 +70,13 @@ interface ProjectIssueDiagnosticMetadata {
   context?: Record<string, unknown>
 }
 
-const safeObjectKeySchema = z.string().refine(
-  key => !FORBIDDEN_OBJECT_KEYS.has(key),
-  'Object key is not allowed',
-)
+const safeObjectKeySchema = z.string().refine(key => !FORBIDDEN_OBJECT_KEYS.has(key), 'Object key is not allowed')
 const displayNameSchema = z.string().trim().min(1).max(160)
-const safePathSchema = z.array(z.string().min(1).max(128).refine(
-  value => !FORBIDDEN_OBJECT_KEYS.has(value),
-  'Path segment is not allowed',
-)).max(32)
+const safePathSchema = z
+  .array(
+    z.string().min(1).max(128).refine(value => !FORBIDDEN_OBJECT_KEYS.has(value), 'Path segment is not allowed'),
+  )
+  .max(32)
 
 export const modelJsonValueSchema: z.ZodType<ConfigFormJsonValue> = z.lazy(() => z.union([
   z.null(),
@@ -92,7 +85,8 @@ export const modelJsonValueSchema: z.ZodType<ConfigFormJsonValue> = z.lazy(() =>
   z.string(),
   z.array(modelJsonValueSchema),
   z.record(safeObjectKeySchema, modelJsonValueSchema),
-]))
+]),
+)
 
 export const modelJsonObjectSchema: z.ZodType<ConfigFormJsonObject> = z.record(
   safeObjectKeySchema,
@@ -126,27 +120,30 @@ const formGapSchema = z.string()
   .regex(/^(?:0|[1-9]\d*)px$/, 'Form gap must be a non-negative integer followed by px')
   .refine(value => Number.parseInt(value, 10) <= FORM_GAP_MAX_PX, `Form gap must not exceed ${FORM_GAP_MAX_PX}px`)
 
-export const formSettingsSchema: z.ZodType<FormSettings> = z.object({
-  readonly: z.boolean().optional(),
-  inline: z.boolean().optional(),
-  columns: z.number().int().min(1).max(24).optional(),
-  gap: formGapSchema.optional(),
-  fieldSpan: z.number().int().min(1).max(24).optional(),
-  labelPosition: z.enum(['left', 'top']).optional(),
-  labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
-  responsive: z.object({
-    tablet: z.object({
-      columns: z.number().int().min(1).max(24).optional(),
-      fieldSpan: z.number().int().min(1).max(24).optional(),
-      labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
+export const formSettingsSchema: z.ZodType<FormSettings> = z
+  .object({
+    readonly: z.boolean().optional(),
+    inline: z.boolean().optional(),
+    columns: z.number().int().min(1).max(24).optional(),
+    gap: formGapSchema.optional(),
+    fieldSpan: z.number().int().min(1).max(24).optional(),
+    labelPosition: z.enum(['left', 'top']).optional(),
+    labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
+    density: z.enum(['compact', 'comfortable']).optional(),
+    responsive: z.object({
+      tablet: z.object({
+        columns: z.number().int().min(1).max(24).optional(),
+        fieldSpan: z.number().int().min(1).max(24).optional(),
+        labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
+      }).strict().optional(),
+      mobile: z.object({
+        columns: z.number().int().min(1).max(24).optional(),
+        fieldSpan: z.number().int().min(1).max(24).optional(),
+        labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
+      }).strict().optional(),
     }).strict().optional(),
-    mobile: z.object({
-      columns: z.number().int().min(1).max(24).optional(),
-      fieldSpan: z.number().int().min(1).max(24).optional(),
-      labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
-    }).strict().optional(),
-  }).strict().optional(),
-}).strict()
+  })
+  .strict()
 
 const safeExpressionNodeSchema = z.unknown()
   .superRefine(validateSafeExpressionNode)
@@ -203,20 +200,24 @@ const nodeBaseShape = {
   resourceBindings: z.record(safeObjectKeySchema, resourceReferenceSchema).optional(),
 }
 
-const fieldNodeSchema = z.object({
-  ...nodeBaseShape,
-  kind: z.literal('field'),
-  field: identifierSchema,
-  label: z.string().optional(),
-  defaultValue: modelJsonValueSchema.optional(),
-  required: z.boolean().optional(),
-  requiredMessage: z.string().optional(),
-  validation: ruleSetSchema.optional(),
-  validateOn: z.union([
-    z.enum(['submit', 'blur', 'change']),
-    z.array(z.enum(['submit', 'blur', 'change'])).min(1),
-  ]).optional(),
-}).strict()
+const fieldNodeSchema = z
+  .object({
+    ...nodeBaseShape,
+    kind: z.literal('field'),
+    field: identifierSchema,
+    label: z.string().optional(),
+    description: z.string().optional(),
+    help: z.string().optional(),
+    warning: z.string().optional(),
+    defaultValue: modelJsonValueSchema.optional(),
+    required: z.boolean().optional(),
+    requiredMessage: z.string().optional(),
+    validation: ruleSetSchema.optional(),
+    validateOn: z
+      .union([z.enum(['submit', 'blur', 'change']), z.array(z.enum(['submit', 'blur', 'change'])).min(1)])
+      .optional(),
+  })
+  .strict()
 
 export const slotItemSchema: z.ZodType<SlotItem> = z.object({
   nodeId: identifierSchema,
@@ -250,10 +251,13 @@ const surfaceGraphBaseSchema = z.object({
 }).strict()
 
 export const surfaceGraphSchema: z.ZodType<SurfaceGraph> = surfaceGraphBaseSchema
-  .superRefine(validateSurfaceGraph) as z.ZodType<SurfaceGraph>
+  .superRefine(
+    validateSurfaceGraph,
+  ) as z.ZodType<SurfaceGraph>
 
 export const nodeSubgraphSchema: z.ZodType<SurfaceGraph> = surfaceGraphBaseSchema
-  .superRefine((graph, context) => validateSurfaceGraph(graph, context, false)) as z.ZodType<SurfaceGraph>
+  .superRefine((graph, context) => validateSurfaceGraph(graph, context, false),
+  ) as z.ZodType<SurfaceGraph>
 
 const stateProjectionTargetSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -278,7 +282,13 @@ const namedResultBindingSchema = z.object({
 }).strict()
 
 const primaryUiActionSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('navigate'), targetSurfaceId: identifierSchema, parameters: z.array(parameterBindingSchema) }).strict(),
+  z
+    .object({
+      kind: z.literal('navigate'),
+      targetSurfaceId: identifierSchema,
+      parameters: z.array(parameterBindingSchema),
+    })
+    .strict(),
   z.object({ kind: z.literal('back') }).strict(),
   z.object({
     kind: z.literal('open'),
@@ -333,7 +343,11 @@ const controlledLengthSchema = z.object({
   unit: z.enum(['px', '%', 'rem', 'vw', 'vh']),
 }).strict().superRefine((length, context) => {
   if (['%', 'vw', 'vh'].includes(length.unit) && length.value > 100) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: `${length.unit} length cannot exceed 100.`, path: ['value'] })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${length.unit} length cannot exceed 100.`,
+      path: ['value'],
+    })
   }
 })
 export const responsiveLengthSchema = z.object({
@@ -386,11 +400,9 @@ const drawerSurfaceSchema = z.object({
   }).strict().superRefine(validateMaskPolicy),
 }).strict()
 
-export const projectSurfaceSchema: z.ZodType<ProjectSurface> = z.discriminatedUnion('kind', [
-  pageSurfaceSchema,
-  dialogSurfaceSchema,
-  drawerSurfaceSchema,
-]).superRefine(validateSurfaceLocalInvariants) as z.ZodType<ProjectSurface>
+export const projectSurfaceSchema: z.ZodType<ProjectSurface> = z
+  .discriminatedUnion('kind', [pageSurfaceSchema, dialogSurfaceSchema, drawerSurfaceSchema])
+  .superRefine(validateSurfaceLocalInvariants) as z.ZodType<ProjectSurface>
 
 export const projectDatasetSchema: z.ZodType<ProjectDataset> = z.object({
   id: identifierSchema,
@@ -465,23 +477,25 @@ export const projectThemeSchema: z.ZodType<ProjectTheme> = z.object({
   shadows: z.object({ sm: themeShadowSchema.optional(), md: themeShadowSchema.optional(), lg: themeShadowSchema.optional() }).strict().optional(),
 }).strict()
 
-export const registryLockSchema = z.object({
-  adapter: registryKeySchema,
-  version: registryVersionSchema,
-  fingerprint: registryFingerprintSchema,
-  components: z.record(registryKeySchema, z.object({
-    contractVersion: registryVersionSchema,
+export const registryLockSchema = z
+  .object({
+    adapter: registryKeySchema,
+    version: registryVersionSchema,
     fingerprint: registryFingerprintSchema,
-  }).strict()),
-}).strict().superRefine((lock, context) => {
-  if (lock.fingerprint !== registryLockFingerprint(lock.components)) {
-    issue(
-      context,
-      'Registry fingerprint does not match its component contracts.',
-      ['fingerprint'],
-    )
-  }
-})
+    components: z.record(
+      registryKeySchema,
+      z.object({
+        contractVersion: registryVersionSchema,
+        fingerprint: registryFingerprintSchema,
+      }).strict(),
+    ),
+  })
+  .strict()
+  .superRefine((lock, context) => {
+    if (lock.fingerprint !== registryLockFingerprint(lock.components)) {
+      issue(context, 'Registry fingerprint does not match its component contracts.', ['fingerprint'])
+    }
+  })
 
 export const projectDocumentSchema: z.ZodType<ProjectDocument> = z.object({
   version: z.literal(PROJECT_DOCUMENT_VERSION),
@@ -507,7 +521,11 @@ export const projectSnapshotSchema: z.ZodType<ProjectSnapshot> = z.object({
 }).strict().superRefine((snapshot, context) => {
   const expected = getProjectDocumentContentHash(snapshot.document)
   if (snapshot.contentHash !== expected) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: `Project snapshot content hash mismatch: expected ${expected}.`, path: ['contentHash'] })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Project snapshot content hash mismatch: expected ${expected}.`,
+      path: ['contentHash'],
+    })
   }
 }).transform(snapshot => freezeProjectSnapshot(snapshot.document, snapshot.editVersion))
 
@@ -523,11 +541,19 @@ export const projectDraftSnapshotSchema: z.ZodType<ProjectDraftSnapshot> = z.obj
   draftHash: z.string().regex(HASH),
 }).strict().superRefine((snapshot, context) => {
   if (snapshot.document.id !== snapshot.base.projectId) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Project draft identity mismatch.', path: ['document', 'id'] })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Project draft identity mismatch.',
+      path: ['document', 'id'],
+    })
   }
   const expected = getProjectDocumentContentHash(snapshot.document)
   if (snapshot.draftHash !== expected) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: `Project draft content hash mismatch: expected ${expected}.`, path: ['draftHash'] })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Project draft content hash mismatch: expected ${expected}.`,
+      path: ['draftHash'],
+    })
   }
 }).transform(snapshot => freezeProjectDraftSnapshot(snapshot.base, snapshot.document, snapshot.draftId))
 
@@ -537,17 +563,44 @@ export function parseProjectDocument(input: unknown): ProjectDocumentParseResult
     cyclePath = findReferenceCycle(input)
   }
   catch {
-    return { success: false, diagnostics: [{ code: 'project_structure_invalid', message: 'Project document structure cannot be inspected safely.', path: [] }] }
+    return {
+      success: false,
+      diagnostics: [
+        {
+          code: 'project_structure_invalid',
+          message: 'Project document structure cannot be inspected safely.',
+          path: [],
+        },
+      ],
+    }
   }
   if (cyclePath) {
-    return { success: false, diagnostics: [{ code: 'project_structure_invalid', message: 'Project documents cannot contain circular references.', path: cyclePath }] }
+    return {
+      success: false,
+      diagnostics: [
+        {
+          code: 'project_structure_invalid',
+          message: 'Project documents cannot contain circular references.',
+          path: cyclePath,
+        },
+      ],
+    }
   }
   let versionDiagnostic: ModelDiagnostic | undefined
   try {
     versionDiagnostic = readVersionDiagnostic(input, 'ProjectDocument', PROJECT_DOCUMENT_VERSION)
   }
   catch {
-    return { success: false, diagnostics: [{ code: 'project_structure_invalid', message: 'Project document structure cannot be inspected safely.', path: [] }] }
+    return {
+      success: false,
+      diagnostics: [
+        {
+          code: 'project_structure_invalid',
+          message: 'Project document structure cannot be inspected safely.',
+          path: [],
+        },
+      ],
+    }
   }
   if (versionDiagnostic)
     return { success: false, diagnostics: [versionDiagnostic] }
@@ -556,7 +609,12 @@ export function parseProjectDocument(input: unknown): ProjectDocumentParseResult
     result = projectDocumentSchema.safeParse(input)
   }
   catch {
-    return { success: false, diagnostics: [{ code: 'project_structure_invalid', message: 'Project document exceeds supported nesting.', path: [] }] }
+    return {
+      success: false,
+      diagnostics: [
+        { code: 'project_structure_invalid', message: 'Project document exceeds supported nesting.', path: [] },
+      ],
+    }
   }
   if (!result.success) {
     return {
@@ -598,11 +656,15 @@ export function createProjectDraftSnapshot(
   const candidate = assertProjectDocument(document)
   if (candidate.id !== committed.document.id)
     throw new TypeError('Project draft snapshots cannot change project identity.')
-  return freezeProjectDraftSnapshot({
-    projectId: committed.document.id,
-    editVersion: committed.editVersion,
-    contentHash: committed.contentHash,
-  }, candidate, id)
+  return freezeProjectDraftSnapshot(
+    {
+      projectId: committed.document.id,
+      editVersion: committed.editVersion,
+      contentHash: committed.contentHash,
+    },
+    candidate,
+    id,
+  )
 }
 
 export function createProjectDraftSnapshotFromTransaction(
@@ -624,11 +686,15 @@ export function createProjectDraftSnapshotFromTransaction(
   }
   if (result.document.id !== base.document.id)
     throw new TypeError('Project draft snapshots cannot change project identity.')
-  return freezeProjectDraftSnapshot({
-    projectId: base.document.id,
-    editVersion: base.editVersion,
-    contentHash: base.contentHash,
-  }, result.document, id)
+  return freezeProjectDraftSnapshot(
+    {
+      projectId: base.document.id,
+      editVersion: base.editVersion,
+      contentHash: base.contentHash,
+    },
+    result.document,
+    id,
+  )
 }
 
 export function parseProjectSnapshot(input: unknown): ProjectSnapshotParseResult {
@@ -639,15 +705,24 @@ export function parseProjectSnapshot(input: unknown): ProjectSnapshotParseResult
   catch {
     return {
       success: false,
-      diagnostics: [{
-        code: 'PROJECT_SNAPSHOT_INVALID',
-        message: 'Project snapshot structure cannot be inspected safely.',
-        path: [],
-      }],
+      diagnostics: [
+        {
+          code: 'PROJECT_SNAPSHOT_INVALID',
+          message: 'Project snapshot structure cannot be inspected safely.',
+          path: [],
+        },
+      ],
     }
   }
   if (!result.success) {
-    return { success: false, diagnostics: result.error.issues.map(issue => ({ code: 'PROJECT_SNAPSHOT_INVALID', message: issue.message, path: issue.path })) }
+    return {
+      success: false,
+      diagnostics: result.error.issues.map(issue => ({
+        code: 'PROJECT_SNAPSHOT_INVALID',
+        message: issue.message,
+        path: issue.path,
+      })),
+    }
   }
   return { success: true, data: result.data, diagnostics: [] }
 }
@@ -668,15 +743,24 @@ export function parseProjectDraftSnapshot(input: unknown): ProjectDraftSnapshotP
   catch {
     return {
       success: false,
-      diagnostics: [{
-        code: 'PROJECT_DRAFT_SNAPSHOT_INVALID',
-        message: 'Project draft snapshot structure cannot be inspected safely.',
-        path: [],
-      }],
+      diagnostics: [
+        {
+          code: 'PROJECT_DRAFT_SNAPSHOT_INVALID',
+          message: 'Project draft snapshot structure cannot be inspected safely.',
+          path: [],
+        },
+      ],
     }
   }
   if (!result.success) {
-    return { success: false, diagnostics: result.error.issues.map(issue => ({ code: 'PROJECT_DRAFT_SNAPSHOT_INVALID', message: issue.message, path: issue.path })) }
+    return {
+      success: false,
+      diagnostics: result.error.issues.map(issue => ({
+        code: 'PROJECT_DRAFT_SNAPSHOT_INVALID',
+        message: issue.message,
+        path: issue.path,
+      })),
+    }
   }
   return { success: true, data: result.data, diagnostics: [] }
 }
@@ -687,11 +771,7 @@ export function parseProjectCompilationSnapshot(input: unknown): ProjectCompilat
     : parseProjectSnapshot(input)
 }
 
-function validateSurfaceGraph(
-  graph: SurfaceGraph,
-  context: z.RefinementCtx,
-  requireAllReachable = true,
-): void {
+function validateSurfaceGraph(graph: SurfaceGraph, context: z.RefinementCtx, requireAllReachable = true): void {
   const locations = new Map<string, Array<Array<string | number>>>()
   const addLocation = (nodeId: string, path: Array<string | number>): void => {
     locations.set(nodeId, [...(locations.get(nodeId) ?? []), path])
@@ -790,11 +870,13 @@ function validateSafeExpressionNode(input: unknown, context: z.RefinementCtx): v
         try {
           const literal = modelJsonValueSchema.safeParse(node.value)
           if (!literal.success) {
-            literal.error.issues.forEach(problem => expressionIssue(
-              context,
-              `Safe Expression literal is not JSON-safe: ${problem.message}`,
-              [...current.path, 'value', ...problem.path],
-            ))
+            literal.error.issues.forEach(problem =>
+              expressionIssue(context, `Safe Expression literal is not JSON-safe: ${problem.message}`, [
+                ...current.path,
+                'value',
+                ...problem.path,
+              ]),
+            )
           }
         }
         catch {
@@ -827,11 +909,13 @@ function validateSafeExpressionNode(input: unknown, context: z.RefinementCtx): v
           expressionIssue(context, 'Safe Expression array items must be an array.', [...current.path, 'items'])
           break
         }
-        schedule(node.items.map((value, index) => ({
-          value,
-          depth: current.depth + 1,
-          path: [...current.path, 'items', index],
-        })))
+        schedule(
+          node.items.map((value, index) => ({
+            value,
+            depth: current.depth + 1,
+            path: [...current.path, 'items', index],
+          })),
+        )
         break
       }
       case 'unary':
@@ -864,13 +948,19 @@ function validateSafeExpressionNode(input: unknown, context: z.RefinementCtx): v
           : ['length', 'trim', 'lower', 'upper'].includes(callee)
               ? node.args.length === 1
               : node.args.length === 2
-        if (!validArity)
-          expressionIssue(context, `Safe Expression function ${callee} received an invalid number of arguments.`, [...current.path, 'args'])
-        schedule(node.args.map((value, index) => ({
-          value,
-          depth: current.depth + 1,
-          path: [...current.path, 'args', index],
-        })))
+        if (!validArity) {
+          expressionIssue(context, `Safe Expression function ${callee} received an invalid number of arguments.`, [
+            ...current.path,
+            'args',
+          ])
+        }
+        schedule(
+          node.args.map((value, index) => ({
+            value,
+            depth: current.depth + 1,
+            path: [...current.path, 'args', index],
+          })),
+        )
         break
       }
       default:
@@ -896,11 +986,7 @@ function validateExpressionKeys(
   })
 }
 
-function validateSafeExpressionPath(
-  value: unknown,
-  context: z.RefinementCtx,
-  path: Array<string | number>,
-): void {
+function validateSafeExpressionPath(value: unknown, context: z.RefinementCtx, path: Array<string | number>): void {
   if (!Array.isArray(value)) {
     expressionIssue(context, 'Safe Expression reference path must be an array.', path)
     return
@@ -908,23 +994,19 @@ function validateSafeExpressionPath(
   if (value.length > 32)
     expressionIssue(context, 'Safe Expression reference path cannot exceed 32 segments.', path)
   value.forEach((segment, index) => {
-    if (typeof segment !== 'string' || segment.length === 0 || segment.length > 128 || FORBIDDEN_OBJECT_KEYS.has(segment))
+    if (
+      typeof segment !== 'string' || segment.length === 0 || segment.length > 128 || FORBIDDEN_OBJECT_KEYS.has(segment)
+    ) {
       expressionIssue(context, 'Safe Expression reference path segment is invalid.', [...path, index])
+    }
   })
 }
 
-function expressionIssue(
-  context: z.RefinementCtx,
-  message: string,
-  path: Array<string | number>,
-): void {
+function expressionIssue(context: z.RefinementCtx, message: string, path: Array<string | number>): void {
   issue(context, message, path)
 }
 
-function validateMaskPolicy(
-  presentation: { mask: boolean, close: { mask: boolean } },
-  context: z.RefinementCtx,
-): void {
+function validateMaskPolicy(presentation: { mask: boolean, close: { mask: boolean } }, context: z.RefinementCtx): void {
   if (!presentation.mask && presentation.close.mask)
     issue(context, 'Mask close cannot be enabled when the mask is disabled.', ['close', 'mask'])
 }
@@ -932,7 +1014,13 @@ function validateMaskPolicy(
 function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.RefinementCtx): void {
   reportDuplicateValues(surface.parameters, parameter => parameter.name, context, ['parameters'], 'parameter name')
   reportDuplicateValues(surface.outputs, output => output.name, context, ['outputs'], 'output name')
-  reportDuplicateValues(surface.interactions, interaction => interaction.id, context, ['interactions'], 'interaction id')
+  reportDuplicateValues(
+    surface.interactions,
+    interaction => interaction.id,
+    context,
+    ['interactions'],
+    'interaction id',
+  )
   const stateTargets = new Map<string, number>()
   const primaryTargets = new Map<string, number>()
   const nodes = surface.graph.nodesById
@@ -948,28 +1036,21 @@ function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.Refi
     const base = ['interactions', index]
     if (interaction.kind === 'stateProjection') {
       requireNode(interaction.target.nodeId, [...base, 'target', 'nodeId'])
-      const key = interaction.target.kind === 'state'
-        ? `${interaction.target.nodeId}:state:${interaction.target.key}`
-        : `${interaction.target.nodeId}:property:${interaction.target.path.join('.')}`
+      const key
+        = interaction.target.kind === 'state'
+          ? `${interaction.target.nodeId}:state:${interaction.target.key}`
+          : `${interaction.target.nodeId}:property:${interaction.target.path.join('.')}`
       if (stateTargets.has(key)) {
-        issue(
-          context,
-          `State projection target is duplicated: ${key}.`,
-          [...base, 'target'],
-          {
-            code: 'interaction_target_conflict',
+        issue(context, `State projection target is duplicated: ${key}.`, [...base, 'target'], {
+          code: 'interaction_target_conflict',
+          surfaceId: surface.id,
+          nodeId: interaction.target.nodeId,
+          context: {
             surfaceId: surface.id,
-            nodeId: interaction.target.nodeId,
-            context: {
-              surfaceId: surface.id,
-              target: key,
-              ruleIds: [
-                surface.interactions[stateTargets.get(key)!]!.id,
-                interaction.id,
-              ],
-            },
+            target: key,
+            ruleIds: [surface.interactions[stateTargets.get(key)!]!.id, interaction.id],
           },
-        )
+        })
       }
       else {
         stateTargets.set(key, index)
@@ -985,59 +1066,90 @@ function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.Refi
       return
     }
     if (interaction.kind === 'valueChange') {
-      interaction.dependencies.forEach((nodeId, dependencyIndex) => requireNode(nodeId, [...base, 'dependencies', dependencyIndex], 'field'))
-      if (interaction.when)
-        validateExpressionScopes(interaction.when, new Set(['values', 'parameters']), context, [...base, 'when'], surface.id, interaction.id)
+      interaction.dependencies.forEach((nodeId, dependencyIndex) => requireNode(nodeId, [...base, 'dependencies', dependencyIndex], 'field'),
+      )
+      if (interaction.when) {
+        validateExpressionScopes(
+          interaction.when,
+          new Set(['values', 'parameters']),
+          context,
+          [...base, 'when'],
+          surface.id,
+          interaction.id,
+        )
+      }
       if (interaction.action.kind === 'copy')
         requireNode(interaction.action.sourceFieldId, [...base, 'action', 'sourceFieldId'], 'field')
       requireNode(interaction.action.targetFieldId, [...base, 'action', 'targetFieldId'], 'field')
-      if (interaction.action.kind === 'set')
-        validateExpressionScopes(interaction.action.value, new Set(['values', 'parameters']), context, [...base, 'action', 'value'], surface.id, interaction.id)
+      if (interaction.action.kind === 'set') {
+        validateExpressionScopes(
+          interaction.action.value,
+          new Set(['values', 'parameters']),
+          context,
+          [...base, 'action', 'value'],
+          surface.id,
+          interaction.id,
+        )
+      }
       return
     }
     requireNode(interaction.nodeId, [...base, 'nodeId'])
     const triggerKey = `${interaction.nodeId}:${interaction.trigger}`
     if (primaryTargets.has(triggerKey)) {
-      issue(
-        context,
-        `Primary action target is duplicated: ${triggerKey}.`,
-        base,
-        {
-          code: 'interaction_trigger_invalid',
+      issue(context, `Primary action target is duplicated: ${triggerKey}.`, base, {
+        code: 'interaction_trigger_invalid',
+        surfaceId: surface.id,
+        nodeId: interaction.nodeId,
+        context: {
           surfaceId: surface.id,
           nodeId: interaction.nodeId,
-          context: {
-            surfaceId: surface.id,
-            nodeId: interaction.nodeId,
-            trigger: interaction.trigger,
-          },
+          trigger: interaction.trigger,
         },
-      )
+      })
     }
     else {
       primaryTargets.set(triggerKey, index)
     }
-    interaction.validate?.fieldIds?.forEach((nodeId, fieldIndex) => requireNode(nodeId, [...base, 'validate', 'fieldIds', fieldIndex], 'field'))
+    interaction.validate?.fieldIds?.forEach((nodeId, fieldIndex) => requireNode(nodeId, [...base, 'validate', 'fieldIds', fieldIndex], 'field'),
+    )
     if (interaction.action.kind === 'navigate' || interaction.action.kind === 'open') {
       interaction.action.parameters.forEach((binding, bindingIndex) => {
         validateExpressionScopes(
           binding.value,
-          new Set(interaction.trigger === 'rowActivate' || interaction.trigger === 'itemActivate'
-            ? ['values', 'parameters', 'item']
-            : ['values', 'parameters']),
+          new Set(
+            interaction.trigger === 'rowActivate' || interaction.trigger === 'itemActivate'
+              ? ['values', 'parameters', 'item']
+              : ['values', 'parameters'],
+          ),
           context,
           [...base, 'action', 'parameters', bindingIndex, 'value'],
           surface.id,
           interaction.id,
         )
       })
-      reportDuplicateValues(interaction.action.parameters, binding => binding.name, context, [...base, 'action', 'parameters'], 'parameter binding')
+      reportDuplicateValues(
+        interaction.action.parameters,
+        binding => binding.name,
+        context,
+        [...base, 'action', 'parameters'],
+        'parameter binding',
+      )
     }
     if (interaction.action.kind === 'open') {
-      reportDuplicateValues(interaction.action.onResults ?? [], binding => binding.resultName, context, [...base, 'action', 'onResults'], 'result binding')
+      reportDuplicateValues(
+        interaction.action.onResults ?? [],
+        binding => binding.resultName,
+        context,
+        [...base, 'action', 'onResults'],
+        'result binding',
+      )
       interaction.action.onResults?.forEach((binding, resultIndex) => {
         binding.assignments.forEach((assignment, assignmentIndex) => {
-          requireNode(assignment.targetFieldId, [...base, 'action', 'onResults', resultIndex, 'assignments', assignmentIndex, 'targetFieldId'], 'field')
+          requireNode(
+            assignment.targetFieldId,
+            [...base, 'action', 'onResults', resultIndex, 'assignments', assignmentIndex, 'targetFieldId'],
+            'field',
+          )
           validateExpressionScopes(
             assignment.value,
             new Set(['values', 'parameters', 'result']),
@@ -1051,7 +1163,14 @@ function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.Refi
     }
     if (interaction.action.kind === 'closeCurrent' && interaction.action.result) {
       const result = interaction.action.result
-      validateExpressionScopes(result.value, new Set(['values', 'parameters']), context, [...base, 'action', 'result', 'value'], surface.id, interaction.id)
+      validateExpressionScopes(
+        result.value,
+        new Set(['values', 'parameters']),
+        context,
+        [...base, 'action', 'result', 'value'],
+        surface.id,
+        interaction.id,
+      )
       if (!surface.outputs.some(output => output.name === result.name))
         issue(context, `Surface output is not declared: ${result.name}.`, [...base, 'action', 'result', 'name'])
     }
@@ -1059,8 +1178,22 @@ function validateSurfaceLocalInvariants(surface: ProjectSurface, context: z.Refi
 }
 
 function validateProjectDocumentInvariants(document: ProjectDocument, context: z.RefinementCtx): void {
-  validateOrderMapBijection(document.surfaceOrder, document.surfacesById, context, 'surfaceOrder', 'surfacesById', false)
-  validateOrderMapBijection(document.datasetOrder, document.datasetsById, context, 'datasetOrder', 'datasetsById', false)
+  validateOrderMapBijection(
+    document.surfaceOrder,
+    document.surfacesById,
+    context,
+    'surfaceOrder',
+    'surfacesById',
+    false,
+  )
+  validateOrderMapBijection(
+    document.datasetOrder,
+    document.datasetsById,
+    context,
+    'datasetOrder',
+    'datasetsById',
+    false,
+  )
   Object.entries(document.resources).forEach(([key, resource]) => {
     if (key !== resource.id)
       issue(context, `Resource map key must equal resource id: ${key} != ${resource.id}.`, ['resources', key, 'id'])
@@ -1194,18 +1327,33 @@ function validateSurfaceProjectReferences(
     }
     const definitions = new Map(target.parameters.map(parameter => [parameter.name, parameter]))
     action.parameters.forEach((binding, bindingIndex) => {
-      if (!definitions.has(binding.name))
-        issue(context, `Target parameter is not declared: ${binding.name}.`, [...base, 'parameters', bindingIndex, 'name'])
+      if (!definitions.has(binding.name)) {
+        issue(context, `Target parameter is not declared: ${binding.name}.`, [
+          ...base,
+          'parameters',
+          bindingIndex,
+          'name',
+        ])
+      }
     })
     definitions.forEach((definition, name) => {
-      if (definition.required && definition.defaultValue === undefined && !action.parameters.some(binding => binding.name === name))
+      if (
+        definition.required && definition.defaultValue === undefined && !action.parameters.some(binding => binding.name === name)
+      ) {
         issue(context, `Required target parameter is not bound: ${name}.`, [...base, 'parameters'])
+      }
     })
     if (action.kind === 'open') {
       const outputs = new Set(target.outputs.map(output => output.name))
       action.onResults?.forEach((binding, resultIndex) => {
-        if (!outputs.has(binding.resultName))
-          issue(context, `Target result is not declared: ${binding.resultName}.`, [...base, 'onResults', resultIndex, 'resultName'])
+        if (!outputs.has(binding.resultName)) {
+          issue(context, `Target result is not declared: ${binding.resultName}.`, [
+            ...base,
+            'onResults',
+            resultIndex,
+            'resultName',
+          ])
+        }
       })
     }
   })
@@ -1222,16 +1370,11 @@ function validateExpressionScopes(
   const visit = (node: SafeExpressionNode, nodePath: Array<string | number>): void => {
     if (node.kind === 'reference') {
       if (!allowed.has(node.scope)) {
-        issue(
-          context,
-          `Expression scope is not available here: ${node.scope}.`,
-          [...nodePath, 'scope'],
-          {
-            code: 'interaction_expression_invalid',
-            surfaceId,
-            context: { surfaceId, ruleId, location: nodePath },
-          },
-        )
+        issue(context, `Expression scope is not available here: ${node.scope}.`, [...nodePath, 'scope'], {
+          code: 'interaction_expression_invalid',
+          surfaceId,
+          context: { surfaceId, ruleId, location: nodePath },
+        })
       }
       return
     }
@@ -1335,12 +1478,7 @@ function getFrozenProjectDocumentContentHash(document: ProjectDocument | Readonl
   const cached = immutableProjectDocumentHashCache.get(document)
   if (cached !== undefined)
     return cached
-  const transient = new Set<object>([
-    document,
-    document.surfacesById,
-    document.datasetsById,
-    document.resources,
-  ])
+  const transient = new Set<object>([document, document.surfacesById, document.datasetsById, document.resources])
   Object.values(document.surfacesById).forEach((surface) => {
     transient.add(surface)
     transient.add(surface.graph)
@@ -1388,13 +1526,11 @@ function deepFreeze<T>(value: T): DeepReadonly<T> {
   return immutable as DeepReadonly<T>
 }
 
-function projectIssueToDiagnostic(
-  issueValue: z.ZodIssue,
-  input: unknown,
-): ModelDiagnostic {
-  const metadata = issueValue.code === z.ZodIssueCode.custom
-    ? issueValue.params?.modelDiagnostic as ProjectIssueDiagnosticMetadata | undefined
-    : undefined
+function projectIssueToDiagnostic(issueValue: z.ZodIssue, input: unknown): ModelDiagnostic {
+  const metadata
+    = issueValue.code === z.ZodIssueCode.custom
+      ? (issueValue.params?.modelDiagnostic as ProjectIssueDiagnosticMetadata | undefined)
+      : undefined
   const first = issueValue.path[0]
   const second = issueValue.path[1]
   const projectId = isRecord(input) && typeof input.id === 'string' ? input.id : undefined
@@ -1441,11 +1577,7 @@ function projectIssueToDiagnostic(
   }
 }
 
-function readVersionDiagnostic(
-  input: unknown,
-  contract: string,
-  expected: number,
-): ModelDiagnostic | undefined {
+function readVersionDiagnostic(input: unknown, contract: string, expected: number): ModelDiagnostic | undefined {
   const received = isRecord(input) ? input.version : undefined
   if (received === expected)
     return undefined
@@ -1546,11 +1678,10 @@ function findReferenceCycle(value: unknown): Array<string | number> | undefined 
   const ancestors = new WeakSet<object>()
   const completed = new WeakSet<object>()
   const path: Array<string | number> = []
-  const entriesOf = (candidate: object): ReadonlyArray<readonly [string | number, unknown]> => (
+  const entriesOf = (candidate: object): ReadonlyArray<readonly [string | number, unknown]> =>
     Array.isArray(candidate)
       ? candidate.map((item, index) => [index, item] as const)
       : Object.entries(candidate)
-  )
   const pending: VisitFrame[] = [{ value, entries: entriesOf(value), index: 0, pathLength: 0 }]
   ancestors.add(value)
 

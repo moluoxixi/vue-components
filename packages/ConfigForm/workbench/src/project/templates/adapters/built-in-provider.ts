@@ -1,10 +1,6 @@
 import type { ProjectSurface } from '@moluoxixi/config-form-model'
-import type {
-  BuiltInSeedDefinition,
-  ProjectTemplateSeed,
-  TemplateCatalogProvider,
-} from '../types'
-import { createBlankGraph, createProfileGraph } from './create-seed-graph'
+import type { BuiltInSeedDefinition, ProjectTemplateSeed, TemplateCatalogProvider } from '../types'
+import { createBlankGraph, createProfileGraph, createTaskGraph } from './create-seed-graph'
 
 function deepFreeze<T>(value: T): Readonly<T> {
   if (!value || typeof value !== 'object' || Object.isFrozen(value))
@@ -16,8 +12,10 @@ function deepFreeze<T>(value: T): Readonly<T> {
 function createSeed(definition: BuiltInSeedDefinition): ProjectTemplateSeed {
   const base = {
     id: 'template-page',
-    name: definition.category === 'blank' ? 'Blank form' : 'Profile form',
-    graph: definition.category === 'blank' ? createBlankGraph() : createProfileGraph(definition.adapter),
+    name: definition.task ? `${definition.task} form` : definition.category === 'blank' ? 'Blank form' : 'Profile form',
+    graph: definition.task
+      ? createTaskGraph(definition.adapter, definition.task)
+      : definition.category === 'blank' ? createBlankGraph() : createProfileGraph(definition.adapter),
     parameters: [],
     outputs: [],
     interactions: [],
@@ -153,6 +151,23 @@ const BUILT_IN_TEMPLATE_SEEDS = deepFreeze([
     order: 46,
     tags: ['Ant Design Vue', 'drawer', 'overlay'],
   }),
+  ...(['element-plus', 'antd-vue'] as const).flatMap((adapter, index) =>
+    (['approval', 'survey'] as const).map((task, taskIndex) =>
+      createSeed({
+        adapter,
+        category: 'starter',
+        task,
+        description:
+          task === 'approval'
+            ? 'A request form with required fields, amount limits and contextual help.'
+            : 'A feedback form with rating, optional email and validation.',
+        displayName: `${adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue'} ${task} form`,
+        id: `${adapter === 'element-plus' ? 'element' : 'antd'}-${task}`,
+        order: 50 + index * 10 + taskIndex,
+        tags: [task, 'task', 'validation', 'responsive', 'starter'],
+      }),
+    ),
+  ),
 ] satisfies ProjectTemplateSeed[])
 
 export function getBuiltInTemplateSeed(id: string): ProjectTemplateSeed | undefined {

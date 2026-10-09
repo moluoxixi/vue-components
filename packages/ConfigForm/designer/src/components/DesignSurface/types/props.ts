@@ -7,6 +7,7 @@ import type {
   SurfaceGraph,
 } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
+import type { DesignerExpressionEvaluator } from '../../../expression'
 import type { DesignerLocaleOptions } from '../../../locale'
 import type { DesignerRegistry } from '../../../registry'
 import type { DesignerInteractionSurfaceOption } from '../../DesignerPropertyPanel/types'
@@ -14,6 +15,7 @@ import type { DesignerCommandControl, DesignerHistoryControl } from './domain'
 
 export interface DesignSurfaceProps {
   commandHint?: Component
+  expressionEvaluator?: DesignerExpressionEvaluator
   commandControl: DesignerCommandControl
   componentRegistry: ComponentContractRegistry
   datasets?: readonly DeepReadonly<ProjectDataset>[]

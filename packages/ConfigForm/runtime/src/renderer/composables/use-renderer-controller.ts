@@ -7,6 +7,7 @@ import type {
   ConfigFormMeta,
   ConfigFormNode,
   ConfigFormReactionProjection,
+  ConfigFormValidationIssue,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
@@ -44,6 +45,7 @@ export function useRendererController<TValues extends ConfigFormValues>(
   let writingModel = false
   let observedValues: TValues | undefined
   const errors = shallowRef<ConfigFormErrors>({})
+  const issues = shallowRef<readonly ConfigFormValidationIssue[]>([])
   const meta = shallowRef<ConfigFormMeta>({ dirty: false, fields: {}, touched: false })
   const validatingRevision = shallowRef(0)
   let observedScopes = new Map<string, ConfigFormScopePath>()
@@ -86,6 +88,9 @@ export function useRendererController<TValues extends ConfigFormValues>(
       emit('errorsChange', formErrors)
     },
     onFieldChange: payload => emit('fieldChange', payload),
+    onIssuesChange: (nextIssues) => {
+      issues.value = nextIssues
+    },
     onLifecycle: options.onLifecycle,
     onMetaChange: updateMeta,
     onSubmit: values => emit('submit', values),
@@ -99,44 +104,62 @@ export function useRendererController<TValues extends ConfigFormValues>(
   meta.value = controller.getMeta()
   observedScopes = readScopes()
 
-  watch(model, () => {
-    if (writingModel)
-      return
-    const previousValues = observedValues ?? controller.getValues()
-    controller.clearValidate()
-    controller.refreshReactions()
-    reconcileScopes()
-    const currentValues = controller.getValues()
-    observedValues = currentValues
-    void controller.runLifecycle('form.valuesChange', {
-      previousValues,
-      values: currentValues,
-    })
-  }, { deep: true, flush: 'sync' })
+  watch(
+    model,
+    () => {
+      if (writingModel)
+        return
+      const previousValues = observedValues ?? controller.getValues()
+      controller.clearValidate()
+      controller.refreshReactions()
+      reconcileScopes()
+      const currentValues = controller.getValues()
+      observedValues = currentValues
+      void controller.runLifecycle('form.valuesChange', {
+        previousValues,
+        values: currentValues,
+      })
+    },
+    { deep: true, flush: 'sync' },
+  )
 
-  watch([() => props.plan?.valueSchema, () => props.fields], () => {
-    controller.updateValueSchema(props.plan?.valueSchema)
-    controller.refreshReactions()
-    reconcileScopes()
-    observedValues = controller.getValues()
-  }, { deep: true, flush: 'sync' })
+  watch(
+    [() => props.plan?.valueSchema, () => props.fields],
+    () => {
+      controller.updateValueSchema(props.plan?.valueSchema)
+      controller.refreshReactions()
+      reconcileScopes()
+      observedValues = controller.getValues()
+    },
+    { deep: true, flush: 'sync' },
+  )
   const validationStateKey = computed(() => {
     const states = projection()?.states ?? {}
-    return JSON.stringify(Object.keys(states).sort().map(field => [
-      field,
-      Object.entries(states[field] ?? {}).sort(([left], [right]) => left.localeCompare(right)),
-    ]))
+    return JSON.stringify(
+      Object.keys(states).sort().map(field => [
+        field,
+        Object.entries(states[field] ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+      ]),
+    )
   })
-  watch([() => props.readonly, validationStateKey], () => {
-    controller.clearValidate()
-    controller.refreshReactions()
-  }, { deep: true, flush: 'sync' })
+  watch(
+    [() => props.readonly, validationStateKey],
+    () => {
+      controller.clearValidate()
+      controller.refreshReactions()
+    },
+    { deep: true, flush: 'sync' },
+  )
   onBeforeUnmount(() => controller.clearValidate())
 
-  watch(() => projection()?.validate, (fields) => {
-    for (const field of fields ?? [])
-      void controller.validateField(field)
-  }, { deep: true })
+  watch(
+    () => projection()?.validate,
+    (fields) => {
+      for (const field of fields ?? [])
+        void controller.validateField(field)
+    },
+    { deep: true },
+  )
 
   function resolveReactionProps(field: string): ConfigFormAttrs {
     return {
@@ -179,10 +202,7 @@ export function useRendererController<TValues extends ConfigFormValues>(
     }
   }
 
-  function resolveInstanceReactionState(
-    address: { nodeId: string, scope: ConfigFormScopePath },
-    field: string,
-  ) {
+  function resolveInstanceReactionState(address: { nodeId: string, scope: ConfigFormScopePath }, field: string) {
     return {
       ...controller.getInstanceReactionState(address),
       ...resolveInstanceProjection(projection()?.states, address, field),
@@ -192,8 +212,12 @@ export function useRendererController<TValues extends ConfigFormValues>(
   function readScopes(): Map<string, ConfigFormScopePath> {
     const scopes = new Map<string, ConfigFormScopePath>()
     controller.listFieldInstances().forEach(({ address }) => {
-      if (address.scope.length > 0)
-        scopes.set(JSON.stringify(address.scope), address.scope.map(entry => ({ ...entry })))
+      if (address.scope.length > 0) {
+        scopes.set(
+          JSON.stringify(address.scope),
+          address.scope.map(entry => ({ ...entry })),
+        )
+      }
     })
     return scopes
   }
@@ -210,6 +234,10 @@ export function useRendererController<TValues extends ConfigFormValues>(
   return {
     ...controller,
     errors,
+    getIssues: () => {
+      void issues.value
+      return controller.getIssues()
+    },
     getInstanceErrors: (address) => {
       // Headless snapshots stay framework-neutral; subscribe at the Vue boundary.
       void errors.value
@@ -243,7 +271,8 @@ export function useRendererController<TValues extends ConfigFormValues>(
 function equalMeta(left: ConfigFormMeta, right: ConfigFormMeta): boolean {
   const leftFields = Object.keys(left.fields)
   const rightFields = Object.keys(right.fields)
-  return left.dirty === right.dirty
+  return (
+    left.dirty === right.dirty
     && left.touched === right.touched
     && leftFields.length === rightFields.length
     && leftFields.every((field) => {
@@ -252,4 +281,5 @@ function equalMeta(left: ConfigFormMeta, right: ConfigFormMeta): boolean {
       return leftMeta?.dirty === rightMeta?.dirty
         && leftMeta?.touched === rightMeta?.touched
     })
+  )
 }

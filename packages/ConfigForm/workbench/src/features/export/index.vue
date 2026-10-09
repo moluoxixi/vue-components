@@ -23,12 +23,16 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import {
   createExportSession,
   downloadProjectTransfer,
-  downloadSurfaceTransfer,
-  downloadStructuredSourceArchive,
   downloadSourceFile,
+  downloadStructuredSourceArchive,
+  downloadSurfaceTransfer,
   resolveExportSnapshotPath,
 } from '../../project'
-import { projectStructuredSourceFiles, projectStructuredSourcePath, sourceSurfaceDirectory } from '../../project/export'
+import {
+  projectStructuredSourceFiles,
+  projectStructuredSourcePath,
+  sourceSurfaceDirectory,
+} from '../../project/export'
 import { createSourceWorkspaceArchiveInput } from './services'
 import '@moluoxixi/config-form-source/viewer/style'
 
@@ -49,7 +53,7 @@ const styleTargetOptions = computed(
     [
       { label: locale.value.t('export.style.css', 'CSS'), value: 'css' },
       { label: locale.value.t('export.style.tailwind', 'Tailwind v4'), value: 'tailwind-v4' },
-    ] satisfies { label: string; value: SourceStyleTarget }[],
+    ] satisfies { label: string, value: SourceStyleTarget }[],
 )
 let pinnedInput: BuildExportSnapshotInput | undefined
 let captureOverride: BuildExportSnapshotInput | undefined
@@ -65,13 +69,25 @@ const exportSession = createExportSession({
 const sessionState = shallowRef<ExportSessionState>(exportSession.state)
 const unsubscribeSession = exportSession.subscribe(state => (sessionState.value = state))
 const snapshot = computed(() => sessionState.value.snapshot)
+watch(
+  sessionState,
+  (state) => {
+    const artifacts = state.snapshot ? [state.snapshot.rawSource, state.snapshot.configBindings] : []
+    emit('diagnostics', [
+      ...artifacts.flatMap(artifact => (artifact.status === 'failed' ? artifact.diagnostics : [])),
+      ...(state.error ? [{ code: 'EXPORT_FAILED', message: state.error }] : []),
+    ])
+  },
+  { immediate: true },
+)
 const activeSnapshot = computed(() => (snapshot.value?.styleTarget === styleTarget.value ? snapshot.value : undefined))
 const snapshotStale = computed(() => sessionState.value.stale)
 const activeArtifact = computed(() =>
   props.mode === 'config' ? activeSnapshot.value?.configBindings : activeSnapshot.value?.rawSource,
 )
 const snapshotError = computed(() => {
-  if (sessionState.value.error) return sessionState.value.error
+  if (sessionState.value.error)
+    return sessionState.value.error
   const artifact = activeArtifact.value
   return artifact?.status === 'failed'
     ? artifact.diagnostics.map(item => `${item.code}: ${item.message}`).join('; ')
@@ -83,7 +99,8 @@ const activeFileSet = computed<SourceFileSetV1 | undefined>(() =>
 const structuredFileSet = computed<SourceFileSetV1 | undefined>(() => {
   const fileSet = activeFileSet.value
   const current = snapshot.value
-  if (!fileSet || !current) return undefined
+  if (!fileSet || !current)
+    return undefined
   const suffix = props.mode === 'config' ? 'config-form-bindings' : 'vue-source'
   const input: StructuredSourceArchiveInput = {
     name: `${current.compilation.ir.name}-${suffix}`,
@@ -104,7 +121,8 @@ const generatedFileCount = computed(() => structuredFileSet.value?.files.length 
 const selectedPath = computed({
   get: () => (props.mode === 'config' ? bindingSelectedPath.value : rawSelectedPath.value),
   set: (path: string) => {
-    if (props.mode === 'config') bindingSelectedPath.value = path
+    if (props.mode === 'config')
+      bindingSelectedPath.value = path
     else rawSelectedPath.value = path
   },
 })
@@ -115,20 +133,21 @@ const exportText = computed(() => (selectedFile.value?.kind === 'text' ? selecte
 const selectedLineCount = computed(() => exportText.value?.trimEnd().split('\n').length ?? 0)
 
 function resolveStructuredSelection(fileSet: SourceFileSetV1, preferred: string): string {
-  const directory =
-    props.surfaceId && snapshot.value
+  const directory
+    = props.surfaceId && snapshot.value
       ? sourceSurfaceDirectory(fileSet.files, props.surfaceId, snapshot.value.compilation.ir.surfaceOrder)
       : undefined
   const pagePath = directory ? `src/surfaces/${directory}/Surface.vue` : undefined
-  const sourcePreferred =
-    fileSet.files.find(file => projectStructuredSourcePath(file.path) === preferred)?.path ?? pagePath
+  const sourcePreferred
+    = fileSet.files.find(file => projectStructuredSourcePath(file.path) === preferred)?.path ?? pagePath
   const resolved = resolveExportSnapshotPath(fileSet, sourcePreferred) ?? fileSet.entry
   return projectStructuredSourcePath(resolved)
 }
 
 const snapshotEditVersion = computed(() => {
   const origin = snapshot.value?.compilation.origin
-  if (!origin) return '-'
+  if (!origin)
+    return '-'
   return origin.kind === 'committed' ? origin.editVersion : origin.baseEditVersion
 })
 const workspaceTitle = computed(() =>
@@ -144,7 +163,8 @@ async function chooseDownload(command: string): Promise<void> {
   }
   const current = snapshot.value
   const reader = pinnedInput?.resourceReader
-  if (actionsBusy.value || !current || !reader || (command !== 'surface-json' && command !== 'project-json')) return
+  if (actionsBusy.value || !current || !reader || (command !== 'surface-json' && command !== 'project-json'))
+    return
   downloading.value = true
   try {
     const readEmbedded = async (request: Parameters<typeof reader.readEmbedded>[0]) => {
@@ -152,18 +172,21 @@ async function chooseDownload(command: string): Promise<void> {
       return result.success ? result.data : undefined
     }
     const input = { document: current.compilation.snapshot.document, readEmbedded }
-    if (command === 'surface-json' && !props.surfaceId) return
-    const filename =
-      command === 'project-json'
+    if (command === 'surface-json' && !props.surfaceId)
+      return
+    const filename
+      = command === 'project-json'
         ? await downloadProjectTransfer(input)
         : await downloadSurfaceTransfer({ ...input, surfaceId: props.surfaceId! })
     emit('notice', {
       message: locale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
       tone: 'success',
     })
-  } catch (error) {
+  }
+  catch (error) {
     emit('notice', { message: error instanceof Error ? error.message : String(error), tone: 'error' })
-  } finally {
+  }
+  finally {
     downloading.value = false
   }
 }
@@ -174,9 +197,11 @@ watch(
 )
 watch(
   () => props.mode,
-  mode => {
-    if (!mode) return
-    if (!snapshot.value) void refreshSnapshot()
+  (mode) => {
+    if (!mode)
+      return
+    if (!snapshot.value)
+      void refreshSnapshot()
     else exportSession.sync()
   },
   { immediate: true },
@@ -185,14 +210,17 @@ watch(
 onBeforeUnmount(unsubscribeSession)
 
 async function refreshSnapshot(preservePinnedInput = false): Promise<void> {
-  if (actionsBusy.value) return
+  if (actionsBusy.value)
+    return
   refreshing.value = true
   captureOverride = preservePinnedInput ? pinnedInput : undefined
   lastCapturedInput = undefined
   try {
     const result = await exportSession.refresh()
-    if (!result.success) return
-    if (lastCapturedInput) pinnedInput = lastCapturedInput
+    if (!result.success)
+      return
+    if (lastCapturedInput)
+      pinnedInput = lastCapturedInput
     if (result.snapshot.rawSource.status === 'ready') {
       const rawSource = result.snapshot.rawSource.fileSet
       rawSelectedPath.value = resolveStructuredSelection(rawSource, rawSelectedPath.value)
@@ -201,20 +229,23 @@ async function refreshSnapshot(preservePinnedInput = false): Promise<void> {
       const configBindings = result.snapshot.configBindings.fileSet
       bindingSelectedPath.value = resolveStructuredSelection(configBindings, bindingSelectedPath.value)
     }
-  } finally {
+  }
+  finally {
     captureOverride = undefined
     refreshing.value = false
   }
 }
 
 function setStyleTarget(value: unknown): void {
-  if ((value !== 'css' && value !== 'tailwind-v4') || value === styleTarget.value) return
+  if ((value !== 'css' && value !== 'tailwind-v4') || value === styleTarget.value)
+    return
   styleTarget.value = value
   void refreshSnapshot(true)
 }
 
 async function copyExport(): Promise<void> {
-  if (actionsBusy.value) return
+  if (actionsBusy.value)
+    return
   copying.value = true
   try {
     if (!navigator.clipboard)
@@ -223,20 +254,24 @@ async function copyExport(): Promise<void> {
       throw new Error(locale.value.t('export.binaryCopyUnavailable', 'Binary files cannot be copied as text.'))
     await navigator.clipboard.writeText(exportText.value)
     emit('notice', { message: locale.value.t('export.copied', 'Copied export to clipboard'), tone: 'success' })
-  } catch (error) {
+  }
+  catch (error) {
     emit('notice', {
       message: error instanceof Error ? error.message : locale.value.t('export.unableCopy', 'Unable to copy export.'),
       tone: 'error',
     })
-  } finally {
+  }
+  finally {
     copying.value = false
   }
 }
 
 function downloadCurrent(): void {
-  if (actionsBusy.value) return
+  if (actionsBusy.value)
+    return
   const file = selectedFile.value
-  if (!file) return
+  if (!file)
+    return
   downloadSourceFile({
     file,
     filename: file.path.split('/').at(-1) ?? 'source.txt',
@@ -251,11 +286,13 @@ function downloadCurrent(): void {
 }
 
 async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise<void> {
-  if (actionsBusy.value) return
+  if (actionsBusy.value)
+    return
   const fileSet = activeFileSet.value
   const current = snapshot.value
   const captured = pinnedInput
-  if (!fileSet || !current || !captured || !props.mode) return
+  if (!fileSet || !current || !captured || !props.mode)
+    return
   downloading.value = true
   try {
     const archiveInput = await createSourceWorkspaceArchiveInput({
@@ -270,9 +307,11 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
       message: locale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }),
       tone: 'success',
     })
-  } catch (error) {
+  }
+  catch (error) {
     emit('notice', { message: error instanceof Error ? error.message : String(error), tone: 'error' })
-  } finally {
+  }
+  finally {
     downloading.value = false
   }
 }
@@ -284,7 +323,9 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
       <div class="source-workspace__identity">
         <span class="source-workspace__mark text-wb-accent-text"><Code2 :size="20" aria-hidden="true" /></span>
         <div class="source-workspace__heading-copy">
-          <h2 class="m-0 text-[16px] text-wb-text-strong">{{ workspaceTitle }}</h2>
+          <h2 class="m-0 text-[16px] text-wb-text-strong">
+            {{ workspaceTitle }}
+          </h2>
           <span class="source-workspace__project" :title="projectName">
             <FolderTree :size="12" aria-hidden="true" />
             <span>{{ projectName || locale.t('projects.untitled', 'Untitled project') }}</span>
@@ -348,21 +389,15 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             </ElButton>
             <template #dropdown>
               <ElDropdownMenu class="source-export-menu">
-                <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId"
-                  ><Code2 :size="15" aria-hidden="true" />{{
-                    locale.t('export.surfaceSource', 'Page source')
-                  }}</ElDropdownItem
-                >
-                <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId"
-                  ><FileJson2 :size="15" aria-hidden="true" />{{
-                    locale.t('export.surfaceJson', 'Page JSON')
-                  }}</ElDropdownItem
-                >
-                <ElDropdownItem command="project-json" :disabled="!snapshot" divided
-                  ><Layers :size="15" aria-hidden="true" />{{
-                    locale.t('export.projectJson', 'Project JSON')
-                  }}</ElDropdownItem
-                >
+                <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId">
+                  <Code2 :size="15" aria-hidden="true" />{{ locale.t('export.surfaceSource', 'Page source') }}
+                </ElDropdownItem>
+                <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId">
+                  <FileJson2 :size="15" aria-hidden="true" />{{ locale.t('export.surfaceJson', 'Page JSON') }}
+                </ElDropdownItem>
+                <ElDropdownItem command="project-json" :disabled="!snapshot" divided>
+                  <Layers :size="15" aria-hidden="true" />{{ locale.t('export.projectJson', 'Project JSON') }}
+                </ElDropdownItem>
               </ElDropdownMenu>
             </template>
           </ElDropdown>
@@ -379,7 +414,7 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
           { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
         ]"
         :disabled="actionsBusy"
-        @update:model-value="value => (value === 'source' || value === 'config') && emit('update:mode', value)"
+        @update:model-value="(value) => (value === 'source' || value === 'config') && emit('update:mode', value)"
       >
         <template #default="{ item }">
           <span class="source-workspace__mode-label">
@@ -535,8 +570,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             : snapshotStale
               ? locale.t('export.stale', 'Stale')
               : locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', {
-                  revision: snapshotEditVersion,
-                })
+                revision: snapshotEditVersion,
+              })
         }}</span>
       </span>
       <span class="source-workspace__file-meta">
@@ -544,9 +579,7 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
           locale.t('export.lineCount', '{count} lines', { count: selectedLineCount })
         }}</span>
         <span>UTF-8</span>
-        <span class="source-workspace__readonly"
-          ><LockKeyhole :size="10" aria-hidden="true" />{{ locale.t('export.readOnly', 'Read only') }}</span
-        >
+        <span class="source-workspace__readonly"><LockKeyhole :size="10" aria-hidden="true" />{{ locale.t('export.readOnly', 'Read only') }}</span>
       </span>
     </footer>
   </section>

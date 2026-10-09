@@ -1,12 +1,8 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type {
-  ConfigFormRendererEmits,
-  ConfigFormRendererExpose,
-  ConfigFormRendererProps,
-} from './types'
+import type { ConfigFormRendererEmits, ConfigFormRendererExpose, ConfigFormRendererProps } from './types'
 import type { RendererControllerState } from './types/internal'
-import { computed, defineComponent, useAttrs, useId, useTemplateRef } from 'vue'
+import { computed, defineComponent, nextTick, useAttrs, useId, useTemplateRef } from 'vue'
 import {
   useDesignInteractionGuard,
   useRendererController,
@@ -16,8 +12,8 @@ import {
 } from './composables'
 import { createRendererBindingService } from './services/binding'
 import { createComponentListenerService } from './services/component-listeners'
-import { createBem } from './services/rendering'
 import { createRendererPipeline } from './services/renderer-pipeline'
+import { createBem } from './services/rendering'
 
 defineOptions({
   name: 'ConfigFormRenderer',
@@ -31,7 +27,12 @@ const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
   defaultValueProp: 'modelValue',
   fieldSpan: 24,
   formAttrs: () => ({}),
-  gap: '16px',
+  density: 'comfortable',
+  errorSummary: false,
+  errorSummaryLabel: 'Please review the following fields',
+  focusFirstError: true,
+  loadingText: 'Loading…',
+  validatingText: 'Validating…',
   labelPosition: 'left',
   mode: 'preview',
   namespace: 'mx-config-form',
@@ -52,7 +53,36 @@ controller = useRendererController({
   onLifecycle: dataLifecycle.lifecycle,
   shouldRunLifecycle: dataLifecycle.hasLifecycle,
 })
-const { meta, model, resetFields, submit } = controller
+const { meta, model } = controller
+const resetFields = () => controller.resetFields()
+const validationIssues = computed(() => controller.getIssues())
+
+function revealInstance(instanceKey: string): void {
+  const target = Array.from(formRef.value?.querySelectorAll<HTMLElement>('[data-instance-key]') ?? []).find(
+    element => element.dataset.instanceKey === instanceKey,
+  )
+  target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  target
+    ?.querySelector<HTMLElement>(
+      'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex="0"]',
+    )
+    ?.focus({ preventScroll: true })
+}
+
+function scrollToFirstError(): void {
+  const first = controller.getIssues()[0]
+  if (first)
+    revealInstance(first.instanceKey)
+}
+
+async function submit(): Promise<boolean> {
+  const result = await controller.submit()
+  if (props.focusFirstError && controller.getIssues().length > 0) {
+    await nextTick()
+    scrollToFirstError()
+  }
+  return result
+}
 const editorBridge = useRuntimeEditorBridge({ props })
 const designGuard = useDesignInteractionGuard({
   formRef,
@@ -62,11 +92,7 @@ const componentListeners = createComponentListenerService({
   mode: () => props.mode,
 })
 const binding = createRendererBindingService(props)
-const {
-  activePresentationLayout,
-  responsiveLabelWidths,
-  responsiveLayouts,
-} = useRendererLayout(props)
+const { activePresentationLayout, responsiveLabelWidths, responsiveLayouts } = useRendererLayout(props)
 const bem = createBem(() => props.namespace)
 const renderLayout = createRendererPipeline({
   activePresentationLayout,
@@ -94,10 +120,12 @@ const ConfigFormTree = defineComponent({
   setup: () => renderLayout,
 })
 
-function scrollToField(field: keyof TValues & string | string): void {
+function scrollToField(field: (keyof TValues & string) | string): void {
   const target = Array.from(formRef.value?.querySelectorAll<HTMLElement>('[data-field]') ?? [])
-    .find(element => element.dataset.field === field)
-  target?.scrollIntoView()
+    .find(
+      element => element.dataset.field === field,
+    )
+  target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
 defineExpose<ConfigFormRendererExpose<TValues>>({
@@ -129,13 +157,14 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
   removeRow: controller.removeRow,
   resetFields: controller.resetFields,
   scrollToField,
+  scrollToFirstError,
   setErrors: controller.setErrors,
   setInstanceTouched: controller.setInstanceTouched,
   setInstanceValue: controller.setInstanceValue,
   setTouched: controller.setTouched,
   setValue: controller.setValue,
   setValues: controller.setValues,
-  submit: controller.submit,
+  submit,
   validate: controller.validate,
   validateField: controller.validateField,
   validateInstance: controller.validateInstance,
@@ -148,10 +177,26 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
     v-bind="formAttrs"
     data-config-form-responsive-root
     :data-config-form-mode="mode"
+    :data-config-form-density="density"
     :data-dirty="meta.dirty"
     :data-touched="meta.touched"
     @submit.prevent="submit"
   >
+    <section
+      v-if="errorSummary && validationIssues.length && mode !== 'design'"
+      data-config-form-error-summary
+      role="region"
+      :aria-label="errorSummaryLabel"
+    >
+      <strong>{{ errorSummaryLabel }} ({{ validationIssues.length }})</strong>
+      <ul>
+        <li v-for="(issue, index) in validationIssues" :key="`${issue.instanceKey}:${issue.code}:${index}`">
+          <button type="button" @click="revealInstance(issue.instanceKey)">
+            <span>{{ issue.valuePath.join('.') }}</span> · {{ issue.message }}
+          </button>
+        </li>
+      </ul>
+    </section>
     <ConfigFormTree />
 
     <slot
@@ -160,11 +205,16 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
         model,
         submit,
         resetFields,
+        validating: controller.getValidating(),
       }"
     />
+    <div v-if="$slots.actions" data-config-form-actions :data-sticky="stickyActions || undefined">
+      <slot name="actions" v-bind="{ meta, model, submit, resetFields, validating: controller.getValidating() }" />
+    </div>
   </form>
 </template>
 
 <style lang="scss">
 @use '../styles/responsive';
+@use '../styles/formField';
 </style>

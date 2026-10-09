@@ -426,7 +426,7 @@ describe('designer safe expression editor', () => {
 
     // Element Plus renders its segmented control with radio-like items rather
     // than native buttons. Select the Advanced JSON segment through its DOM.
-    await wrapper.findAll('.el-segmented__item')[1]!.trigger('click')
+    await wrapper.findAll('.el-segmented__item').find(item => item.text() === 'Advanced JSON')!.trigger('click')
     await wrapper.vm.$nextTick()
     const draft = wrapper.get('textarea[aria-label="Safe expression JSON"]')
     await draft.setValue('{ invalid')

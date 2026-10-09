@@ -1,8 +1,4 @@
-import type {
-  ConfigFormFieldSelector,
-  ConfigFormFieldValue,
-  ConfigFormValues,
-} from '@moluoxixi/config-form-headless'
+import type { ConfigFormFieldSelector, ConfigFormFieldValue, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ShallowRef } from 'vue'
 import type { ConfigFormRendererExpose } from '../types'
 
@@ -17,16 +13,11 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
     return renderer
   }
 
-  function getValue<TField extends string>(
-    field: TField,
-  ): ConfigFormFieldValue<TValues, TField> {
+  function getValue<TField extends string>(field: TField): ConfigFormFieldValue<TValues, TField> {
     return readRenderer().getValue(field)
   }
 
-  function setValue<TField extends string>(
-    field: TField,
-    value: ConfigFormFieldValue<TValues, NoInfer<TField>>,
-  ): void {
+  function setValue<TField extends string>(field: TField, value: ConfigFormFieldValue<TValues, NoInfer<TField>>): void {
     readRenderer().setValue(field, value)
   }
 
@@ -44,10 +35,7 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
   function setTouched(): void
   function setTouched(touched: boolean): void
   function setTouched(fields: ConfigFormFieldSelector<TValues>, touched?: boolean): void
-  function setTouched(
-    fieldsOrTouched?: ConfigFormFieldSelector<TValues> | boolean,
-    touched?: boolean,
-  ): void {
+  function setTouched(fieldsOrTouched?: ConfigFormFieldSelector<TValues> | boolean, touched?: boolean): void {
     if (fieldsOrTouched === undefined)
       readRenderer().setTouched()
     else if (typeof fieldsOrTouched === 'boolean')
@@ -85,6 +73,7 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
     removeRow: (scopeId, rowId, parentScope) => readRenderer().removeRow(scopeId, rowId, parentScope),
     resetFields: fields => readRenderer().resetFields(fields),
     scrollToField: field => readRenderer().scrollToField(field),
+    scrollToFirstError: () => readRenderer().scrollToFirstError(),
     setErrors: errors => readRenderer().setErrors(errors),
     setInstanceTouched: (address, touched) => readRenderer().setInstanceTouched(address, touched),
     setInstanceValue: (address, value) => readRenderer().setInstanceValue(address, value),

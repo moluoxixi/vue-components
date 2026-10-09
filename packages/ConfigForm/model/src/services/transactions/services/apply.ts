@@ -42,10 +42,7 @@ import {
   validateRegistryLock,
   validateTrustedIncrementalTransaction,
 } from '../validation'
-import {
-  isValidatedProjectDocument,
-  publishProjectTransactionSuccess,
-} from './publication'
+import { isValidatedProjectDocument, publishProjectTransactionSuccess } from './publication'
 
 const projectDocumentImmer = new Immer({ autoFreeze: false })
 
@@ -93,8 +90,13 @@ function applyProjectChange(
   options: ApplyProjectTransactionOptions,
   validateDocument: boolean,
 ): ProjectTransactionResult {
-  if (!transaction.id.trim() || !transaction.label.trim())
-    return failure(document, 'PROJECT_TRANSACTION_IDENTITY_INVALID', 'Transactions require non-empty id and label values.')
+  if (!transaction.id.trim() || !transaction.label.trim()) {
+    return failure(
+      document,
+      'PROJECT_TRANSACTION_IDENTITY_INVALID',
+      'Transactions require non-empty id and label values.',
+    )
+  }
   if (transaction.operations.length === 0)
     return failure(document, 'PROJECT_TRANSACTION_EMPTY', 'Transactions must contain at least one operation.')
   if (options.registry) {
@@ -193,7 +195,11 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
     }
     case 'surface.add':
     case 'surface.copy': {
-      const surface = parseValue(projectSurfaceSchema.safeParse(operation.surface), 'PROJECT_SURFACE_INVALID', 'Surface is invalid.')
+      const surface = parseValue(
+        projectSurfaceSchema.safeParse(operation.surface),
+        'PROJECT_SURFACE_INVALID',
+        'Surface is invalid.',
+      )
       if (Object.hasOwn(document.surfacesById, surface.id))
         invalid('PROJECT_SURFACE_ID_DUPLICATE', `Surface already exists: ${surface.id}.`, surface.id)
       const index = operation.index ?? document.surfaceOrder.length
@@ -209,10 +215,10 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
     }
     case 'surface.remove': {
       const surface = requireSurface(document, operation.surfaceId)
-      const references = findProjectReferences(document).filter(reference => (
-        reference.targetKind === 'surface'
-        && reference.targetId === operation.surfaceId
-      ))
+      const references = findProjectReferences(document).filter(
+        reference => reference.targetKind === 'surface'
+          && reference.targetId === operation.surfaceId,
+      )
       if (references.length > 0) {
         invalid(
           'surface_in_use',
@@ -233,7 +239,11 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       }
       return {
         inverse: [{ type: 'surface.add', surface: clone(surface), index }],
-        change: { project: true, surfaceIds: new Set([operation.surfaceId]), nodeChanges: removedGraphChanges(surface) },
+        change: {
+          project: true,
+          surfaceIds: new Set([operation.surfaceId]),
+          nodeChanges: removedGraphChanges(surface),
+        },
       }
     }
     case 'surface.move': {
@@ -244,7 +254,10 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       document.surfaceOrder.splice(previous, 1)
       document.surfaceOrder.splice(operation.index, 0, operation.surfaceId)
-      return { inverse: [{ type: 'surface.move', surfaceId: operation.surfaceId, index: previous }], change: { project: true, surfaceIds: new Set([operation.surfaceId]) } }
+      return {
+        inverse: [{ type: 'surface.move', surfaceId: operation.surfaceId, index: previous }],
+        change: { project: true, surfaceIds: new Set([operation.surfaceId]) },
+      }
     }
     case 'surface.rename': {
       const surface = requireSurface(document, operation.surfaceId)
@@ -253,21 +266,35 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       const previous = surface.name
       surface.name = name
-      return { inverse: [{ type: 'surface.rename', surfaceId: surface.id, name: previous }], change: { surfaceIds: new Set([surface.id]) } }
+      return {
+        inverse: [{ type: 'surface.rename', surfaceId: surface.id, name: previous }],
+        change: { surfaceIds: new Set([surface.id]) },
+      }
     }
     case 'surface.route': {
       const surface = requireSurface(document, operation.surfaceId)
       if (surface.kind !== 'page')
         invalid('invalid_surface_kind', 'Only Page Surfaces own a route.', surface.id)
-      if (!operation.route.startsWith('/') || operation.route.includes('?') || operation.route.includes('#') || operation.route.includes('\\') || operation.route.length > 300)
+      if (
+        !operation.route.startsWith('/') || operation.route.includes('?') || operation.route.includes('#') || operation.route.includes('\\') || operation.route.length > 300
+      ) {
         invalid('PROJECT_SURFACE_ROUTE_INVALID', 'Page route is invalid.', surface.id)
-      if (Object.values(document.surfacesById).some(candidate => candidate.kind === 'page' && candidate.id !== surface.id && candidate.route === operation.route))
+      }
+      if (
+        Object.values(document.surfacesById).some(
+          candidate => candidate.kind === 'page' && candidate.id !== surface.id && candidate.route === operation.route,
+        )
+      ) {
         invalid('PROJECT_SURFACE_ROUTE_DUPLICATE', `Page route already exists: ${operation.route}.`, surface.id)
+      }
       if (surface.route === operation.route)
         return unchanged()
       const previous = surface.route
       surface.route = operation.route
-      return { inverse: [{ type: 'surface.route', surfaceId: surface.id, route: previous }], change: { surfaceIds: new Set([surface.id]) } }
+      return {
+        inverse: [{ type: 'surface.route', surfaceId: surface.id, route: previous }],
+        change: { surfaceIds: new Set([surface.id]) },
+      }
     }
     case 'surface.presentation': {
       const surface = requireSurface(document, operation.surfaceId)
@@ -277,7 +304,10 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       if (semanticallyEqual(previous, operation.presentation))
         return unchanged()
       surface.presentation = clone(operation.presentation) as typeof surface.presentation
-      return { inverse: [{ type: 'surface.presentation', surfaceId: surface.id, presentation: previous }], change: { surfaceIds: new Set([surface.id]) } }
+      return {
+        inverse: [{ type: 'surface.presentation', surfaceId: surface.id, presentation: previous }],
+        change: { surfaceIds: new Set([surface.id]) },
+      }
     }
     case 'surface.parameters':
       return replaceSurfaceValue(document, operation.surfaceId, 'parameters', operation.parameters, parameters => ({
@@ -292,11 +322,17 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         outputs,
       }))
     case 'surface.interactions':
-      return replaceSurfaceValue(document, operation.surfaceId, 'interactions', operation.interactions, interactions => ({
-        type: 'surface.interactions',
-        surfaceId: operation.surfaceId,
-        interactions,
-      }))
+      return replaceSurfaceValue(
+        document,
+        operation.surfaceId,
+        'interactions',
+        operation.interactions,
+        interactions => ({
+          type: 'surface.interactions',
+          surfaceId: operation.surfaceId,
+          interactions,
+        }),
+      )
     case 'project.home': {
       const target = requireSurface(document, operation.surfaceId)
       if (target.kind !== 'page')
@@ -305,10 +341,17 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       const previous = document.homeSurfaceId
       document.homeSurfaceId = target.id
-      return { inverse: [{ type: 'project.home', surfaceId: previous }], change: { project: true, surfaceIds: new Set([target.id]) } }
+      return {
+        inverse: [{ type: 'project.home', surfaceId: previous }],
+        change: { project: true, surfaceIds: new Set([target.id]) },
+      }
     }
     case 'project.settings': {
-      const value = parseValue(modelJsonObjectSchema.safeParse(operation.settings), 'PROJECT_SETTINGS_INVALID', 'Project settings are invalid.')
+      const value = parseValue(
+        modelJsonObjectSchema.safeParse(operation.settings),
+        'PROJECT_SETTINGS_INVALID',
+        'Project settings are invalid.',
+      )
       if (semanticallyEqual(document.settings, value))
         return unchanged()
       const previous = clone(document.settings)
@@ -316,7 +359,11 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       return { inverse: [{ type: 'project.settings', settings: previous }], change: { project: true } }
     }
     case 'project.theme': {
-      const value = parseValue(projectThemeSchema.safeParse(operation.theme), 'project_theme_invalid', 'Project theme is invalid.')
+      const value = parseValue(
+        projectThemeSchema.safeParse(operation.theme),
+        'project_theme_invalid',
+        'Project theme is invalid.',
+      )
       if (semanticallyEqual(document.theme, value))
         return unchanged()
       const previous = clone(document.theme)
@@ -337,24 +384,46 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       }))
     case 'dataset.add':
     case 'dataset.copy': {
-      const dataset = parseValue(projectDatasetSchema.safeParse(operation.dataset), 'PROJECT_DATASET_INVALID', 'Dataset is invalid.')
-      if (Object.hasOwn(document.datasetsById, dataset.id))
-        invalid('PROJECT_DATASET_ID_DUPLICATE', `Dataset already exists: ${dataset.id}.`, undefined, undefined, { datasetId: dataset.id })
+      const dataset = parseValue(
+        projectDatasetSchema.safeParse(operation.dataset),
+        'PROJECT_DATASET_INVALID',
+        'Dataset is invalid.',
+      )
+      if (Object.hasOwn(document.datasetsById, dataset.id)) {
+        invalid('PROJECT_DATASET_ID_DUPLICATE', `Dataset already exists: ${dataset.id}.`, undefined, undefined, {
+          datasetId: dataset.id,
+        })
+      }
       const index = operation.index ?? document.datasetOrder.length
       assertInsertIndex(index, document.datasetOrder.length, 'PROJECT_DATASET_INDEX_INVALID')
       document.datasetsById[dataset.id] = dataset
       document.datasetOrder.splice(index, 0, dataset.id)
-      return { inverse: [{ type: 'dataset.remove', datasetId: dataset.id }], change: { project: true, datasetIds: new Set([dataset.id]) } }
+      return {
+        inverse: [{ type: 'dataset.remove', datasetId: dataset.id }],
+        change: { project: true, datasetIds: new Set([dataset.id]) },
+      }
     }
     case 'dataset.remove': {
       const dataset = requireDataset(document, operation.datasetId)
-      const references = findProjectReferences(document).filter(reference => reference.targetKind === 'dataset' && reference.targetId === operation.datasetId)
-      if (references.length > 0)
-        invalid('dataset_reference_invalid', `Dataset is still referenced: ${operation.datasetId}.`, undefined, undefined, { datasetId: operation.datasetId, references })
+      const references = findProjectReferences(document).filter(
+        reference => reference.targetKind === 'dataset' && reference.targetId === operation.datasetId,
+      )
+      if (references.length > 0) {
+        invalid(
+          'dataset_reference_invalid',
+          `Dataset is still referenced: ${operation.datasetId}.`,
+          undefined,
+          undefined,
+          { datasetId: operation.datasetId, references },
+        )
+      }
       const index = document.datasetOrder.indexOf(operation.datasetId)
       document.datasetOrder.splice(index, 1)
       delete document.datasetsById[operation.datasetId]
-      return { inverse: [{ type: 'dataset.add', dataset: clone(dataset), index }], change: { project: true, datasetIds: new Set([operation.datasetId]) } }
+      return {
+        inverse: [{ type: 'dataset.add', dataset: clone(dataset), index }],
+        change: { project: true, datasetIds: new Set([operation.datasetId]) },
+      }
     }
     case 'dataset.move': {
       requireDataset(document, operation.datasetId)
@@ -364,7 +433,10 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       document.datasetOrder.splice(previous, 1)
       document.datasetOrder.splice(operation.index, 0, operation.datasetId)
-      return { inverse: [{ type: 'dataset.move', datasetId: operation.datasetId, index: previous }], change: { project: true, datasetIds: new Set([operation.datasetId]) } }
+      return {
+        inverse: [{ type: 'dataset.move', datasetId: operation.datasetId, index: previous }],
+        change: { project: true, datasetIds: new Set([operation.datasetId]) },
+      }
     }
     case 'dataset.rename': {
       const dataset = requireDataset(document, operation.datasetId)
@@ -373,33 +445,61 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       const previous = dataset.name
       dataset.name = name
-      return { inverse: [{ type: 'dataset.rename', datasetId: dataset.id, name: previous }], change: { datasetIds: new Set([dataset.id]) } }
+      return {
+        inverse: [{ type: 'dataset.rename', datasetId: dataset.id, name: previous }],
+        change: { datasetIds: new Set([dataset.id]) },
+      }
     }
     case 'dataset.replace': {
       const previous = requireDataset(document, operation.datasetId)
-      const dataset = parseValue(projectDatasetSchema.safeParse(operation.dataset), 'PROJECT_DATASET_INVALID', 'Dataset is invalid.')
-      if (dataset.id !== operation.datasetId)
-        invalid('PROJECT_DATASET_ID_CHANGE_INVALID', 'Dataset replacement cannot change its id.', undefined, undefined, { datasetId: operation.datasetId })
+      const dataset = parseValue(
+        projectDatasetSchema.safeParse(operation.dataset),
+        'PROJECT_DATASET_INVALID',
+        'Dataset is invalid.',
+      )
+      if (dataset.id !== operation.datasetId) {
+        invalid(
+          'PROJECT_DATASET_ID_CHANGE_INVALID',
+          'Dataset replacement cannot change its id.',
+          undefined,
+          undefined,
+          { datasetId: operation.datasetId },
+        )
+      }
       if (semanticallyEqual(previous, dataset))
         return unchanged()
       document.datasetsById[operation.datasetId] = dataset
-      return { inverse: [{ type: 'dataset.replace', datasetId: operation.datasetId, dataset: clone(previous) }], change: { datasetIds: new Set([operation.datasetId]) } }
+      return {
+        inverse: [{ type: 'dataset.replace', datasetId: operation.datasetId, dataset: clone(previous) }],
+        change: { datasetIds: new Set([operation.datasetId]) },
+      }
     }
     case 'dataset.replaceRows': {
       const dataset = requireDataset(document, operation.datasetId)
-      const candidate = parseValue(projectDatasetSchema.safeParse({ ...clone(dataset), rows: operation.rows }), 'dataset_rows_invalid', 'Dataset rows are invalid.')
+      const candidate = parseValue(
+        projectDatasetSchema.safeParse({ ...clone(dataset), rows: operation.rows }),
+        'dataset_rows_invalid',
+        'Dataset rows are invalid.',
+      )
       if (semanticallyEqual(dataset.rows, candidate.rows))
         return unchanged()
       const previous = clone(dataset.rows)
       dataset.rows = candidate.rows
-      return { inverse: [{ type: 'dataset.replaceRows', datasetId: dataset.id, rows: previous }], change: { datasetIds: new Set([dataset.id]) } }
+      return {
+        inverse: [{ type: 'dataset.replaceRows', datasetId: dataset.id, rows: previous }],
+        change: { datasetIds: new Set([dataset.id]) },
+      }
     }
     case 'dataset.setDefaultProjection': {
       const dataset = requireDataset(document, operation.datasetId)
-      const candidate = parseValue(projectDatasetSchema.safeParse({
-        ...clone(dataset),
-        ...(operation.projection === undefined ? {} : { defaultProjection: operation.projection }),
-      }), 'dataset_projection_invalid', 'Dataset projection is invalid.')
+      const candidate = parseValue(
+        projectDatasetSchema.safeParse({
+          ...clone(dataset),
+          ...(operation.projection === undefined ? {} : { defaultProjection: operation.projection }),
+        }),
+        'dataset_projection_invalid',
+        'Dataset projection is invalid.',
+      )
       const previous = dataset.defaultProjection === undefined ? undefined : clone(dataset.defaultProjection)
       if (semanticallyEqual(previous, operation.projection))
         return unchanged()
@@ -407,22 +507,53 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         delete dataset.defaultProjection
       else
         dataset.defaultProjection = candidate.defaultProjection
-      return { inverse: [{ type: 'dataset.setDefaultProjection', datasetId: dataset.id, ...(previous === undefined ? {} : { projection: previous }) }], change: { datasetIds: new Set([dataset.id]) } }
+      return {
+        inverse: [
+          {
+            type: 'dataset.setDefaultProjection',
+            datasetId: dataset.id,
+            ...(previous === undefined ? {} : { projection: previous }),
+          },
+        ],
+        change: { datasetIds: new Set([dataset.id]) },
+      }
     }
     case 'resource.add': {
-      const resource = parseValue(projectResourceSchema.safeParse(operation.resource), 'PROJECT_RESOURCE_INVALID', 'Resource is invalid.')
-      if (Object.hasOwn(document.resources, resource.id))
-        invalid('PROJECT_RESOURCE_ID_DUPLICATE', `Resource already exists: ${resource.id}.`, undefined, undefined, { resourceId: resource.id })
+      const resource = parseValue(
+        projectResourceSchema.safeParse(operation.resource),
+        'PROJECT_RESOURCE_INVALID',
+        'Resource is invalid.',
+      )
+      if (Object.hasOwn(document.resources, resource.id)) {
+        invalid('PROJECT_RESOURCE_ID_DUPLICATE', `Resource already exists: ${resource.id}.`, undefined, undefined, {
+          resourceId: resource.id,
+        })
+      }
       document.resources[resource.id] = resource
-      return { inverse: [{ type: 'resource.remove', resourceId: resource.id }], change: { project: true, resourceIds: new Set([resource.id]) } }
+      return {
+        inverse: [{ type: 'resource.remove', resourceId: resource.id }],
+        change: { project: true, resourceIds: new Set([resource.id]) },
+      }
     }
     case 'resource.remove': {
       const resource = requireResource(document, operation.resourceId)
-      const references = findProjectReferences(document).filter(reference => reference.targetKind === 'resource' && reference.targetId === operation.resourceId)
-      if (references.length > 0)
-        invalid('resource_reference_invalid', `Resource is still referenced: ${operation.resourceId}.`, undefined, undefined, { resourceId: operation.resourceId, references })
+      const references = findProjectReferences(document).filter(
+        reference => reference.targetKind === 'resource' && reference.targetId === operation.resourceId,
+      )
+      if (references.length > 0) {
+        invalid(
+          'resource_reference_invalid',
+          `Resource is still referenced: ${operation.resourceId}.`,
+          undefined,
+          undefined,
+          { resourceId: operation.resourceId, references },
+        )
+      }
       delete document.resources[operation.resourceId]
-      return { inverse: [{ type: 'resource.add', resource: clone(resource) }], change: { project: true, resourceIds: new Set([operation.resourceId]) } }
+      return {
+        inverse: [{ type: 'resource.add', resource: clone(resource) }],
+        change: { project: true, resourceIds: new Set([operation.resourceId]) },
+      }
     }
     case 'resource.rename': {
       const resource = requireResource(document, operation.resourceId)
@@ -431,17 +562,34 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
         return unchanged()
       const previous = resource.name
       resource.name = name
-      return { inverse: [{ type: 'resource.rename', resourceId: resource.id, name: previous }], change: { resourceIds: new Set([resource.id]) } }
+      return {
+        inverse: [{ type: 'resource.rename', resourceId: resource.id, name: previous }],
+        change: { resourceIds: new Set([resource.id]) },
+      }
     }
     case 'resource.replace': {
       const previous = requireResource(document, operation.resourceId)
-      const resource = parseValue(projectResourceSchema.safeParse(operation.resource), 'PROJECT_RESOURCE_INVALID', 'Resource is invalid.')
-      if (resource.id !== operation.resourceId)
-        invalid('PROJECT_RESOURCE_ID_CHANGE_INVALID', 'Resource replacement cannot change its id.', undefined, undefined, { resourceId: operation.resourceId })
+      const resource = parseValue(
+        projectResourceSchema.safeParse(operation.resource),
+        'PROJECT_RESOURCE_INVALID',
+        'Resource is invalid.',
+      )
+      if (resource.id !== operation.resourceId) {
+        invalid(
+          'PROJECT_RESOURCE_ID_CHANGE_INVALID',
+          'Resource replacement cannot change its id.',
+          undefined,
+          undefined,
+          { resourceId: operation.resourceId },
+        )
+      }
       if (semanticallyEqual(previous, resource))
         return unchanged()
       document.resources[operation.resourceId] = resource
-      return { inverse: [{ type: 'resource.replace', resourceId: operation.resourceId, resource: clone(previous) }], change: { resourceIds: new Set([operation.resourceId]) } }
+      return {
+        inverse: [{ type: 'resource.replace', resourceId: operation.resourceId, resource: clone(previous) }],
+        change: { resourceIds: new Set([operation.resourceId]) },
+      }
     }
     case 'node.insert':
       return insertSubgraph(document, operation.surfaceId, operation.subgraph, operation.target)
@@ -449,23 +597,39 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       return moveNode(document, operation.surfaceId, operation.nodeId, operation.target)
     case 'node.props': {
       const node = requireNode(document, operation.surfaceId, operation.nodeId)
-      const next = parseValue(surfaceNodeSchema.safeParse({ ...clone(node), props: operation.props }), 'PROJECT_NODE_INVALID', 'Node is invalid.', operation.surfaceId, node.id)
+      const next = parseValue(
+        surfaceNodeSchema.safeParse({ ...clone(node), props: operation.props }),
+        'PROJECT_NODE_INVALID',
+        'Node is invalid.',
+        operation.surfaceId,
+        node.id,
+      )
       if (semanticallyEqual(node.props, next.props))
         return unchanged()
       const previous = clone(node.props)
       requireSurface(document, operation.surfaceId).graph.nodesById[node.id] = next
-      return nodeContentChange(operation.surfaceId, node.id, [{ type: 'node.props', surfaceId: operation.surfaceId, nodeId: node.id, props: previous }])
+      return nodeContentChange(operation.surfaceId, node.id, [
+        { type: 'node.props', surfaceId: operation.surfaceId, nodeId: node.id, props: previous },
+      ])
     }
     case 'node.placement': {
       const surface = requireSurface(document, operation.surfaceId)
       requireNode(document, operation.surfaceId, operation.nodeId)
       const location = requireNodeLocation(surface.graph, operation.nodeId, operation.surfaceId)
-      const placement = parseValue(modelJsonObjectSchema.safeParse(operation.placement), 'PROJECT_NODE_PLACEMENT_INVALID', 'Node placement is invalid.', operation.surfaceId, operation.nodeId)
+      const placement = parseValue(
+        modelJsonObjectSchema.safeParse(operation.placement),
+        'PROJECT_NODE_PLACEMENT_INVALID',
+        'Node placement is invalid.',
+        operation.surfaceId,
+        operation.nodeId,
+      )
       if (semanticallyEqual(location.item.placement, placement))
         return unchanged()
       const previous = clone(location.item.placement)
       location.item.placement = placement
-      return nodeContentChange(operation.surfaceId, operation.nodeId, [{ type: 'node.placement', surfaceId: operation.surfaceId, nodeId: operation.nodeId, placement: previous }])
+      return nodeContentChange(operation.surfaceId, operation.nodeId, [
+        { type: 'node.placement', surfaceId: operation.surfaceId, nodeId: operation.nodeId, placement: previous },
+      ])
     }
     case 'node.settings':
       return updateNodeSettings(document, operation.surfaceId, operation.nodeId, operation.settings)
@@ -482,7 +646,12 @@ function replaceSurfaceValue<K extends 'parameters' | 'outputs' | 'interactions'
   createInverse: (previous: ProjectSurface[K]) => ProjectOperation,
 ): AppliedOperation {
   const surface = requireSurface(document, surfaceId)
-  const candidate = parseValue(projectSurfaceSchema.safeParse({ ...clone(surface), [key]: value }), 'PROJECT_SURFACE_INVALID', 'Surface is invalid.', surfaceId)
+  const candidate = parseValue(
+    projectSurfaceSchema.safeParse({ ...clone(surface), [key]: value }),
+    'PROJECT_SURFACE_INVALID',
+    'Surface is invalid.',
+    surfaceId,
+  )
   if (semanticallyEqual(surface[key], candidate[key]))
     return unchanged()
   const previous = clone(surface[key])
@@ -501,9 +670,20 @@ function replaceGraphValue<K extends 'props' | 'form'>(
   createInverse: (previous: SurfaceGraph[K]) => ProjectOperation,
 ): AppliedOperation {
   const surface = requireSurface(document, surfaceId)
-  const parsed = key === 'props'
-    ? parseValue(modelJsonObjectSchema.safeParse(value), 'PROJECT_SURFACE_PROPS_INVALID', 'Surface properties are invalid.', surfaceId)
-    : parseValue(formSettingsSchema.safeParse(value), 'PROJECT_SURFACE_FORM_INVALID', 'Surface form settings are invalid.', surfaceId)
+  const parsed
+    = key === 'props'
+      ? parseValue(
+          modelJsonObjectSchema.safeParse(value),
+          'PROJECT_SURFACE_PROPS_INVALID',
+          'Surface properties are invalid.',
+          surfaceId,
+        )
+      : parseValue(
+          formSettingsSchema.safeParse(value),
+          'PROJECT_SURFACE_FORM_INVALID',
+          'Surface form settings are invalid.',
+          surfaceId,
+        )
   if (semanticallyEqual(surface.graph[key], parsed))
     return unchanged()
   const previous = clone(surface.graph[key])
@@ -530,8 +710,13 @@ function insertSubgraph(
     root: subgraph.root,
     nodesById: subgraph.nodesById,
   })
-  if (!parsed.success)
-    invalid('PROJECT_NODE_SUBGRAPH_INVALID', parsed.error.issues[0]?.message ?? 'Inserted subgraph is invalid.', surfaceId)
+  if (!parsed.success) {
+    invalid(
+      'PROJECT_NODE_SUBGRAPH_INVALID',
+      parsed.error.issues[0]?.message ?? 'Inserted subgraph is invalid.',
+      surfaceId,
+    )
+  }
   const normalized: NodeSubgraph = { root: parsed.data.root, nodesById: parsed.data.nodesById }
   const duplicate = Object.keys(normalized.nodesById).find(nodeId => Object.hasOwn(surface.graph.nodesById, nodeId))
   if (duplicate)
@@ -577,13 +762,15 @@ function moveNode(
   const index = target.index ?? destination.length
   assertInsertIndex(index, destination.length, 'PROJECT_NODE_INDEX_INVALID')
   destination.splice(index, 0, location.item)
-  const changes: ProjectNodeChange[] = [{
-    kind: 'move',
-    surfaceId,
-    nodeId,
-    before: relation(location.parentId, location.slot),
-    after: relation(target.parentId, targetSlot),
-  }]
+  const changes: ProjectNodeChange[] = [
+    {
+      kind: 'move',
+      surfaceId,
+      nodeId,
+      before: relation(location.parentId, location.slot),
+      after: relation(target.parentId, targetSlot),
+    },
+  ]
   for (const parentId of new Set([location.parentId, target.parentId])) {
     if (parentId)
       changes.push({ kind: 'content', surfaceId, nodeId: parentId })
@@ -615,27 +802,37 @@ function updateNodeSettings(
     ...(settings.datasetBindings ? { datasetBindings: clone(settings.datasetBindings) } : {}),
     ...(settings.resourceBindings ? { resourceBindings: clone(settings.resourceBindings) } : {}),
   }
-  const candidate = settings.kind === 'field'
-    ? {
-        ...common,
-        kind: 'field' as const,
-        field: settings.field,
-        ...(settings.label !== undefined ? { label: settings.label } : {}),
-        ...(settings.defaultValue !== undefined ? { defaultValue: clone(settings.defaultValue) } : {}),
-        ...(settings.required !== undefined ? { required: settings.required } : {}),
-        ...(settings.requiredMessage !== undefined ? { requiredMessage: settings.requiredMessage } : {}),
-        ...(settings.validation !== undefined ? { validation: clone(settings.validation) } : {}),
-        ...(settings.validateOn !== undefined ? { validateOn: clone(settings.validateOn) } : {}),
-      }
-    : settings.kind === 'layout'
+  const candidate
+    = settings.kind === 'field'
       ? {
           ...common,
-          kind: 'layout' as const,
-          slots: node.kind === 'layout' ? node.slots : {},
-          ...(settings.valueScope ? { valueScope: clone(settings.valueScope) } : {}),
+          kind: 'field' as const,
+          field: settings.field,
+          ...(settings.label !== undefined ? { label: settings.label } : {}),
+          ...(settings.description !== undefined ? { description: settings.description } : {}),
+          ...(settings.help !== undefined ? { help: settings.help } : {}),
+          ...(settings.warning !== undefined ? { warning: settings.warning } : {}),
+          ...(settings.defaultValue !== undefined ? { defaultValue: clone(settings.defaultValue) } : {}),
+          ...(settings.required !== undefined ? { required: settings.required } : {}),
+          ...(settings.requiredMessage !== undefined ? { requiredMessage: settings.requiredMessage } : {}),
+          ...(settings.validation !== undefined ? { validation: clone(settings.validation) } : {}),
+          ...(settings.validateOn !== undefined ? { validateOn: clone(settings.validateOn) } : {}),
         }
-      : { ...common, kind: 'element' as const }
-  const parsed = parseValue(surfaceNodeSchema.safeParse(candidate), 'PROJECT_NODE_INVALID', 'Node is invalid.', surfaceId, nodeId)
+      : settings.kind === 'layout'
+        ? {
+            ...common,
+            kind: 'layout' as const,
+            slots: node.kind === 'layout' ? node.slots : {},
+            ...(settings.valueScope ? { valueScope: clone(settings.valueScope) } : {}),
+          }
+        : { ...common, kind: 'element' as const }
+  const parsed = parseValue(
+    surfaceNodeSchema.safeParse(candidate),
+    'PROJECT_NODE_INVALID',
+    'Node is invalid.',
+    surfaceId,
+    nodeId,
+  )
   surface.graph.nodesById[nodeId] = parsed
   return nodeContentChange(surfaceId, nodeId, [{ type: 'node.settings', surfaceId, nodeId, settings: previous }])
 }
@@ -703,13 +900,25 @@ function resolveTargetSequence(graph: SurfaceGraph, target: NodeTarget, surfaceI
     return graph.root
   }
   const parent = graph.nodesById[target.parentId]
-  if (!parent)
-    invalid('PROJECT_TARGET_PARENT_UNKNOWN', `Target parent does not exist: ${target.parentId}.`, surfaceId, target.parentId)
-  if (parent.kind !== 'layout')
-    invalid('PROJECT_TARGET_PARENT_INVALID', `Target parent is not a layout: ${target.parentId}.`, surfaceId, target.parentId)
+  if (!parent) {
+    invalid(
+      'PROJECT_TARGET_PARENT_UNKNOWN',
+      `Target parent does not exist: ${target.parentId}.`,
+      surfaceId,
+      target.parentId,
+    )
+  }
+  if (parent.kind !== 'layout') {
+    invalid(
+      'PROJECT_TARGET_PARENT_INVALID',
+      `Target parent is not a layout: ${target.parentId}.`,
+      surfaceId,
+      target.parentId,
+    )
+  }
   const slot = target.slot ?? 'default'
   assertSafeKey(slot, 'PROJECT_TARGET_SLOT_INVALID', surfaceId)
-  return parent.slots[slot] ??= []
+  return (parent.slots[slot] ??= [])
 }
 
 function collectSubtreeIds(graph: SurfaceGraph, nodeId: NodeId, result = new Set<NodeId>()): Set<NodeId> {
@@ -767,6 +976,9 @@ function settingsForNode(node: SurfaceNode): SurfaceNodeSettings {
     kind: 'field',
     field: node.field,
     ...(node.label !== undefined ? { label: node.label } : {}),
+    ...(node.description !== undefined ? { description: node.description } : {}),
+    ...(node.help !== undefined ? { help: node.help } : {}),
+    ...(node.warning !== undefined ? { warning: node.warning } : {}),
     ...(node.defaultValue !== undefined ? { defaultValue: clone(node.defaultValue) } : {}),
     ...(node.required !== undefined ? { required: node.required } : {}),
     ...(node.requiredMessage !== undefined ? { requiredMessage: node.requiredMessage } : {}),
@@ -900,8 +1112,8 @@ function normalizeNodeChanges(changes: ProjectNodeChange[]): ProjectNodeChange[]
       kind,
       surfaceId: change.surfaceId,
       nodeId: change.nodeId,
-      ...(previous.before ?? change.before ? { before: previous.before ?? change.before } : {}),
-      ...(change.after ?? previous.after ? { after: change.after ?? previous.after } : {}),
+      ...((previous.before ?? change.before) ? { before: previous.before ?? change.before } : {}),
+      ...((change.after ?? previous.after) ? { after: change.after ?? previous.after } : {}),
     })
   })
   return [...result.values()]

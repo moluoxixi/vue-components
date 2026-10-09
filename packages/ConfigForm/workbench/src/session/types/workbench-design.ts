@@ -7,16 +7,10 @@ import type {
   ProjectHistorySummary,
   SurfaceGraph,
 } from '@moluoxixi/config-form-model'
-import type {
-  VueRuntimeCompileResult,
-  VueRuntimeCompileSuccess,
-} from '@moluoxixi/config-form-vue-backend'
+import type { VueRuntimeCompileResult, VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
 import type { ComputedRef, Ref, ShallowRef } from 'vue'
 import type { WorkbenchAdapter } from '../../adapters'
-import type {
-  ProjectEditorSession,
-  ProjectEditorSessionSnapshot,
-} from '../../project'
+import type { ProjectEditorSession, ProjectEditorSessionSnapshot } from '../../project'
 
 export interface WorkbenchDesignSessionOptions {
   getAdapter: () => WorkbenchAdapter | undefined
@@ -35,7 +29,10 @@ export interface WorkbenchDesignSession {
   /** Transient preview failures never block saving the committed document. */
   readonly candidateDiagnostic: ShallowRef<ModelDiagnostic | undefined>
   readonly commandControl: {
-    execute: (command: ProjectCommand) => { changed: boolean, diagnostics: ReturnType<ProjectEditorSession['execute']>['diagnostics'] }
+    execute: (command: ProjectCommand) => {
+      changed: boolean
+      diagnostics: ReturnType<ProjectEditorSession['execute']>['diagnostics']
+    }
     preview: (command: ProjectCommand) => DesignCommandPreview | undefined
   }
   readonly compilation: ShallowRef<SurfaceCompilation | undefined>
@@ -49,6 +46,7 @@ export interface WorkbenchDesignSession {
   }>
   readonly runtime: ShallowRef<VueRuntimeCompileSuccess | undefined>
   readonly selectedIds: Ref<string[]>
+  readonly diagnostics: ShallowRef<readonly ModelDiagnostic[]>
   accept: (
     snapshot: ProjectEditorSessionSnapshot,
     surfaceId: string,

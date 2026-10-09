@@ -20,7 +20,7 @@ export function createLayoutRenderer<TValues extends ConfigFormValues>(
             alignItems: 'flex-start',
             display: 'flex',
             flexWrap: 'wrap',
-            gap: props.gap ?? '16px',
+            gap: props.gap ?? (props.density === 'compact' ? '8px' : '16px'),
           }
         : {
             '--mx-config-form-columns-desktop': layouts.desktop.columns,
@@ -36,16 +36,20 @@ export function createLayoutRenderer<TValues extends ConfigFormValues>(
                 }
               : {}),
             'display': 'grid',
-            'gap': props.gap ?? '16px',
+            'gap': props.gap ?? (props.density === 'compact' ? '8px' : '16px'),
             'gridTemplateColumns': 'repeat(var(--mx-config-form-active-columns), minmax(0, 1fr))',
           },
     ]
 
-    return h('div', {
-      ...layoutAttrs,
-      'class': [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutAttrs.class],
-      'data-config-form-responsive-layout': inline ? undefined : '',
-      style,
-    }, context.props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set(), [])))
+    return h(
+      'div',
+      {
+        ...layoutAttrs,
+        'class': [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutAttrs.class],
+        'data-config-form-responsive-layout': inline ? undefined : '',
+        style,
+      },
+      context.props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set(), [])),
+    )
   }
 }

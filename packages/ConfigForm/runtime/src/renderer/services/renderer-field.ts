@@ -1,11 +1,7 @@
 import type { ConfigFormJsonValue, ConfigFormScopePath } from '@moluoxixi/config-form-core'
 import type { ConfigFormFieldAddress, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { VNodeChild } from 'vue'
-import type {
-  ConfigFormComponentRegistration,
-  ConfigFormRendererField,
-  ConfigFormRuntimeNodeMetadata,
-} from '../types'
+import type { ConfigFormComponentRegistration, ConfigFormRendererField, ConfigFormRuntimeNodeMetadata } from '../types'
 import type { RendererPipelineContext, RendererSlots } from '../types/internal'
 import {
   formatConfigFormReadonlyValue,
@@ -16,12 +12,7 @@ import {
 import { camelize, h, toHandlerKey } from 'vue'
 import { ConfigFormItem } from '../components'
 import { resolveConfigFormFieldLayout } from '../utils'
-import {
-  getNodeKey,
-  isNonEmptyString,
-  mergeAriaTokens,
-  toDomId,
-} from './rendering'
+import { getNodeKey, isNonEmptyString, mergeAriaTokens, toDomId } from './rendering'
 
 export function createFieldRenderer<TValues extends ConfigFormValues>(
   context: RendererPipelineContext<TValues>,
@@ -53,6 +44,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       ? configuredId
       : `${formId}-${toDomId(path)}-control`
     const errorId = `${formId}-${toDomId(path)}-error`
+    const helpId = `${formId}-${toDomId(path)}-help`
     const reactionState = controller.resolveInstanceReactionState(address, field.field)
     const readonly = resolveConfigFormCondition(props.readonly, controller.model.value, false)
       || (reactionState.readonly ?? isConfigFormFieldReadonly(field, controller.model.value, false))
@@ -65,33 +57,58 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     const required = reactionState.required ?? resolveConfigFormCondition(field.required, controller.model.value, false)
     const metadataAttrs = registerElement ? editorBridge.nodeMetadataAttrs(metadata) : {}
 
-    return h(ConfigFormItem, {
-      ...fieldAttrs,
-      ...metadataAttrs,
-      'class': [bem('field'), bem('field', `label-${labelPosition}`), fieldAttrs?.class, metadataAttrs.class],
-      'control-class': bem('control'),
-      'control-id': controlId,
-      'control-style': layout.control,
-      'data-dirty': fieldMeta.dirty,
-      'data-field': field.field,
-      'data-instance-key': controller.getInstanceKey(address),
-      'data-label-position': labelPosition,
-      'data-required': required,
-      'data-touched': fieldMeta.touched,
-      'data-validating': controller.isInstanceValidating(address),
-      'error-class': bem('error'),
-      'error-id': errorId,
-      'error-style': layout.error,
-      'errors': fieldErrors,
-      'key': getNodeKey(field, path),
-      'label': field.label,
-      'label-class': bem('label'),
-      required,
-      ...(registerElement ? { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) } : {}),
-      'style': [layout.field, fieldAttrs?.style],
-    }, {
-      default: () => renderControl(field, path, controlId, errorId, readonly, ancestors, registration, address, fieldErrors),
-    })
+    return h(
+      ConfigFormItem,
+      {
+        ...fieldAttrs,
+        ...metadataAttrs,
+        'class': [bem('field'), bem('field', `label-${labelPosition}`), fieldAttrs?.class, metadataAttrs.class],
+        'control-class': bem('control'),
+        'control-id': controlId,
+        'control-style': layout.control,
+        'data-dirty': fieldMeta.dirty,
+        'data-field': field.field,
+        'data-instance-key': controller.getInstanceKey(address),
+        'data-label-position': labelPosition,
+        'data-required': required,
+        'data-touched': fieldMeta.touched,
+        'data-validating': controller.isInstanceValidating(address),
+        'description': field.description,
+        'help': field.help,
+        'warning': field.warning,
+        'help-id': helpId,
+        'loading': context.getOptionState(address)?.status === 'loading',
+        'validating': controller.isInstanceValidating(address),
+        'loading-text': props.loadingText,
+        'validating-text': props.validatingText,
+        'supporting-style': layout.error,
+        'error-class': bem('error'),
+        'error-id': errorId,
+        'error-style': layout.error,
+        'errors': fieldErrors,
+        'key': getNodeKey(field, path),
+        'label': field.label,
+        'label-class': bem('label'),
+        required,
+        ...(registerElement ? { ref: (element: unknown) => editorBridge.registerNodeElement(metadata, element) } : {}),
+        'style': [layout.field, fieldAttrs?.style],
+      },
+      {
+        default: () =>
+          renderControl(
+            field,
+            path,
+            controlId,
+            errorId,
+            readonly,
+            ancestors,
+            registration,
+            address,
+            fieldErrors,
+            helpId,
+          ),
+      },
+    )
   }
 
   function renderControl(
@@ -104,6 +121,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     registration: ConfigFormComponentRegistration | undefined,
     address: ConfigFormFieldAddress,
     fieldErrors: readonly string[],
+    helpId: string,
   ): VNodeChild {
     const { bem, binding, componentListeners, controller, designGuard, props } = context
     const optionState = context.getOptionState(address)
@@ -131,13 +149,17 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
           })
         : formatConfigFormReadonlyValue(value)
 
-      return h('span', {
-        'aria-readonly': 'true',
-        'class': bem('readonly'),
-        'data-config-form-readonly': '',
-        'id': controlId,
-        'key': `${path}.readonly`,
-      }, [content])
+      return h(
+        'span',
+        {
+          'aria-readonly': 'true',
+          'class': bem('readonly'),
+          'data-config-form-readonly': '',
+          'id': controlId,
+          'key': `${path}.readonly`,
+        },
+        [content],
+      )
     }
 
     const controlBinding = binding.resolveBinding(field, registration)
@@ -149,6 +171,17 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       [controlBinding.valueProp]: controller.getInstanceValue(address),
     }
     const reactionState = controller.resolveInstanceReactionState(address, field.field)
+    if (
+      field.description
+      || field.help
+      || field.warning
+      || optionState?.status === 'loading'
+      || controller.isInstanceValidating(address)
+    ) {
+      componentProps['aria-describedby'] = mergeAriaTokens(componentProps['aria-describedby'], helpId)
+    }
+    if (optionState?.status === 'loading' || controller.isInstanceValidating(address))
+      componentProps['aria-busy'] = true
     designGuard.applyDesignInteractionGuard(componentProps)
 
     if (controlId && !isNonEmptyString(componentProps.id))
@@ -193,10 +226,14 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     }
     componentListeners.wrapComponentListeners(componentProps, new Set([bindingEventKey, blurEventKey]))
 
-    return h(binding.resolveComponent(registration?.component ?? field.component), {
-      ...componentProps,
-      key: getNodeKey(field, `${path}.control`),
-    }, createNodeSlots(field, path, ancestors, address.scope))
+    return h(
+      binding.resolveComponent(registration?.component ?? field.component),
+      {
+        ...componentProps,
+        key: getNodeKey(field, `${path}.control`),
+      },
+      createNodeSlots(field, path, ancestors, address.scope),
+    )
   }
 
   return renderBoundNode

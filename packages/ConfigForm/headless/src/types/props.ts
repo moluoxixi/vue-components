@@ -48,10 +48,7 @@ export interface ConfigFormErrors {
   [field: string]: string[]
 }
 
-export type ConfigFormFieldValidator<
-  TValues extends ConfigFormValues = ConfigFormValues,
-  TValue = unknown,
-> = (
+export type ConfigFormFieldValidator<TValues extends ConfigFormValues = ConfigFormValues, TValue = unknown> = (
   value: TValue,
   values: TValues,
   context: ConfigFormFieldValidatorContext,
@@ -116,27 +113,21 @@ export type ConfigFormReadonlyRender<
   TFieldAttrs = ConfigFormAttrs,
   TCellAttrs = ConfigFormAttrs,
   TValue = unknown,
-> = (
-  context: ConfigFormReadonlyRenderContext<TValues, TComponent, TFieldAttrs, TCellAttrs, TValue>,
-) => VNodeChild
+> = (context: ConfigFormReadonlyRenderContext<TValues, TComponent, TFieldAttrs, TCellAttrs, TValue>) => VNodeChild
 
 export type ConfigFormComponentSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
   TFieldAttrs = ConfigFormAttrs,
   TCellAttrs = ConfigFormAttrs,
-> = (
-  context: ConfigFormComponentSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>,
-) => VNodeChild
+> = (context: ConfigFormComponentSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>) => VNodeChild
 
 export type ConfigFormFieldSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
   TFieldAttrs = ConfigFormAttrs,
   TCellAttrs = ConfigFormAttrs,
-> = (
-  context: ConfigFormFieldSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>,
-) => VNodeChild
+> = (context: ConfigFormFieldSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>) => VNodeChild
 
 export type ConfigFormSlotConfig<
   TValues extends ConfigFormValues = ConfigFormValues,
@@ -232,6 +223,10 @@ export interface ConfigFormField<
   field: ConfigFormFieldKey<TValues> | string
   /** 共享字段壳 label；未提供时仍保留字段壳、错误 DOM 与 ARIA。 */
   label?: string
+  /** Supporting text displayed next to the control. */
+  description?: string
+  help?: string
+  warning?: string
   /** 透传给真实字段组件的 slots，支持 render 函数或配置化节点。 */
   slots?: ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
   /** 透传给共享字段壳的 attributes，field/label/error 由 renderer 统一接管。 */

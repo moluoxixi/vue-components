@@ -1,16 +1,14 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
+import type { ConfigFormRendererExpose } from '@moluoxixi/config-form'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type {
-  ConfigFormRendererExpose,
-} from '@moluoxixi/config-form'
 import type {
   ElementConfigFormEmits,
   ElementConfigFormExpose,
   ElementConfigFormProps,
   ElementConfigFormSlots,
 } from '../../../types'
-import { computed, useTemplateRef } from 'vue'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form'
+import { computed, useTemplateRef } from 'vue'
 import { ELEMENT_CONFIG_FORM_COMPONENTS } from '../../../registries'
 import '../../../styles/index.scss'
 
@@ -24,7 +22,6 @@ const props = withDefaults(defineProps<ElementConfigFormProps<TValues>>(), {
   columns: 24,
   fieldSpan: 24,
   formAttrs: () => ({}),
-  gap: '16px',
   layoutAttrs: () => ({}),
 })
 
@@ -54,6 +51,9 @@ defineExpose(expose)
   >
     <template #default="slotProps">
       <slot v-bind="slotProps" />
+    </template>
+    <template v-if="$slots.actions" #actions="slotProps">
+      <slot name="actions" v-bind="slotProps" />
     </template>
   </ConfigFormRenderer>
 </template>

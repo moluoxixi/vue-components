@@ -6,16 +6,13 @@ const serverUrl = `http://127.0.0.1:${serverPort}`
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(?:accessibility|assets|interaction|json-import|template-management)\.spec\.ts/,
+  testMatch: /(?:accessibility|assets|interaction|json-import|template-management|studio)\.spec\.ts/,
   timeout: process.env.CI ? 90_000 : 30_000,
   outputDir: 'dist/test-results/config-form-workbench',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: [
-    ['list'],
-    ['html', { open: 'never', outputFolder: 'dist/playwright-report/config-form-workbench' }],
-  ],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'dist/playwright-report/config-form-workbench' }]],
   use: {
     actionTimeout: process.env.CI ? 30_000 : 10_000,
     baseURL: serverUrl,
@@ -25,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: `pnpm dev --host 127.0.0.1 --port ${serverPort} --strictPort`,
     url: serverUrl,
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
   projects: [

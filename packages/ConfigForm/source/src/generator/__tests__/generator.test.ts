@@ -28,6 +28,7 @@ import {
   registryLockFingerprint,
   SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
+import { compileTemplate, parse } from '@vue/compiler-sfc'
 import { describe, expect, it, vi } from 'vitest'
 import { generateConfigFormBindings, generateVueSource } from '..'
 import {
@@ -1155,6 +1156,94 @@ describe('source generators', () => {
     }
     expect(rawReader.readEmbedded).not.toHaveBeenCalled()
     expect(bindingReader.readEmbedded).not.toHaveBeenCalled()
+  })
+
+  it('preserves supporting text, accessible control references and responsive density in both source backends', async () => {
+    const base = compilation()
+    const home = base.ir.surfacesById.home!
+    const name = home.nodesById.name
+    if (!name || name.kind !== 'field')
+      throw new TypeError('Expected the name field in the source fixture.')
+    const supportedName = {
+      ...name,
+      description: 'Full <name> {{ applicationName }}',
+      help: 'Use your legal name {{ legalName }}',
+      warning: 'Check spelling {{ spelling }}',
+    }
+    const form = {
+      columns: 24,
+      fieldSpan: 12,
+      density: 'compact' as const,
+      labelWidth: 120,
+      responsive: {
+        tablet: { columns: 6, fieldSpan: 3, labelWidth: 88 },
+        mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
+      },
+    }
+    function withGap(gap?: string): ProjectCompilation {
+      return {
+        ...base,
+        ir: {
+          ...base.ir,
+          surfacesById: {
+            ...base.ir.surfacesById,
+            home: {
+              ...home,
+              form: { ...form, ...(gap ? { gap } : {}) },
+              nodesById: {
+                ...home.nodesById,
+                name: supportedName,
+              },
+            },
+          },
+        },
+      }
+    }
+    const input = withGap()
+    const results = await Promise.all((['css', 'tailwind-v4'] as const).map(styleTarget =>
+      generateVueSource(rawInput({ compilation: input, styleTarget })),
+    ))
+    for (const result of results) {
+      expect(result.success).toBe(true)
+      if (!result.success)
+        continue
+      assertGeneratedVueFilesCompile(result.data)
+      const source = textAt(result.data, 'src/surfaces/home/Surface.vue')
+      expect(source).toContain('Full &lt;name&gt;')
+      expect(source).toContain('Use your legal name')
+      expect(source).toContain('Check spelling')
+      expect(source).toContain('aria-describedby')
+      expect(source).toContain('-help')
+      expect(source).toContain('-error')
+      const { descriptor } = parse(source)
+      const template = compileTemplate({
+        id: 'literal-supporting-text',
+        filename: 'Surface.vue',
+        source: descriptor.template!.content,
+      })
+      expect(template.errors).toEqual([])
+      for (const variable of ['applicationName', 'legalName', 'spelling']) {
+        expect(template.code).toContain(`{{ ${variable} }}`)
+        expect(template.code).not.toContain(`_ctx.${variable}`)
+      }
+    }
+    const css = results[0]!
+    if (css.success) {
+      const source = textAt(css.data, 'src/surfaces/home/Surface.vue')
+      expect(source).toContain('gap: 8px')
+      expect(source).toContain('repeat(24, minmax(0, 1fr))')
+      expect(source).toContain('repeat(6, minmax(0, 1fr))')
+      expect(source).toContain('repeat(1, minmax(0, 1fr))')
+      expect(source).toContain('--field-label-width: 72px')
+      expect(source).toContain('grid-column: span 12')
+      expect(source).toContain('grid-column: span 3')
+      expect(source).toContain('grid-column: span 1')
+    }
+    const tailwind = results[1]!
+    if (tailwind.success)
+      expect(textAt(tailwind.data, 'src/surfaces/home/Surface.vue')).toContain('gap-2')
+    const explicitGap = await generateVueSource(rawInput({ compilation: withGap('20px') }))
+    expect(explicitGap.success && textAt(explicitGap.data, 'src/surfaces/home/Surface.vue')).toContain('gap: 20px')
   })
 
   it('emits deterministic Tailwind v4 projects with complete theme and semantic parity', async () => {

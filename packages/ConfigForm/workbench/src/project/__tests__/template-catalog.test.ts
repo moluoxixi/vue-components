@@ -1,10 +1,7 @@
 import type { ProjectSurface, RegistryContractSnapshot } from '@moluoxixi/config-form-model'
 import type { ProjectIdentityFactory } from '..'
 import type { ProjectTemplateCatalogEntry, TemplateCatalogProvider } from '../templates'
-import {
-  REGISTRY_CONTRACT_SNAPSHOT_VERSION,
-  registryLockFingerprint,
-} from '@moluoxixi/config-form-model'
+import { REGISTRY_CONTRACT_SNAPSHOT_VERSION, registryLockFingerprint } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
@@ -63,8 +60,12 @@ describe('template catalog', () => {
       'antd-profile',
       'antd-dialog',
       'antd-drawer',
+      'element-approval',
+      'element-survey',
+      'antd-approval',
+      'antd-survey',
     ])
-    expect(templates.map(template => template.surface.kind)).toEqual([
+    expect(templates.slice(0, 8).map(template => template.surface.kind)).toEqual([
       'page',
       'page',
       'dialog',
@@ -74,13 +75,18 @@ describe('template catalog', () => {
       'dialog',
       'drawer',
     ])
-    expect(JSON.parse(JSON.stringify(await builtInTemplateCatalogProvider.list()))).toHaveLength(8)
-    expect(templates.filter(template => template.manifest.category === 'blank').every(template => Object.keys(template.surface.graph.nodesById).length === 0)).toBe(true)
+    expect(templates.slice(8).every(template => template.surface.kind === 'page')).toBe(true)
+    expect(JSON.parse(JSON.stringify(await builtInTemplateCatalogProvider.list()))).toHaveLength(12)
+    expect(
+      templates.filter(template => template.manifest.category === 'blank').every(template => Object.keys(template.surface.graph.nodesById).length === 0),
+    ).toBe(true)
   })
 
   it('filters display metadata, tags, category, and provider without mutating entries', async () => {
     const templates = await builtIns()
-    expect(filterTemplateCatalog(templates, { query: 'Ant Design Vue profile' }).map(item => item.manifest.id)).toEqual(['antd-profile'])
+    expect(
+      filterTemplateCatalog(templates, { query: 'Ant Design Vue profile' }).map(item => item.manifest.id),
+    ).toEqual(['antd-profile'])
     expect(filterTemplateCatalog(templates, { category: 'blank' }).map(item => item.manifest.id)).toEqual([
       'element-blank',
       'element-dialog',
@@ -108,11 +114,10 @@ describe('template catalog', () => {
       failedProvider,
       malformedProvider,
     ]).load()
-    expect(result.templates).toHaveLength(8)
-    expect(result.diagnostics.map(item => item.code)).toEqual(expect.arrayContaining([
-      'TEMPLATE_PROVIDER_DUPLICATE',
-      'TEMPLATE_PROVIDER_FAILED',
-    ]))
+    expect(result.templates).toHaveLength(12)
+    expect(result.diagnostics.map(item => item.code)).toEqual(
+      expect.arrayContaining(['TEMPLATE_PROVIDER_DUPLICATE', 'TEMPLATE_PROVIDER_FAILED']),
+    )
     expect(result.diagnostics.find(item => item.providerId === 'malformed')).toMatchObject({
       code: 'TEMPLATE_PROVIDER_FAILED',
       message: expect.stringContaining('must resolve to an array'),
@@ -153,43 +158,49 @@ describe('template catalog', () => {
       outputs: [],
       parameters: [],
     }
-    const overlays: ProjectSurface[] = [{
-      ...shared,
-      id: 'dialog-seed',
-      kind: 'dialog',
-      presentation: {
+    const overlays: ProjectSurface[] = [
+      {
+        ...shared,
+        id: 'dialog-seed',
         kind: 'dialog',
-        title: 'Dialog seed',
-        width: { desktop: { value: 480, unit: 'px' } },
-        mask: true,
-        close: { escape: true, mask: true, button: true },
+        presentation: {
+          kind: 'dialog',
+          title: 'Dialog seed',
+          width: { desktop: { value: 480, unit: 'px' } },
+          mask: true,
+          close: { escape: true, mask: true, button: true },
+        },
       },
-    }, {
-      ...shared,
-      id: 'drawer-seed',
-      kind: 'drawer',
-      presentation: {
+      {
+        ...shared,
+        id: 'drawer-seed',
         kind: 'drawer',
-        title: 'Drawer seed',
-        placement: 'right',
-        size: { desktop: { value: 40, unit: '%' } },
-        mask: true,
-        close: { escape: true, mask: true, button: true },
+        presentation: {
+          kind: 'drawer',
+          title: 'Drawer seed',
+          placement: 'right',
+          size: { desktop: { value: 40, unit: '%' } },
+          mask: true,
+          close: { escape: true, mask: true, button: true },
+        },
       },
-    }]
+    ]
 
     for (const overlay of overlays) {
-      const parsed = parseProjectTemplateSeed({
-        manifest: {
-          ...structuredClone(source.manifest),
-          id: `element-${overlay.kind}-overlay`,
-          preview: {
-            ...structuredClone(source.manifest.preview),
-            surfaceId: overlay.id,
+      const parsed = parseProjectTemplateSeed(
+        {
+          manifest: {
+            ...structuredClone(source.manifest),
+            id: `element-${overlay.kind}-overlay`,
+            preview: {
+              ...structuredClone(source.manifest.preview),
+              surfaceId: overlay.id,
+            },
           },
+          surface: overlay,
         },
-        surface: overlay,
-      }, 'test')
+        'test',
+      )
       expect(parsed).not.toHaveProperty('code')
       if ('code' in parsed)
         continue
@@ -204,23 +215,34 @@ describe('template catalog', () => {
         kind: overlay.kind,
         name: `Created ${overlay.kind}`,
       })
-      expect(analyzeTemplateEligibility(template, {
-        registry: adapter.registrySnapshot,
-        target: 'surface',
-      })).toEqual({ eligible: true, diagnostics: [] })
-      expect(analyzeTemplateEligibility(template, {
-        registry: adapter.registrySnapshot,
-        target: 'project',
-      })).toMatchObject({
+      expect(
+        analyzeTemplateEligibility(template, {
+          registry: adapter.registrySnapshot,
+          target: 'surface',
+        }),
+      ).toEqual({ eligible: true, diagnostics: [] })
+      expect(
+        analyzeTemplateEligibility(template, {
+          registry: adapter.registrySnapshot,
+          target: 'project',
+        }),
+      ).toMatchObject({
         eligible: false,
         diagnostics: [{ code: 'TEMPLATE_TARGET_KIND_INVALID' }],
       })
-      expect(() => instantiateTemplateProject(template, {
-        name: `Invalid ${overlay.kind} project`,
-        registryLock: adapter.componentRegistry.lock,
-      })).toThrow('TEMPLATE_TARGET_KIND_INVALID')
+      expect(() =>
+        instantiateTemplateProject(template, {
+          name: `Invalid ${overlay.kind} project`,
+          registryLock: adapter.componentRegistry.lock,
+        }),
+      ).toThrow('TEMPLATE_TARGET_KIND_INVALID')
       expect(() => prepareTemplatePreview(template, adapter, 'project')).toThrow('TEMPLATE_TARGET_KIND_INVALID')
-      const preview = prepareTemplatePreview(template, adapter, 'surface', deterministicFactory(`preview-${overlay.kind}`))
+      const preview = prepareTemplatePreview(
+        template,
+        adapter,
+        'surface',
+        deterministicFactory(`preview-${overlay.kind}`),
+      )
       expect(preview.compilation.surface.kind).toBe(overlay.kind)
       expect(preview.compilation.snapshotIdentity.surfaceId).toBe(preview.compilation.surface.id)
     }
@@ -230,30 +252,38 @@ describe('template catalog', () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const selfReferencing = structuredClone(source)
     const nodeId = selfReferencing.surface.graph.root[0]!.nodeId
-    selfReferencing.surface.interactions = [{
-      kind: 'primaryUiAction',
-      id: 'navigate-self',
-      nodeId,
-      trigger: 'activate',
-      action: {
-        kind: 'navigate',
-        targetSurfaceId: selfReferencing.surface.id,
-        parameters: [],
+    selfReferencing.surface.interactions = [
+      {
+        kind: 'primaryUiAction',
+        id: 'navigate-self',
+        nodeId,
+        trigger: 'activate',
+        action: {
+          kind: 'navigate',
+          targetSurfaceId: selfReferencing.surface.id,
+          parameters: [],
+        },
       },
-    }]
-    const parsed = parseProjectTemplateSeed({
-      manifest: selfReferencing.manifest,
-      surface: selfReferencing.surface,
-    }, 'test')
+    ]
+    const parsed = parseProjectTemplateSeed(
+      {
+        manifest: selfReferencing.manifest,
+        surface: selfReferencing.surface,
+      },
+      'test',
+    )
     expect(parsed).not.toHaveProperty('code')
     if ('code' in parsed)
       return
-    const instantiated = instantiateTemplateSurface({ providerId: 'test', ...parsed }, {
-      id: 'self-remapped',
-      identityFactory: deterministicFactory('self'),
-      name: 'Self remapped',
-      route: '/self-remapped',
-    })
+    const instantiated = instantiateTemplateSurface(
+      { providerId: 'test', ...parsed },
+      {
+        id: 'self-remapped',
+        identityFactory: deterministicFactory('self'),
+        name: 'Self remapped',
+        route: '/self-remapped',
+      },
+    )
     expect(instantiated.interactions[0]).toMatchObject({
       kind: 'primaryUiAction',
       action: { kind: 'navigate', targetSurfaceId: 'self-remapped' },
@@ -264,10 +294,15 @@ describe('template catalog', () => {
     if (!action || action.kind !== 'primaryUiAction' || action.action.kind !== 'navigate')
       throw new TypeError('Template Surface reference fixture is invalid.')
     action.action.targetSurfaceId = 'external-surface'
-    expect(parseProjectTemplateSeed({
-      manifest: external.manifest,
-      surface: external.surface,
-    }, 'test')).toMatchObject({
+    expect(
+      parseProjectTemplateSeed(
+        {
+          manifest: external.manifest,
+          surface: external.surface,
+        },
+        'test',
+      ),
+    ).toMatchObject({
       code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
       path: 'surface',
     })
@@ -290,10 +325,15 @@ describe('template catalog', () => {
       else {
         node.resourceBindings = { media: { resourceId: 'external-resource' } }
       }
-      expect(parseProjectTemplateSeed({
-        manifest: seed.manifest,
-        surface: seed.surface,
-      }, 'test')).toMatchObject({
+      expect(
+        parseProjectTemplateSeed(
+          {
+            manifest: seed.manifest,
+            surface: seed.surface,
+          },
+          'test',
+        ),
+      ).toMatchObject({
         code: 'TEMPLATE_IDENTITY_REFERENCE_UNSUPPORTED',
         path: 'surface',
       })
@@ -328,12 +368,13 @@ describe('template catalog', () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const maximumProvider = {
       id: 'maximum',
-      list: async () => Array.from({ length: 256 }, (_, index) => {
-        const seed = structuredClone({ manifest: source.manifest, surface: source.surface })
-        seed.manifest.id = `maximum-${index}`
-        seed.manifest.order = index
-        return seed
-      }),
+      list: async () =>
+        Array.from({ length: 256 }, (_, index) => {
+          const seed = structuredClone({ manifest: source.manifest, surface: source.surface })
+          seed.manifest.id = `maximum-${index}`
+          seed.manifest.order = index
+          return seed
+        }),
     }
     const maximumProviderResult = await createTemplateCatalogService([maximumProvider]).load()
     expect(maximumProviderResult.templates).toHaveLength(256)
@@ -375,7 +416,10 @@ describe('template catalog', () => {
   it('explains unmet adapter, Registry lock, and component requirements', async () => {
     const template = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const registry = registrySnapshot(template)
-    expect(analyzeTemplateEligibility(template, { registry, target: 'project' })).toEqual({ eligible: true, diagnostics: [] })
+    expect(analyzeTemplateEligibility(template, { registry, target: 'project' })).toEqual({
+      eligible: true,
+      diagnostics: [],
+    })
     const ineligible = analyzeTemplateEligibility(template, {
       registry,
       target: 'surface',
@@ -409,9 +453,9 @@ describe('template catalog', () => {
     expect(first.id).not.toBe(second.id)
     expect(firstSurface.id).not.toBe(secondSurface.id)
     expect(Object.keys(firstSurface.graph.nodesById)).not.toEqual(Object.keys(secondSurface.graph.nodesById))
-    expect(Object.values(firstSurface.graph.nodesById).map(node => node.kind === 'field' ? node.field : '')).not.toEqual(
-      Object.values(secondSurface.graph.nodesById).map(node => node.kind === 'field' ? node.field : ''),
-    )
+    expect(
+      Object.values(firstSurface.graph.nodesById).map(node => (node.kind === 'field' ? node.field : '')),
+    ).not.toEqual(Object.values(secondSurface.graph.nodesById).map(node => (node.kind === 'field' ? node.field : '')))
     firstSurface.name = 'Changed'
     expect(secondSurface.name).toBe('Second')
     expect(JSON.stringify(template)).toBe(seedJson)
@@ -447,18 +491,18 @@ describe('template catalog', () => {
 
     expect(project.id).toMatch(/^element-profile-/)
     expect(surface.id).toMatch(new RegExp(`^${template.surface.id}-`))
-    expect(Object.keys(surface.graph.nodesById)).toEqual(expect.arrayContaining([
-      expect.stringMatching(/^profile-name-/),
-      expect.stringMatching(/^profile-role-/),
-      expect.stringMatching(/^profile-active-/),
-    ]))
-    expect(Object.values(surface.graph.nodesById)
-      .filter(node => node.kind === 'field')
-      .map(node => node.field)).toEqual(expect.arrayContaining([
-      'name',
-      'role',
-      'active',
-    ]))
+    expect(Object.keys(surface.graph.nodesById)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^profile-name-/),
+        expect.stringMatching(/^profile-role-/),
+        expect.stringMatching(/^profile-active-/),
+      ]),
+    )
+    expect(
+      Object.values(surface.graph.nodesById)
+        .filter(node => node.kind === 'field')
+        .map(node => node.field),
+    ).toEqual(expect.arrayContaining(['name', 'role', 'active']))
   })
 
   it('remaps validation and Prototype Interaction references without adding event metadata', async () => {
@@ -501,8 +545,12 @@ describe('template catalog', () => {
     expect(JSON.stringify(remapped)).not.toContain('"nodeId":"profile-name"')
     expect(remapped).not.toHaveProperty('events')
     expect(remapped).not.toHaveProperty('flows')
-    const mappedName = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Name')
-    const mappedRole = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Role')
+    const mappedName = Object.values(remapped.graph.nodesById).find(
+      node => node.kind === 'field' && node.label === 'Name',
+    )
+    const mappedRole = Object.values(remapped.graph.nodesById).find(
+      node => node.kind === 'field' && node.label === 'Role',
+    )
     if (mappedName?.kind !== 'field' || mappedRole?.kind !== 'field')
       throw new TypeError('Remapped profile fields are missing.')
     expect(mappedName.validation?.rules[0]).toMatchObject({ kind: 'compare', field: mappedRole.field })

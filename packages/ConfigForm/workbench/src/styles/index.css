@@ -18,4 +18,6 @@
 @import url(../app/components/TemplateCreationWorkspace/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css);
 @import url(../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css);
-@import "./tailwind.css";
+@import url(./studio-next.css);
+@import url(../features/assets/style/editors.css);
+@import './tailwind.css';

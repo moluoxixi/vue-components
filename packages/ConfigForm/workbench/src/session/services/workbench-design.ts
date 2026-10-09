@@ -1,7 +1,4 @@
-import type {
-  CompileCoordinator,
-  SurfaceCompilation,
-} from '@moluoxixi/config-form-compiler'
+import type { CompileCoordinator, SurfaceCompilation } from '@moluoxixi/config-form-compiler'
 import type { DesignCommandPreview } from '@moluoxixi/config-form-designer'
 import type {
   ModelDiagnostic,
@@ -10,13 +7,16 @@ import type {
   ProjectCompilationSnapshot,
   ProjectDocument,
 } from '@moluoxixi/config-form-model'
-import type {
-  VueRuntimeCompileResult,
-  VueRuntimeCompileSuccess,
-} from '@moluoxixi/config-form-vue-backend'
+import type { VueRuntimeCompileResult, VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
 import type { WorkbenchAdapter } from '../../adapters'
 import type { ProjectEditorSessionSnapshot } from '../../project'
-import type { CandidateProjection, CandidateProjectionResult, WorkbenchDesignPublication, WorkbenchDesignSession, WorkbenchDesignSessionOptions } from '../types'
+import type {
+  CandidateProjection,
+  CandidateProjectionResult,
+  WorkbenchDesignPublication,
+  WorkbenchDesignSession,
+  WorkbenchDesignSessionOptions,
+} from '../types'
 import { createCompileCoordinator } from '@moluoxixi/config-form-compiler'
 import {
   applyProjectDraftTransaction,
@@ -50,13 +50,13 @@ function compilerDiagnostics(
   }
 }
 
-export function createWorkbenchDesignSession(
-  options: WorkbenchDesignSessionOptions,
-): WorkbenchDesignSession {
+export function createWorkbenchDesignSession(options: WorkbenchDesignSessionOptions): WorkbenchDesignSession {
   const compilation = shallowRef<SurfaceCompilation>()
   const runtime = shallowRef<VueRuntimeCompileSuccess>()
   const candidateDiagnostic = shallowRef<ModelDiagnostic>()
   const selectedIds = ref<string[]>([])
+  const diagnostics = shallowRef<readonly ModelDiagnostic[]>([])
+  let compileDiagnostics: readonly ModelDiagnostic[] = []
   const artifactCache = createSurfaceRuntimeArtifactCache()
   // Drop-target validation previews the same candidate commands many times per
   // drag frame; memoize projections per document revision so repeated commands
@@ -115,6 +115,8 @@ export function createWorkbenchDesignSession(
     selectedIds.value = []
     commandDiagnostic = ''
     compileDiagnostic = ''
+    compileDiagnostics = []
+    diagnostics.value = []
     publishDiagnostic()
   }
 
@@ -125,11 +127,15 @@ export function createWorkbenchDesignSession(
   ): WorkbenchDesignPublication {
     const adapter = options.getAdapter()
     if (!adapter || !coordinator) {
-      return { runtime: compilerDiagnostics([{
-        code: 'RUNTIME_ADAPTER_UNAVAILABLE',
-        message: 'Workbench runtime adapter is unavailable.',
-        path: ['registryLock', 'adapter'],
-      }]) }
+      return {
+        runtime: compilerDiagnostics([
+          {
+            code: 'RUNTIME_ADAPTER_UNAVAILABLE',
+            message: 'Workbench runtime adapter is unavailable.',
+            path: ['registryLock', 'adapter'],
+          },
+        ]),
+      }
     }
 
     const canonical = 'kind' in snapshot
@@ -144,10 +150,7 @@ export function createWorkbenchDesignSession(
     const nextCompilation = canonical.compilation
     return {
       compilation: nextCompilation,
-      runtime: artifactCache.resolve(
-        nextCompilation,
-        () => compileCanonicalSurfaceRuntime({ compilation: nextCompilation }, adapter.runtimeResolver),
-      ),
+      runtime: artifactCache.resolve(nextCompilation, () => compileCanonicalSurfaceRuntime({ compilation: nextCompilation }, adapter.runtimeResolver)),
     }
   }
 
@@ -159,13 +162,19 @@ export function createWorkbenchDesignSession(
     candidateCache.clear()
     candidateDiagnostic.value = undefined
     const publication = compile(projectSnapshotFromEditorSession(snapshot), surfaceId, changeSet)
+    compileDiagnostics = publication.runtime.success
+      ? []
+      : publication.runtime.diagnostics.map(item => ({ ...item, surfaceId }))
+    diagnostics.value = compileDiagnostics
     if (publication.compilation)
       compilation.value = publication.compilation
     if (publication.runtime.success)
       runtime.value = publication.runtime
-    setCompileDiagnostic(publication.runtime.success
-      ? ''
-      : publication.runtime.diagnostics[0]?.message ?? 'Workbench design compilation failed.')
+    setCompileDiagnostic(
+      publication.runtime.success
+        ? ''
+        : (publication.runtime.diagnostics[0]?.message ?? 'Workbench design compilation failed.'),
+    )
     return publication
   }
 
@@ -272,6 +281,7 @@ export function createWorkbenchDesignSession(
     if (!session)
       return { changed: false, diagnostics: [] }
     const result = session.execute(command)
+    diagnostics.value = [...compileDiagnostics, ...result.diagnostics]
     setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
     return { changed: result.changed, diagnostics: result.diagnostics }
   }
@@ -288,12 +298,14 @@ export function createWorkbenchDesignSession(
 
   function undo(): boolean {
     const result = options.getProjectSession()?.undo()
+    diagnostics.value = [...compileDiagnostics, ...(result?.diagnostics ?? [])]
     setCommandDiagnostic(result?.diagnostics[0]?.message ?? '')
     return result?.changed ?? false
   }
 
   function redo(): boolean {
     const result = options.getProjectSession()?.redo()
+    diagnostics.value = [...compileDiagnostics, ...(result?.diagnostics ?? [])]
     setCommandDiagnostic(result?.diagnostics[0]?.message ?? '')
     return result?.changed ?? false
   }
@@ -303,6 +315,7 @@ export function createWorkbenchDesignSession(
     if (!session)
       return false
     const result = session.jump(position)
+    diagnostics.value = [...compileDiagnostics, ...result.diagnostics]
     setCommandDiagnostic(result.diagnostics[0]?.message ?? '')
     return result.changed
   }
@@ -326,6 +339,8 @@ export function createWorkbenchDesignSession(
     selectedIds.value = []
     commandDiagnostic = ''
     compileDiagnostic = ''
+    diagnostics.value = []
+    compileDiagnostics = []
     publishDiagnostic()
   }
 
@@ -336,6 +351,7 @@ export function createWorkbenchDesignSession(
     historyControl,
     runtime,
     selectedIds,
+    diagnostics,
     accept,
     clear,
     configure,

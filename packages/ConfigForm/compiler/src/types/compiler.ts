@@ -99,6 +99,10 @@ interface CanonicalNodeBase {
 export interface CanonicalFieldDescriptor {
   field: string
   label?: string
+  /** Supporting text displayed next to the control. */
+  description?: string
+  help?: string
+  warning?: string
   defaultValue?: ModelJsonValue
   required?: boolean
   requiredMessage?: string

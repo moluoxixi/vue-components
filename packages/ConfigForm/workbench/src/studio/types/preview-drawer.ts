@@ -7,6 +7,7 @@ import type {
   ExperienceRuntimeInstanceStateEvent,
   ExperienceRuntimeSessionEvent,
 } from '../../runtime-host'
+import type { PreviewInstanceStateMap } from '../../session/types/preview'
 
 export type PreviewViewport = 'desktop' | 'mobile' | 'tablet'
 
@@ -23,10 +24,12 @@ export interface PreviewDrawerProps {
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
   viewportPinned?: boolean
+  instanceStates?: PreviewInstanceStateMap
 }
 
 export interface PreviewDrawerEmits {
   'close': []
+  'reset': []
   'error': [error: Error]
   'instanceState': [event: ExperienceRuntimeInstanceStateEvent]
   'mounted': [event: ExperienceRuntimeHostIdentityEvent]

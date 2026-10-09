@@ -45,6 +45,17 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
   labelWidth?: string | number
+  /** Spacing preset; explicit gap still takes precedence. */
+  density?: 'compact' | 'comfortable'
+  /** Accessible issue list with links to concrete field instances. */
+  errorSummary?: boolean
+  errorSummaryLabel?: string
+  /** Focus and reveal the first invalid control after a failed submit. */
+  focusFirstError?: boolean
+  /** Keep the named actions slot visible while a long form scrolls. */
+  stickyActions?: boolean
+  loadingText?: string
+  validatingText?: string
   responsive?: ConfigFormResponsiveLayout
   layoutAttrs?: ConfigFormRendererLayoutAttrs
   cellAttrs?: ConfigFormRendererCellAttrs

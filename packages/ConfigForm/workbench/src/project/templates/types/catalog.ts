@@ -16,4 +16,5 @@ export interface BuiltInSeedDefinition {
   kind?: ProjectSurface['kind']
   order: number
   tags: string[]
+  task?: 'approval' | 'survey'
 }

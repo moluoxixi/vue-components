@@ -6,6 +6,13 @@ ConfigForm 的物料无关设计器核心。当前版本提供物料注册、Sur
 
 ## 当前实现
 
+工作区提供选择路径导航和可用鼠标/键盘调整的两侧面板。属性按基础、布局、外观、数据与
+高级设置分组，可搜索并折叠；字段支持 `description/help/warning`，表单支持 `density`。
+Validation 实验室接受当前字段样例及其他字段值，使用 Headless controller 执行真实
+Required/RuleSet；样例属于本地编辑状态。安全表达式支持嵌套 AND/OR/NOT 条件树和高级
+JSON，切换编辑模式保留无法可视化的原表达式。表达式求值能力由宿主注入，Designer 不
+依赖 Prototype Runtime。
+
 默认 Inspector 精确提供 `properties`、`validation` 与 `interactions`。`interactions` 只编辑安全表达式状态投影、`set/copy/clear` 值联动和每个语义触发器最多一个主要 UI 动作；它不是事件编辑器。Designer 不提供事件转发、事件编排、Flow、脚本、底层 bindings、conditions、reactions、动态 option source 或 Automation 作者入口。复杂业务逻辑由工程师在导出源码/config 中维护；Designer 持久化的 SurfaceGraph 只接受当前合同定义的节点、静态属性、Dataset/Resource 引用和安全本地交互。
 
 Validation 将 `required` / `requiredMessage` 作为字段一级控件展示，不把 Required 放进“Add rule”。通用规则使用 RuleSet v2，并按物料 `value.kind` 限制 base 与可选规则；RuleSet 没有 `time` base，因此时间物料只显示 Required 和 `validateOn`，不会伪装成 `date` 校验。regex、日期和数字等非法输入中间态只保留在本地 draft，合法时才提交命令。属性命令被 Model 拒绝时，控件回灌权威 graph 值并保留诊断。Select 的静态 options 变化时，同一命令会清除失效默认值，并原子重算已有 `enum` / `literal` base；新选项无法表达该 base 时清除完整 validation。options、默认值和 validation 共用一个历史项，一次 Undo 整体恢复。

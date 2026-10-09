@@ -29,6 +29,9 @@ const CANONICAL_NODE_BASE_KEYS = [
   'subtreeHash',
 ]
 const CANONICAL_FIELD_NODE_KEYS = new Set([
+  'description',
+  'help',
+  'warning',
   ...CANONICAL_NODE_BASE_KEYS,
   'defaultValue',
   'field',
@@ -38,11 +41,7 @@ const CANONICAL_FIELD_NODE_KEYS = new Set([
   'validateOn',
   'validation',
 ])
-const CANONICAL_LAYOUT_NODE_KEYS = new Set([
-  ...CANONICAL_NODE_BASE_KEYS,
-  'slots',
-  'valueScope',
-])
+const CANONICAL_LAYOUT_NODE_KEYS = new Set([...CANONICAL_NODE_BASE_KEYS, 'slots', 'valueScope'])
 const CANONICAL_ELEMENT_NODE_KEYS = new Set(CANONICAL_NODE_BASE_KEYS)
 
 function isRecord(value: unknown): value is Record<string, unknown> {

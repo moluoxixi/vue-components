@@ -8,23 +8,79 @@ const stylesheetLayers = [
   { importPath: './foundation.css', source: new URL('../foundation.css', import.meta.url) },
   { importPath: './theme.css', source: new URL('../theme.css', import.meta.url) },
   { importPath: './shell.css', source: new URL('../shell.css', import.meta.url) },
-  { importPath: '../app/components/WorkbenchCommandHint/style/index.css', source: new URL('../../app/components/WorkbenchCommandHint/style/index.css', import.meta.url) },
-  { importPath: '../app/components/WorkbenchAppearancePopover/style/index.css', source: new URL('../../app/components/WorkbenchAppearancePopover/style/index.css', import.meta.url) },
-  { importPath: '../app/components/WorkbenchAppearancePanel/style/index.css', source: new URL('../../app/components/WorkbenchAppearancePanel/style/index.css', import.meta.url) },
-  { importPath: '../app/components/WorkbenchAppearanceDrawer/style/index.css', source: new URL('../../app/components/WorkbenchAppearanceDrawer/style/index.css', import.meta.url) },
-  { importPath: '../app/components/WorkbenchTopbar/style/index.css', source: new URL('../../app/components/WorkbenchTopbar/style/index.css', import.meta.url) },
-  { importPath: '../app/router/components/ManagementShell/style/index.css', source: new URL('../../app/router/components/ManagementShell/style/index.css', import.meta.url) },
+  {
+    importPath: '../app/components/WorkbenchCommandHint/style/index.css',
+    source: new URL('../../app/components/WorkbenchCommandHint/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/WorkbenchAppearancePopover/style/index.css',
+    source: new URL('../../app/components/WorkbenchAppearancePopover/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/WorkbenchAppearancePanel/style/index.css',
+    source: new URL('../../app/components/WorkbenchAppearancePanel/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/WorkbenchAppearanceDrawer/style/index.css',
+    source: new URL('../../app/components/WorkbenchAppearanceDrawer/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/WorkbenchTopbar/style/index.css',
+    source: new URL('../../app/components/WorkbenchTopbar/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/router/components/ManagementShell/style/index.css',
+    source: new URL('../../app/router/components/ManagementShell/style/index.css', import.meta.url),
+  },
   { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
-  { importPath: '../app/components/PreviewDrawer/style/index.css', source: new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url) },
+  {
+    importPath: '../app/components/PreviewDrawer/style/index.css',
+    source: new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url),
+  },
   { importPath: './studio.css', source: new URL('../studio.css', import.meta.url) },
-  { importPath: '../features/persistence/style/index.css', source: new URL('../../features/persistence/style/index.css', import.meta.url) },
-  { importPath: '../features/export/style/index.css', source: new URL('../../features/export/style/index.css', import.meta.url) },
-  { importPath: '../features/pages/style/index.css', source: new URL('../../features/pages/style/index.css', import.meta.url) },
-  { importPath: '../features/projects/style/index.css', source: new URL('../../features/projects/style/index.css', import.meta.url) },
-  { importPath: '../app/components/ProjectCreationWorkspace/style/index.css', source: new URL('../../app/components/ProjectCreationWorkspace/style/index.css', import.meta.url) },
-  { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
-  { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
-  { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
+  {
+    importPath: '../features/persistence/style/index.css',
+    source: new URL('../../features/persistence/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../features/export/style/index.css',
+    source: new URL('../../features/export/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../features/pages/style/index.css',
+    source: new URL('../../features/pages/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../features/projects/style/index.css',
+    source: new URL('../../features/projects/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/ProjectCreationWorkspace/style/index.css',
+    source: new URL('../../app/components/ProjectCreationWorkspace/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/TemplateCreationWorkspace/style/index.css',
+    source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url),
+  },
+  {
+    importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css',
+    source: new URL(
+      '../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css',
+      import.meta.url,
+    ),
+  },
+  {
+    importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css',
+    source: new URL(
+      '../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css',
+      import.meta.url,
+    ),
+  },
+  { importPath: './studio-next.css', source: new URL('../studio-next.css', import.meta.url) },
+  {
+    importPath: '../features/assets/style/editors.css',
+    source: new URL('../../features/assets/style/editors.css', import.meta.url),
+  },
   { importPath: './tailwind.css', source: new URL('../tailwind.css', import.meta.url) },
 ] as const
 const stylesheet = stylesheetLayers
@@ -34,18 +90,33 @@ const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/in
 const runtimeHostBootstrap = readFileSync(new URL('../../runtime-host/services/bootstrap.ts', import.meta.url), 'utf8')
 const tailwindStylesheet = readFileSync(new URL('../tailwind.css', import.meta.url), 'utf8')
 const exportDialogComponent = readFileSync(new URL('../../features/export/index.vue', import.meta.url), 'utf8')
-const projectThemeEditor = readFileSync(new URL('../../app/components/ProjectThemeEditor/index.vue', import.meta.url), 'utf8')
+const projectThemeEditor = readFileSync(
+  new URL('../../app/components/ProjectThemeEditor/index.vue', import.meta.url),
+  'utf8',
+)
 const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
-const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
-const pageManagerStylesheet = readFileSync(new URL('../../features/pages/components/SurfaceManager/style/index.css', import.meta.url), 'utf8')
+const studioLeftPanelStylesheet = readFileSync(
+  new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url),
+  'utf8',
+)
+const pageManagerStylesheet = readFileSync(
+  new URL('../../features/pages/components/SurfaceManager/style/index.css', import.meta.url),
+  'utf8',
+)
 const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
-const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
-const sourceViewerStylesheet = readFileSync(new URL('../../../../source/src/viewer/style/index.scss', import.meta.url), 'utf8')
-const designerStylesheet = compile(
-  fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
-  { charset: false, loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
-).css
+const previewDrawerStylesheet = readFileSync(
+  new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url),
+  'utf8',
+)
+const sourceViewerStylesheet = readFileSync(
+  new URL('../../../../source/src/viewer/style/index.scss', import.meta.url),
+  'utf8',
+)
+const designerStylesheet = compile(fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)), {
+  charset: false,
+  loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))],
+}).css
 
 interface CssRule {
   body: string
@@ -62,7 +133,8 @@ function cssRules(source: string): CssRule[] {
 function selectorBlock(selector: string, source = stylesheet): string {
   const rule = cssRules(source).find(candidate => candidate.selector
     .split(',')
-    .some(item => item.trim() === selector))
+    .some(item => item.trim() === selector),
+  )
   if (!rule)
     throw new Error(`Missing CSS selector: ${selector}`)
   return rule.body
@@ -83,7 +155,8 @@ function luminance(hex: string): number {
   const channels = normalized.match(/.{2}/g)!.map(value => Number.parseInt(value, 16) / 255)
   const [red, green, blue] = channels.map(value => value <= 0.04045
     ? value / 12.92
-    : ((value + 0.055) / 1.055) ** 2.4)
+    : ((value + 0.055) / 1.055) ** 2.4,
+  )
   return 0.2126 * red! + 0.7152 * green! + 0.0722 * blue!
 }
 
@@ -94,11 +167,14 @@ function contrast(foreground: string, background: string): number {
 
 describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
-    expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(`${stylesheetLayers
-      .map(layer => layer.importPath === './tailwind.css'
-        ? '@import "./tailwind.css";'
-        : `@import url(${layer.importPath});`)
-      .join('\n')}\n`)
+    expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(
+      `${stylesheetLayers
+        .map(layer => layer.importPath === './tailwind.css'
+          ? '@import \'./tailwind.css\';'
+          : `@import url(${layer.importPath});`,
+        )
+        .join('\n')}\n`,
+    )
   })
 
   it('keeps feature styles with their concrete owners', () => {
@@ -113,9 +189,21 @@ describe('workbench theme contract', () => {
       ['../../styles/tailwind.css', '@theme inline', 'preflight.css'],
       ['../../styles/shell.css', '.workbench-app', '.workbench-topbar'],
       ['../../app/components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
-      ['../../app/components/WorkbenchAppearancePopover/style/index.css', '.workbench-appearance-popover', '.appearance-panel'],
-      ['../../app/components/WorkbenchAppearancePanel/style/index.css', '.appearance-panel', '.appearance-drawer-shell'],
-      ['../../app/components/WorkbenchAppearanceDrawer/style/index.css', '.appearance-drawer-shell', '.appearance-panel {'],
+      [
+        '../../app/components/WorkbenchAppearancePopover/style/index.css',
+        '.workbench-appearance-popover',
+        '.appearance-panel',
+      ],
+      [
+        '../../app/components/WorkbenchAppearancePanel/style/index.css',
+        '.appearance-panel',
+        '.appearance-drawer-shell',
+      ],
+      [
+        '../../app/components/WorkbenchAppearanceDrawer/style/index.css',
+        '.appearance-drawer-shell',
+        '.appearance-panel {',
+      ],
       ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-dialog-shell'],
       ['../../app/router/components/ManagementShell/style/index.css', '.management-shell', '.workbench-topbar'],
       ['../../app/components/PreviewDrawer/style/index.css', '.preview-dialog-shell', '.workbench-topbar'],
@@ -123,11 +211,27 @@ describe('workbench theme contract', () => {
       ['../../features/persistence/style/index.css', '.persistence-dialog', '.source-workspace'],
       ['../../features/pages/style/index.css', '.page-manager-page', '.source-workspace'],
       ['../../features/projects/style/index.css', '.project-manager', '.page-manager-page'],
-      ['../../app/components/ProjectCreationWorkspace/style/index.css', '.project-creation-workspace', '.template-creation-workspace'],
+      [
+        '../../app/components/ProjectCreationWorkspace/style/index.css',
+        '.project-creation-workspace',
+        '.template-creation-workspace',
+      ],
       ['../../app/style/index.css', '.workbench-message', '.source-workspace__toolbar'],
-      ['../../app/components/TemplateCreationWorkspace/style/index.css', '.template-creation-workspace', '.json-import-pane'],
-      ['../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', '.template-catalog-panel', '.json-import-pane'],
-      ['../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', '.json-import-pane', '.template-catalog-item'],
+      [
+        '../../app/components/TemplateCreationWorkspace/style/index.css',
+        '.template-creation-workspace',
+        '.json-import-pane',
+      ],
+      [
+        '../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css',
+        '.template-catalog-panel',
+        '.json-import-pane',
+      ],
+      [
+        '../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css',
+        '.json-import-pane',
+        '.template-catalog-item',
+      ],
     ] as const
 
     for (const [path, includes, excludes] of ownerContracts) {
@@ -136,18 +240,32 @@ describe('workbench theme contract', () => {
       expect(source).not.toContain(excludes)
     }
 
-    for (const orphan of ['.mobile-surface-tabs', '.empty-workbench', '.template-dialog', '.template-list', '.persistence-empty', '.editor-file-meta', '.pane-error', '.appearance-swatch i', '.is-spinning'])
+    for (const orphan of [
+      '.mobile-surface-tabs',
+      '.empty-workbench',
+      '.template-dialog',
+      '.template-list',
+      '.persistence-empty',
+      '.editor-file-meta',
+      '.pane-error',
+      '.appearance-swatch i',
+      '.is-spinning',
+    ])
       expect(stylesheet).not.toContain(orphan)
     expect(studioLeftPanelStylesheet).toContain('@media (max-width: 700px)')
     expect(studioLeftPanelStylesheet).toContain('.designer-pages button')
     expect(selectorBlock('.designer-theme-panel', studioLeftPanelStylesheet)).toContain('flex-direction: column;')
     expect(selectorBlock('.designer-theme-panel > *', studioLeftPanelStylesheet)).toContain('flex: 1 1 auto;')
-    expect(selectorBlock('.designer-theme-type-grid', studioLeftPanelStylesheet)).toContain('grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));')
+    expect(selectorBlock('.designer-theme-type-grid', studioLeftPanelStylesheet)).toContain(
+      'grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));',
+    )
     expect(selectorBlock('.designer-theme-field > .el-select', studioLeftPanelStylesheet)).toContain('width: 100%;')
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
-    const component = await import('../../app/components/StudioLeftPanel/index.vue?raw').then(module => module.default)
+    const component = await import('../../app/components/StudioLeftPanel/index.vue?raw').then(
+      module => module.default,
+    )
 
     expect(component).toMatch(/import '.\/style\/index\.scss'/)
     expect(studioLeftPanelStylesheet).toContain('.designer-material-search')
@@ -229,7 +347,9 @@ describe('workbench theme contract', () => {
 
     const responsiveStart = exportDialogStylesheet.indexOf('@media (max-width: 700px)')
     expect(exportDialogComponent).toContain('source-workspace__heading flex min-w-0 items-center justify-between gap-4')
-    expect(exportDialogComponent).toContain('source-workspace__statusbar flex min-w-0 items-center justify-between gap-4')
+    expect(exportDialogComponent).toContain(
+      'source-workspace__statusbar flex min-w-0 items-center justify-between gap-4',
+    )
     expect(exportDialogComponent).toContain('flex-auto flex-col overflow-hidden bg-wb-editor-surface')
     expect(exportDialogComponent).not.toContain('ElDialog')
     expect(responsiveStart).toBeGreaterThan(0)
@@ -238,55 +358,56 @@ describe('workbench theme contract', () => {
     expect(selectorBlock('.source-workspace', exportDialogStylesheet)).toContain('min-height: 0;')
   })
   const paletteSelectors = ['ink', 'morandi', 'cyber', 'glass'].flatMap(palette =>
-    ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
-  const contrastContracts = paletteSelectors.flatMap(selector => [
-    [selector, '--wb-text', '--wb-surface', 4.5],
-    [selector, '--wb-muted', '--wb-surface', 4.5],
-    [selector, '--wb-small-text', '--wb-bg', 4.5],
-    [selector, '--wb-small-text', '--wb-surface', 4.5],
-    [selector, '--wb-small-text', '--wb-surface-raised', 4.5],
-    [selector, '--wb-small-text', '--wb-accent-soft', 4.5],
-    [selector, '--wb-text-strong', '--wb-hover', 4.5],
-    [selector, '--wb-border', '--wb-surface', 3],
-    [selector, '--wb-border', '--wb-surface-raised', 3],
-    [selector, '--wb-control-border', '--wb-surface', 3],
-    [selector, '--wb-control-border', '--wb-surface-raised', 3],
-    [selector, '--wb-accent', '--wb-surface', 3],
-    [selector, '--wb-accent-text', '--wb-bg', 4.5],
-    [selector, '--wb-accent-text', '--wb-surface', 4.5],
-    [selector, '--wb-accent-text', '--wb-surface-raised', 4.5],
-    [selector, '--wb-accent-text', '--wb-elevated', 4.5],
-    [selector, '--wb-accent-text', '--wb-hover', 4.5],
-    [selector, '--wb-accent-text', '--wb-accent-soft', 4.5],
-    [selector, '--wb-focus', '--wb-surface', 3],
-    [selector, '--wb-action-text', '--wb-action-bg', 4.5],
-    [selector, '--wb-positive', '--wb-surface', 4.5],
-    [selector, '--wb-positive', '--wb-elevated', 4.5],
-    [selector, '--wb-positive', '--wb-bg', 4.5],
-    [selector, '--wb-warning', '--wb-surface', 4.5],
-    [selector, '--wb-warning', '--wb-elevated', 4.5],
-    [selector, '--wb-warning', '--wb-bg', 4.5],
-    [selector, '--wb-danger', '--wb-surface', 4.5],
-    [selector, '--wb-danger', '--wb-elevated', 4.5],
-    [selector, '--wb-danger', '--wb-bg', 4.5],
-  ] as const)
-  const separatorContracts = paletteSelectors.flatMap(selector => [
-    [selector, '--wb-surface'],
-    [selector, '--wb-surface-raised'],
-  ] as const)
+    ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`),
+  )
+  const contrastContracts = paletteSelectors.flatMap(
+    selector => [
+      [selector, '--wb-text', '--wb-surface', 4.5],
+      [selector, '--wb-muted', '--wb-surface', 4.5],
+      [selector, '--wb-small-text', '--wb-bg', 4.5],
+      [selector, '--wb-small-text', '--wb-surface', 4.5],
+      [selector, '--wb-small-text', '--wb-surface-raised', 4.5],
+      [selector, '--wb-small-text', '--wb-accent-soft', 4.5],
+      [selector, '--wb-text-strong', '--wb-hover', 4.5],
+      [selector, '--wb-border', '--wb-surface', 3],
+      [selector, '--wb-border', '--wb-surface-raised', 3],
+      [selector, '--wb-control-border', '--wb-surface', 3],
+      [selector, '--wb-control-border', '--wb-surface-raised', 3],
+      [selector, '--wb-accent', '--wb-surface', 3],
+      [selector, '--wb-accent-text', '--wb-bg', 4.5],
+      [selector, '--wb-accent-text', '--wb-surface', 4.5],
+      [selector, '--wb-accent-text', '--wb-surface-raised', 4.5],
+      [selector, '--wb-accent-text', '--wb-elevated', 4.5],
+      [selector, '--wb-accent-text', '--wb-hover', 4.5],
+      [selector, '--wb-accent-text', '--wb-accent-soft', 4.5],
+      [selector, '--wb-focus', '--wb-surface', 3],
+      [selector, '--wb-action-text', '--wb-action-bg', 4.5],
+      [selector, '--wb-positive', '--wb-surface', 4.5],
+      [selector, '--wb-positive', '--wb-elevated', 4.5],
+      [selector, '--wb-positive', '--wb-bg', 4.5],
+      [selector, '--wb-warning', '--wb-surface', 4.5],
+      [selector, '--wb-warning', '--wb-elevated', 4.5],
+      [selector, '--wb-warning', '--wb-bg', 4.5],
+      [selector, '--wb-danger', '--wb-surface', 4.5],
+      [selector, '--wb-danger', '--wb-elevated', 4.5],
+      [selector, '--wb-danger', '--wb-bg', 4.5],
+    ] as const,
+  )
+  const separatorContracts = paletteSelectors.flatMap(
+    selector => [
+      [selector, '--wb-surface'],
+      [selector, '--wb-surface-raised'],
+    ] as const,
+  )
 
   it.each(contrastContracts)('%s keeps %s readable against %s', (selector, foreground, background, minimum) => {
-    expect(contrast(
-      colorVariable(selector, foreground),
-      colorVariable(selector, background),
-    )).toBeGreaterThanOrEqual(minimum)
+    expect(contrast(colorVariable(selector, foreground), colorVariable(selector, background))).toBeGreaterThanOrEqual(
+      minimum,
+    )
   })
 
   it.each(separatorContracts)('%s keeps structural separators quiet against %s', (selector, background) => {
-    const separatorContrast = contrast(
-      colorVariable(selector, '--wb-separator'),
-      colorVariable(selector, background),
-    )
+    const separatorContrast = contrast(colorVariable(selector, '--wb-separator'), colorVariable(selector, background))
     const controlContrast = contrast(
       colorVariable(selector, '--wb-control-border'),
       colorVariable(selector, background),
@@ -298,14 +419,26 @@ describe('workbench theme contract', () => {
 
   it('keeps the palette signature effects on their elevation tokens', () => {
     const base = selectorBlock('.workbench-app')
-    for (const token of ['--wb-shadow-overlay', '--wb-shadow-drawer', '--wb-shadow-float', '--wb-shadow-toast', '--wb-shadow-sheet'])
+    for (const token of [
+      '--wb-shadow-overlay',
+      '--wb-shadow-drawer',
+      '--wb-shadow-float',
+      '--wb-shadow-toast',
+      '--wb-shadow-sheet',
+    ])
       expect(base).toContain(`${token}:`)
     expect(base).toContain('--wb-action-glow: none;')
 
     // Ink wash layers by hairline borders and whitespace instead of shadows.
     for (const theme of ['light', 'dark'] as const) {
       const ink = selectorBlock(`.workbench-app[data-palette="ink"][data-theme="${theme}"]`)
-      for (const token of ['--wb-shadow-overlay', '--wb-shadow-drawer', '--wb-shadow-float', '--wb-shadow-toast', '--wb-shadow-sheet'])
+      for (const token of [
+        '--wb-shadow-overlay',
+        '--wb-shadow-drawer',
+        '--wb-shadow-float',
+        '--wb-shadow-toast',
+        '--wb-shadow-sheet',
+      ])
         expect(ink).toContain(`${token}: none;`)
     }
 
@@ -317,13 +450,17 @@ describe('workbench theme contract', () => {
     // Glass panes are translucent veils over blurred color blobs.
     for (const theme of ['light', 'dark'] as const)
       expect(selectorBlock(`.workbench-app[data-palette="glass"][data-theme="${theme}"]`)).toContain('--wb-veil:')
-    const frosted = cssRules(stylesheet).filter(rule =>
-      rule.selector.includes('[data-palette="glass"]') && rule.body.includes('backdrop-filter: blur(14px);'))
+    const frosted = cssRules(stylesheet).filter(
+      rule =>
+        rule.selector.includes('[data-palette="glass"]') && rule.body.includes('backdrop-filter: blur(14px);'),
+    )
     expect(frosted.length).toBeGreaterThan(0)
     for (const rule of frosted)
       expect(rule.body).toContain('background: var(--wb-veil);')
     expect(stylesheet).toContain('@supports (backdrop-filter: blur(14px))')
-    expect(selectorBlock('.workbench-app[data-palette="glass"][data-theme="light"]', stylesheet)).toContain('--wb-veil: rgb(255 255 255 / 65%);')
+    expect(selectorBlock('.workbench-app[data-palette="glass"][data-theme="light"]', stylesheet)).toContain(
+      '--wb-veil: rgb(255 255 255 / 65%);',
+    )
 
     // Primary commands run on the contrast-checked action pair everywhere.
     const primaryButton = selectorBlock('.workbench-app .el-button--primary')
@@ -333,69 +470,80 @@ describe('workbench theme contract', () => {
   })
 
   it('keeps interaction styling and runtime canvas tokens explicit', () => {
-    expect(selectorBlock(
-      '.workbench-app .el-segmented',
-    )).toContain('--el-segmented-item-hover-color: var(--wb-text-strong);')
-    expect(selectorBlock(
-      '.template-creation-workspace .el-segmented',
-    )).toContain('--el-segmented-item-selected-bg-color: var(--wb-action-bg);')
-    expect(selectorBlock(
-      '.template-catalog-item.is-selected .template-catalog-copy span',
-    )).toContain('color: var(--wb-small-text);')
+    expect(selectorBlock('.workbench-app .el-segmented')).toContain(
+      '--el-segmented-item-hover-color: var(--wb-text-strong);',
+    )
+    expect(selectorBlock('.template-creation-workspace .el-segmented')).toContain(
+      '--el-segmented-item-selected-bg-color: var(--wb-action-bg);',
+    )
+    expect(selectorBlock('.template-catalog-item.is-selected .template-catalog-copy span')).toContain(
+      'color: var(--wb-small-text);',
+    )
     for (const selector of [
       '.topbar-actions button:hover:not(:disabled, [aria-disabled="true"])',
       '.pane-header button:hover:not(:disabled, [aria-disabled="true"])',
     ]) {
-      expect(cssRules(stylesheet).some(rule => rule.selector === selector
-        && rule.body.includes('background: var(--wb-hover);'))).toBe(true)
+      expect(
+        cssRules(stylesheet).some(
+          rule => rule.selector === selector
+            && rule.body.includes('background: var(--wb-hover);'),
+        ),
+      ).toBe(true)
     }
     expect(selectorBlock('.source-workspace .source-workspace__viewer')).toContain('flex: 1 1 auto;')
     expect(selectorBlock('.config-form-source-viewer__workspace', sourceViewerStylesheet))
-      .toContain('grid-template-columns: clamp(208px, 18vw, 260px) minmax(0, 1fr);')
+      .toContain(
+        'grid-template-columns: clamp(208px, 18vw, 260px) minmax(0, 1fr);',
+      )
     expect(stylesheet).not.toContain('.config-form-source-viewer__workspace')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
-    )).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-selected',
-    )).toContain('transition: none;')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-label',
-    )).toContain('transition: none;')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-accent: var(--wb-accent);')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-accent-text: var(--wb-accent-text);')
-    expect(selectorBlock(
-      '.mx-config-form-designer__tabs button[aria-selected=true]',
-      designerStylesheet,
-    )).toContain('color: var(--mx-designer-accent-text);')
-    expect(selectorBlock(
-      '.mx-config-form-designer__interaction-rule.el-card.is-hover-shadow:focus-within',
-      designerStylesheet,
-    )).toContain('box-shadow: var(--el-box-shadow-light);')
+    expect(
+      selectorBlock('.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented'),
+    ).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
+    expect(
+      selectorBlock(
+        '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-selected',
+      ),
+    ).toContain('transition: none;')
+    expect(
+      selectorBlock(
+        '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-label',
+      ),
+    ).toContain('transition: none;')
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-accent: var(--wb-accent);',
+    )
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-accent-text: var(--wb-accent-text);',
+    )
+    expect(selectorBlock('.mx-config-form-designer__tabs button[aria-selected=true]', designerStylesheet)).toContain(
+      'color: var(--mx-designer-accent-text);',
+    )
+    expect(
+      selectorBlock(
+        '.mx-config-form-designer__interaction-rule.el-card.is-hover-shadow:focus-within',
+        designerStylesheet,
+      ),
+    ).toContain('box-shadow: var(--el-box-shadow-light);')
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__interaction-rule-toggle:hover')
     expect(selectorBlock('.project-row:focus-within')).toContain('box-shadow: 0 6px 20px rgb(15 23 42 / 6%);')
-    expect(selectorBlock('.page-manager__row:focus-within', pageManagerStylesheet)).toContain('box-shadow: 0 5px 18px rgb(0 0 0 / 5%);')
-    expect(selectorBlock('.designer-layers > div:focus-within', studioLeftPanelStylesheet)).toContain('background: var(--wb-hover);')
-    expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
-    const paletteItem = selectorBlock(
-      '.mx-config-form-designer__palette-item',
-      designerStylesheet,
+    expect(selectorBlock('.page-manager__row:focus-within', pageManagerStylesheet)).toContain(
+      'box-shadow: 0 5px 18px rgb(0 0 0 / 5%);',
     )
+    expect(selectorBlock('.designer-layers > div:focus-within', studioLeftPanelStylesheet)).toContain(
+      'background: var(--wb-hover);',
+    )
+    expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
+    const paletteItem = selectorBlock('.mx-config-form-designer__palette-item', designerStylesheet)
     expect(paletteItem).toContain('background: var(--mx-designer-subtle);')
     expect(paletteItem).toContain('border: 1px solid var(--mx-designer-separator);')
     expect(paletteItem).toContain('transition: background-color 100ms ease, border-color 100ms ease;')
-    expect(selectorBlock(
-      '.mx-config-form-designer__palette-item:focus-within',
-      designerStylesheet,
-    )).toContain('outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);')
+    expect(selectorBlock('.mx-config-form-designer__palette-item:focus-within', designerStylesheet)).toContain(
+      'outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);',
+    )
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__palette-item-preview')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-selection-bg: var(--wb-action-bg);')
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-selection-bg: var(--wb-action-bg);',
+    )
     expect(stylesheet).toContain('--mx-designer-canvas-sheet: #fff;')
     expect(stylesheet).toContain('--mx-designer-runtime-text: #17202a;')
     expect(stylesheet).toContain('--mx-designer-runtime-muted: #64748b;')
@@ -412,32 +560,38 @@ describe('workbench theme contract', () => {
       ['--mx-designer-control-border', 3],
       ['--mx-designer-accent', 3],
     ] as const) {
-      expect(contrast(
-        colorVariable('.mx-config-form-designer', foreground, designerStylesheet),
-        colorVariable('.mx-config-form-designer', '--mx-designer-overlay', designerStylesheet),
-      )).toBeGreaterThanOrEqual(minimum)
+      expect(
+        contrast(
+          colorVariable('.mx-config-form-designer', foreground, designerStylesheet),
+          colorVariable('.mx-config-form-designer', '--mx-designer-overlay', designerStylesheet),
+        ),
+      ).toBeGreaterThanOrEqual(minimum)
     }
-    expect(contrast(
-      colorVariable('.mx-config-form-designer', '--mx-designer-border', designerStylesheet),
-      colorVariable('.mx-config-form-designer', '--mx-designer-canvas', designerStylesheet),
-    )).toBeGreaterThanOrEqual(3)
+    expect(
+      contrast(
+        colorVariable('.mx-config-form-designer', '--mx-designer-border', designerStylesheet),
+        colorVariable('.mx-config-form-designer', '--mx-designer-canvas', designerStylesheet),
+      ),
+    ).toBeGreaterThanOrEqual(3)
 
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-border: var(--wb-separator);')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-separator: var(--wb-separator);')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-control-border: var(--wb-control-border);')
-    expect(selectorBlock(
-      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
-    )).toContain('--mx-designer-overlay-border: var(--wb-separator);')
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-border: var(--wb-separator);',
+    )
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-separator: var(--wb-separator);',
+    )
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-control-border: var(--wb-control-border);',
+    )
+    expect(selectorBlock('.workbench-app[data-theme] .embedded-designer.mx-config-form-designer')).toContain(
+      '--mx-designer-overlay-border: var(--wb-separator);',
+    )
     expect(selectorBlock('.workspace-context')).toContain('border: 0;')
     expect(selectorBlock('.brand-lockup span')).toContain('font-size: 11px;')
     expect(cssRules(stylesheet).find(rule => rule.selector === '.workspace-context span')?.body)
-      .toContain('font-size: 12px;')
+      .toContain(
+        'font-size: 12px;',
+      )
   })
 
   it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {
@@ -464,8 +618,11 @@ describe('workbench theme contract', () => {
       ['--el-color-info', '--wb-muted'],
     ] as const) {
       expect(workbenchBlocks).toContain(`${token}: var(${source});`)
-      for (const level of ['light-3', 'light-5', 'light-7', 'light-8', 'light-9', 'dark-2'] as const)
-        expect(workbenchBlocks).toMatch(new RegExp(`${token}-${level}: (?:color-mix\\(in srgb, var\\(${source}\\)|var\\(--wb-danger-soft\\))`))
+      for (const level of ['light-3', 'light-5', 'light-7', 'light-8', 'light-9', 'dark-2'] as const) {
+        expect(workbenchBlocks).toMatch(
+          new RegExp(`${token}-${level}: (?:color-mix\\(in srgb, var\\(${source}\\)|var\\(--wb-danger-soft\\))`),
+        )
+      }
     }
   })
 
@@ -477,13 +634,21 @@ describe('workbench theme contract', () => {
       '.export-menu-popover .el-dropdown-menu__item',
       '.mobile-action-popover .el-dropdown-menu__item',
     ]) {
-      expect(cssRules(stylesheet).some(rule => rule.selector.split(',')
-        .some(item => item.trim() === selector) && rule.body.includes('min-height: 44px;'))).toBe(true)
+      expect(
+        cssRules(stylesheet).some(
+          rule => rule.selector.split(',')
+            .some(item => item.trim() === selector) && rule.body.includes('min-height: 44px;'),
+        ),
+      ).toBe(true)
     }
     expect(stylesheet).not.toContain('.project-file-tree')
     expect(sourceViewerStylesheet).toContain('@media (max-width: 720px)')
-    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'tree\'] .config-form-source-viewer__code-pane')
-    expect(sourceViewerStylesheet).toContain('.config-form-source-viewer[data-active-pane=\'code\'] .config-form-source-viewer__tree-pane')
+    expect(sourceViewerStylesheet).toContain(
+      '.config-form-source-viewer[data-active-pane=\'tree\'] .config-form-source-viewer__code-pane',
+    )
+    expect(sourceViewerStylesheet).toContain(
+      '.config-form-source-viewer[data-active-pane=\'code\'] .config-form-source-viewer__tree-pane',
+    )
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(stylesheet).not.toContain('@container preview-runtime')
     expect(runtimeHostStylesheet).toContain('.page-preview-form')
@@ -493,21 +658,23 @@ describe('workbench theme contract', () => {
 
   it('keeps Preview as an overlay that cannot resize the Design surface', () => {
     const rules = cssRules(stylesheet)
-    const overlayRule = rules.find(
-      rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay',
-    )
+    const overlayRule = rules.find(rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay')
     const shellRule = rules.find(rule => rule.selector === '.preview-dialog-shell')
     const expandedRule = rules.find(rule => rule.selector === '.preview-dialog-shell.is-expanded')
 
     expect(selectorBlock('.workbench-layout')).toContain('position: relative;')
     expect(selectorBlock('.workbench-layout')).toContain('grid-template-columns: minmax(0, 1fr);')
-    expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(true)
+    expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(
+      true,
+    )
     // Preview is a centered modal dialog layered over the workbench: bounded in
     // height, transition-free, and never part of the layout grid.
     expect(overlayRule?.body).toContain('transition: none !important;')
     expect(shellRule?.body).toContain('max-height: min(84vh, 900px);')
     expect(rules.some(rule => rule.selector === '.preview-pane'
-      && rule.body.includes('position: static;'))).toBe(true)
+      && rule.body.includes('position: static;'))).toBe(
+      true,
+    )
     expect(expandedRule?.body).toContain('box-shadow: none;')
   })
 
@@ -518,6 +685,8 @@ describe('workbench theme contract', () => {
     expect(appStylesheet.slice(0, appMobileStart)).not.toContain('show-mobile-preview')
     expect(previewDrawerStylesheet.slice(0, previewMobileStart)).not.toContain('show-mobile-preview')
     expect(appStylesheet.slice(appMobileStart)).toContain('.workbench-layout.show-mobile-preview .editor-pane')
-    expect(previewDrawerStylesheet.slice(previewMobileStart)).toContain('.workbench-layout.show-mobile-preview .preview-pane')
+    expect(previewDrawerStylesheet.slice(previewMobileStart)).toContain(
+      '.workbench-layout.show-mobile-preview .preview-pane',
+    )
   })
 })

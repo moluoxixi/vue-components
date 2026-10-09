@@ -16,52 +16,55 @@ const adapter = vi.hoisted(() => ({ load: vi.fn().mockResolvedValue({ runtimeRes
 const renderer = vi.hoisted(() => ({ setValues: vi.fn() }))
 vi.mock('../../adapters', () => ({ loadWorkbenchRuntimeAdapter: adapter.load }))
 vi.mock('@moluoxixi/config-form-vue-backend', () => ({
-  compileCanonicalSurfaceRuntime: vi.fn((input: {
-    compilation: {
-      surface?: { id?: string, interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }
-      ir?: { surfacesById?: Record<string, { interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }> }
-    }
-    surfaceId?: string
-  }) => {
-    const surfaceId = input.surfaceId ?? input.compilation.surface?.id ?? 'home'
-    const interactions = input.compilation.surface?.interactions
-      ?? input.compilation.ir?.surfacesById?.[surfaceId]?.interactions
-      ?? []
-    const interaction = interactions.find(candidate => candidate.kind === 'primaryUiAction')
-    const semanticEventByTrigger: Record<string, string> = {
-      rowActivate: 'row-click',
-      itemActivate: 'item-click',
-    }
-    const semanticTrigger = interaction?.trigger
-    const semanticEvent = semanticTrigger === undefined
-      ? undefined
-      : semanticEventByTrigger[semanticTrigger] ?? semanticTrigger
-    return {
-      success: true,
-      artifact: {
-        compilationKey: {},
-        surfaceId,
-        renderer: {
-          fields: [{
-            id: `${surfaceId}-action`,
-            ...(interaction
-              ? {
-                  semanticEvents: {
-                    [interaction.trigger!]: semanticEvent,
-                  },
-                }
-              : {}),
-          }],
-          plan: {
-            valueSchema: { valueScopes: [], scopedFields: [] },
-            runtime: { variables: [], dataSources: [] },
-            optionBindings: [],
+  compileCanonicalSurfaceRuntime: vi.fn(
+    (input: {
+      compilation: {
+        surface?: { id?: string, interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }
+        ir?: { surfacesById?: Record<string, { interactions?: Array<{ kind?: string, nodeId?: string, trigger?: string }> }> }
+      }
+      surfaceId?: string
+    }) => {
+      const surfaceId = input.surfaceId ?? input.compilation.surface?.id ?? 'home'
+      const interactions = input.compilation.surface?.interactions
+        ?? input.compilation.ir?.surfacesById?.[surfaceId]?.interactions
+        ?? []
+      const interaction = interactions.find(candidate => candidate.kind === 'primaryUiAction')
+      const semanticEventByTrigger: Record<string, string> = {
+        rowActivate: 'row-click',
+        itemActivate: 'item-click',
+      }
+      const semanticTrigger = interaction?.trigger
+      const semanticEvent
+        = semanticTrigger === undefined ? undefined : (semanticEventByTrigger[semanticTrigger] ?? semanticTrigger)
+      return {
+        success: true,
+        artifact: {
+          compilationKey: {},
+          surfaceId,
+          renderer: {
+            fields: [
+              {
+                id: `${surfaceId}-action`,
+                ...(interaction
+                  ? {
+                      semanticEvents: {
+                        [interaction.trigger!]: semanticEvent,
+                      },
+                    }
+                  : {}),
+              },
+            ],
+            plan: {
+              valueSchema: { valueScopes: [], scopedFields: [] },
+              runtime: { variables: [], dataSources: [] },
+              optionBindings: [],
+            },
           },
         },
-      },
-      diagnostics: [],
-    }
-  }),
+        diagnostics: [],
+      }
+    },
+  ),
 }))
 vi.mock('@moluoxixi/config-form', async () => {
   const { defineComponent, h } = await import('vue')
@@ -86,22 +89,27 @@ vi.mock('@moluoxixi/config-form', async () => {
           validate: () => true,
           validateInstance: () => true,
         })
-        return () => h('div', [
-          h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.model.read())),
-          ...props.fields.map((field) => {
-            const node = field as { id: string, semanticEvents?: Record<string, string> }
-            const trigger = Object.keys(node.semanticEvents ?? {})[0]
-            return h('button', {
-              'data-config-node-id': node.id,
-              'type': 'button',
-              'onClick': () => trigger && props.onSemanticActivate?.({
-                nodeId: node.id,
-                trigger,
-                args: trigger === 'rowActivate' || trigger === 'itemActivate' ? [{ id: 'item-1' }] : [],
-              }),
-            }, node.id)
-          }),
-        ])
+        return () =>
+          h('div', [
+            h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.model.read())),
+            ...props.fields.map((field) => {
+              const node = field as { id: string, semanticEvents?: Record<string, string> }
+              const trigger = Object.keys(node.semanticEvents ?? {})[0]
+              return h(
+                'button',
+                {
+                  'data-config-node-id': node.id,
+                  'type': 'button',
+                  'onClick': () => trigger && props.onSemanticActivate?.({
+                    nodeId: node.id,
+                    trigger,
+                    args: trigger === 'rowActivate' || trigger === 'itemActivate' ? [{ id: 'item-1' }] : [],
+                  }),
+                },
+                node.id,
+              )
+            }),
+          ])
       },
     }),
   }
@@ -122,19 +130,21 @@ function experienceCompilation(homeTrigger: 'activate' | 'submit' | 'rowActivate
 }
 
 function dispatch(payload: Record<string, unknown>, sequence: number) {
-  window.dispatchEvent(new MessageEvent('message', {
-    data: {
-      channel: RUNTIME_HOST_CHANNEL,
-      version: RUNTIME_HOST_PROTOCOL_VERSION,
-      hostId: 'host',
-      projectId: 'project',
-      revision: 'revision',
-      sequence,
-      ...payload,
-    },
-    origin: window.location.origin,
-    source: window.parent,
-  }))
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data: {
+        channel: RUNTIME_HOST_CHANNEL,
+        version: RUNTIME_HOST_PROTOCOL_VERSION,
+        hostId: 'host',
+        projectId: 'project',
+        revision: 'revision',
+        sequence,
+        ...payload,
+      },
+      origin: window.location.origin,
+      source: window.parent,
+    }),
+  )
 }
 
 function runtime(context: PrototypeProjectContextV1, surfaceId: string, prefix: string) {
@@ -160,46 +170,110 @@ function nestedExperienceSession(project: ReturnType<typeof experienceCompilatio
   })
   if (!initialized.success)
     throw new Error(initialized.diagnostics[0]?.message ?? 'Session fixture failed')
-  const openedDialog = reducePrototypeSession(initialized.data, {
-    type: 'interaction.activate',
-    sourceInstanceId: 'page-1',
-    sourceAddress: { nodeId: 'home-action', scope: [] },
-    interactionId: 'open-dialog',
-    nextInstance: {
-      instanceId: 'dialog-1',
-      runtime: runtime(context.data, 'dialog', 'dialog'),
+  const openedDialog = reducePrototypeSession(
+    initialized.data,
+    {
+      type: 'interaction.activate',
+      sourceInstanceId: 'page-1',
+      sourceAddress: { nodeId: 'home-action', scope: [] },
+      interactionId: 'open-dialog',
+      nextInstance: {
+        instanceId: 'dialog-1',
+        runtime: runtime(context.data, 'dialog', 'dialog'),
+      },
     },
-  }, context.data)
-  const openedDrawer = reducePrototypeSession(openedDialog.session, {
-    type: 'interaction.activate',
-    sourceInstanceId: 'dialog-1',
-    sourceAddress: { nodeId: 'dialog-action', scope: [] },
-    interactionId: 'open-drawer',
-    nextInstance: {
-      instanceId: 'drawer-1',
-      runtime: runtime(context.data, 'drawer', 'drawer'),
+    context.data,
+  )
+  const openedDrawer = reducePrototypeSession(
+    openedDialog.session,
+    {
+      type: 'interaction.activate',
+      sourceInstanceId: 'dialog-1',
+      sourceAddress: { nodeId: 'dialog-action', scope: [] },
+      interactionId: 'open-drawer',
+      nextInstance: {
+        instanceId: 'drawer-1',
+        runtime: runtime(context.data, 'drawer', 'drawer'),
+      },
     },
-  }, context.data)
+    context.data,
+  )
   if (openedDrawer.diagnostics.length > 0)
     throw new Error(openedDrawer.diagnostics[0]?.message ?? 'Nested session fixture failed')
   return { context: context.data, session: openedDrawer.session }
 }
 
 describe('runtime host app v7', () => {
+  it('delivers the initial experience state after the ready handshake without requiring user input', async () => {
+    const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const project = experienceCompilation()
+    const initialized = initializePrototypeProjectSession({
+      compilation: project,
+      homeInstanceId: 'initial-page',
+      createRowId: ({ scopeId, attempt }) => `initial-${scopeId}-${attempt}`,
+    })
+    if (!initialized.success)
+      throw new Error('Session fixture failed')
+    const wrapper = mount(RuntimeHostApp)
+    dispatch(
+      {
+        type: 'experience.sync',
+        sessionId: 'initial-session',
+        payload: { adapter: 'element-plus', compilation: project, locale: 'en-US', session: initialized.data },
+      },
+      1,
+    )
+    await vi.waitFor(() =>
+      expect(
+        post.mock.calls.some(([message]) => (message as { type?: string }).type === 'experience.instanceState'),
+      ).toBe(true),
+    )
+    const messages = post.mock.calls.map(
+      ([message]) =>
+        message as {
+          type: string
+          sessionId?: string
+          instanceId?: string
+          payload?: { stateRevision: number, values: unknown }
+        },
+    )
+    const ready = messages.findIndex(message => message.type === 'ready')
+    const state = messages.findIndex(message => message.type === 'experience.instanceState')
+    expect(ready).toBeGreaterThanOrEqual(0)
+    expect(state).toBeGreaterThan(ready)
+    expect(messages[state]).toMatchObject({
+      sessionId: 'initial-session',
+      instanceId: 'initial-page',
+      payload: { stateRevision: 1, values: initialized.data.instancesById['initial-page']!.values },
+    })
+    wrapper.unmount()
+    post.mockRestore()
+  })
+
   it('ignores a superseded adapter rejection after a newer sync succeeds', async () => {
     const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
     let rejectFirst!: (error: Error) => void
-    adapter.load.mockImplementationOnce(() => new Promise((_, reject) => {
-      rejectFirst = reject
-    }))
+    adapter.load.mockImplementationOnce(
+      () => new Promise((_, reject) => {
+        rejectFirst = reject
+      }),
+    )
     const wrapper = mount(RuntimeHostApp)
     const state = { fields: [], touched: [], validation: {}, values: {} }
-    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'en-US', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    const payload = {
+      adapter: 'element-plus',
+      breakpoint: 'desktop',
+      compilation: compilation(),
+      locale: 'en-US',
+      runtimeSessionKey: 'design',
+      runtimeState: state,
+      variant: 'canvas',
+    }
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 2)
-    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
-      (message as { type?: string }).type === 'ready'
-    ))).toBe(true))
+    await vi.waitFor(() =>
+      expect(post.mock.calls.some(([message]) => (message as { type?: string }).type === 'ready')).toBe(true),
+    )
     rejectFirst(new Error('Outdated adapter failure'))
     await flushPromises()
     expect(post.mock.calls.some(([message]) => (message as { type?: string }).type === 'error')).toBe(false)
@@ -212,23 +286,33 @@ describe('runtime host app v7', () => {
     const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
     const wrapper = mount(RuntimeHostApp)
     const state = { fields: [], touched: [], validation: {}, values: {} }
-    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'en-US', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    const payload = {
+      adapter: 'element-plus',
+      breakpoint: 'desktop',
+      compilation: compilation(),
+      locale: 'en-US',
+      runtimeSessionKey: 'design',
+      runtimeState: state,
+      variant: 'canvas',
+    }
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
-    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
-      (message as { type?: string }).type === 'ready'
-    ))).toBe(true))
+    await vi.waitFor(() =>
+      expect(post.mock.calls.some(([message]) => (message as { type?: string }).type === 'ready')).toBe(true),
+    )
     renderer.setValues.mockImplementationOnce(() => {
       throw new Error('Cannot apply values')
     })
     dispatch({ type: 'design.state', surfaceId: 'home', payload: state }, 2)
-    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
-      (message as { code?: string }).code === 'RUNTIME_STATE_FAILED'
-    ))).toBe(true))
+    await vi.waitFor(() =>
+      expect(post.mock.calls.some(([message]) => (message as { code?: string }).code === 'RUNTIME_STATE_FAILED')).toBe(
+        true,
+      ),
+    )
     expect(wrapper.get('.runtime-host-error').text()).toContain('Cannot apply values')
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 3)
-    await vi.waitFor(() => expect(post.mock.calls.filter(([message]) => (
-      (message as { type?: string }).type === 'ready'
-    ))).toHaveLength(2))
+    await vi.waitFor(() =>
+      expect(post.mock.calls.filter(([message]) => (message as { type?: string }).type === 'ready')).toHaveLength(2),
+    )
     expect(wrapper.find('.runtime-host-error').exists()).toBe(false)
     wrapper.unmount()
     post.mockRestore()
@@ -239,17 +323,30 @@ describe('runtime host app v7', () => {
     adapter.load.mockRejectedValueOnce(new Error('Adapter unavailable'))
     const wrapper = mount(RuntimeHostApp)
     const state = { fields: [], touched: [], validation: {}, values: {} }
-    const payload = { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'zh-CN', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' }
+    const payload = {
+      adapter: 'element-plus',
+      breakpoint: 'desktop',
+      compilation: compilation(),
+      locale: 'zh-CN',
+      runtimeSessionKey: 'design',
+      runtimeState: state,
+      variant: 'canvas',
+    }
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 1)
-    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
-      (message as { type?: string, code?: string }).type === 'error'
-      && (message as { code?: string }).code === 'RUNTIME_SYNC_FAILED'
-    ))).toBe(true))
+    await vi.waitFor(() =>
+      expect(
+        post.mock.calls.some(
+          ([message]) =>
+            (message as { type?: string, code?: string }).type === 'error'
+            && (message as { code?: string }).code === 'RUNTIME_SYNC_FAILED',
+        ),
+      ).toBe(true),
+    )
     expect(wrapper.get('.runtime-host-error strong').text()).toBe('预览运行时错误')
     dispatch({ type: 'design.sync', surfaceId: 'home', payload }, 2)
-    await vi.waitFor(() => expect(post.mock.calls.some(([message]) => (
-      (message as { type?: string }).type === 'ready'
-    ))).toBe(true))
+    await vi.waitFor(() =>
+      expect(post.mock.calls.some(([message]) => (message as { type?: string }).type === 'ready')).toBe(true),
+    )
     wrapper.unmount()
     post.mockRestore()
   })
@@ -258,19 +355,45 @@ describe('runtime host app v7', () => {
     const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
     const wrapper = mount(RuntimeHostApp)
     const state = { fields: [], touched: [], validation: {}, values: { name: 'Initial' } }
-    dispatch({ type: 'design.sync', surfaceId: 'home', payload: { adapter: 'element-plus', breakpoint: 'desktop', compilation: compilation(), locale: 'en-US', runtimeSessionKey: 'design', runtimeState: state, variant: 'canvas' } }, 1)
+    dispatch(
+      {
+        type: 'design.sync',
+        surfaceId: 'home',
+        payload: {
+          adapter: 'element-plus',
+          breakpoint: 'desktop',
+          compilation: compilation(),
+          locale: 'en-US',
+          runtimeSessionKey: 'design',
+          runtimeState: state,
+          variant: 'canvas',
+        },
+      },
+      1,
+    )
     await vi.waitFor(() => expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Initial"}'))
     dispatch({ type: 'design.state', surfaceId: 'home', payload: { ...state, values: { name: 'Latest' } } }, 2)
     await vi.waitFor(() => expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Latest"}'))
     dispatch({ type: 'design.state', surfaceId: 'home', payload: { ...state, values: { name: 'Replay' } } }, 2)
     dispatch({ type: 'design.state', surfaceId: 'home', payload: { ...state, values: { name: 'Backwards' } } }, 1)
-    dispatch({ type: 'design.state', surfaceId: 'home', revision: 'stale-revision', payload: { ...state, values: { name: 'Stale' } } }, 3)
+    dispatch(
+      {
+        type: 'design.state',
+        surfaceId: 'home',
+        revision: 'stale-revision',
+        payload: { ...state, values: { name: 'Stale' } },
+      },
+      3,
+    )
     dispatch({ type: 'experience.command', sessionId: 'experience-1', command: { type: 'history.back' } }, 3)
     expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Latest"}')
     dispatch({ type: 'design.state', surfaceId: 'home', payload: { ...state, values: { name: 'Final' } } }, 3)
     await vi.waitFor(() => expect(wrapper.get('[data-runtime-model]').text()).toBe('{"name":"Final"}'))
     expect(post.mock.calls.some(([v]) => (v as { type?: string }).type === 'ready')).toBe(true)
-    expect(post.mock.calls.some(([v]) => ['sync', 'state', 'fieldChange', 'submitResult'].includes((v as { type?: string }).type ?? ''))).toBe(false)
+    expect(
+      post.mock.calls.some(([v]) => ['sync', 'state', 'fieldChange', 'submitResult'].includes((v as { type?: string }).type ?? ''),
+      ),
+    ).toBe(false)
     wrapper.unmount()
     post.mockRestore()
   })
@@ -281,69 +404,89 @@ describe('runtime host app v7', () => {
     const fixture = nestedExperienceSession(project)
     const wrapper = mount(RuntimeHostApp, { attachTo: document.body })
 
-    dispatch({
-      type: 'experience.sync',
-      sessionId: 'experience-1',
-      payload: {
-        adapter: 'element-plus',
-        compilation: project,
-        locale: 'en-US',
-        session: fixture.session,
+    dispatch(
+      {
+        type: 'experience.sync',
+        sessionId: 'experience-1',
+        payload: {
+          adapter: 'element-plus',
+          compilation: project,
+          locale: 'en-US',
+          session: fixture.session,
+        },
       },
-    }, 1)
+      1,
+    )
 
     await vi.waitFor(() => {
       expect(document.querySelectorAll('.mx-prototype-host__overlay')).toHaveLength(2)
     })
     expect(document.querySelector('[data-instance-id="drawer-1"]')?.getAttribute('data-top')).toBe('true')
 
-    dispatch({
-      type: 'experience.command',
-      sessionId: 'experience-1',
-      command: { type: 'overlay.dismiss', instanceId: 'drawer-1', reason: 'button' },
-    }, 2)
+    dispatch(
+      {
+        type: 'experience.command',
+        sessionId: 'experience-1',
+        command: { type: 'overlay.dismiss', instanceId: 'drawer-1', reason: 'button' },
+      },
+      2,
+    )
     await vi.waitFor(() => {
       expect(document.querySelectorAll('.mx-prototype-host__overlay')).toHaveLength(1)
     })
     await vi.waitFor(() => {
-      expect(post.mock.calls.some(([message]) => {
-        const candidate = message as { type?: string, instanceId?: string, payload?: { focusedAddress?: { nodeId?: string } } }
-        return candidate.type === 'experience.instanceState'
-          && candidate.instanceId === 'dialog-1'
-          && candidate.payload?.focusedAddress?.nodeId === 'dialog-action'
-      })).toBe(true)
+      expect(
+        post.mock.calls.some(([message]) => {
+          const candidate = message as {
+            type?: string
+            instanceId?: string
+            payload?: { focusedAddress?: { nodeId?: string } }
+          }
+          return (
+            candidate.type === 'experience.instanceState'
+            && candidate.instanceId === 'dialog-1'
+            && candidate.payload?.focusedAddress?.nodeId === 'dialog-action'
+          )
+        }),
+      ).toBe(true)
     })
 
-    dispatch({
-      type: 'experience.command',
-      sessionId: 'other-experience',
-      command: {
-        type: 'interaction.activate',
-        sourceInstanceId: 'dialog-1',
-        sourceAddress: { nodeId: 'dialog-action', scope: [] },
-        interactionId: 'open-drawer',
-        nextInstance: {
-          instanceId: 'drawer-2',
-          runtime: runtime(fixture.context, 'drawer', 'drawer-2'),
+    dispatch(
+      {
+        type: 'experience.command',
+        sessionId: 'other-experience',
+        command: {
+          type: 'interaction.activate',
+          sourceInstanceId: 'dialog-1',
+          sourceAddress: { nodeId: 'dialog-action', scope: [] },
+          interactionId: 'open-drawer',
+          nextInstance: {
+            instanceId: 'drawer-2',
+            runtime: runtime(fixture.context, 'drawer', 'drawer-2'),
+          },
         },
       },
-    }, 3)
+      3,
+    )
     expect(document.querySelector('[data-instance-id="drawer-2"]')).toBeNull()
 
-    dispatch({
-      type: 'experience.command',
-      sessionId: 'experience-1',
-      command: {
-        type: 'interaction.activate',
-        sourceInstanceId: 'dialog-1',
-        sourceAddress: { nodeId: 'dialog-action', scope: [] },
-        interactionId: 'open-drawer',
-        nextInstance: {
-          instanceId: 'drawer-2',
-          runtime: runtime(fixture.context, 'drawer', 'drawer-2'),
+    dispatch(
+      {
+        type: 'experience.command',
+        sessionId: 'experience-1',
+        command: {
+          type: 'interaction.activate',
+          sourceInstanceId: 'dialog-1',
+          sourceAddress: { nodeId: 'dialog-action', scope: [] },
+          interactionId: 'open-drawer',
+          nextInstance: {
+            instanceId: 'drawer-2',
+            runtime: runtime(fixture.context, 'drawer', 'drawer-2'),
+          },
         },
       },
-    }, 3)
+      3,
+    )
     await vi.waitFor(() => {
       expect(document.querySelector('[data-instance-id="drawer-2"]')).not.toBeNull()
       expect(document.querySelectorAll('.mx-prototype-host__overlay')).toHaveLength(2)
@@ -370,16 +513,19 @@ describe('runtime host app v7', () => {
       throw new Error(initialized.diagnostics[0]?.message ?? 'Experience session failed')
     const wrapper = mount(RuntimeHostApp, { attachTo: document.body })
 
-    dispatch({
-      type: 'experience.sync',
-      sessionId: 'experience-1',
-      payload: {
-        adapter: 'element-plus',
-        compilation: project,
-        locale: 'en-US',
-        session: initialized.data,
+    dispatch(
+      {
+        type: 'experience.sync',
+        sessionId: 'experience-1',
+        payload: {
+          adapter: 'element-plus',
+          compilation: project,
+          locale: 'en-US',
+          session: initialized.data,
+        },
       },
-    }, 1)
+      1,
+    )
 
     await vi.waitFor(() => {
       expect(document.querySelector('[data-config-node-id="home-action"]')).not.toBeNull()
@@ -417,16 +563,19 @@ describe('runtime host app v7', () => {
         throw new Error(initialized.diagnostics[0]?.message ?? 'Experience session failed')
       const wrapper = mount(RuntimeHostApp, { attachTo: document.body })
 
-      dispatch({
-        type: 'experience.sync',
-        sessionId: 'experience-1',
-        payload: {
-          adapter: 'element-plus',
-          compilation: project,
-          locale: 'en-US',
-          session: initialized.data,
+      dispatch(
+        {
+          type: 'experience.sync',
+          sessionId: 'experience-1',
+          payload: {
+            adapter: 'element-plus',
+            compilation: project,
+            locale: 'en-US',
+            session: initialized.data,
+          },
         },
-      }, 1)
+        1,
+      )
 
       await vi.waitFor(() => {
         expect(document.querySelector('[data-config-node-id="home-action"]')).not.toBeNull()
@@ -452,16 +601,19 @@ describe('runtime host app v7', () => {
       throw new Error(initialized.diagnostics[0]?.message ?? 'Experience session failed')
     const wrapper = mount(RuntimeHostApp, { attachTo: document.body })
 
-    dispatch({
-      type: 'experience.sync',
-      sessionId: 'experience-1',
-      payload: {
-        adapter: 'element-plus',
-        compilation: project,
-        locale: 'en-US',
-        session: initialized.data,
+    dispatch(
+      {
+        type: 'experience.sync',
+        sessionId: 'experience-1',
+        payload: {
+          adapter: 'element-plus',
+          compilation: project,
+          locale: 'en-US',
+          session: initialized.data,
+        },
       },
-    }, 1)
+      1,
+    )
 
     await vi.waitFor(() => {
       expect(document.querySelector('.runtime-host-experience-instance')).not.toBeNull()
@@ -476,9 +628,7 @@ describe('runtime host app v7', () => {
       .map(([message]) => message as { type?: string, transition?: { session?: { overlayStack?: string[] } } })
       .filter(message => message.type === 'experience.session')
     expect(sessionMessages.at(-1)?.transition?.session?.overlayStack).toHaveLength(1)
-    expect(post.mock.calls.some(([message]) => (
-      (message as { command?: unknown }).command instanceof Event
-    ))).toBe(false)
+    expect(post.mock.calls.some(([message]) => (message as { command?: unknown }).command instanceof Event)).toBe(false)
     wrapper.unmount()
     post.mockRestore()
   })

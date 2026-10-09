@@ -4,6 +4,15 @@ Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigForm
 
 ## 使用
 
+字段支持 `description`、`help` 和 `warning`，支持文本通过 `aria-describedby` 关联到控件。
+`density="compact"` 默认使用 8px 间距，舒适模式为 16px，显式 `gap` 优先。
+Renderer 及两个 UI adapter 支持 `errorSummary`、`errorSummaryLabel`、`focusFirstError`
+（默认开启）、`loadingText`、`validatingText` 和 `stickyActions`。首次错误定位按实例寻址，
+适用于重复字段；expose 的 `scrollToFirstError()` 也可由宿主主动调用。
+
+`actions` 插槽提供 `values`、`submitting`、`validating`、`submit()` 和无参
+`resetFields()`，可以直接接按钮事件；开启 `stickyActions` 后操作区随长表单保持可见。
+
 ```vue
 <script setup lang="ts">
 import { shallowRef } from 'vue'

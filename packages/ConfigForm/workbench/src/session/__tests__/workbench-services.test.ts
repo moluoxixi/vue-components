@@ -12,10 +12,14 @@ import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 async function fixture() {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const document = createBuiltInProjectFixture('element-profile', {
-    id: 'workbench-services',
-    name: 'Workbench services',
-  }, adapter.componentRegistry.lock)
+  const document = createBuiltInProjectFixture(
+    'element-profile',
+    {
+      id: 'workbench-services',
+      name: 'Workbench services',
+    },
+    adapter.componentRegistry.lock,
+  )
   const project = createProjectSnapshot(document, 3)
   const snapshot: ProjectEditorSessionSnapshot = {
     ...project,
@@ -57,7 +61,7 @@ describe('workbench service boundaries', () => {
       getSurfaceId: () => surfaceId,
       getProjectSession: () => undefined,
       getSnapshot: () => snapshot,
-      setDiagnostic: message => diagnostic = message,
+      setDiagnostic: message => (diagnostic = message),
     })
 
     const publication = design.accept(snapshot, surfaceId)
@@ -66,6 +70,7 @@ describe('workbench service boundaries', () => {
     expect(design.compilation.value).toBeUndefined()
     expect(design.runtime.value).toBeUndefined()
     expect(diagnostic).toBe('Workbench runtime adapter is unavailable.')
+    expect(design.diagnostics.value).toMatchObject([{ code: 'RUNTIME_ADAPTER_UNAVAILABLE', surfaceId }])
   })
 
   it('keeps compilation candidates and command history inside Design Session', async () => {
@@ -86,7 +91,7 @@ describe('workbench service boundaries', () => {
       getSurfaceId: () => surfaceId,
       getProjectSession: () => projectSession,
       getSnapshot: () => snapshot,
-      setDiagnostic: message => diagnostic = message,
+      setDiagnostic: message => (diagnostic = message),
     })
     design.configure(adapter)
     const publication = design.accept(snapshot, surfaceId)
@@ -95,21 +100,30 @@ describe('workbench service boundaries', () => {
     expect(design.runtime.value).toBe(publication.runtime)
 
     const field = Object.values(document.surfacesById[surfaceId]!.graph.nodesById)
-      .find(node => node.kind === 'field')!
+      .find(
+        node => node.kind === 'field',
+      )!
     const command: ProjectCommand = {
       id: 'candidate-label',
       label: 'Candidate label',
-      actions: [{
-        type: 'node.patch',
-        surfaceId,
-        nodeId: field.id,
-        patch: { set: { label: 'Candidate label' } },
-      }],
+      actions: [
+        {
+          type: 'node.patch',
+          surfaceId,
+          nodeId: field.id,
+          patch: { set: { label: 'Candidate label' } },
+        },
+      ],
     }
     const candidate = design.getCompilation(command)
     expect(candidate?.snapshotIdentity).toMatchObject({ source: 'draft' })
-    expect(snapshot.document.surfacesById[surfaceId]!.graph.nodesById[field.id]).not.toHaveProperty('label', 'Candidate label')
-    expect(design.commandControl.preview(command)?.graph.nodesById[field.id]).toMatchObject({ label: 'Candidate label' })
+    expect(snapshot.document.surfacesById[surfaceId]!.graph.nodesById[field.id]).not.toHaveProperty(
+      'label',
+      'Candidate label',
+    )
+    expect(design.commandControl.preview(command)?.graph.nodesById[field.id]).toMatchObject({
+      label: 'Candidate label',
+    })
 
     expect(design.commandControl.execute(command).changed).toBe(true)
     expect(execute).toHaveBeenCalledOnce()
@@ -118,6 +132,7 @@ describe('workbench service boundaries', () => {
     expect(undo).toHaveBeenCalledOnce()
     expect(redo).toHaveBeenCalledOnce()
     expect(diagnostic).toBe('')
+    expect(design.diagnostics.value).toEqual([])
 
     design.dispose()
     expect(design.compilation.value).toBeUndefined()
@@ -134,11 +149,11 @@ describe('workbench service boundaries', () => {
       execute: vi.fn(() => sessionResult(snapshot)),
     } as unknown as ProjectEditorSession
     const design = createWorkbenchDesignSession({
-      getAdapter: () => adapterAvailable ? adapter : undefined,
+      getAdapter: () => (adapterAvailable ? adapter : undefined),
       getSurfaceId: () => surfaceId,
       getProjectSession: () => projectSession,
       getSnapshot: () => snapshot,
-      setDiagnostic: message => diagnostic = message,
+      setDiagnostic: message => (diagnostic = message),
     })
     design.configure(adapter)
     const accepted = design.accept(snapshot, surfaceId)
@@ -176,16 +191,20 @@ describe('workbench service boundaries', () => {
     design.accept(current, surfaceId)
 
     const field = Object.values(document.surfacesById[surfaceId]!.graph.nodesById)
-      .find(node => node.kind === 'field')!
+      .find(
+        node => node.kind === 'field',
+      )!
     const command: ProjectCommand = {
       id: 'candidate-cache',
       label: 'Candidate cache',
-      actions: [{
-        type: 'node.patch',
-        surfaceId,
-        nodeId: field.id,
-        patch: { set: { label: 'Cached label' } },
-      }],
+      actions: [
+        {
+          type: 'node.patch',
+          surfaceId,
+          nodeId: field.id,
+          patch: { set: { label: 'Cached label' } },
+        },
+      ],
     }
 
     const first = design.getCompilation(command)
@@ -261,6 +280,9 @@ describe('workbench service boundaries', () => {
     expect(design.historyControl.value.jump(1)).toBe(false)
     expect(current.history.position).toBe(3)
     expect(setDiagnostic).toHaveBeenLastCalledWith('History jump blocked.')
+    expect(design.diagnostics.value).toMatchObject([{ code: 'HISTORY_BLOCKED' }])
+    design.configure(adapter)
+    expect(design.diagnostics.value).toEqual([])
     expect(undo).not.toHaveBeenCalled()
     expect(redo).not.toHaveBeenCalled()
   })
@@ -303,5 +325,22 @@ describe('workbench service boundaries', () => {
     const refreshed = service.capture()
     expect(refreshed?.compilation.origin).toEqual({ kind: 'committed', editVersion: 4 })
     expect(refreshed?.compilation).not.toBe(first?.compilation)
+  })
+
+  it('publishes export capture failures and clears them after recovery', async () => {
+    const { adapter, snapshot } = await fixture()
+    let available = false
+    const service = createWorkbenchExportService({
+      getAdapter: () => (available ? adapter : undefined),
+      getSnapshot: () => snapshot,
+      readEmbedded: async () => undefined,
+    })
+    expect(service.capture()).toBeUndefined()
+    expect(service.diagnostics.value).toMatchObject([{ code: 'EXPORT_NOT_READY' }])
+    available = true
+    expect(service.capture()).toBeDefined()
+    expect(service.diagnostics.value).toEqual([])
+    service.clear()
+    expect(service.diagnostics.value).toEqual([])
   })
 })

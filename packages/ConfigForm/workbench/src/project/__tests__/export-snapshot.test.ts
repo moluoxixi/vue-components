@@ -3,6 +3,7 @@ import type { SourceBinaryFile } from '@moluoxixi/config-form-source/generator'
 import type { BuildExportSnapshotInput, ExportArtifact } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { compileCanonicalSurfaceRuntime } from '@moluoxixi/config-form-vue-backend'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
@@ -18,10 +19,14 @@ import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const document = createBuiltInProjectFixture('element-profile', {
-    id: 'customer-app',
-    name,
-  }, adapter.componentRegistry.lock)
+  const document = createBuiltInProjectFixture(
+    'element-profile',
+    {
+      id: 'customer-app',
+      name,
+    },
+    adapter.componentRegistry.lock,
+  )
   const result = compileCanonicalProject({
     snapshot: createProjectSnapshot(document, 8),
     registry: adapter.registrySnapshot,
@@ -41,13 +46,81 @@ async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput>
 }
 
 function expectReady<T>(artifact: ExportArtifact<T>): T {
-  expect(artifact.status).toBe('ready')
   if (artifact.status !== 'ready')
     throw new Error(artifact.diagnostics.map(item => item.message).join('; '))
+  expect(artifact.status).toBe('ready')
   return artifact.fileSet
 }
 
 describe('export snapshot', () => {
+  it.each(['css', 'tailwind-v4'] as const)(
+    'preserves field guidance and density through compilation, runtime and %s export',
+    async (styleTarget) => {
+      const adapter = await loadWorkbenchAdapter('element-plus')
+      const document = createBuiltInProjectFixture(
+        'element-profile',
+        { id: 'guidance', name: 'Guidance' },
+        adapter.componentRegistry.lock,
+      )
+      const graph = document.surfacesById[document.homeSurfaceId]!.graph
+      const field = Object.values(graph.nodesById).find(node => node.kind === 'field')!
+      if (field.kind !== 'field')
+        throw new Error('Missing field fixture')
+      field.description = 'Full legal name'
+      field.help = 'Use the name on your identity document'
+      field.warning = 'Double-check the spelling'
+      graph.form = {
+        ...graph.form,
+        density: 'compact',
+        columns: 24,
+        fieldSpan: 12,
+        responsive: { mobile: { fieldSpan: 24 } },
+      }
+      delete graph.form.gap
+      const compiled = compileCanonicalProject({
+        snapshot: createProjectSnapshot(document, 1),
+        registry: adapter.registrySnapshot,
+      })
+      if (!compiled.success)
+        throw new Error(compiled.diagnostics.map(item => item.message).join('; '))
+      const runtime = compileCanonicalSurfaceRuntime(
+        { compilation: compiled.compilation, surfaceId: document.homeSurfaceId },
+        adapter.runtimeResolver,
+      )
+      expect(runtime.success).toBe(true)
+      if (!runtime.success)
+        throw new Error(runtime.diagnostics.map(item => item.message).join('; '))
+      expect(runtime.artifact.renderer.density).toBe('compact')
+      expect(JSON.stringify(runtime.artifact.renderer.fields)).toContain('Double-check the spelling')
+      const snapshot = await buildExportSnapshot({
+        compilation: compiled.compilation,
+        bindingResolver: adapter.sourceBindingResolver,
+        componentResolver: adapter.sourceComponentResolver,
+        styleTarget,
+        resourceReader: { readEmbedded: async () => ({ success: true, data: new Uint8Array(), diagnostics: [] }) },
+      })
+      const raw = expectReady(snapshot.rawSource)
+        .files
+        .filter(file => file.kind === 'text')
+        .map(file => (file.kind === 'text' ? file.content : ''))
+        .join('\n')
+      const binding = expectReady(snapshot.configBindings)
+        .files
+        .filter(file => file.kind === 'text')
+        .map(file => (file.kind === 'text' ? file.content : ''))
+        .join('\n')
+      for (const content of [raw, binding]) {
+        expect(content).toContain('Full legal name')
+        expect(content).toContain('Use the name on your identity document')
+        expect(content).toContain('Double-check the spelling')
+      }
+      expect(binding).toContain('"density": "compact"')
+      expect(raw).toContain(styleTarget === 'css' ? 'gap: 8px;' : 'gap-2')
+      expect(raw).toContain(styleTarget === 'css' ? 'grid-column: span 12;' : 'col-span-12')
+      expect(raw).toContain(styleTarget === 'css' ? 'grid-column: span 24;' : 'max-[720px]:col-span-24')
+    },
+  )
+
   it('builds frozen raw Vue and ConfigForm binding file sets from one compilation', async () => {
     const input = await fixture()
     const snapshot = await buildExportSnapshot(input)
@@ -177,10 +250,12 @@ describe('export snapshot', () => {
     exposed[1] = 1
 
     expect([...sourceFileBytes(file)]).toEqual([0, 127, 255])
-    const archive = unzipSync(await createStructuredSourceArchive({
-      files: [file],
-      name: 'Binary snapshot',
-    }))
+    const archive = unzipSync(
+      await createStructuredSourceArchive({
+        files: [file],
+        name: 'Binary snapshot',
+      }),
+    )
     expect([...archive['binary-snapshot/assets/payload.bin']!]).toEqual([0, 127, 255])
   })
 
@@ -192,10 +267,12 @@ describe('export snapshot', () => {
     if (page?.kind !== 'text')
       return
 
-    const archive = unzipSync(await createStructuredSourceArchive({
-      files: rawSource.files,
-      name: snapshot.compilation.ir.name,
-    }))
+    const archive = unzipSync(
+      await createStructuredSourceArchive({
+        files: rawSource.files,
+        name: snapshot.compilation.ir.name,
+      }),
+    )
     const projected = strFromU8(archive['customer-app/src/views/home/index.vue']!)
     expect(projected).toContain('@/components/ConfigFormItem.vue')
     expect(rawSource.files.find(file => file.path === 'src/surfaces/home/Surface.vue')).toBe(page)

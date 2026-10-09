@@ -15,10 +15,11 @@ describe('createConfigFormRendererExpose', () => {
     const controller = createConfigFormController<TestValues>({
       model: {
         read: () => model,
-        write: values => model = values,
+        write: values => (model = values),
       },
     })
     const scrollToField = vi.fn()
+    const scrollToFirstError = vi.fn()
     const data = {
       getVariables: vi.fn(() => ({ count: 1 })),
       getDataSourceState: vi.fn(() => ({ sourceId: 'source', status: 'idle' as const })),
@@ -30,7 +31,7 @@ describe('createConfigFormRendererExpose', () => {
 
     expect(() => expose.getValues()).toThrow('ConfigFormRenderer is not mounted.')
 
-    rendererRef.value = { ...controller, ...data, scrollToField }
+    rendererRef.value = { ...controller, ...data, scrollToField, scrollToFirstError }
     expose.setValue('name', 'Grace')
     expose.setValues({ age: 20 })
     expose.setTouched('name')
@@ -51,7 +52,7 @@ describe('createConfigFormRendererExpose', () => {
     const replacement = createConfigFormController<TestValues>({
       model: {
         read: () => replacementModel,
-        write: values => replacementModel = values,
+        write: values => (replacementModel = values),
       },
     })
     const replacementClearValidate = vi.spyOn(replacement, 'clearValidate')
@@ -61,7 +62,13 @@ describe('createConfigFormRendererExpose', () => {
     const replacementSetErrors = vi.spyOn(replacement, 'setErrors')
     const replacementSubmit = vi.spyOn(replacement, 'submit')
     const replacementValidateField = vi.spyOn(replacement, 'validateField')
-    rendererRef.value = { ...replacement, ...data, getVariables: () => ({ count: 2 }), scrollToField }
+    rendererRef.value = {
+      ...replacement,
+      ...data,
+      getVariables: () => ({ count: 2 }),
+      scrollToField,
+      scrollToFirstError,
+    }
     expect(expose.getVariables()).toEqual({ count: 2 })
 
     expose.setValues({ age: 31 }, false)
