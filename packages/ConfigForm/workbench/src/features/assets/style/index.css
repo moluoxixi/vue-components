@@ -40,6 +40,11 @@
   overflow: hidden;
 }
 
+.asset-manager.has-dataset {
+  height: min(720px, calc(100dvh - 144px));
+  grid-template-columns: 212px minmax(0, 1fr);
+}
+
 .asset-manager__list {
   display: flex;
   min-width: 0;
@@ -270,6 +275,26 @@
   padding-top: 4px;
 }
 
+.asset-manager__dataset-body.has-table {
+  display: flex;
+  overflow: hidden;
+}
+
+.asset-manager__dataset-body.has-table .asset-manager__tabs {
+  min-height: 0;
+  flex: 1;
+}
+
+.asset-manager__dataset-body.has-table :deep(.el-tabs__content) {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.asset-manager__dataset-body.has-table :deep(.dataset-table-pane) {
+  height: 100%;
+}
+
 .asset-manager__tabs {
   min-width: 0;
 }
@@ -466,20 +491,21 @@
     cursor: pointer;
   }
 
-  .asset-manager__mobile-navigation button[aria-selected="true"] {
+  .asset-manager__mobile-navigation button[aria-selected='true'] {
     color: var(--wb-accent-text);
     border-bottom-color: var(--wb-accent);
     background: var(--wb-accent-soft);
   }
 
-  .asset-manager {
+  .asset-manager,
+  .asset-manager.has-dataset {
     height: min(640px, calc(100dvh - 184px));
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .asset-manager-shell[data-active-pane="list"] .asset-manager__editor,
-  .asset-manager-shell[data-active-pane="list"] .asset-manager__empty,
-  .asset-manager-shell[data-active-pane="editor"] .asset-manager__list {
+  .asset-manager-shell[data-active-pane='list'] .asset-manager__editor,
+  .asset-manager-shell[data-active-pane='list'] .asset-manager__empty,
+  .asset-manager-shell[data-active-pane='editor'] .asset-manager__list {
     display: none;
   }
 
@@ -506,6 +532,15 @@
 
   .asset-manager__editor-body {
     padding: 12px;
+  }
+
+  .asset-manager__dataset-body.has-table {
+    display: block;
+    overflow: auto;
+  }
+
+  .asset-manager__dataset-body.has-table :deep(.dataset-table-pane) {
+    height: auto;
   }
 
   .asset-manager__form-grid {

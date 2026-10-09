@@ -535,7 +535,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
   <ElDialog
     class="asset-manager-dialog"
     :model-value="modelValue"
-    width="min(1040px, calc(100vw - 32px))"
+    :width="selectedDataset ? 'min(1280px, calc(100vw - 32px))' : 'min(1040px, calc(100vw - 32px))'"
     :title="locale.t('assets.title', 'Assets')"
     append-to="#workbench-overlays"
     align-center
@@ -584,7 +584,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           <Pencil :size="15" aria-hidden="true" />{{ locale.t('assets.details', 'Details') }}
         </button>
       </div>
-      <div class="asset-manager">
+      <div class="asset-manager" :class="{ 'has-dataset': selectedDataset }">
         <aside
           id="asset-list-panel"
           class="asset-manager__list"
@@ -750,7 +750,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               </ElButton>
             </div>
           </header>
-          <div class="asset-manager__editor-body asset-manager__dataset-body">
+          <div class="asset-manager__editor-body asset-manager__dataset-body" :class="{ 'has-table': datasetTab === 'table' }">
             <ElTabs v-model="datasetTab" class="asset-manager__tabs">
               <ElTabPane name="json">
                 <template #label>
@@ -766,7 +766,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   :aria-label="locale.t('assets.datasetJson', 'Dataset JSON')"
                 />
               </ElTabPane>
-              <ElTabPane name="table">
+              <ElTabPane name="table" class="dataset-table-pane">
                 <template #label>
                   <span class="asset-manager__tab-label"><Table2 :size="14" aria-hidden="true" />{{ locale.t('assets.table', 'Table') }}</span>
                 </template>

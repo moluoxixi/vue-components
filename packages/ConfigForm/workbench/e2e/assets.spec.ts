@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { createProject, readDownloadText } from './helpers'
 
@@ -102,10 +103,10 @@ test('authors Dataset and Resource assets, then applies a project theme across D
   await dialog.locator('[data-asset-dataset-save]').click()
   await expect(dialog.locator('.asset-manager__status')).toContainText('Dataset saved.')
   await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
-  await expect(dialog.getByRole('textbox', { name: '1 / meta', exact: true })).toHaveValue(
+  await expect(dialog.getByRole('button', { name: '1 / meta', exact: true })).toHaveText(
     '{"label":"One","disabled":true}',
   )
-  await expect(dialog.getByRole('textbox', { name: '1 / tags', exact: true })).toHaveValue('["a"]')
+  await expect(dialog.getByRole('button', { name: '1 / tags', exact: true })).toHaveText('["a"]')
   await dialog.getByRole('tab', { name: 'Default projection', exact: true }).click()
   const projection = { kind: 'options', valuePath: ['id'], labelPath: ['meta', 'label'] }
   await dialog.getByText('Advanced JSON', { exact: true }).click()
@@ -293,4 +294,81 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
   expect(scrollState.maxScrollTop).toBeGreaterThan(0)
   expect(scrollState.scrollTop).toBeGreaterThan(0)
   await expectNoHorizontalOverflow(page)
+})
+
+test('reads typed values and saves the original Dataset row after sorting, filtering and keyboard editing', async ({ page }) => {
+  await createProject(page, 'element')
+  const dialog = await openAssetManager(page)
+  await dialog.getByRole('button', { name: 'Create dataset', exact: true }).click()
+  const rows = Array.from({ length: 30 }, (_, index) => ({
+    id: String(index + 1).padStart(3, '0'),
+    name: `Customer ${index + 1}`,
+    amount: 30 - index,
+    active: index % 2 === 0,
+    notes: index === 0 ? 'A complete multiline note\nwith details at the end.' : index === 1 ? '' : null,
+    meta: { city: '杭州', tags: ['trial', 'priority'] },
+    ...(index === 0 ? { optional: 'Only on this row' } : {}),
+  }))
+  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify(rows, null, 2))
+  await dialog.locator('[data-asset-dataset-save]').click()
+  await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
+  const table = dialog.locator('[data-asset-dataset-table]')
+  await expect(table.locator('input')).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: '1 / id', exact: true })).toHaveText('001')
+  await expect(dialog.getByRole('button', { name: '2 / active', exact: true })).toHaveText('false')
+  await expect(dialog.getByRole('button', { name: '2 / notes', exact: true })).toHaveText('Empty string')
+  await expect(dialog.getByRole('button', { name: '3 / notes', exact: true })).toHaveText('null')
+  await expect(dialog.getByRole('button', { name: '2 / optional', exact: true })).toHaveText('Not set')
+  await expect(dialog.locator('[data-dataset-table-save]')).toBeInViewport()
+  expect((await new AxeBuilder({ page }).include('[data-asset-manager]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([])
+  await dialog.getByRole('button', { name: '1 / notes', exact: true }).click()
+  await expect(dialog.locator('[data-dataset-full-value]')).toHaveText(rows[0]!.notes!)
+  await dialog.getByRole('button', { name: '1 / meta', exact: true }).click()
+  await expect(dialog.locator('[data-dataset-full-value]')).toHaveText(JSON.stringify(rows[0]!.meta, null, 2))
+  await dialog.getByRole('button', { name: 'Close cell details', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Wrap text', exact: true }).click()
+  await expect(table).toHaveClass(/is-wrapped/)
+  await table.evaluate((element) => {
+    element.scrollTop = 250
+    element.scrollLeft = 250
+  })
+  const sticky = await table.evaluate(element => ({
+    headerTop: element.querySelector('thead th')!.getBoundingClientRect().top,
+    numberLeft: element.querySelector('tbody .dataset-row-number')!.getBoundingClientRect().left,
+    top: element.getBoundingClientRect().top,
+    left: element.getBoundingClientRect().left,
+  }))
+  expect(sticky.headerTop).toBeCloseTo(sticky.top + 1, 0)
+  expect(sticky.numberLeft).toBeCloseTo(sticky.left + 1, 0)
+  await dialog.getByRole('button', { name: 'Sort by amount', exact: true }).click()
+  await expect(table.locator('tbody .dataset-row-number').first()).toHaveText('30')
+  await dialog.getByRole('button', { name: '30 / amount', exact: true }).focus()
+  await page.keyboard.press('F2')
+  const amount = dialog.getByRole('textbox', { name: '30 / amount', exact: true })
+  await expect(amount).toBeFocused()
+  await amount.fill('NaN')
+  await dialog.locator('[data-dataset-table-save]').click()
+  await expect(dialog.locator('.dataset-cell-detail [role="alert"]')).toHaveText('Enter a finite number')
+  await amount.fill('777')
+  await dialog.getByRole('textbox', { name: 'Filter rows', exact: true }).fill('030')
+  await expect(table.locator('tbody .dataset-row-number')).toHaveText('30')
+  await dialog.locator('[data-dataset-table-save]').click()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.locator('[data-asset-dataset-export]').click(),
+  ])
+  const transfer = JSON.parse(await readDownloadText(download))
+  expect(transfer.dataset.rows).toEqual(rows.map((row, index) => index === 29 ? { ...row, amount: 777 } : row))
+  await expect(dialog.getByRole('button', { name: 'Discard draft', exact: true })).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectAssetDialogFits(dialog)
+  await expectNoHorizontalOverflow(page)
+  await dialog.getByRole('button', { name: 'Close cell details', exact: true }).click()
+  await dialog.getByRole('button', { name: '30 / id', exact: true }).click()
+  await expect(dialog.locator('[data-dataset-full-value]')).toHaveText('030')
+  await dialog.getByRole('button', { name: 'Edit value', exact: true }).click()
+  await expect(dialog.getByRole('textbox', { name: '30 / id', exact: true })).toHaveValue('030')
+  await expectNoHorizontalOverflow(page)
+  expect((await new AxeBuilder({ page }).include('[data-asset-manager]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([])
 })
