@@ -2,31 +2,31 @@
 .template-creation-workspace,
 .workbench-overlays,
 :root {
-  --wb-bg: #f5f6f8;
-  --wb-border: #8b929f;
-  --wb-control-border: #8b929f;
-  --wb-separator: #dfe3e8;
+  --wb-bg: #f6f7f7;
+  --wb-border: #87948d;
+  --wb-control-border: #87948d;
+  --wb-separator: #dce3df;
   --wb-elevated: #ffffff;
-  --wb-hover: #f0f2f5;
-  --wb-muted: #6b717d;
-  --wb-small-text: #626975;
+  --wb-hover: #eef2ef;
+  --wb-muted: #62706b;
+  --wb-small-text: #62706b;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #353a43;
-  --wb-text-strong: #191d25;
-  --wb-accent: #087582;
-  --wb-accent-text: #087582;
-  --wb-action-bg: #22262e;
+  --wb-text: #36433e;
+  --wb-text-strong: #23312e;
+  --wb-accent: #27665b;
+  --wb-accent-text: #27665b;
+  --wb-action-bg: #27665b;
   --wb-action-text: #ffffff;
-  --wb-accent-soft: #e7f4f5;
-  --wb-accent-line: #168d97;
-  --wb-focus: #087f8c;
+  --wb-accent-soft: #eaf3f0;
+  --wb-accent-line: #27665b;
+  --wb-focus: #27665b;
   --wb-positive: #227b55;
   --wb-warning: #93630b;
   --wb-danger: #c84048;
   --wb-danger-soft: #fcebed;
   --wb-disabled: #989eaa;
-  --wb-editor-surface: #f5f6f8;
+  --wb-editor-surface: #f6f7f7;
 
   /* Elevation set: palettes tune these instead of hard-coding shadows. */
   --wb-shadow-overlay: 0 20px 56px rgb(0 0 0 / 28%);
@@ -140,37 +140,37 @@
   --el-segmented-item-disabled-color: var(--wb-disabled);
 }
 
-/* Neutral editor chrome keeps page colors distinct from workspace controls. */
-:root[data-palette="ink"][data-theme="light"],
-.workbench-app[data-palette="ink"][data-theme="light"],
-.management-shell[data-palette="ink"][data-theme="light"],
-.template-creation-workspace[data-palette="ink"][data-theme="light"],
-.workbench-overlays[data-palette="ink"][data-theme="light"] {
-  --wb-bg: #f5f6f8;
-  --wb-border: #8b929f;
-  --wb-control-border: #8b929f;
-  --wb-separator: #dfe3e8;
+/* White work surfaces, neutral chrome, and a restrained green accent. */
+:root[data-palette='ink'][data-theme='light'],
+.workbench-app[data-palette='ink'][data-theme='light'],
+.management-shell[data-palette='ink'][data-theme='light'],
+.template-creation-workspace[data-palette='ink'][data-theme='light'],
+.workbench-overlays[data-palette='ink'][data-theme='light'] {
+  --wb-bg: #f6f7f7;
+  --wb-border: #87948d;
+  --wb-control-border: #87948d;
+  --wb-separator: #dce3df;
   --wb-elevated: #ffffff;
-  --wb-hover: #f0f2f5;
-  --wb-muted: #6b717d;
-  --wb-small-text: #626975;
+  --wb-hover: #eef2ef;
+  --wb-muted: #62706b;
+  --wb-small-text: #62706b;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #353a43;
-  --wb-text-strong: #191d25;
-  --wb-accent: #087582;
-  --wb-accent-text: #087582;
-  --wb-action-bg: #22262e;
+  --wb-text: #36433e;
+  --wb-text-strong: #23312e;
+  --wb-accent: #27665b;
+  --wb-accent-text: #27665b;
+  --wb-action-bg: #27665b;
   --wb-action-text: #ffffff;
-  --wb-accent-soft: #e7f4f5;
-  --wb-accent-line: #168d97;
-  --wb-focus: #087f8c;
+  --wb-accent-soft: #eaf3f0;
+  --wb-accent-line: #27665b;
+  --wb-focus: #27665b;
   --wb-positive: #227b55;
   --wb-warning: #93630b;
   --wb-danger: #c84048;
   --wb-danger-soft: #fcebed;
   --wb-disabled: #989eaa;
-  --wb-editor-surface: #f5f6f8;
+  --wb-editor-surface: #f6f7f7;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -180,36 +180,36 @@
 }
 
 /* Dark chrome uses the same hierarchy and restrained accent. */
-:root[data-palette="ink"][data-theme="dark"],
-.workbench-app[data-palette="ink"][data-theme="dark"],
-.management-shell[data-palette="ink"][data-theme="dark"],
-.template-creation-workspace[data-palette="ink"][data-theme="dark"],
-.workbench-overlays[data-palette="ink"][data-theme="dark"] {
-  --wb-bg: #191b20;
-  --wb-border: #777e8b;
-  --wb-control-border: #777e8b;
-  --wb-separator: #3b404a;
-  --wb-elevated: #22252b;
-  --wb-hover: #30343c;
-  --wb-muted: #a2a8b4;
-  --wb-small-text: #a2a8b4;
-  --wb-surface: #22252b;
-  --wb-surface-raised: #292d35;
-  --wb-text: #e0e3e9;
-  --wb-text-strong: #f7f8fa;
-  --wb-accent: #54c2c7;
-  --wb-accent-text: #79d2d5;
-  --wb-action-bg: #e4e7ed;
-  --wb-action-text: #22262e;
-  --wb-accent-soft: #213b41;
-  --wb-accent-line: #54c2c7;
-  --wb-focus: #79d2d5;
+:root[data-palette='ink'][data-theme='dark'],
+.workbench-app[data-palette='ink'][data-theme='dark'],
+.management-shell[data-palette='ink'][data-theme='dark'],
+.template-creation-workspace[data-palette='ink'][data-theme='dark'],
+.workbench-overlays[data-palette='ink'][data-theme='dark'] {
+  --wb-bg: #171d1b;
+  --wb-border: #7d9083;
+  --wb-control-border: #7d9083;
+  --wb-separator: #3a4840;
+  --wb-elevated: #202724;
+  --wb-hover: #2d3832;
+  --wb-muted: #a5b6ab;
+  --wb-small-text: #a5b6ab;
+  --wb-surface: #202724;
+  --wb-surface-raised: #28312d;
+  --wb-text: #dce6e0;
+  --wb-text-strong: #f2f6f4;
+  --wb-accent: #91c5ad;
+  --wb-accent-text: #a3d4be;
+  --wb-action-bg: #93c6ad;
+  --wb-action-text: #16271f;
+  --wb-accent-soft: #253b31;
+  --wb-accent-line: #91c5ad;
+  --wb-focus: #a3d4be;
   --wb-positive: #70c4a0;
   --wb-warning: #e1b36a;
   --wb-danger: #ee8791;
   --wb-danger-soft: #492d35;
   --wb-disabled: #737a87;
-  --wb-editor-surface: #191b20;
+  --wb-editor-surface: #171d1b;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -220,11 +220,11 @@
 
 /* ② Morandi cream — sub-30% saturation greys, oatmeal commands,
    bean-paste accents. */
-:root[data-palette="morandi"][data-theme="light"],
-.workbench-app[data-palette="morandi"][data-theme="light"],
-.management-shell[data-palette="morandi"][data-theme="light"],
-.template-creation-workspace[data-palette="morandi"][data-theme="light"],
-.workbench-overlays[data-palette="morandi"][data-theme="light"] {
+:root[data-palette='morandi'][data-theme='light'],
+.workbench-app[data-palette='morandi'][data-theme='light'],
+.management-shell[data-palette='morandi'][data-theme='light'],
+.template-creation-workspace[data-palette='morandi'][data-theme='light'],
+.workbench-overlays[data-palette='morandi'][data-theme='light'] {
   --wb-bg: #f5f2ec;
   --wb-border: #8f8a7e;
   --wb-control-border: #8f8a7e;
@@ -254,11 +254,11 @@
 }
 
 /* ② Morandi cream — deep coffee with milk-white text, never plain black. */
-:root[data-palette="morandi"][data-theme="dark"],
-.workbench-app[data-palette="morandi"][data-theme="dark"],
-.management-shell[data-palette="morandi"][data-theme="dark"],
-.template-creation-workspace[data-palette="morandi"][data-theme="dark"],
-.workbench-overlays[data-palette="morandi"][data-theme="dark"] {
+:root[data-palette='morandi'][data-theme='dark'],
+.workbench-app[data-palette='morandi'][data-theme='dark'],
+.management-shell[data-palette='morandi'][data-theme='dark'],
+.template-creation-workspace[data-palette='morandi'][data-theme='dark'],
+.workbench-overlays[data-palette='morandi'][data-theme='dark'] {
   --wb-bg: #2c2925;
   --wb-border: #9c948a;
   --wb-control-border: #9c948a;
@@ -288,11 +288,11 @@
 }
 
 /* ③ Cyber tech — restrained electric blue on cool white. */
-:root[data-palette="cyber"][data-theme="light"],
-.workbench-app[data-palette="cyber"][data-theme="light"],
-.management-shell[data-palette="cyber"][data-theme="light"],
-.template-creation-workspace[data-palette="cyber"][data-theme="light"],
-.workbench-overlays[data-palette="cyber"][data-theme="light"] {
+:root[data-palette='cyber'][data-theme='light'],
+.workbench-app[data-palette='cyber'][data-theme='light'],
+.management-shell[data-palette='cyber'][data-theme='light'],
+.template-creation-workspace[data-palette='cyber'][data-theme='light'],
+.workbench-overlays[data-palette='cyber'][data-theme='light'] {
   --wb-bg: #eff3f8;
   --wb-border: #7e90a6;
   --wb-control-border: #7e90a6;
@@ -322,11 +322,11 @@
 }
 
 /* ③ Cyber tech — deep space with neon cyan focus and a glowing primary. */
-:root[data-palette="cyber"][data-theme="dark"],
-.workbench-app[data-palette="cyber"][data-theme="dark"],
-.management-shell[data-palette="cyber"][data-theme="dark"],
-.template-creation-workspace[data-palette="cyber"][data-theme="dark"],
-.workbench-overlays[data-palette="cyber"][data-theme="dark"] {
+:root[data-palette='cyber'][data-theme='dark'],
+.workbench-app[data-palette='cyber'][data-theme='dark'],
+.management-shell[data-palette='cyber'][data-theme='dark'],
+.template-creation-workspace[data-palette='cyber'][data-theme='dark'],
+.workbench-overlays[data-palette='cyber'][data-theme='dark'] {
   --wb-bg: #0a0f1e;
   --wb-border: #5f7396;
   --wb-control-border: #5f7396;
@@ -358,11 +358,11 @@
 
 /* ④ Glassmorphism — indigo/pink veil; solid tokens double as the
    no-backdrop-filter fallback. */
-:root[data-palette="glass"][data-theme="light"],
-.workbench-app[data-palette="glass"][data-theme="light"],
-.management-shell[data-palette="glass"][data-theme="light"],
-.template-creation-workspace[data-palette="glass"][data-theme="light"],
-.workbench-overlays[data-palette="glass"][data-theme="light"] {
+:root[data-palette='glass'][data-theme='light'],
+.workbench-app[data-palette='glass'][data-theme='light'],
+.management-shell[data-palette='glass'][data-theme='light'],
+.template-creation-workspace[data-palette='glass'][data-theme='light'],
+.workbench-overlays[data-palette='glass'][data-theme='light'] {
   --wb-bg: #f4f1f8;
   --wb-border: #7f89a6;
   --wb-control-border: #7f89a6;
@@ -399,11 +399,11 @@
 }
 
 /* ④ Glassmorphism — deep space with purple-pink halos behind frosted panes. */
-:root[data-palette="glass"][data-theme="dark"],
-.workbench-app[data-palette="glass"][data-theme="dark"],
-.management-shell[data-palette="glass"][data-theme="dark"],
-.template-creation-workspace[data-palette="glass"][data-theme="dark"],
-.workbench-overlays[data-palette="glass"][data-theme="dark"] {
+:root[data-palette='glass'][data-theme='dark'],
+.workbench-app[data-palette='glass'][data-theme='dark'],
+.management-shell[data-palette='glass'][data-theme='dark'],
+.template-creation-workspace[data-palette='glass'][data-theme='dark'],
+.workbench-overlays[data-palette='glass'][data-theme='dark'] {
   --wb-bg: #0c1122;
   --wb-border: #77839f;
   --wb-control-border: #77839f;
@@ -440,9 +440,9 @@
 }
 
 /* Glass backdrops carry the blurred color blobs the panes refract. */
-.workbench-app[data-palette="glass"][data-theme="light"],
-.management-shell[data-palette="glass"][data-theme="light"],
-.template-creation-workspace[data-palette="glass"][data-theme="light"] {
+.workbench-app[data-palette='glass'][data-theme='light'],
+.management-shell[data-palette='glass'][data-theme='light'],
+.template-creation-workspace[data-palette='glass'][data-theme='light'] {
   background:
     radial-gradient(720px 480px at 12% -6%, rgb(99 102 241 / 22%), transparent 60%),
     radial-gradient(640px 420px at 88% 8%, rgb(236 72 153 / 18%), transparent 60%),
@@ -450,28 +450,35 @@
     linear-gradient(135deg, #eef1fb, #fdf1f6);
 }
 
-.workbench-app[data-palette="glass"][data-theme="dark"],
-.management-shell[data-palette="glass"][data-theme="dark"],
-.template-creation-workspace[data-palette="glass"][data-theme="dark"] {
+.workbench-app[data-palette='glass'][data-theme='dark'],
+.management-shell[data-palette='glass'][data-theme='dark'],
+.template-creation-workspace[data-palette='glass'][data-theme='dark'] {
   background:
     radial-gradient(720px 480px at 15% -8%, rgb(129 140 248 / 28%), transparent 60%),
     radial-gradient(640px 420px at 90% 5%, rgb(244 113 181 / 20%), transparent 60%),
-    radial-gradient(600px 520px at 50% 115%, rgb(56 189 248 / 14%), transparent 65%),
-    #0c1122;
+    radial-gradient(600px 520px at 50% 115%, rgb(56 189 248 / 14%), transparent 65%), #0c1122;
 }
 
 /* Frosted chrome panes; without backdrop-filter support the solid surface
    tokens above remain in charge. */
 @supports (backdrop-filter: blur(14px)) {
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-topbar,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .mobile-studio-dock,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .persistence-dialog,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .source-workspace__heading,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .source-workspace__toolbar,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .appearance-drawer-shell,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .workbench-appearance-popover.el-popper,
-  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette="glass"] .preview-drawer-shell,
-  .page-manager-page[data-palette="glass"] {
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .workbench-topbar,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .mobile-studio-dock,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .persistence-dialog,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .source-workspace__heading,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .source-workspace__toolbar,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .appearance-drawer-shell,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .workbench-appearance-popover.el-popper,
+  :is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays)[data-palette='glass']
+    .preview-drawer-shell,
+  .page-manager-page[data-palette='glass'] {
     border-color: var(--wb-veil-border);
     background: var(--wb-veil);
     backdrop-filter: blur(14px);

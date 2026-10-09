@@ -28,7 +28,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
     <template #reference>
       <ElButton
         native-type="button"
-        :class="['appearance-popover-trigger', triggerClass]"
+        class="appearance-popover-trigger" :class="[triggerClass]"
         circle
         :title="locale.t('appearance.open', 'Open appearance settings')"
         :aria-label="locale.t('appearance.open', 'Open appearance settings')"
@@ -37,7 +37,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
       </ElButton>
     </template>
     <WorkbenchAppearancePanel
-      :locale="locale"
+      :locale="props.locale"
       :palette-family="paletteFamily"
       :theme-preference="themePreference"
       @set-palette-family="emit('setPaletteFamily', $event)"

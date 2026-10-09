@@ -1,5 +1,4 @@
 .appearance-drawer-shell {
-  position: relative;
   border-left: 1px solid var(--wb-separator);
   color: var(--wb-text);
   background: var(--wb-surface-raised);

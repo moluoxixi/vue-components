@@ -1,34 +1,3 @@
-/* Blueprint Bench: quiet paper, structural ink, cobalt selection. */
-:is(.workbench-app, .workbench-overlays, .management-shell, :root)[data-theme='light'][data-palette='ink'] {
-  --wb-bg: #e9eff3;
-  --wb-surface: #fff;
-  --wb-surface-raised: #fff;
-  --wb-elevated: #f5f7fa;
-  --wb-editor-surface: #e9eff3;
-  --wb-text: #303846;
-  --wb-text-strong: #151a23;
-  --wb-muted: #596679;
-  --wb-separator: #dbe2e9;
-  --wb-control-border: #8a98ac;
-  --wb-accent: #2852df;
-  --wb-accent-text: #2852df;
-  --wb-accent-line: #2852df;
-  --wb-focus: #315efa;
-  --wb-accent-soft: #eef2ff;
-  --wb-action-bg: #2852df;
-  --wb-action-text: #fff;
-  --wb-warning: #96611b;
-  --wb-danger: #b73f4b;
-}
-:is(.workbench-app, .workbench-overlays, .management-shell, :root)[data-theme='dark'][data-palette='ink'] {
-  --wb-accent: #8ca7ff;
-  --wb-accent-text: #a3b8ff;
-  --wb-accent-line: #7898ff;
-  --wb-focus: #8ca7ff;
-  --wb-accent-soft: #253253;
-  --wb-action-bg: #2852df;
-  --wb-action-text: #fff;
-}
 .workbench-app,
 .workbench-overlays {
   font-family: 'IBM Plex Sans', 'Noto Sans SC', 'Segoe UI Variable', 'Microsoft YaHei', sans-serif;

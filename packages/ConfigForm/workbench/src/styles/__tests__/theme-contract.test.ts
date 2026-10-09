@@ -125,7 +125,7 @@ interface CssRule {
 
 function cssRules(source: string): CssRule[] {
   return [...source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({
-    selector: match[1]!.trim(),
+    selector: match[1]!.trim().replace(/='([^']*)'(?=\])/g, '="$1"'),
     body: match[2]!,
   }))
 }

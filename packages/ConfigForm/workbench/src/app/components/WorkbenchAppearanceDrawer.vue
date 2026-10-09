@@ -58,7 +58,7 @@ watch(() => props.open, (open, wasOpen) => {
       <X :size="18" aria-hidden="true" />
     </ElButton>
     <WorkbenchAppearancePanel
-      :locale="locale"
+      :locale="props.locale"
       :palette-family="paletteFamily"
       :theme-preference="themePreference"
       @set-palette-family="emit('setPaletteFamily', $event)"

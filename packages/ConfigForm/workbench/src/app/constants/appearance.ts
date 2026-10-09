@@ -31,8 +31,8 @@ export const WORKBENCH_PALETTE_SWATCHES: Readonly<Record<
   { dark: readonly string[], light: readonly string[] }
 >> = {
   ink: {
-    light: ['#f5f6f8', '#ffffff', '#22262e', '#087582'],
-    dark: ['#191b20', '#22252b', '#e4e7ed', '#54c2c7'],
+    light: ['#f6f7f7', '#ffffff', '#23312e', '#27665b'],
+    dark: ['#171d1b', '#202724', '#dce6e0', '#91c5ad'],
   },
   morandi: {
     light: ['#f5f2ec', '#ffffff', '#716b5c', '#b37f72'],

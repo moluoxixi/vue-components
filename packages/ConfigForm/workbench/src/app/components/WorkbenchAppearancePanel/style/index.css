@@ -46,7 +46,6 @@
 }
 
 .appearance-mode-control .el-segmented__item-label {
-  padding-inline: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

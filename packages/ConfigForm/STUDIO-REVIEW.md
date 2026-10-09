@@ -194,3 +194,31 @@ WCAG 无障碍检查（0 项违规）。类型检查、生产构建、代码风�
 - [弹窗模板设计](./review/studio-upgrade/template-designer.png)
 - [手机模板管理](./review/studio-upgrade/template-library-mobile.png)
 - [手机模板设计](./review/studio-upgrade/template-designer-mobile.png)
+
+## 配色与模板库显示优化（2026-10-10）
+
+默认主题改为浅灰白工作面、深灰文字和墨绿强调色：背景 `#f6f7f7`，工作面
+`#ffffff`，标题 `#23312e`，主操作 `#27665b`，选中背景 `#eaf3f0`。
+深色模式采用同一套灰绿层级。默认配色集中在主题变量中，移除后加载样式中的重复覆盖。
+
+- 管理导航改用细线标记当前位置，手机显示简短名称。模板库可直接切换语言和外观，
+  桌面使用浮层，手机使用能恢复焦点的抽屉。
+- 卡片缩略图缩紧，类型与预览入口放在底部，标题与组件库信息分开显示。空白模板显示
+  开始设计的提示；已有字段仍按实际配置生成缩略图。个人模板名称保持作者输入。
+- 搜索、组件库、来源筛选与页面类型分成两行。筛选栏滚动时固定，清除筛选后恢复全部
+  模板并将焦点返回搜索框。窄屏采用单列卡片，完整显示类型名称。
+- 修复外观面板嵌套传递语言时丢失翻译、手机抽屉方向被样式覆盖，以及莫兰迪模式下
+  类型与来源标签的文字对比度问题。
+
+验证：Workbench 64 个文件、659 项单测通过；类型检查、生产构建、架构及导入检查、
+改动文件的 TS、Vue 和 CSS 风格检查通过。模板库四套配色的明暗模式 WCAG 检查均为
+0 项违规；320px 外观设置、390px 卡片以及桌面显示经过实际浏览器检查。
+完整 Chromium 浏览器回归 98 项通过，包含 82 项功能场景和 16 组视觉检查；其中 4 张
+Windows 视觉基线经过截图复核后更新，并在最终完整回归中再次通过。
+
+真实浏览器截图：
+
+- [浅色模板库](./review/studio-upgrade/visual-library.png)
+- [深色模板库](./review/studio-upgrade/visual-library-dark.png)
+- [手机模板库](./review/studio-upgrade/visual-library-mobile.png)
+- [手机外观设置](./review/studio-upgrade/visual-appearance-mobile.png)
