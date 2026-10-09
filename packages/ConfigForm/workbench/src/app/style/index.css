@@ -71,7 +71,7 @@
 .surface-presentation-mask {
   position: absolute;
   inset: 0;
-  background: rgb(10 14 22 / 42%);
+  background: rgb(0 0 0 / 42%);
 }
 
 .surface-presentation-panel {

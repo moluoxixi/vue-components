@@ -271,10 +271,10 @@
   min-height: 0;
   padding: 16px;
   overflow: hidden;
-  background: var(--wb-editor-surface);
+  background: var(--wb-surface);
 }
 
-.template-runtime-preview .preview-runtime-host {
+.template-runtime-preview .design-runtime-host {
   display: block;
   width: 100%;
   height: 100%;
@@ -282,6 +282,13 @@
   border: 0;
   border-radius: 4px;
   background: #fff;
+}
+
+.template-runtime-preview .surface-presentation-shell.is-page {
+  padding: 16px;
+  border: 1px solid var(--wb-canvas-frame);
+  border-radius: 4px;
+  background: var(--wb-canvas-sheet);
 }
 
 .template-preview-error {
@@ -310,7 +317,7 @@
   overflow-wrap: anywhere;
 }
 
-.template-create-footer p[role="alert"] {
+.template-create-footer p[role='alert'] {
   color: var(--wb-danger);
 }
 
@@ -378,7 +385,7 @@
     line-height: 1.1;
   }
   .template-category-rail .el-button:hover,
-.template-category-rail .el-button:focus-visible {
+  .template-category-rail .el-button:focus-visible {
     color: var(--wb-text-strong);
     background: var(--wb-hover);
   }
@@ -433,7 +440,7 @@
     font-size: 11px;
   }
   .template-workspace-heading,
-.template-workspace-actions {
+  .template-workspace-actions {
     grid-row: 1;
   }
   .template-workspace-heading {
@@ -470,7 +477,7 @@
     display: none;
   }
   .template-catalog-pane,
-.template-detail-pane {
+  .template-detail-pane {
     width: 100%;
     height: 100%;
     border-right: 0;
@@ -483,7 +490,7 @@
     display: grid;
   }
   .template-creation-workspace.is-mobile-catalog .template-detail-pane,
-.template-creation-workspace.is-mobile-details .template-catalog-pane {
+  .template-creation-workspace.is-mobile-details .template-catalog-pane {
     display: none;
   }
   .template-detail-header {
@@ -495,7 +502,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .template-detail-header dl > div,
-.template-detail-header dl > div:last-child {
+  .template-detail-header dl > div:last-child {
     min-width: 0;
     grid-column: auto;
   }
@@ -517,7 +524,7 @@
   .template-runtime-preview {
     padding: 8px;
   }
-  .template-runtime-preview .preview-runtime-host {
+  .template-runtime-preview .design-runtime-host {
     min-height: 220px;
   }
   .template-create-footer {
@@ -532,8 +539,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .template-creation-workspace *,
-.template-creation-workspace *::before,
-.template-creation-workspace *::after {
+  .template-creation-workspace *::before,
+  .template-creation-workspace *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }

@@ -2,18 +2,18 @@
 .template-creation-workspace,
 .workbench-overlays,
 :root {
-  --wb-bg: #f6f7f7;
-  --wb-border: #87948d;
-  --wb-control-border: #87948d;
-  --wb-separator: #dce3df;
+  --wb-bg: #ffffff;
+  --wb-border: #8b939c;
+  --wb-control-border: #8b939c;
+  --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
-  --wb-hover: #eef2ef;
-  --wb-muted: #62706b;
-  --wb-small-text: #62706b;
+  --wb-hover: #f5f6f7;
+  --wb-muted: #5c6673;
+  --wb-small-text: #5c6673;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #36433e;
-  --wb-text-strong: #23312e;
+  --wb-text: #343b44;
+  --wb-text-strong: #21262e;
   --wb-accent: #27665b;
   --wb-accent-text: #27665b;
   --wb-action-bg: #27665b;
@@ -26,7 +26,7 @@
   --wb-danger: #c84048;
   --wb-danger-soft: #fcebed;
   --wb-disabled: #989eaa;
-  --wb-editor-surface: #f6f7f7;
+  --wb-editor-surface: #ffffff;
 
   /* Elevation set: palettes tune these instead of hard-coding shadows. */
   --wb-shadow-overlay: 0 20px 56px rgb(0 0 0 / 28%);
@@ -38,10 +38,10 @@
 
   /* The canvas paper is intentionally light in every palette, so these
      tokens are fixed instead of palette-scoped. */
-  --wb-canvas-backdrop: #e9eef4;
+  --wb-canvas-backdrop: #fafafa;
   --wb-canvas-sheet: #fff;
   --wb-canvas-ink: #17202a;
-  --wb-canvas-frame: #c8d1dc;
+  --wb-canvas-frame: #d1d6dc;
   --wb-canvas-danger-ink: #7b241c;
   --wb-canvas-danger-line: #efb5af;
   --wb-canvas-danger-soft: #fff1ef;
@@ -146,18 +146,18 @@
 .management-shell[data-palette='ink'][data-theme='light'],
 .template-creation-workspace[data-palette='ink'][data-theme='light'],
 .workbench-overlays[data-palette='ink'][data-theme='light'] {
-  --wb-bg: #f6f7f7;
-  --wb-border: #87948d;
-  --wb-control-border: #87948d;
-  --wb-separator: #dce3df;
+  --wb-bg: #ffffff;
+  --wb-border: #8b939c;
+  --wb-control-border: #8b939c;
+  --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
-  --wb-hover: #eef2ef;
-  --wb-muted: #62706b;
-  --wb-small-text: #62706b;
+  --wb-hover: #f5f6f7;
+  --wb-muted: #5c6673;
+  --wb-small-text: #5c6673;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #36433e;
-  --wb-text-strong: #23312e;
+  --wb-text: #343b44;
+  --wb-text-strong: #21262e;
   --wb-accent: #27665b;
   --wb-accent-text: #27665b;
   --wb-action-bg: #27665b;
@@ -170,7 +170,7 @@
   --wb-danger: #c84048;
   --wb-danger-soft: #fcebed;
   --wb-disabled: #989eaa;
-  --wb-editor-surface: #f6f7f7;
+  --wb-editor-surface: #ffffff;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -185,18 +185,18 @@
 .management-shell[data-palette='ink'][data-theme='dark'],
 .template-creation-workspace[data-palette='ink'][data-theme='dark'],
 .workbench-overlays[data-palette='ink'][data-theme='dark'] {
-  --wb-bg: #171d1b;
-  --wb-border: #7d9083;
-  --wb-control-border: #7d9083;
-  --wb-separator: #3a4840;
-  --wb-elevated: #202724;
-  --wb-hover: #2d3832;
-  --wb-muted: #a5b6ab;
-  --wb-small-text: #a5b6ab;
-  --wb-surface: #202724;
-  --wb-surface-raised: #28312d;
-  --wb-text: #dce6e0;
-  --wb-text-strong: #f2f6f4;
+  --wb-bg: #191b1f;
+  --wb-border: #818c98;
+  --wb-control-border: #818c98;
+  --wb-separator: #414750;
+  --wb-elevated: #22252a;
+  --wb-hover: #2e3339;
+  --wb-muted: #adb6c2;
+  --wb-small-text: #adb6c2;
+  --wb-surface: #22252a;
+  --wb-surface-raised: #282c31;
+  --wb-text: #e1e5eb;
+  --wb-text-strong: #f3f5f7;
   --wb-accent: #91c5ad;
   --wb-accent-text: #a3d4be;
   --wb-action-bg: #93c6ad;
@@ -209,7 +209,7 @@
   --wb-danger: #ee8791;
   --wb-danger-soft: #492d35;
   --wb-disabled: #737a87;
-  --wb-editor-surface: #171d1b;
+  --wb-editor-surface: #191b1f;
   --wb-shadow-overlay: none;
   --wb-shadow-drawer: none;
   --wb-shadow-float: none;
@@ -218,25 +218,24 @@
   color-scheme: dark;
 }
 
-/* ② Morandi cream — sub-30% saturation greys, oatmeal commands,
-   bean-paste accents. */
+/* Muted clay and olive accents on neutral work surfaces. */
 :root[data-palette='morandi'][data-theme='light'],
 .workbench-app[data-palette='morandi'][data-theme='light'],
 .management-shell[data-palette='morandi'][data-theme='light'],
 .template-creation-workspace[data-palette='morandi'][data-theme='light'],
 .workbench-overlays[data-palette='morandi'][data-theme='light'] {
-  --wb-bg: #f5f2ec;
-  --wb-border: #8f8a7e;
-  --wb-control-border: #8f8a7e;
-  --wb-separator: #e7e1d6;
-  --wb-elevated: #efebe3;
-  --wb-hover: #ece7de;
-  --wb-muted: #6f6a61;
-  --wb-small-text: #6a655c;
+  --wb-bg: #ffffff;
+  --wb-border: #8b939c;
+  --wb-control-border: #8b939c;
+  --wb-separator: #dfe3e8;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f5f6f7;
+  --wb-muted: #5c6673;
+  --wb-small-text: #5c6673;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #3b3733;
-  --wb-text-strong: #2a2622;
+  --wb-text: #343b44;
+  --wb-text-strong: #21262e;
   --wb-accent: #b37f72;
   --wb-accent-text: #8c5548;
   --wb-action-bg: #716b5c;
@@ -249,28 +248,28 @@
   --wb-danger: #a05548;
   --wb-danger-soft: #f3e0db;
   --wb-disabled: #8a857c;
-  --wb-editor-surface: #f0ece3;
+  --wb-editor-surface: #ffffff;
   color-scheme: light;
 }
 
-/* ② Morandi cream — deep coffee with milk-white text, never plain black. */
+/* The same muted accents on neutral charcoal surfaces. */
 :root[data-palette='morandi'][data-theme='dark'],
 .workbench-app[data-palette='morandi'][data-theme='dark'],
 .management-shell[data-palette='morandi'][data-theme='dark'],
 .template-creation-workspace[data-palette='morandi'][data-theme='dark'],
 .workbench-overlays[data-palette='morandi'][data-theme='dark'] {
-  --wb-bg: #2c2925;
-  --wb-border: #9c948a;
-  --wb-control-border: #9c948a;
-  --wb-separator: #514b42;
-  --wb-elevated: #26231f;
-  --wb-hover: #4a443d;
-  --wb-muted: #b0aaa0;
-  --wb-small-text: #b0aaa0;
-  --wb-surface: #37332e;
-  --wb-surface-raised: #403b35;
-  --wb-text: #e9e4db;
-  --wb-text-strong: #f5f1e8;
+  --wb-bg: #191b1f;
+  --wb-border: #818c98;
+  --wb-control-border: #818c98;
+  --wb-separator: #414750;
+  --wb-elevated: #22252a;
+  --wb-hover: #2e3339;
+  --wb-muted: #adb6c2;
+  --wb-small-text: #adb6c2;
+  --wb-surface: #22252a;
+  --wb-surface-raised: #282c31;
+  --wb-text: #e1e5eb;
+  --wb-text-strong: #f3f5f7;
   --wb-accent: #d3a196;
   --wb-accent-text: #dcb0a6;
   --wb-action-bg: #b9b1a4;
@@ -283,28 +282,28 @@
   --wb-danger: #ea9c8c;
   --wb-danger-soft: #4a2d26;
   --wb-disabled: #8f887e;
-  --wb-editor-surface: #332f2a;
+  --wb-editor-surface: #191b1f;
   color-scheme: dark;
 }
 
-/* ③ Cyber tech — restrained electric blue on cool white. */
+/* Electric blue is reserved for commands, focus, and selection. */
 :root[data-palette='cyber'][data-theme='light'],
 .workbench-app[data-palette='cyber'][data-theme='light'],
 .management-shell[data-palette='cyber'][data-theme='light'],
 .template-creation-workspace[data-palette='cyber'][data-theme='light'],
 .workbench-overlays[data-palette='cyber'][data-theme='light'] {
-  --wb-bg: #eff3f8;
-  --wb-border: #7e90a6;
-  --wb-control-border: #7e90a6;
-  --wb-separator: #d4dee9;
-  --wb-elevated: #e6ecf4;
-  --wb-hover: #e3eaf3;
-  --wb-muted: #5b6b80;
-  --wb-small-text: #556579;
+  --wb-bg: #ffffff;
+  --wb-border: #8b939c;
+  --wb-control-border: #8b939c;
+  --wb-separator: #dfe3e8;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f5f6f7;
+  --wb-muted: #5c6673;
+  --wb-small-text: #5c6673;
   --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #0e1b2c;
-  --wb-text-strong: #071220;
+  --wb-text: #343b44;
+  --wb-text-strong: #21262e;
   --wb-accent: #0b6cff;
   --wb-accent-text: #0057d8;
   --wb-action-bg: #0b6cff;
@@ -317,28 +316,28 @@
   --wb-danger: #c81f3b;
   --wb-danger-soft: #ffe3e6;
   --wb-disabled: #7d8b9c;
-  --wb-editor-surface: #eaf0f7;
+  --wb-editor-surface: #ffffff;
   color-scheme: light;
 }
 
-/* ③ Cyber tech — deep space with neon cyan focus and a glowing primary. */
+/* Charcoal work surfaces with blue commands and cyan focus. */
 :root[data-palette='cyber'][data-theme='dark'],
 .workbench-app[data-palette='cyber'][data-theme='dark'],
 .management-shell[data-palette='cyber'][data-theme='dark'],
 .template-creation-workspace[data-palette='cyber'][data-theme='dark'],
 .workbench-overlays[data-palette='cyber'][data-theme='dark'] {
-  --wb-bg: #0a0f1e;
-  --wb-border: #5f7396;
-  --wb-control-border: #5f7396;
-  --wb-separator: #273656;
-  --wb-elevated: #070b16;
-  --wb-hover: #223154;
-  --wb-muted: #8ca0bf;
-  --wb-small-text: #8ca0bf;
-  --wb-surface: #121a2e;
-  --wb-surface-raised: #1a2440;
-  --wb-text: #e3edff;
-  --wb-text-strong: #f4f8ff;
+  --wb-bg: #191b1f;
+  --wb-border: #818c98;
+  --wb-control-border: #818c98;
+  --wb-separator: #414750;
+  --wb-elevated: #22252a;
+  --wb-hover: #2e3339;
+  --wb-muted: #adb6c2;
+  --wb-small-text: #adb6c2;
+  --wb-surface: #22252a;
+  --wb-surface-raised: #282c31;
+  --wb-text: #e1e5eb;
+  --wb-text-strong: #f3f5f7;
   --wb-accent: #3d8bff;
   --wb-accent-text: #6ea8ff;
   --wb-action-bg: #3d8bff;
@@ -351,30 +350,30 @@
   --wb-danger: #ff6b7a;
   --wb-danger-soft: #3a1520;
   --wb-disabled: #6c7d9c;
-  --wb-editor-surface: #0e1526;
+  --wb-editor-surface: #191b1f;
   --wb-action-glow: 0 0 16px rgb(61 139 255 / 35%);
   color-scheme: dark;
 }
 
-/* ④ Glassmorphism — indigo/pink veil; solid tokens double as the
-   no-backdrop-filter fallback. */
+/* Neutral floating panes with indigo commands and pink accents;
+   solid surfaces remain the no-backdrop-filter fallback. */
 :root[data-palette='glass'][data-theme='light'],
 .workbench-app[data-palette='glass'][data-theme='light'],
 .management-shell[data-palette='glass'][data-theme='light'],
 .template-creation-workspace[data-palette='glass'][data-theme='light'],
 .workbench-overlays[data-palette='glass'][data-theme='light'] {
-  --wb-bg: #f4f1f8;
-  --wb-border: #7f89a6;
-  --wb-control-border: #7f89a6;
-  --wb-separator: #dbdfee;
-  --wb-elevated: #edf0fa;
-  --wb-hover: #eceff9;
-  --wb-muted: #5d6b8a;
-  --wb-small-text: #576582;
-  --wb-surface: #f9f8fc;
+  --wb-bg: #ffffff;
+  --wb-border: #8b939c;
+  --wb-control-border: #8b939c;
+  --wb-separator: #dfe3e8;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f5f6f7;
+  --wb-muted: #5c6673;
+  --wb-small-text: #5c6673;
+  --wb-surface: #ffffff;
   --wb-surface-raised: #ffffff;
-  --wb-text: #1e2843;
-  --wb-text-strong: #141c33;
+  --wb-text: #343b44;
+  --wb-text-strong: #21262e;
   --wb-accent: #ec4899;
   --wb-accent-text: #b81b66;
   --wb-action-bg: #5a5ded;
@@ -387,35 +386,35 @@
   --wb-danger: #c22258;
   --wb-danger-soft: #fde2ec;
   --wb-disabled: #8a92ab;
-  --wb-editor-surface: #f0f0f9;
-  --wb-shadow-overlay: 0 24px 64px rgb(99 102 241 / 16%);
-  --wb-shadow-drawer: -12px 0 34px rgb(99 102 241 / 14%);
-  --wb-shadow-float: 0 14px 36px rgb(99 102 241 / 14%);
-  --wb-shadow-toast: 0 12px 34px rgb(99 102 241 / 16%);
-  --wb-shadow-sheet: 0 -8px 24px rgb(99 102 241 / 12%);
-  --wb-veil: rgb(255 255 255 / 65%);
-  --wb-veil-border: rgb(255 255 255 / 90%);
+  --wb-editor-surface: #ffffff;
+  --wb-shadow-overlay: 0 24px 64px rgb(0 0 0 / 12%);
+  --wb-shadow-drawer: -12px 0 34px rgb(0 0 0 / 10%);
+  --wb-shadow-float: 0 14px 36px rgb(0 0 0 / 10%);
+  --wb-shadow-toast: 0 12px 34px rgb(0 0 0 / 12%);
+  --wb-shadow-sheet: 0 -8px 24px rgb(0 0 0 / 8%);
+  --wb-veil: rgb(255 255 255 / 92%);
+  --wb-veil-border: #dfe3e8;
   color-scheme: light;
 }
 
-/* ④ Glassmorphism — deep space with purple-pink halos behind frosted panes. */
+/* Neutral frosted dark panes keep color on controls and selection. */
 :root[data-palette='glass'][data-theme='dark'],
 .workbench-app[data-palette='glass'][data-theme='dark'],
 .management-shell[data-palette='glass'][data-theme='dark'],
 .template-creation-workspace[data-palette='glass'][data-theme='dark'],
 .workbench-overlays[data-palette='glass'][data-theme='dark'] {
-  --wb-bg: #0c1122;
-  --wb-border: #77839f;
-  --wb-control-border: #77839f;
-  --wb-separator: #2e3a58;
-  --wb-elevated: #090d1b;
-  --wb-hover: #26304f;
-  --wb-muted: #9ba8c4;
-  --wb-small-text: #9ba8c4;
-  --wb-surface: #121829;
-  --wb-surface-raised: #1b2440;
-  --wb-text: #f0f4fa;
-  --wb-text-strong: #f7faff;
+  --wb-bg: #191b1f;
+  --wb-border: #818c98;
+  --wb-control-border: #818c98;
+  --wb-separator: #414750;
+  --wb-elevated: #22252a;
+  --wb-hover: #2e3339;
+  --wb-muted: #adb6c2;
+  --wb-small-text: #adb6c2;
+  --wb-surface: #22252a;
+  --wb-surface-raised: #282c31;
+  --wb-text: #e1e5eb;
+  --wb-text-strong: #f3f5f7;
   --wb-accent: #f471b5;
   --wb-accent-text: #f78ec3;
   --wb-action-bg: #818cf8;
@@ -428,35 +427,15 @@
   --wb-danger: #ff7ba1;
   --wb-danger-soft: #43203a;
   --wb-disabled: #6f7a97;
-  --wb-editor-surface: #101627;
-  --wb-shadow-overlay: 0 24px 64px rgb(129 140 248 / 22%);
-  --wb-shadow-drawer: -12px 0 34px rgb(129 140 248 / 18%);
-  --wb-shadow-float: 0 14px 36px rgb(129 140 248 / 18%);
-  --wb-shadow-toast: 0 12px 34px rgb(129 140 248 / 20%);
-  --wb-shadow-sheet: 0 -8px 24px rgb(129 140 248 / 16%);
-  --wb-veil: rgb(23 30 50 / 55%);
-  --wb-veil-border: rgb(150 165 190 / 25%);
+  --wb-editor-surface: #191b1f;
+  --wb-shadow-overlay: 0 24px 64px rgb(0 0 0 / 32%);
+  --wb-shadow-drawer: -12px 0 34px rgb(0 0 0 / 26%);
+  --wb-shadow-float: 0 14px 36px rgb(0 0 0 / 26%);
+  --wb-shadow-toast: 0 12px 34px rgb(0 0 0 / 30%);
+  --wb-shadow-sheet: 0 -8px 24px rgb(0 0 0 / 24%);
+  --wb-veil: rgb(34 37 42 / 92%);
+  --wb-veil-border: #414750;
   color-scheme: dark;
-}
-
-/* Glass backdrops carry the blurred color blobs the panes refract. */
-.workbench-app[data-palette='glass'][data-theme='light'],
-.management-shell[data-palette='glass'][data-theme='light'],
-.template-creation-workspace[data-palette='glass'][data-theme='light'] {
-  background:
-    radial-gradient(720px 480px at 12% -6%, rgb(99 102 241 / 22%), transparent 60%),
-    radial-gradient(640px 420px at 88% 8%, rgb(236 72 153 / 18%), transparent 60%),
-    radial-gradient(560px 520px at 55% 110%, rgb(56 189 248 / 16%), transparent 65%),
-    linear-gradient(135deg, #eef1fb, #fdf1f6);
-}
-
-.workbench-app[data-palette='glass'][data-theme='dark'],
-.management-shell[data-palette='glass'][data-theme='dark'],
-.template-creation-workspace[data-palette='glass'][data-theme='dark'] {
-  background:
-    radial-gradient(720px 480px at 15% -8%, rgb(129 140 248 / 28%), transparent 60%),
-    radial-gradient(640px 420px at 90% 5%, rgb(244 113 181 / 20%), transparent 60%),
-    radial-gradient(600px 520px at 50% 115%, rgb(56 189 248 / 14%), transparent 65%), #0c1122;
 }
 
 /* Frosted chrome panes; without backdrop-filter support the solid surface

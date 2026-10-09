@@ -447,7 +447,7 @@ describe('workbench theme contract', () => {
     expect(cyberDark).toContain('--wb-action-glow: 0 0 16px rgb(61 139 255 / 35%);')
     expect(cyberDark).toContain('--wb-focus: #00f0ff;')
 
-    // Glass panes are translucent veils over blurred color blobs.
+    // Floating glass panes retain a subtle, neutral translucent surface.
     for (const theme of ['light', 'dark'] as const)
       expect(selectorBlock(`.workbench-app[data-palette="glass"][data-theme="${theme}"]`)).toContain('--wb-veil:')
     const frosted = cssRules(stylesheet).filter(
@@ -459,7 +459,7 @@ describe('workbench theme contract', () => {
       expect(rule.body).toContain('background: var(--wb-veil);')
     expect(stylesheet).toContain('@supports (backdrop-filter: blur(14px))')
     expect(selectorBlock('.workbench-app[data-palette="glass"][data-theme="light"]', stylesheet)).toContain(
-      '--wb-veil: rgb(255 255 255 / 65%);',
+      '--wb-veil: rgb(255 255 255 / 92%);',
     )
 
     // Primary commands run on the contrast-checked action pair everywhere.

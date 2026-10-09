@@ -197,9 +197,9 @@ WCAG 无障碍检查（0 项违规）。类型检查、生产构建、代码风�
 
 ## 配色与模板库显示优化（2026-10-10）
 
-默认主题改为浅灰白工作面、深灰文字和墨绿强调色：背景 `#f6f7f7`，工作面
-`#ffffff`，标题 `#23312e`，主操作 `#27665b`，选中背景 `#eaf3f0`。
-深色模式采用同一套灰绿层级。默认配色集中在主题变量中，移除后加载样式中的重复覆盖。
+默认主题采用白色工作面、深灰文字和墨绿强调色：背景与工作面 `#ffffff`，
+标题 `#21262e`，主操作 `#27665b`，选中背景 `#eaf3f0`。
+深色模式采用中性炭灰层级。默认配色集中在主题变量中，移除后加载样式中的重复覆盖。
 
 - 管理导航改用细线标记当前位置，手机显示简短名称。模板库可直接切换语言和外观，
   桌面使用浮层，手机使用能恢复焦点的抽屉。
@@ -222,3 +222,35 @@ Windows 视觉基线经过截图复核后更新，并在最终完整回归中再
 - [深色模板库](./review/studio-upgrade/visual-library-dark.png)
 - [手机模板库](./review/studio-upgrade/visual-library-mobile.png)
 - [手机外观设置](./review/studio-upgrade/visual-appearance-mobile.png)
+
+## 工作区底色与视觉层级优化（2026-10-10）
+
+设计器、项目与页面管理、模板库、创建窗口及体验窗口统一采用中性工作面。
+四套配色的浅色模式均以白色为底，深色模式使用 `#191b1f`、`#22252a`、
+`#282c31` 的炭灰层级。主题色集中在主操作、选中、焦点及状态提示上；
+区域层级依靠留白、文字与 `#dfe3e8` 分隔线表达。
+
+移除蓝灰预览底色、玻璃主题的整页彩色渐变及彩色投影。体验画布外侧使用
+`#fafafa`，画布与预览用细边框和轻微投影区分。创建窗口修正预览样式作用对象，
+页面预览增加内边距，弹窗与抽屉继续按自己的尺寸和位置展示。缩略图使用中性底色，
+语言切换不会改变缩略图背景。实际表单控件仍按页面自身配置渲染。
+
+辅助文字调整为 `#5c6673`，保留原有 WCAG 对比度要求。
+
+验证：Workbench 64 个文件、659 项单测通过；完整 Chromium 浏览器回归 98 项通过。
+四套配色的明暗设计器与模板库、创建窗口、项目与页面管理、手机属性面板及模板设计的
+WCAG 检查均为 0 项违规。16 张 Windows 视觉基线已按当前工作区显示复核、更新，
+并再次回归通过。类型检查、生产构建、架构与 Element Plus 导入检查、改动文件的
+TS、CSS 和文档风格检查通过。
+
+真实浏览器审核截图：
+
+- [浅色设计器与属性面板](./review/studio-upgrade/neutral-design.png)
+- [蓝色主题的白色工作面](./review/studio-upgrade/neutral-design-blue.png)
+- [深色设计器](./review/studio-upgrade/neutral-design-dark.png)
+- [项目管理](./review/studio-upgrade/neutral-projects.png)
+- [页面管理](./review/studio-upgrade/neutral-pages.png)
+- [模板库](./review/studio-upgrade/neutral-templates.png)
+- [创建与模板预览](./review/studio-upgrade/neutral-create.png)
+- [体验窗口](./review/studio-upgrade/neutral-experience.png)
+- [手机设计器](./review/studio-upgrade/neutral-mobile.png)

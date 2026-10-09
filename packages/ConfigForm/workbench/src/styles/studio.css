@@ -6,6 +6,11 @@
   border-radius: 0;
 }
 
+.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__canvas-sheet {
+  border-color: var(--wb-canvas-frame);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+}
+
 .workbench-app[data-theme] .embedded-designer.mx-config-form-designer {
   --mx-designer-border: var(--wb-separator);
   --mx-designer-separator: var(--wb-separator);
@@ -104,7 +109,10 @@
 }
 
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input::placeholder,
-.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input-number-input::placeholder {
+.workbench-app[data-theme]
+  .embedded-designer
+  .mx-config-form-designer__properties
+  .ant-input-number-input::placeholder {
   color: var(--mx-designer-disabled);
 }
 
@@ -122,7 +130,11 @@
 }
 
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input-number-handler:hover,
-.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input-number-handler:hover .anticon {
+.workbench-app[data-theme]
+  .embedded-designer
+  .mx-config-form-designer__properties
+  .ant-input-number-handler:hover
+  .anticon {
   color: var(--mx-designer-accent);
 }
 
@@ -178,15 +190,16 @@
   min-height: 100%;
   margin: 0 auto;
   background: var(--wb-canvas-sheet);
-  box-shadow: 0 12px 30px rgb(15 23 42 / 7%);
+  border: 1px solid var(--wb-canvas-frame);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 }
 
-.preview-stage[data-viewport="tablet"] {
+.preview-stage[data-viewport='tablet'] {
   width: min(768px, 100%);
   border-inline: 1px solid var(--wb-canvas-frame);
 }
 
-.preview-stage[data-viewport="mobile"] {
+.preview-stage[data-viewport='mobile'] {
   width: min(390px, 100%);
   border-inline: 1px solid var(--wb-canvas-frame);
 }
@@ -252,7 +265,6 @@
 }
 
 @media (max-width: 700px) {
-
   .embedded-designer.mx-config-form-designer {
     min-height: 0;
   }

@@ -31,19 +31,19 @@ export const WORKBENCH_PALETTE_SWATCHES: Readonly<Record<
   { dark: readonly string[], light: readonly string[] }
 >> = {
   ink: {
-    light: ['#f6f7f7', '#ffffff', '#23312e', '#27665b'],
-    dark: ['#171d1b', '#202724', '#dce6e0', '#91c5ad'],
+    light: ['#ffffff', '#f5f6f7', '#27665b', '#27665b'],
+    dark: ['#191b1f', '#22252a', '#93c6ad', '#91c5ad'],
   },
   morandi: {
-    light: ['#f5f2ec', '#ffffff', '#716b5c', '#b37f72'],
-    dark: ['#2c2925', '#37332e', '#b9b1a4', '#d3a196'],
+    light: ['#ffffff', '#f5f6f7', '#716b5c', '#b37f72'],
+    dark: ['#191b1f', '#22252a', '#b9b1a4', '#d3a196'],
   },
   cyber: {
-    light: ['#eff3f8', '#ffffff', '#0b6cff', '#00cfe0'],
-    dark: ['#0a0f1e', '#121a2e', '#3d8bff', '#00f0ff'],
+    light: ['#ffffff', '#f5f6f7', '#0b6cff', '#0b6cff'],
+    dark: ['#191b1f', '#22252a', '#3d8bff', '#00f0ff'],
   },
   glass: {
-    light: ['#eef1fb', '#fdf1f6', '#5a5ded', '#ec4899'],
-    dark: ['#0c1122', '#1b2440', '#818cf8', '#f471b5'],
+    light: ['#ffffff', '#f5f6f7', '#5a5ded', '#ec4899'],
+    dark: ['#191b1f', '#22252a', '#818cf8', '#f471b5'],
   },
 }

@@ -190,14 +190,12 @@ export function createPagePreviewDataUrl(surface: DeepReadonly<ProjectSurface>, 
   const frame = previewFrame(surface)
   const title = labels.title ?? (surface.kind === 'page' ? surface.name : surface.presentation.title || surface.name)
   const subtitle = labels.subtitle ?? (surface.kind === 'page' ? surface.route : surface.name)
-  const backdrop = labels.title !== undefined
-    ? surface.kind === 'page' ? '#f3f5f4' : '#e6ebe8'
-    : surface.kind === 'page' ? '#f0f3f7' : '#dce2e9'
+  const backdrop = surface.kind === 'page' ? '#ffffff' : '#f3f4f5'
   const close = surface.kind === 'page' ? '' : `<path d="M${frame.x + frame.width - 35} ${frame.y + 27}l10 10m0-10l-10 10" fill="none" stroke="#8993a3" stroke-width="1.5"/>`
   const centerX = frame.x + frame.width / 2
   const centerY = frame.y + frame.height / 2 + 28
   const empty = labels.emptyLabel && !surface.graph.root.length
-    ? `<rect x="${centerX - 28}" y="${centerY - 46}" width="56" height="56" rx="14" fill="#f2f5f3"/><path d="M${centerX - 10} ${centerY - 18}h20m-10-10v20" fill="none" stroke="#788b81" stroke-width="2"/>${previewText(labels.emptyLabel, centerX, centerY + 45, frame.width - 56, 18, '#6e7b74', 400, 'middle')}`
+    ? `<rect x="${centerX - 28}" y="${centerY - 46}" width="56" height="56" rx="14" fill="#f5f6f7"/><path d="M${centerX - 10} ${centerY - 18}h20m-10-10v20" fill="none" stroke="#838c97" stroke-width="2"/>${previewText(labels.emptyLabel, centerX, centerY + 45, frame.width - 56, 18, '#606b78', 400, 'middle')}`
     : ''
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="400" viewBox="0 0 720 400"><title>${escapeXml(title)}</title><rect width="720" height="400" fill="${backdrop}"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${surface.kind === 'drawer' ? 0 : 6}" fill="#fff" stroke="#dde3eb"/>${previewText(title, frame.x + 28, frame.y + 37, frame.width - 100, 21, '#182230', 600)}${previewText(subtitle, frame.x + 28, frame.y + 60, frame.width - 70, 12, '#8490a1')}<path d="M${frame.x} ${frame.y + 76}h${frame.width}" stroke="#e9edf2"/>${close}${empty}${previewNodes(surface, frame)}</svg>`
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
