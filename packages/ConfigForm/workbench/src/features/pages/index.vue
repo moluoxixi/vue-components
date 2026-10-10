@@ -32,8 +32,8 @@ const screenTitle = computed(() => createDesignerLocale(props.locale).t('pageMan
       @open-page="emit('openPage', $event)"
       @open-projects="emit('openProjects')"
     >
-      <template #navigation>
-        <slot name="navigation" />
+      <template v-if="$slots.header" #header="{ stats }">
+        <slot name="header" :stats="stats" />
       </template>
     </SurfaceManager>
   </main>

@@ -1,6 +1,18 @@
 .template-details-form {
   display: grid;
-  gap: 20px;
+  min-height: 0;
+  max-height: calc(100dvh - 120px);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.template-details-fields {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  gap: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .template-details-form label {
   display: grid;
@@ -70,8 +82,9 @@
 .template-details-form footer {
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  padding-top: 12px;
   gap: 8px;
+  border-top: 1px solid var(--wb-separator);
 }
 .template-details-form footer .el-button + .el-button {
   margin-left: 0;

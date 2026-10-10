@@ -123,16 +123,6 @@ function projectImageSource(project: ProjectSummary): string | undefined {
   return projectImageSources.value[project.id]
 }
 
-const projectStats = computed(() => {
-  const projects = controller.projects.value
-  return {
-    projects: projects.length,
-    pages: projects.reduce((total, project) => total + project.surfaceCount, 0),
-    datasets: projects.reduce((total, project) => total + project.datasetCount, 0),
-    resources: projects.reduce((total, project) => total + project.resourceCount, 0),
-  }
-})
-
 function formatUpdatedAt(value: string): string {
   const date = new Date(value)
   return Number.isNaN(date.valueOf())
@@ -240,8 +230,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
   <main class="project-manager" :data-theme="ui.resolvedTheme.value" :data-palette="ui.paletteFamily.value">
     <header class="project-manager__topbar">
       <div class="project-manager__topbar-context">
-        <FolderOpen :size="16" aria-hidden="true" />
-        <span>{{ locale.t('projects.workspaceLabel', 'Project workspace') }}</span>
+        <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
       </div>
       <div class="project-manager__commands">
         <ElButton v-if="controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
@@ -256,36 +245,15 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
     </header>
 
     <section class="project-manager__content" :aria-label="locale.t('projects.title', 'Projects')">
-      <div class="project-manager__heading">
-        <div>
-          <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
-          <p>{{ locale.t('projects.subtitle', 'Manage your forms, pages and data. Pick a project to continue designing.') }}</p>
-        </div>
+      <div v-if="controller.projects.value.length" class="project-manager__list-heading">
         <ElInput ref="projectSearch" v-model="query" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
           <template #prefix>
             <Search :size="16" aria-hidden="true" />
           </template>
         </ElInput>
-      </div>
-
-      <section v-if="controller.projects.value.length" class="project-manager__overview" :aria-label="locale.t('projects.overview', 'Project overview')">
-        <div class="project-manager__overview-intro">
-          <span class="project-manager__overview-kicker">{{ locale.t('projects.overviewKicker', 'Workspace inventory') }}</span>
-        </div>
-        <div class="project-manager__stats">
-          <span class="project-manager__stat"><strong>{{ projectStats.projects }}</strong><small>{{ locale.t('projects.count', 'projects') }}</small></span>
-          <span class="project-manager__stat"><strong>{{ projectStats.pages }}</strong><small>{{ locale.t('projects.surfaces', 'pages') }}</small></span>
-          <span class="project-manager__stat"><strong>{{ projectStats.datasets }}</strong><small>{{ locale.t('projects.datasets', 'datasets') }}</small></span>
-          <span class="project-manager__stat"><strong>{{ projectStats.resources }}</strong><small>{{ locale.t('projects.resources', 'resources') }}</small></span>
-        </div>
-      </section>
-
-      <div v-if="controller.projects.value.length" class="project-manager__list-heading">
         <div class="project-manager__list-summary">
-          <h2>{{ locale.t('projects.listTitle', 'My projects') }}</h2>
           <span role="status" aria-live="polite">{{ hasQuery ? locale.t('projects.filteredCount', '{count} of {total} projects', { count: filteredProjects.length, total: controller.projects.value.length }) : locale.t('projects.listCount', '{count} projects', { count: filteredProjects.length }) }}</span>
         </div>
-        <span class="project-manager__list-rule" aria-hidden="true" />
         <ElSelect v-model="sort" class="project-manager__sort" :aria-label="locale.t('projects.sort', 'Sort projects')" append-to="#workbench-overlays">
           <ElOption value="updated" :label="locale.t('projects.sortUpdated', 'Recently updated')" />
           <ElOption value="name" :label="locale.t('projects.sortName', 'Project name')" />

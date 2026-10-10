@@ -85,7 +85,6 @@ function clearFilters(): void {
       <header class="template-manager__heading">
         <div>
           <h1>{{ locale.t('library.title', 'Template library') }}</h1>
-          <p>{{ locale.t('library.intro', 'Start from a template, or create a design to reuse across your projects.') }}</p>
         </div>
         <ElButton type="primary" :disabled="busy || loading" @click="emit('create')">
           <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}

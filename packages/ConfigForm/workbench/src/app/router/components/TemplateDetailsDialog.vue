@@ -58,33 +58,35 @@ function submit(): void {
     @opened="nameInput?.focus()"
   >
     <form class="template-details-form" @submit.prevent="submit">
-      <label>
-        <span>{{ locale.t('library.name', 'Template name') }}</span>
-        <ElInput ref="nameInput" v-model="name" maxlength="100" :disabled="busy" :aria-label="locale.t('library.name', 'Template name')" :placeholder="locale.t('library.namePlaceholder', 'For example, customer information')" />
-      </label>
-      <template v-if="withTypes">
-        <fieldset>
-          <legend>{{ locale.t('library.kind', 'Template type') }}</legend>
-          <div class="template-kind-options">
-            <ElButton v-for="item in kinds" :key="item.value" :class="{ 'is-selected': kind === item.value }" :aria-pressed="kind === item.value" :disabled="busy" @click="kind = item.value">
-              <img :src="createPagePreviewDataUrl(createBlankTemplate(adapter, item.value).surface)" alt="">
-              <span>{{ item.label }}</span>
-            </ElButton>
-          </div>
-        </fieldset>
+      <div class="template-details-fields">
         <label>
-          <span>{{ locale.t('library.adapter', 'Component library') }}</span>
-          <ElSegmented v-model="adapter" block :disabled="busy" :aria-label="locale.t('library.adapter', 'Component library')" :options="[{ label: 'Element Plus', value: 'element-plus' }, { label: 'Ant Design Vue', value: 'antd-vue' }]" />
+          <span>{{ locale.t('library.name', 'Template name') }}</span>
+          <ElInput ref="nameInput" v-model="name" maxlength="100" :disabled="busy" :aria-label="locale.t('library.name', 'Template name')" :placeholder="locale.t('library.namePlaceholder', 'For example, customer information')" />
         </label>
-      </template>
-      <label>
-        <span>{{ locale.t('library.description', 'Description') }} <small>{{ locale.t('library.optional', 'Optional') }}</small></span>
-        <ElInput v-model="description" type="textarea" :rows="2" maxlength="300" :disabled="busy" :aria-label="locale.t('library.description', 'Description')" />
-      </label>
-      <p class="template-details-hint">
-        {{ withTypes ? locale.t('library.createHint', 'Continue to the designer to build your reusable template.') : locale.t('library.saveHint', 'Save an independent copy to your template library for other projects.') }}
-      </p>
-      <ElAlert v-if="error" type="error" :closable="false" :title="error" role="alert" />
+        <template v-if="withTypes">
+          <fieldset>
+            <legend>{{ locale.t('library.kind', 'Template type') }}</legend>
+            <div class="template-kind-options">
+              <ElButton v-for="item in kinds" :key="item.value" :class="{ 'is-selected': kind === item.value }" :aria-pressed="kind === item.value" :disabled="busy" @click="kind = item.value">
+                <img :src="createPagePreviewDataUrl(createBlankTemplate(adapter, item.value).surface)" alt="">
+                <span>{{ item.label }}</span>
+              </ElButton>
+            </div>
+          </fieldset>
+          <label>
+            <span>{{ locale.t('library.adapter', 'Component library') }}</span>
+            <ElSegmented v-model="adapter" block :disabled="busy" :aria-label="locale.t('library.adapter', 'Component library')" :options="[{ label: 'Element Plus', value: 'element-plus' }, { label: 'Ant Design Vue', value: 'antd-vue' }]" />
+          </label>
+        </template>
+        <label>
+          <span>{{ locale.t('library.description', 'Description') }} <small>{{ locale.t('library.optional', 'Optional') }}</small></span>
+          <ElInput v-model="description" type="textarea" :rows="2" maxlength="300" :disabled="busy" :aria-label="locale.t('library.description', 'Description')" />
+        </label>
+        <p class="template-details-hint">
+          {{ withTypes ? locale.t('library.createHint', 'Continue to the designer to build your reusable template.') : locale.t('library.saveHint', 'Save an independent copy to your template library for other projects.') }}
+        </p>
+        <ElAlert v-if="error" type="error" :closable="false" :title="error" role="alert" />
+      </div>
       <footer>
         <ElButton :disabled="busy" @click="emit('update:modelValue', false)">
           {{ locale.t('action.cancel', 'Cancel') }}

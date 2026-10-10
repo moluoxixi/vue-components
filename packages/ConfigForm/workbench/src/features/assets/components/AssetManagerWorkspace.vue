@@ -770,11 +770,11 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               />
             </div>
             <div class="asset-manager__editor-actions">
-              <ElButton size="small" data-asset-dataset-export :disabled="!selectedDataset" @click="exportDataset">
-                <Download :size="13" aria-hidden="true" />{{ locale.t('assets.export', 'Export') }}
+              <ElButton size="small" data-asset-dataset-export :title="locale.t('assets.export', 'Export')" :aria-label="locale.t('assets.export', 'Export')" :disabled="!selectedDataset" @click="exportDataset">
+                <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
               </ElButton>
-              <ElButton size="small" type="danger" plain @click="removeDataset">
-                <Trash2 :size="14" aria-hidden="true" />{{ locale.t('assets.delete', 'Delete') }}
+              <ElButton size="small" type="danger" plain :title="locale.t('assets.delete', 'Delete')" :aria-label="locale.t('assets.delete', 'Delete')" @click="removeDataset">
+                <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
               </ElButton>
             </div>
           </header>
@@ -854,11 +854,11 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               />
             </div>
             <div class="asset-manager__editor-actions">
-              <ElButton size="small" data-asset-resource-export :disabled="!selectedResource" @click="exportResource">
-                <Download :size="13" aria-hidden="true" />{{ locale.t('assets.export', 'Export') }}
+              <ElButton size="small" data-asset-resource-export :title="locale.t('assets.export', 'Export')" :aria-label="locale.t('assets.export', 'Export')" :disabled="!selectedResource" @click="exportResource">
+                <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
               </ElButton>
-              <ElButton size="small" type="danger" plain :disabled="assetBusy" @click="removeResource">
-                <Trash2 :size="14" aria-hidden="true" />{{ locale.t('assets.delete', 'Delete') }}
+              <ElButton size="small" type="danger" plain :title="locale.t('assets.delete', 'Delete')" :aria-label="locale.t('assets.delete', 'Delete')" :disabled="assetBusy" @click="removeResource">
+                <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
               </ElButton>
             </div>
           </header>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Database, Files } from '@lucide/vue'
-import { useWorkbenchController } from '../../composables'
-import { projectDataPath, projectPagesPath } from '../../navigation'
+import { useWorkbenchController } from '../../../../composables'
+import { projectDataPath, projectPagesPath } from '../../../../navigation'
 
 defineProps<{ projectId: string }>()
 const controller = useWorkbenchController()

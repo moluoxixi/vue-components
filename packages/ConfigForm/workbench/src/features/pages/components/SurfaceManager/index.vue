@@ -166,26 +166,27 @@ function exportPageSource(surfaceId: string): void {
 </script>
 
 <template>
-  <section class="page-manager" aria-labelledby="page-manager-title">
-    <header class="page-manager__header">
-      <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
-        <ElButton native-type="button" link class="page-manager__breadcrumb-link" @click="emit('openProjects')">
-          <ArrowLeft :size="14" aria-hidden="true" />
-          {{ locale.t('pageManager.backToProjects', 'Back to projects') }}
-        </ElButton>
-        <span class="page-manager__breadcrumb-divider" aria-hidden="true">/</span>
-        <span aria-current="page">{{ locale.t('pageManager.title', 'Page management') }}</span>
-      </nav>
-      <h1 id="page-manager-title" class="page-manager__project-name">
-        {{ project.name }}
-      </h1>
-      <div class="page-manager__header-summary" :aria-label="locale.t('pageManager.summary', 'Page summary')">
-        <span>{{ surfaceKindLabel('page') }}<strong>{{ pageStats.pages }}</strong></span>
-        <span>{{ surfaceKindLabel('dialog') }}<strong>{{ pageStats.dialogs }}</strong></span>
-        <span>{{ surfaceKindLabel('drawer') }}<strong>{{ pageStats.drawers }}</strong></span>
-      </div>
-      <slot name="navigation" />
-    </header>
+  <section class="page-manager" :aria-label="locale.t('pageManager.title', 'Page management')">
+    <slot name="header" :stats="pageStats">
+      <header class="page-manager__header">
+        <nav class="page-manager__breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
+          <ElButton native-type="button" link class="page-manager__breadcrumb-link" @click="emit('openProjects')">
+            <ArrowLeft :size="14" aria-hidden="true" />
+            {{ locale.t('pageManager.backToProjects', 'Back to projects') }}
+          </ElButton>
+          <span class="page-manager__breadcrumb-divider" aria-hidden="true">/</span>
+          <span aria-current="page">{{ locale.t('pageManager.title', 'Page management') }}</span>
+        </nav>
+        <h1 class="page-manager__project-name" :title="project.name">
+          {{ project.name }}
+        </h1>
+        <div class="page-manager__header-summary" :aria-label="locale.t('pageManager.summary', 'Page summary')">
+          <span>{{ surfaceKindLabel('page') }}<strong>{{ pageStats.pages }}</strong></span>
+          <span>{{ surfaceKindLabel('dialog') }}<strong>{{ pageStats.dialogs }}</strong></span>
+          <span>{{ surfaceKindLabel('drawer') }}<strong>{{ pageStats.drawers }}</strong></span>
+        </div>
+      </header>
+    </slot>
 
     <div class="page-manager__toolbar">
       <h2 class="page-manager__list-title">
@@ -235,7 +236,7 @@ function exportPageSource(surfaceId: string): void {
       </div>
     </div>
 
-    <div class="page-manager__table" role="list" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
+    <div class="page-manager__table" role="list" tabindex="0" :aria-label="locale.t('pageManager.projectSurfaces', 'Project pages')">
       <article
         v-for="page in filteredSurfaces"
         :key="page.id"

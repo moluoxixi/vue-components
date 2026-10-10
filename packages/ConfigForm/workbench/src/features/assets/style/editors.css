@@ -55,6 +55,7 @@
 .dataset-table-editor {
   display: flex;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   flex-direction: column;
   container-type: inline-size;
@@ -65,10 +66,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 2px 0 14px;
+  margin: 2px 0 8px;
   color: var(--wb-muted);
   font-size: 12px;
   flex: 0 0 auto;
+}
+.dataset-table-overview .el-button {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  color: var(--wb-muted);
 }
 .dataset-table-overview > div {
   display: flex;
@@ -133,13 +140,6 @@
   min-width: 120px;
   flex: 1 1 150px;
 }
-.dataset-table-instructions {
-  flex: 0 0 auto;
-  margin: 12px 0;
-  color: var(--wb-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .dataset-table-workspace {
   display: grid;
   min-width: 0;
@@ -147,6 +147,7 @@
   flex: 1;
   align-items: stretch;
   gap: 12px;
+  margin-top: 12px;
 }
 .dataset-table-workspace.has-detail {
   grid-template-rows: minmax(180px, 1fr) auto;
@@ -643,10 +644,60 @@
   .dataset-table-toolbar .dataset-table-search {
     flex-basis: 100%;
   }
+  .dataset-table-toolbar {
+    gap: 6px;
+  }
+  .dataset-table-toolbar > .el-button {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
   .dataset-table-range {
     flex-basis: 100%;
   }
   .dataset-table-footer > .el-button {
     margin-left: auto;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .dataset-table-footer {
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .dataset-table-pagination {
+    gap: 4px;
+  }
+  .dataset-table-pagination .el-select {
+    width: 96px;
+  }
+  .dataset-table-pagination .el-select__wrapper {
+    min-height: 32px;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .dataset-table-scroll thead th {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 650px) {
+  .dataset-table-overview {
+    margin-bottom: 4px;
+  }
+  .dataset-table-overview .el-button {
+    width: 22px;
+    height: 22px;
+  }
+  .dataset-table-footer {
+    margin-top: 4px;
+    padding-top: 4px;
+  }
+  .dataset-table-range {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

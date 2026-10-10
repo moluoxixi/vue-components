@@ -1,10 +1,10 @@
 .management-shell {
   display: grid;
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-rows: 56px minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  height: 100vh;
+  height: 100dvh;
   color: var(--wb-text);
   background: var(--wb-bg);
 }
@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 0 28px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }

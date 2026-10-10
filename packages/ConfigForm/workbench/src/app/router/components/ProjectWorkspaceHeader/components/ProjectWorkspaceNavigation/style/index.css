@@ -2,12 +2,11 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-top: 20px;
 }
 
 .project-workspace-navigation a {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 36px;
   align-items: center;
   gap: 8px;
   color: var(--wb-muted);

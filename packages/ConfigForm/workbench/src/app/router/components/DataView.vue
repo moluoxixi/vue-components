@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ArrowLeft, FolderKanban } from '@lucide/vue'
+import { ArrowLeft } from '@lucide/vue'
 import { computed, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AssetManagerWorkspace } from '../../../features/assets'
 import { useAssetDraftGuard, useWorkbenchController, useWorkbenchUiStore } from '../../composables'
-import { pageDesignPath, projectsPath, readWorkbenchRouteTarget } from '../../navigation'
+import { pageDesignPath, readWorkbenchRouteTarget } from '../../navigation'
 import ManagementShell from './ManagementShell.vue'
-import ProjectWorkspaceNavigation from './ProjectWorkspaceNavigation.vue'
+import ProjectWorkspaceHeader from './ProjectWorkspaceHeader.vue'
 
 const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
@@ -22,6 +22,7 @@ const designPath = computed(() => {
   const id = controller.currentSurfaceId.value
   return project.value?.surfacesById[id] ? pageDesignPath(project.value.id, id) : undefined
 })
+const saveState = computed(() => editor.value?.hasChanges ? locale.value.t('data.draftHint', 'Unsaved draft · save to apply it') : controller.statusLabel.value)
 
 useAssetDraftGuard({ editor: () => editor.value, locale })
 </script>
@@ -29,28 +30,20 @@ useAssetDraftGuard({ editor: () => editor.value, locale })
 <template>
   <ManagementShell :palette="ui.paletteFamily.value" :theme="ui.resolvedTheme.value">
     <main v-if="project" class="project-data-page" :aria-label="locale.t('data.title', 'Data management')" data-project-data>
-      <header class="project-data-header">
-        <nav class="project-data-breadcrumb" :aria-label="locale.t('pageManager.breadcrumb', 'Breadcrumb')">
-          <ElButton text @click="router.push(projectsPath())">
-            <FolderKanban :size="14" aria-hidden="true" />{{ locale.t('management.projects', 'Project management') }}
+      <ProjectWorkspaceHeader :project-id="project.id" :project-name="project.name">
+        <template #actions>
+          <ElButton v-if="designPath" :title="locale.t('data.backToDesign', 'Return to designer')" :aria-label="locale.t('data.backToDesign', 'Return to designer')" @click="router.push(designPath)">
+            <ArrowLeft :size="15" aria-hidden="true" /><span class="project-data-back-label">{{ locale.t('data.backToDesign', 'Return to designer') }}</span>
           </ElButton>
-          <span aria-hidden="true">/</span>
-          <span>{{ locale.t('data.title', 'Data management') }}</span>
-        </nav>
-        <div class="project-data-heading">
-          <h1>{{ project.name }}</h1>
-          <ElButton v-if="designPath" @click="router.push(designPath)">
-            <ArrowLeft :size="15" aria-hidden="true" />{{ locale.t('data.backToDesign', 'Return to designer') }}
-          </ElButton>
-        </div>
-        <div class="project-data-summary">
-          <span>{{ locale.t('data.projectScope', 'Shared by all pages in this project') }}</span>
+        </template>
+        <template #summary>
           <span>{{ locale.t('assets.datasets', 'Datasets') }} <strong>{{ project.datasetOrder.length }}</strong></span>
           <span>{{ locale.t('assets.resources', 'Resources') }} <strong>{{ Object.keys(project.resources).length }}</strong></span>
-          <span class="project-data-save-state" role="status">{{ editor?.hasChanges ? locale.t('data.draftHint', 'Unsaved draft · save to apply it') : controller.statusLabel.value }}</span>
-        </div>
-        <ProjectWorkspaceNavigation :project-id="project.id" />
-      </header>
+        </template>
+        <template #status>
+          <span class="project-data-save-state" role="status" :title="saveState">{{ saveState }}</span>
+        </template>
+      </ProjectWorkspaceHeader>
       <AssetManagerWorkspace ref="editor" :key="project.id" fill :commands="controller" :locale="controller.localeOptions.value" :project="project" />
     </main>
     <main v-else class="project-data-state">

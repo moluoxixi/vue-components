@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
 import type { DatasetCellAddress, DatasetTableSort } from '../../../types'
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronLeft, ChevronRight, Copy, Pencil, Plus, Search, Trash2, WrapText, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronLeft, ChevronRight, CircleHelp, Copy, Pencil, Plus, Search, Trash2, WrapText, X } from '@lucide/vue'
 import { createDatasetFromRows } from '@moluoxixi/config-form-model'
 import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import { compareDatasetCells, datasetCellKind, describeDatasetColumns, formatDatasetCell, parseDatasetCell } from '../../../services'
@@ -302,6 +302,11 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
       <div class="dataset-table-overview">
         <div><strong>{{ rows.length.toLocaleString() }}</strong> {{ chinese ? '行数据' : 'rows' }}<span>·</span><strong>{{ columns.length }}</strong> {{ chinese ? '列' : 'columns' }}</div>
         <span v-if="modified" class="dataset-table-changes" role="status">{{ chinese ? `${modified} 格已修改，尚未保存` : `${modified} edited cells · unsaved` }}</span>
+        <ElTooltip :content="chinese ? '单击查看完整内容 · 双击或 F2 编辑 · 点击列名排序' : 'Click to read the full value · Double-click or F2 to edit · Click a column name to sort'" :trigger="['hover', 'focus']">
+          <ElButton text circle :aria-label="chinese ? '表格操作帮助' : 'Table help'">
+            <CircleHelp :size="15" aria-hidden="true" />
+          </ElButton>
+        </ElTooltip>
       </div>
       <div class="dataset-table-toolbar">
         <div class="dataset-table-search">
@@ -327,9 +332,6 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
           <X :size="14" />
         </ElButton>
       </form>
-      <p class="dataset-table-instructions">
-        {{ chinese ? '单击查看完整内容 · 双击或 F2 编辑 · 点击列名排序' : 'Click to read the full value · Double-click or F2 to edit · Click a column name to sort' }}
-      </p>
       <p v-if="error" class="dataset-editor-error" role="alert">
         {{ error }}
       </p>

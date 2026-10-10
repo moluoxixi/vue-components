@@ -17,7 +17,7 @@ import {
   readWorkbenchRouteTarget,
 } from '../../navigation'
 import ManagementShell from './ManagementShell.vue'
-import ProjectWorkspaceNavigation from './ProjectWorkspaceNavigation.vue'
+import ProjectWorkspaceHeader from './ProjectWorkspaceHeader.vue'
 import TemplateDetailsDialog from './TemplateDetailsDialog.vue'
 
 const controller = useWorkbenchController()
@@ -194,8 +194,14 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       @open-page="openPage"
       @open-projects="openProjects"
     >
-      <template #navigation>
-        <ProjectWorkspaceNavigation :project-id="project.id" />
+      <template #header="{ stats }">
+        <ProjectWorkspaceHeader :project-id="project.id" :project-name="project.name">
+          <template #summary>
+            <span>{{ controller.workbenchLocale.value.t('surface.kind.page', 'Page') }} <strong>{{ stats.pages }}</strong></span>
+            <span>{{ controller.workbenchLocale.value.t('surface.kind.dialog', 'Dialog') }} <strong>{{ stats.dialogs }}</strong></span>
+            <span>{{ controller.workbenchLocale.value.t('surface.kind.drawer', 'Drawer') }} <strong>{{ stats.drawers }}</strong></span>
+          </template>
+        </ProjectWorkspaceHeader>
       </template>
     </SurfaceManagerPage>
     <main
