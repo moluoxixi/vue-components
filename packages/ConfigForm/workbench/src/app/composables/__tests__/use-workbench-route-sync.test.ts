@@ -74,6 +74,7 @@ async function createHarness(options: {
     routes: [
       { path: '/projects', name: 'projects', component: Stub },
       { path: '/projects/:projectId/pages', name: 'project-pages', component: Stub },
+      { path: '/projects/:projectId/data', name: 'project-data', component: Stub },
       { path: '/projects/:projectId/pages/new', name: 'page-create', component: Stub },
       { path: '/projects/:projectId/pages/:pageId/design', name: 'page-design', component: Stub },
     ],
@@ -118,12 +119,12 @@ describe('workbench route sync', () => {
     harness.wrapper.unmount()
   })
 
-  it('opens a project without touching the page selection on page management', async () => {
-    const harness = await createHarness({ initialPath: '/projects/project-a/pages' })
+  it.each(['pages', 'data'])('opens project %s management without touching the page selection', async (workspace) => {
+    const harness = await createHarness({ initialPath: `/projects/project-a/${workspace}` })
 
     expect(harness.requestOpenProject).toHaveBeenCalledWith('project-a')
     expect(harness.selectSurfaceFromDesigner).not.toHaveBeenCalled()
-    expect(harness.router.currentRoute.value.path).toBe('/projects/project-a/pages')
+    expect(harness.router.currentRoute.value.path).toBe(`/projects/project-a/${workspace}`)
     harness.wrapper.unmount()
   })
 

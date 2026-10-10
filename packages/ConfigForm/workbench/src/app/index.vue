@@ -4,7 +4,7 @@ import type { DatasetReference, NodeSubgraph } from '@moluoxixi/config-form-mode
 import type { PersistenceDialogMode } from '../features/persistence'
 import type { MobileStudioView, WorkbenchExportCommand } from './types'
 import type { StudioDiagnostic } from './types/editor-session'
-import { Blocks, Files, Layers3, Monitor, Paintbrush, RefreshCw, SlidersHorizontal, Undo2 } from '@lucide/vue'
+import { Blocks, Database, Files, Layers3, Monitor, Paintbrush, RefreshCw, SlidersHorizontal, Undo2 } from '@lucide/vue'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createInsertCommand, DesignSurface } from '@moluoxixi/config-form-designer'
 
@@ -26,6 +26,7 @@ import StudioDesignToolbar from './components/StudioDesignToolbar.vue'
 import StudioIssuesDock from './components/StudioIssuesDock.vue'
 import StudioResponsiveCompare from './components/StudioResponsiveCompare.vue'
 import {
+  useAssetDraftGuard,
   useWorkbenchController,
   useWorkbenchDesignSession,
   useWorkbenchExportService,
@@ -33,7 +34,7 @@ import {
   useWorkbenchUiStore,
 } from './composables'
 import { useStudioCommands } from './composables/studio-commands'
-import { projectPagesPath, projectsPath } from './navigation'
+import { projectDataPath, projectPagesPath, projectsPath } from './navigation'
 import { evaluateStudioExpression } from './services/expression-preview'
 import { normalizeDiagnostics, uniqueDiagnostics } from './state/editor-session'
 
@@ -85,6 +86,8 @@ const {
 } = controller
 const persistenceDialogMode = ref<PersistenceDialogMode>()
 const assetManagerOpen = ref(false)
+const assetManager = useTemplateRef<{ busy: boolean, hasChanges: boolean }>('assetManager')
+useAssetDraftGuard({ editor: () => assetManager.value, locale: workbenchLocale })
 const schemaImportOpen = ref(false)
 const responsiveCompareOpen = ref(false)
 const existingFields = computed(() =>
@@ -167,7 +170,7 @@ const { studioCommands } = useStudioCommands(designer, {
   handoff: () => {
     void handleExportCommand('source')
   },
-  assets: showAssetManager,
+  assets: showDataManagement,
   schema: () => {
     showDesign()
     schemaImportOpen.value = true
@@ -264,6 +267,7 @@ const mobileStudioViews = computed(() => [
     label: workbenchLocale.value.t('designer.view.inspector', 'Inspector'),
   },
   { icon: Files, id: 'pages' as const, label: workbenchLocale.value.t('designer.view.pages', 'Surfaces') },
+  { icon: Database, id: 'data' as const, label: workbenchLocale.value.t('designer.view.data', 'Data') },
   { icon: Paintbrush, id: 'theme' as const, label: workbenchLocale.value.t('designer.view.theme', 'Theme') },
 ])
 
@@ -451,6 +455,12 @@ function toggleWorkspacePreview(): void {
   togglePreview()
 }
 
+function showDataManagement(): void {
+  const projectId = currentProject.value?.id
+  if (projectId)
+    void router.push(projectDataPath(projectId))
+}
+
 function showAssetManager(kind?: 'dataset' | 'resource', id?: string): void {
   assetSelection.value = { ...(kind ? { kind } : {}), ...(id ? { id } : {}) }
   assetManagerOpen.value = true
@@ -599,6 +609,7 @@ watch(
                 "
                 @jump-history="jumpDesignerHistory"
                 @manage-assets="showAssetManager"
+                @open-data-management="showDataManagement"
                 @manage-surfaces="showSurfaceManager"
                 @select-layer="selectDesignerLayer"
                 @select-surface="selectSurfaceFromDesigner"
@@ -720,6 +731,7 @@ watch(
 
     <AssetManagerDialog
       v-if="currentProject"
+      ref="assetManager"
       v-model="assetManagerOpen"
       :commands="controller"
       :initial-id="assetSelection.id"

@@ -320,8 +320,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
 
 async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
   const navigationTabs = page.locator('.designer-left-tabs [role="tab"]')
-  // Five views: components, pages, layers, data and history (see StudioLeftView).
-  await expect(navigationTabs).toHaveCount(5)
+  await expect(navigationTabs).toHaveCount(6)
   const navigationGeometry = await navigationTabs.evaluateAll(tabs => tabs.map((tab) => {
     const label = tab.querySelector('span')
     return {
@@ -351,10 +350,15 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
       return {
         row: { height: row.height, width: row.width },
         summary: summary ? { height: summary.height, width: summary.width } : undefined,
+        nameFits: (() => {
+          const name = element.querySelector<HTMLElement>('.mx-config-form-designer__palette-item-name')!
+          const bounds = name.getBoundingClientRect()
+          return name.scrollWidth <= name.clientWidth + 1 && bounds.top >= row.top && bounds.bottom <= row.bottom
+        })(),
       }
     })
-    expect(geometry.row.height).toBeGreaterThanOrEqual(32)
-    expect(geometry.row.height).toBeLessThanOrEqual(44)
+    expect(geometry.row.height).toBeGreaterThanOrEqual(44)
+    expect(geometry.nameFits).toBe(true)
     expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
     expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
     await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
@@ -748,7 +752,7 @@ test('keeps status and lower-priority commands reachable without topbar overflow
     }
   }),
   )
-  expect(mobileDockMetrics).toHaveLength(6)
+  expect(mobileDockMetrics).toHaveLength(7)
   expect(mobileDockMetrics.every(item => item.fontSize === '11px')).toBe(true)
   expect(mobileDockMetrics.every(item => item.height >= 44 && item.width >= 44)).toBe(true)
   await page.getByRole('button', { name: '更多操作' }).click()
@@ -1352,8 +1356,8 @@ test('keeps Dataset-authored mock data local in Design and Preview', async ({ pa
   })
 
   await createProject(page, 'element')
-  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
-  await page.getByRole('button', { name: 'Manage data', exact: true }).click()
+  await page.getByRole('tab', { name: 'Data', exact: true }).click()
+  await page.getByRole('button', { name: 'Quick edit', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Assets', exact: true })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'New Dataset', exact: true }).click()

@@ -2,7 +2,8 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 
 type Panel = 'palette' | 'properties'
 const storageKey = 'config-form.designer.panel-sizes.v1'
-const defaults = { palette: 272, properties: 332 }
+const defaults = { palette: 336, properties: 332 }
+const minimums = { palette: 320, properties: 220 }
 
 export function useDesignPanelSizes() {
   const widths = ref({ ...defaults })
@@ -10,7 +11,7 @@ export function useDesignPanelSizes() {
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? '{}')
     for (const key of ['palette', 'properties'] as const) {
       if (Number.isFinite(saved[key]))
-        widths.value[key] = Math.max(220, Math.min(480, saved[key]))
+        widths.value[key] = Math.max(minimums[key], Math.min(480, saved[key]))
     }
   }
   catch {
@@ -26,7 +27,7 @@ export function useDesignPanelSizes() {
     }
   }
   function setWidth(panel: Panel, value: number): void {
-    widths.value = { ...widths.value, [panel]: Math.max(220, Math.min(480, value)) }
+    widths.value = { ...widths.value, [panel]: Math.max(minimums[panel], Math.min(480, value)) }
   }
   function startResize(event: PointerEvent, panel: Panel): void {
     if (event.button !== 0)

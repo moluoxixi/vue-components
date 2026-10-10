@@ -414,7 +414,7 @@ defineExpose<DesignSurfaceExpose>({
           aria-orientation="vertical"
           :aria-label="locale.t('panel.resizeNavigator', 'Resize navigator')"
           :aria-valuenow="widths.palette"
-          :aria-valuemin="220"
+          :aria-valuemin="320"
           :aria-valuemax="480"
           @pointerdown="startResize($event, 'palette')"
           @keydown="resizeWithKeyboard($event, 'palette')"

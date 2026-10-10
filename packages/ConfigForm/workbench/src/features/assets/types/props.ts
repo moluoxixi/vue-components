@@ -47,11 +47,16 @@ export interface AssetManagerCommands {
   setDatasetDefaultProjection: (datasetId: string, projection?: DatasetProjection) => boolean
 }
 
-export interface AssetManagerDialogProps {
+export interface AssetManagerWorkspaceProps {
+  active?: boolean
   commands: AssetManagerCommands
+  fill?: boolean
   initialId?: string
   initialKind?: 'dataset' | 'resource'
   locale?: DesignerLocaleOptions
-  modelValue: boolean
   project: ReadonlyProjectDocument
+}
+
+export interface AssetManagerDialogProps extends Omit<AssetManagerWorkspaceProps, 'active' | 'fill'> {
+  modelValue: boolean
 }

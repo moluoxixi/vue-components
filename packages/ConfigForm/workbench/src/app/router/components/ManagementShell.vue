@@ -22,7 +22,7 @@ const ui = useWorkbenchUiStore()
       <RouterLink :to="templatesPath()" :class="{ 'is-active': $route.path.startsWith('/templates') }" :aria-current="$route.path.startsWith('/templates') ? 'page' : undefined" :aria-label="controller.workbenchLocale.value.t('management.templates', 'Template management')">
         <LibraryBig :size="17" aria-hidden="true" /><span class="management-navigation__label">{{ controller.workbenchLocale.value.t('management.templates', 'Template management') }}</span><span class="management-navigation__compact">{{ controller.workbenchLocale.value.t('management.templatesShort', 'Templates') }}</span>
       </RouterLink>
-      <div v-if="$route.name === 'templates'" class="management-navigation__tools">
+      <div v-if="$route.name === 'templates' || $route.name === 'project-data'" class="management-navigation__tools">
         <ElButton text circle :title="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" :aria-label="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" @click="ui.toggleLocale">
           <Languages :size="17" aria-hidden="true" />
         </ElButton>

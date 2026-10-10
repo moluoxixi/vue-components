@@ -673,6 +673,8 @@ for (const visualCase of templateVisualCases) {
     await expectNoHorizontalOverflow(page)
     await expect(page.locator('.template-catalog-item[aria-selected="true"] .template-catalog-status').first()).toHaveAttribute('data-status', 'eligible', { timeout: 15_000 })
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    if (width === 390 && locale === 'en')
+      await page.locator('.page-creation-dialog .el-dialog__header').hover({ position: { x: 4, y: 4 } })
     await expect(page).toHaveScreenshot(
       `template-${width}-${palette}-${theme}-${locale}${overlay ? '-drawer' : ''}.png`,
       { animations: 'disabled' },

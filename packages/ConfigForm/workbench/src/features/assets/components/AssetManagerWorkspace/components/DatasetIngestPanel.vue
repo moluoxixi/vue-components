@@ -2,7 +2,7 @@
 import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import { computed, ref } from 'vue'
-import { parseDatasetIngest } from '../services/ingest'
+import { parseDatasetIngest } from '../../../services/ingest'
 
 const props = defineProps<{ locale: string }>()
 const emit = defineEmits<{ apply: [rows: ModelJsonObject[]] }>()

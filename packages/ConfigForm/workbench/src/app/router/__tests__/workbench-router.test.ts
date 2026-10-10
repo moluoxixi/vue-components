@@ -10,6 +10,7 @@ import {
   pageCreatePath,
   pageDesignPath,
   projectCreatePath,
+  projectDataPath,
   projectPagesPath,
   projectsPath,
   readWorkbenchRouteTarget,
@@ -67,6 +68,10 @@ describe('workbench router', () => {
     expect(router.currentRoute.value.name).toBe('project-pages')
     expect(router.currentRoute.value.params.projectId).toBe('project-a')
 
+    await router.push(projectDataPath('project a/b'))
+    expect(router.currentRoute.value.name).toBe('project-data')
+    expect(readWorkbenchRouteTarget(router.currentRoute.value)).toEqual({ projectId: 'project a/b' })
+
     await router.push(pageCreatePath('project-a'))
     expect(router.currentRoute.value.name).toBe('page-create')
 
@@ -100,6 +105,7 @@ describe('workbench router', () => {
 
   it('treats only project-scoped screens as projects', () => {
     expect(isProjectRouteName('project-pages')).toBe(true)
+    expect(isProjectRouteName('project-data')).toBe(true)
     expect(isProjectRouteName('page-create')).toBe(true)
     expect(isProjectRouteName('page-design')).toBe(true)
     expect(isProjectRouteName('projects')).toBe(false)

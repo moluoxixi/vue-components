@@ -1,10 +1,11 @@
 @layer theme, utilities;
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
 
 @source "../features/export/index.vue";
 @source "../features/assets/index.vue";
+@source "../features/assets/components/AssetManagerWorkspace.vue";
 @source "../app/components/ProjectThemeEditor/index.vue";
 
 @theme inline {

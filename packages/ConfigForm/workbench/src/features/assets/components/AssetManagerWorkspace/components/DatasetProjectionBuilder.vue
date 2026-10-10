@@ -2,7 +2,7 @@
 import type { DatasetProjection, DeepReadonly, ProjectDataset, SafeExpression } from '@moluoxixi/config-form-model'
 import { projectDatasetSchema, queryDatasetView } from '@moluoxixi/config-form-model'
 import { computed, ref } from 'vue'
-import { collectDatasetPaths } from '../services/ingest'
+import { collectDatasetPaths } from '../../../services/ingest'
 
 const props = defineProps<{ json: string, dataset: DeepReadonly<ProjectDataset>, locale: string }>()
 const emit = defineEmits<{ 'update:json': [value: string] }>()

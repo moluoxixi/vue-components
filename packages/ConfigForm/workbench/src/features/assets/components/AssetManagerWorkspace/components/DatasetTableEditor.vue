@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
-import type { DatasetCellAddress, DatasetTableSort } from '../types'
+import type { DatasetCellAddress, DatasetTableSort } from '../../../types'
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronLeft, ChevronRight, Copy, Pencil, Plus, Search, Trash2, WrapText, X } from '@lucide/vue'
 import { createDatasetFromRows } from '@moluoxixi/config-form-model'
 import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
-import { compareDatasetCells, datasetCellKind, describeDatasetColumns, formatDatasetCell, parseDatasetCell } from '../services'
+import { compareDatasetCells, datasetCellKind, describeDatasetColumns, formatDatasetCell, parseDatasetCell } from '../../../services'
 
 const props = defineProps<{ json: string, locale: string }>()
 const emit = defineEmits<{ 'update:json': [value: string], 'save': [] }>()

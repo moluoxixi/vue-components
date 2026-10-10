@@ -151,7 +151,7 @@ describe('studio left panel', () => {
       'aria-label': 'Components',
       'title': 'Components',
     })
-    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(5)
+    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(6)
     componentTab.focus()
     await componentTab.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'ArrowRight', key: 'ArrowRight' }))
     await nextTick()

@@ -184,6 +184,7 @@ function exportPageSource(surfaceId: string): void {
         <span>{{ surfaceKindLabel('dialog') }}<strong>{{ pageStats.dialogs }}</strong></span>
         <span>{{ surfaceKindLabel('drawer') }}<strong>{{ pageStats.drawers }}</strong></span>
       </div>
+      <slot name="navigation" />
     </header>
 
     <div class="page-manager__toolbar">

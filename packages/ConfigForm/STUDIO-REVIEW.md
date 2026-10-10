@@ -31,6 +31,34 @@ pnpm --filter @config-form/workbench dev --host 127.0.0.1 --port 4331 --strictPo
 
 ## 数据表阅读优化
 
+### 物料面板与项目数据管理（2026-10-10）
+
+设计器物料区默认宽度为 336px，最窄为 320px，仍支持拖动、键盘调整和本地宽度偏好。
+物料使用单列显示，长名称自动换行；垂直滚动条常驻，鼠标滚轮及键盘 Home/End 均可访问全部物料。
+
+设计器左侧新增「数据」入口，分别列出当前项目的数据集和资源，可搜索名称、查看数据行数、
+点击条目快速编辑。「管理数据」打开独立项目管理页，页面管理也提供同一入口。
+管理页路径为 `#/projects/:projectId/data`，可直接打开或刷新，支持返回当前页面设计器。
+
+项目数据管理复用现有数据集和资源命令：新建、CSV/JSON 导入、表格编辑、映射、导出、
+上传文件、URL 资源、替换文件和删除。默认打开表格；数据集和资源草稿在切换条目时保留，
+未保存草稿离开管理页或设计器会提醒，关闭快速编辑弹窗后可继续编辑。异步文件替换完成后，
+即使已切换条目，也会清除已保存的替换草稿。手机端提供列表和编辑详情两个视图。
+
+数据集及资源由当前项目共享，当前使用本地存储；这里管理的是设计所用数据和资源，
+没有增加后端业务记录或表单提交记录服务。
+
+本轮验证：Workbench 全量 663 项单测通过，新增异步替换草稿用例另行通过，合计 664 项；
+Designer 244 项单测通过；Chromium 102 项全量回归通过。Workbench/Designer 类型检查、
+生产构建、37 包架构检查、Element Plus 导入检查及改动文件风格检查通过。
+数据管理浅色、深色及 390px 手机视口的 WCAG 检查均无违规，视觉基线已复核并回归。
+
+- [加宽物料面板](./review/studio-upgrade/materials-pane.png)
+- [设计器数据入口](./review/studio-upgrade/designer-data-pane.png)
+- [项目数据管理](./review/studio-upgrade/project-data-management.png)
+- [手机数据管理](./review/studio-upgrade/project-data-management-mobile.png)
+- [深色数据管理](./review/studio-upgrade/project-data-management-dark.png)
+
 数据表默认使用阅读视图：普通文本采用 13px 字号，数字右对齐，列宽按内容样本分配，
 表头和原始行号固定。布尔值、`null`、空字符串和未设置字段分别呈现；长文本可开启换行。
 数据集编辑区域在桌面扩宽，分页与保存保持可见。

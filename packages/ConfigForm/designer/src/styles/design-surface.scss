@@ -60,7 +60,7 @@
   min-width: 0;
   min-height: 0;
   grid-template-areas: 'palette canvas properties';
-  grid-template-columns: var(--designer-palette-width, 252px) minmax(0, 1fr) var(--designer-inspector-width, 332px);
+  grid-template-columns: var(--designer-palette-width, 336px) minmax(0, 1fr) var(--designer-inspector-width, 332px);
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }

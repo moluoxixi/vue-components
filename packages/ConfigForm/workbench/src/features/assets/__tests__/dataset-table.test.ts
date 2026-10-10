@@ -4,7 +4,7 @@ import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
-import DatasetTableEditor from '../components/DatasetTableEditor.vue'
+import DatasetTableEditor from '../components/AssetManagerWorkspace/components/DatasetTableEditor.vue'
 
 const wrappers: ReturnType<typeof mount>[] = []
 afterEach(() => {

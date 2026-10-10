@@ -16,6 +16,7 @@ export const WORKBENCH_PATHS = Object.freeze({
   projectCreate: '/projects/new',
   projectImport: '/projects/import',
   projectPages: '/projects/:projectId/pages',
+  projectData: '/projects/:projectId/data',
   pageCreate: '/projects/:projectId/pages/new',
   pageDesign: '/projects/:projectId/pages/:pageId/design',
 })
@@ -45,6 +46,11 @@ export function projectCreatePath(mode: 'json' | 'template'): string {
 /** Page management of one project: the list a project's work starts from. */
 export function projectPagesPath(projectId: string): string {
   return `${WORKBENCH_PATHS.projects}/${encodeSegment(projectId)}/pages`
+}
+
+/** Project-owned datasets and resources. */
+export function projectDataPath(projectId: string): string {
+  return `${WORKBENCH_PATHS.projects}/${encodeSegment(projectId)}/data`
 }
 
 /** Create a page inside a project. */
@@ -86,6 +92,7 @@ export function readWorkbenchRouteTarget(route: Pick<RouteLocationNormalized, 'p
 /** Routes that need an open project session, and therefore a project in the URL. */
 export function isProjectRouteName(name: unknown): boolean {
   return name === 'project-pages'
+    || name === 'project-data'
     || name === 'page-create'
     || name === 'page-design'
 }

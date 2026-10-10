@@ -53,6 +53,11 @@ export const WORKBENCH_ROUTES: readonly RouteRecordRaw[] = [
     props: { mode: 'template' as const, target: 'surface' as const },
   },
   {
+    path: WORKBENCH_PATHS.projectData,
+    name: 'project-data',
+    component: () => import('../components/DataView.vue'),
+  },
+  {
     path: WORKBENCH_PATHS.pageDesign,
     name: 'page-design',
     component: () => import('../components/DesignView.vue'),

@@ -1,6 +1,20 @@
 import type { WorkbenchLocaleId, WorkbenchMessageCatalog } from '../types'
 
 export const WORKBENCH_EN_US_MESSAGES = {
+  'designer.view.data': 'Data',
+  'data.title': 'Data management',
+  'data.rowCount': '{count} rows',
+  'data.projectNavigation': 'Project workspace',
+  'data.search': 'Search datasets and resources',
+  'data.quickEdit': 'Quick edit',
+  'data.projectScope': 'Shared by all pages in this project',
+  'data.backToDesign': 'Return to designer',
+  'data.draftHint': 'Unsaved draft · save to apply it',
+  'data.discardDraft': 'Discard draft',
+  'data.unsaved': 'Unsaved data drafts',
+  'data.leaveHint': 'Some data drafts have not been saved. Leave and discard them?',
+  'data.keepEditing': 'Keep editing',
+  'data.noResults': 'No matching datasets or resources',
   'preview.needsPage': 'Add a page to preview the project experience. Dialogs and drawers can already be designed and saved.',
   'management.navigation': 'Workspace navigation',
   'management.projects': 'Project management',
@@ -703,6 +717,20 @@ export const WORKBENCH_EN_US_MESSAGES = {
 } as const
 
 export const WORKBENCH_ZH_CN_MESSAGES: WorkbenchMessageCatalog = {
+  'designer.view.data': '数据',
+  'data.title': '数据管理',
+  'data.rowCount': '{count} 行',
+  'data.projectNavigation': '项目工作区',
+  'data.search': '搜索数据集和资源',
+  'data.quickEdit': '快速编辑',
+  'data.projectScope': '当前项目的所有页面共享',
+  'data.backToDesign': '返回设计器',
+  'data.draftHint': '有未保存草稿 · 保存后生效',
+  'data.discardDraft': '放弃草稿',
+  'data.unsaved': '数据草稿尚未保存',
+  'data.leaveHint': '部分数据草稿尚未保存，离开后将丢失这些修改。确定离开吗？',
+  'data.keepEditing': '继续编辑',
+  'data.noResults': '没有匹配的数据集或资源',
   'preview.needsPage': '请先添加一个页面，再体验整个项目。弹窗和抽屉可以直接设计并保存。',
   'management.navigation': '工作区导航',
   'management.projects': '项目管理',

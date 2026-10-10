@@ -1,0 +1,31 @@
+.project-workspace-navigation {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.project-workspace-navigation a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  color: var(--wb-muted);
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.project-workspace-navigation a:hover,
+.project-workspace-navigation a[aria-current='page'] {
+  color: var(--wb-accent-text);
+}
+
+.project-workspace-navigation a[aria-current='page'] {
+  border-bottom-color: var(--wb-accent);
+}
+
+.project-workspace-navigation a:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 4px;
+}

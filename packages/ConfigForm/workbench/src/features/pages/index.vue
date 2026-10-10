@@ -31,6 +31,10 @@ const screenTitle = computed(() => createDesignerLocale(props.locale).t('pageMan
       @export-source="emit('exportSource', $event)"
       @open-page="emit('openPage', $event)"
       @open-projects="emit('openProjects')"
-    />
+    >
+      <template #navigation>
+        <slot name="navigation" />
+      </template>
+    </SurfaceManager>
   </main>
 </template>

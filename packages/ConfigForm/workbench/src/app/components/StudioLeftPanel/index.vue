@@ -39,7 +39,8 @@ const materialFilter = ref<'all' | 'recent' | 'favorite'>('all')
 const layerQuery = ref('')
 const collapsedLayers = ref(new Set<string>())
 const { recent, favorites, remember, toggleFavorite } = useMaterialPreferences()
-const assetQuery = ref('')
+const surfaceQuery = ref('')
+const dataQuery = ref('')
 const activeView = computed(() => props.activeView ?? internalActiveView.value)
 const layerTree = useTemplateRef<HTMLElement>('layerTree')
 const pageList = useTemplateRef<HTMLElement>('pageList')
@@ -50,6 +51,7 @@ const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components'), shortLabel: locale.value.t('designer.rail.components', 'Add') },
   { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers'), shortLabel: locale.value.t('designer.rail.layers', 'Layers') },
   { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Surfaces'), shortLabel: locale.value.t('designer.rail.pages', 'Pages') },
+  { icon: Database, id: 'data' as const, label: locale.value.t('designer.view.data', 'Data'), shortLabel: locale.value.t('designer.view.data', 'Data') },
   { icon: Paintbrush, id: 'theme' as const, label: locale.value.t('designer.view.theme', 'Theme'), shortLabel: locale.value.t('designer.rail.theme', 'Theme') },
   { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History'), shortLabel: locale.value.t('designer.rail.history', 'History') },
 ])
@@ -134,7 +136,7 @@ const materialCategories = computed(() => [
   ...new Set(filteredMaterials.value.map(material => locale.value.materialCategory(material))),
 ])
 const surfaceGroups = computed(() => {
-  const query = assetQuery.value.trim().toLocaleLowerCase()
+  const query = surfaceQuery.value.trim().toLocaleLowerCase()
   const definitions = [
     { id: 'page' as const, icon: Files, label: locale.value.t('assets.pages', 'Pages') },
     { id: 'dialog' as const, icon: PanelsTopLeft, label: locale.value.t('assets.dialogs', 'Dialogs') },
@@ -157,14 +159,14 @@ const surfaceGroups = computed(() => {
 const visibleSurfaceIds = computed(() => surfaceGroups.value.flatMap(group => group.items.map(surface => surface!.id)),
 )
 const filteredDatasets = computed(() => {
-  const query = assetQuery.value.trim().toLocaleLowerCase()
+  const query = dataQuery.value.trim().toLocaleLowerCase()
   return props.project.datasetOrder
     .map(id => props.project.datasetsById[id])
     .flatMap(dataset => (dataset ? [dataset] : []))
     .filter(dataset => !query || `${dataset.name} ${dataset.id}`.toLocaleLowerCase().includes(query))
 })
 const filteredResources = computed(() => {
-  const query = assetQuery.value.trim().toLocaleLowerCase()
+  const query = dataQuery.value.trim().toLocaleLowerCase()
   return Object.values(props.project.resources)
     .filter(
       resource => !query || `${resource.name} ${resource.id} ${resource.kind}`.toLocaleLowerCase().includes(query),
@@ -442,6 +444,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
       <span v-if="activeView === 'components'">{{ filteredMaterials.length }}</span>
       <span v-else-if="activeView === 'layers'">{{ visibleLayers.length }}</span>
       <span v-else-if="activeView === 'pages'">{{ project.surfaceOrder.length }}</span>
+      <span v-else-if="activeView === 'data'">{{ project.datasetOrder.length + Object.keys(project.resources).length }}</span>
     </header>
     <ElTabs class="designer-left-tabs" tab-position="left" :model-value="activeView" @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
@@ -496,7 +499,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
         @add-material="insertMaterial"
       >
         <template #content="{ getMaterialBindings, groups, materialTitle }">
-          <ElScrollbar class="designer-material-scrollbar">
+          <ElScrollbar class="designer-material-scrollbar" always :tabindex="0" :aria-label="locale.t('palette.browseAll', 'Browse all components')">
             <ElCollapse v-model="expandedMaterialCategories" class="designer-material-groups">
               <ElCollapseItem v-for="[category, entries] in groups" :key="category" :name="category">
                 <template #title>
@@ -665,11 +668,11 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
 
     <div v-else-if="activeView === 'pages'" class="designer-pages-panel">
       <ElInput
-        v-model="assetQuery"
+        v-model="surfaceQuery"
         class="designer-asset-search"
         clearable
-        :placeholder="locale.t('assets.search', 'Search assets')"
-        :aria-label="locale.t('assets.search', 'Search assets')"
+        :placeholder="locale.t('pageManager.search', 'Search pages')"
+        :aria-label="locale.t('pageManager.search', 'Search pages')"
       >
         <template #prefix>
           <Search :size="14" aria-hidden="true" />
@@ -712,6 +715,28 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
               </p>
             </div>
           </section>
+        </nav>
+      </ElScrollbar>
+      <ElButton native-type="button" class="manage-pages-button" @click="emit('manageSurfaces')">
+        <Settings2 :size="14" aria-hidden="true" />
+        {{ locale.t('pages.manage', 'Manage pages') }}
+      </ElButton>
+    </div>
+
+    <div v-else-if="activeView === 'data'" class="designer-pages-panel designer-data-panel">
+      <ElInput
+        v-model="dataQuery"
+        class="designer-asset-search"
+        clearable
+        :placeholder="locale.t('data.search', 'Search datasets and resources')"
+        :aria-label="locale.t('data.search', 'Search datasets and resources')"
+      >
+        <template #prefix>
+          <Search :size="14" aria-hidden="true" />
+        </template>
+      </ElInput>
+      <ElScrollbar always>
+        <nav class="designer-pages" :aria-label="locale.t('designer.view.data', 'Data')">
           <section class="designer-asset-group" aria-labelledby="asset-group-dataset">
             <header id="asset-group-dataset">
               <Database :size="13" aria-hidden="true" /><strong>{{ locale.t('assets.datasets', 'Datasets') }}</strong><span>{{ filteredDatasets.length }}</span>
@@ -722,14 +747,15 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
                   text
                   native-type="button"
                   :aria-label="locale.t('assets.openDataset', 'Open dataset {name}', { name: dataset.name })"
+                  :title="dataset.name"
                   @click="emit('manageAssets', 'dataset', dataset.id)"
                 >
-                  <Database :size="13" aria-hidden="true" /><span>{{ dataset.name }}</span><small>{{ dataset.rows.length }}</small>
+                  <Database :size="13" aria-hidden="true" /><span>{{ dataset.name }}</span><small>{{ locale.t('data.rowCount', '{count} rows', { count: dataset.rows.length }) }}</small>
                 </ElButton>
               </li>
             </ul>
             <p v-if="filteredDatasets.length === 0">
-              {{ locale.t('assets.emptyGroup', 'No matching assets') }}
+              {{ dataQuery.trim() ? locale.t('assets.emptyGroup', 'No matching assets') : locale.t('assets.emptyDatasets', 'No datasets yet') }}
             </p>
           </section>
           <section class="designer-asset-group" aria-labelledby="asset-group-resource">
@@ -742,26 +768,27 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
                   text
                   native-type="button"
                   :aria-label="locale.t('assets.openResource', 'Open resource {name}', { name: resource.name })"
+                  :title="resource.name"
                   @click="emit('manageAssets', 'resource', resource.id)"
                 >
-                  <Image :size="13" aria-hidden="true" /><span>{{ resource.name }}</span><small>{{ resource.kind }}</small>
+                  <Image :size="13" aria-hidden="true" /><span>{{ resource.name }}</span><small>{{ resource.kind === 'url' ? locale.t('assets.urlResourceType', 'URL') : locale.t('assets.fileResourceType', 'File') }}</small>
                 </ElButton>
               </li>
             </ul>
             <p v-if="filteredResources.length === 0">
-              {{ locale.t('assets.emptyGroup', 'No matching assets') }}
+              {{ dataQuery.trim() ? locale.t('assets.emptyGroup', 'No matching assets') : locale.t('assets.emptyResources', 'No resources yet') }}
             </p>
           </section>
         </nav>
       </ElScrollbar>
-      <ElButton native-type="button" class="manage-data-button" @click="emit('manageAssets')">
-        <Plus :size="14" aria-hidden="true" />
-        {{ locale.t('assets.manage', 'Manage data') }}
-      </ElButton>
-      <ElButton native-type="button" class="manage-pages-button" @click="emit('manageSurfaces')">
-        <Settings2 :size="14" aria-hidden="true" />
-        {{ locale.t('pages.manage', 'Manage pages') }}
-      </ElButton>
+      <div class="designer-data-actions">
+        <ElButton native-type="button" class="manage-data-button" @click="emit('manageAssets')">
+          <Plus :size="14" aria-hidden="true" />{{ locale.t('data.quickEdit', 'Quick edit') }}
+        </ElButton>
+        <ElButton native-type="button" type="primary" class="manage-data-button" @click="emit('openDataManagement')">
+          <Database :size="14" aria-hidden="true" />{{ locale.t('assets.manage', 'Manage data') }}
+        </ElButton>
+      </div>
     </div>
 
     <div v-else-if="activeView === 'theme'" class="designer-theme-panel">

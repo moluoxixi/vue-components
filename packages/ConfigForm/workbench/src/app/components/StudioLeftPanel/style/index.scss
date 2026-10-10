@@ -126,12 +126,24 @@
 
 .designer-material-scrollbar {
   min-height: 0;
+  --el-scrollbar-bg-color: var(--wb-muted);
+  --el-scrollbar-opacity: 0.55;
+  --el-scrollbar-hover-opacity: 0.85;
+}
+
+.designer-material-scrollbar .el-scrollbar__bar.is-vertical {
+  width: 7px;
+}
+
+.designer-material-scrollbar .el-scrollbar__wrap:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -2px;
 }
 
 .designer-material-groups {
   --el-collapse-border-color: transparent;
 
-  padding: 0 10px 12px;
+  padding: 0 14px 12px 10px;
   border: 0;
 }
 
@@ -162,29 +174,24 @@
 
 .designer-material-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
-}
-
-@container designer-material-panel (max-width: 300px) {
-  .designer-material-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .designer-material-button.el-button {
   width: 100%;
   min-width: 0;
-  height: 44px;
+  height: auto;
+  min-height: 44px;
   margin: 0;
-  padding: 0 8px;
+  padding: 10px 8px;
   justify-content: center;
   gap: 0;
   color: var(--wb-text);
   background: var(--wb-control-bg);
   border: 1px solid var(--wb-separator);
   border-radius: 5px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .designer-material-button.el-button:hover,
@@ -210,6 +217,10 @@
 }
 
 .designer-material-button .mx-config-form-designer__palette-item-name {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.5;
   font-size: 13px;
   font-weight: 500;
   text-align: left;
@@ -252,6 +263,25 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
+.designer-data-actions {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--wb-separator);
+}
+
+.designer-data-actions .el-button {
+  width: 100%;
+  height: 36px;
+  margin: 0;
+}
+
+.designer-data-actions .el-button > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .designer-asset-search {
   padding: 8px 8px 2px;
 }
@@ -262,8 +292,7 @@
   margin-bottom: 8px;
 }
 
-.designer-asset-group > header,
-.designer-asset-group li {
+.designer-asset-group > header {
   display: grid;
   min-width: 0;
   align-items: center;
@@ -302,18 +331,18 @@
 }
 
 .designer-asset-group li {
+  display: block;
+  min-width: 0;
   min-height: 32px;
   padding: 0 8px;
   color: var(--wb-text);
 }
 
 .designer-asset-group li .el-button {
-  display: grid;
+  display: block;
   width: 100%;
   min-height: 32px;
   padding: 0;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
-  gap: 6px;
   color: inherit;
   text-align: left;
 }
@@ -402,14 +431,17 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  white-space: nowrap;
+}
+
+.manage-data-button:not(.el-button--primary) {
   color: var(--wb-text);
   border: 1px solid var(--wb-control-border);
   border-radius: 4px;
   background: var(--wb-surface);
-  white-space: nowrap;
 }
 
-.manage-data-button:hover {
+.manage-data-button:not(.el-button--primary):hover {
   color: var(--wb-text-strong);
   border-color: var(--wb-accent-line);
   background: var(--wb-hover);

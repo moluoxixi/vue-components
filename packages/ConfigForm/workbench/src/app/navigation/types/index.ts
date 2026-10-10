@@ -15,6 +15,7 @@ export type WorkbenchRouteName
     | 'project-create'
     | 'project-import'
     | 'project-pages'
+    | 'project-data'
     | 'page-create'
     | 'page-design'
 
