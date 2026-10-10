@@ -19,18 +19,16 @@ const controller = useWorkbenchController()
       <h1 :title="projectName">
         {{ projectName }}
       </h1>
-      <div v-if="$slots.actions" class="project-workspace-header__actions">
-        <slot name="actions" />
-      </div>
     </div>
-    <div class="project-workspace-header__context">
-      <ProjectWorkspaceNavigation :project-id="projectId" />
-      <div class="project-workspace-header__summary">
-        <slot name="summary" />
-      </div>
-      <div v-if="$slots.status" class="project-workspace-header__status">
-        <slot name="status" />
-      </div>
+    <ProjectWorkspaceNavigation class="project-workspace-header__navigation" :project-id="projectId" />
+    <div v-if="$slots.summary" class="project-workspace-header__summary">
+      <slot name="summary" />
+    </div>
+    <div v-if="$slots.status" class="project-workspace-header__status">
+      <slot name="status" />
+    </div>
+    <div v-if="$slots.actions" class="project-workspace-header__actions">
+      <slot name="actions" />
     </div>
   </header>
 </template>

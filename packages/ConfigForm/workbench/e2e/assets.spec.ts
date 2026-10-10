@@ -363,12 +363,21 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
   await dialog.getByRole('button', { name: 'New Dataset', exact: true }).click()
   await expect(dialog.locator('[data-dataset-table-save]')).toBeVisible()
   await expectAssetDialogFits(dialog)
+  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify(Array.from({ length: 30 }, (_, index) => ({ name: `Record ${index + 1}` }))))
+  await dialog.locator('[data-asset-dataset-save]').click()
+  await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
   const editorBody = dialog.locator('.asset-manager__editor-body')
   const editorScroll = await editorBody.evaluate((element) => {
     element.scrollTop = element.scrollHeight
     return { scrollTop: element.scrollTop, maxScrollTop: element.scrollHeight - element.clientHeight }
   })
-  expect(editorScroll.scrollTop).toBeGreaterThan(0)
+  expect(editorScroll.scrollTop).toBe(0)
+  const table = dialog.locator('[data-asset-dataset-table]')
+  await table.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect(dialog.getByRole('button', { name: '25 / name', exact: true })).toBeInViewport({ ratio: 1 })
   await expect(dialog.locator('[data-dataset-table-save]')).toBeInViewport()
   await dialog.getByRole('tab', { name: 'Details', exact: true }).press('ArrowLeft')
   await expect(dialog.getByRole('tab', { name: 'Asset list', exact: true })).toBeFocused()

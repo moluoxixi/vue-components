@@ -13,6 +13,8 @@ import {
   Image,
   Link2,
   List,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pencil,
   Plus,
   Save,
@@ -23,7 +25,7 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, useTemplateRef, watch } from 'vue'
 import { DatasetIngestPanel, DatasetProjectionBuilder, DatasetTableEditor } from './AssetManagerWorkspace/components'
 
 const props = withDefaults(defineProps<AssetManagerWorkspaceProps>(), { active: true, fill: false })
@@ -47,9 +49,14 @@ const resourceFile = ref<UploadInstance>()
 const resourceReplacementFile = ref<UploadInstance>()
 const resourceEmptyFile = ref<UploadInstance>()
 const messageTone = ref<'success' | 'error'>('success')
+let messageTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(messageTimer))
 const assetBusy = ref(false)
 const mobilePane = ref<'list' | 'editor'>('list')
 const datasetTab = ref('table')
+const sidebarCollapsed = ref(false)
+const collapseButton = useTemplateRef<{ ref: HTMLButtonElement }>('collapse-button')
+const expandButton = useTemplateRef<{ ref: HTMLButtonElement }>('expand-button')
 const datasetCells = ref<Record<string, string>>({})
 const datasetDrafts = reactive(new Map<string, { json: string, projection: string, cells: Record<string, string> }>())
 let loadedDatasetId = ''
@@ -282,6 +289,15 @@ function select(nextKind: 'dataset' | 'resource', id: string): void {
   message.value = ''
 }
 
+async function toggleSidebar(): Promise<void> {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  await nextTick()
+  if (sidebarCollapsed.value)
+    expandButton.value?.ref?.focus()
+  else
+    collapseButton.value?.ref?.focus()
+}
+
 function handlePaneKeydown(event: KeyboardEvent): void {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
     return
@@ -292,8 +308,14 @@ function handlePaneKeydown(event: KeyboardEvent): void {
 }
 
 function setMessage(value: string, tone: 'success' | 'error' = 'success'): void {
+  clearTimeout(messageTimer)
   message.value = value
   messageTone.value = tone
+  if (tone === 'success') {
+    messageTimer = setTimeout(() => {
+      message.value = ''
+    }, 4500)
+  }
 }
 
 function parseRows(): unknown | undefined {
@@ -608,151 +630,169 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           <Pencil :size="15" aria-hidden="true" />{{ locale.t('assets.details', 'Details') }}
         </button>
       </div>
-      <div class="asset-manager" :class="{ 'has-dataset': selectedDataset }">
+      <div class="asset-manager" :class="{ 'has-dataset': selectedDataset, 'is-sidebar-collapsed': fill && sidebarCollapsed }">
+        <aside v-if="fill && sidebarCollapsed" class="asset-manager__rail">
+          <ElButton ref="expand-button" text circle :title="locale.t('data.expandAssets', 'Expand asset list')" :aria-label="locale.t('data.expandAssets', 'Expand asset list')" aria-controls="asset-list-panel" :aria-expanded="false" @click="toggleSidebar">
+            <PanelLeftOpen :size="17" aria-hidden="true" />
+          </ElButton>
+        </aside>
         <aside
           id="asset-list-panel"
           class="asset-manager__list"
           :aria-label="locale.t('assets.list', 'Asset list')"
           data-asset-navigation
         >
-          <ElInput v-model="assetQuery" clearable :placeholder="locale.t('data.search', 'Search datasets and resources')" :aria-label="locale.t('data.search', 'Search datasets and resources')" />
-          <p v-if="assetQuery.trim() && !matchingDatasets.length && !matchingResources.length" class="asset-manager__empty-list" role="status">
-            {{ locale.t('data.noResults', 'No matching datasets or resources') }}
-          </p>
-          <section class="asset-manager__group">
-            <div class="asset-manager__heading">
-              <div class="asset-manager__section-label">
-                <Database :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.datasets', 'Datasets') }}</strong><span>{{ datasets.length }}</span>
+          <div class="asset-manager__list-toolbar">
+            <ElInput v-model="assetQuery" clearable :placeholder="locale.t('data.search', 'Search datasets and resources')" :aria-label="locale.t('data.search', 'Search datasets and resources')" />
+            <ElButton v-if="fill" ref="collapse-button" text circle :title="locale.t('data.collapseAssets', 'Collapse asset list')" :aria-label="locale.t('data.collapseAssets', 'Collapse asset list')" aria-controls="asset-list-panel" :aria-expanded="true" @click="toggleSidebar">
+              <PanelLeftClose :size="17" aria-hidden="true" />
+            </ElButton>
+          </div>
+          <div class="asset-manager__catalog" tabindex="0" role="region" :aria-label="locale.t('assets.list', 'Asset list')">
+            <p v-if="assetQuery.trim() && !matchingDatasets.length && !matchingResources.length" class="asset-manager__empty-list" role="status">
+              {{ locale.t('data.noResults', 'No matching datasets or resources') }}
+            </p>
+            <section class="asset-manager__group">
+              <div class="asset-manager__heading">
+                <div class="asset-manager__section-label">
+                  <Database :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.datasets', 'Datasets') }}</strong><span>{{ datasets.length }}</span>
+                </div>
+                <ElButton
+                  text
+                  circle
+                  :title="locale.t('assets.newDataset', 'New Dataset')"
+                  :aria-label="locale.t('assets.newDataset', 'New Dataset')"
+                  @click="createDataset"
+                >
+                  <Plus :size="15" aria-hidden="true" />
+                </ElButton>
               </div>
-              <ElButton
-                text
-                circle
-                :title="locale.t('assets.newDataset', 'New Dataset')"
-                :aria-label="locale.t('assets.newDataset', 'New Dataset')"
-                @click="createDataset"
-              >
-                <Plus :size="15" aria-hidden="true" />
-              </ElButton>
-            </div>
-            <nav class="asset-manager__items" :aria-label="locale.t('assets.datasets', 'Datasets')">
-              <ElButton
-                v-for="dataset in matchingDatasets"
-                :key="dataset.id"
-                text
-                class="asset-manager__item"
-                :class="{ 'is-active': kind === 'dataset' && selectedId === dataset.id }"
-                :aria-pressed="kind === 'dataset' && selectedId === dataset.id"
-                :title="dataset.name"
-                @click="select('dataset', dataset.id)"
-              >
-                <Database :size="14" aria-hidden="true" /><span class="asset-manager__item-name">{{
-                  dataset.name
-                }}</span><small>{{ dataset.rows.length }}</small>
-              </ElButton>
-              <p v-if="datasets.length === 0" class="asset-manager__empty-list">
-                {{ locale.t('assets.emptyDatasets', 'No datasets yet') }}
-              </p>
-            </nav>
-            <div class="asset-manager__actions">
-              <ElUpload
-                ref="datasetImport"
-                class="asset-manager__upload"
-                data-asset-dataset-import-file
-                accept="application/json,.json"
-                :auto-upload="false"
-                :show-file-list="false"
-                :on-change="importDataset"
-              >
-                <ElButton tag="span" size="small" data-asset-dataset-import>
-                  <Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}
+              <nav class="asset-manager__items" :aria-label="locale.t('assets.datasets', 'Datasets')">
+                <ElButton
+                  v-for="dataset in matchingDatasets"
+                  :key="dataset.id"
+                  text
+                  class="asset-manager__item"
+                  :class="{ 'is-active': kind === 'dataset' && selectedId === dataset.id }"
+                  :aria-pressed="kind === 'dataset' && selectedId === dataset.id"
+                  :title="dataset.name"
+                  @click="select('dataset', dataset.id)"
+                >
+                  <Database :size="14" aria-hidden="true" /><span class="asset-manager__item-name">{{
+                    dataset.name
+                  }}</span><small>{{ dataset.rows.length }}</small>
                 </ElButton>
-              </ElUpload>
-            </div>
-          </section>
-
-          <section class="asset-manager__group">
-            <div class="asset-manager__heading">
-              <div class="asset-manager__section-label">
-                <Image :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.resources', 'Resources') }}</strong><span>{{ resources.length }}</span>
+                <p v-if="datasets.length === 0" class="asset-manager__empty-list">
+                  {{ locale.t('assets.emptyDatasets', 'No datasets yet') }}
+                </p>
+              </nav>
+              <div class="asset-manager__actions">
+                <ElUpload
+                  ref="datasetImport"
+                  class="asset-manager__upload"
+                  data-asset-dataset-import-file
+                  accept="application/json,.json"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :on-change="importDataset"
+                >
+                  <ElButton tag="span" size="small" data-asset-dataset-import>
+                    <Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}
+                  </ElButton>
+                </ElUpload>
               </div>
-              <ElButton
-                text
-                circle
-                :title="locale.t('assets.newUrlResource', 'New URL Resource')"
-                :aria-label="locale.t('assets.newUrlResource', 'New URL Resource')"
-                @click="newUrlResource"
-              >
-                <Plus :size="15" aria-hidden="true" />
-              </ElButton>
-            </div>
-            <nav class="asset-manager__items" :aria-label="locale.t('assets.resources', 'Resources')">
-              <ElButton
-                v-for="resource in matchingResources"
-                :key="resource.id"
-                text
-                class="asset-manager__item"
-                :class="{ 'is-active': kind === 'resource' && selectedId === resource.id }"
-                :aria-pressed="kind === 'resource' && selectedId === resource.id"
-                :title="resource.name"
-                @click="select('resource', resource.id)"
-              >
-                <Link2 v-if="resource.kind === 'url'" :size="14" aria-hidden="true" /><FileText
-                  v-else
-                  :size="14"
-                  aria-hidden="true"
-                /><span class="asset-manager__item-name">{{ resource.name }}</span><small>{{
-                  resource.kind === 'url'
-                    ? locale.t('assets.urlResourceType', 'URL')
-                    : locale.t('assets.fileResourceType', 'File')
-                }}</small>
-              </ElButton>
-              <p v-if="resources.length === 0" class="asset-manager__empty-list">
-                {{ locale.t('assets.emptyResources', 'No resources yet') }}
-              </p>
-            </nav>
-            <div class="asset-manager__actions">
-              <ElUpload
-                ref="resourceImport"
-                class="asset-manager__upload"
-                data-asset-resource-import-file
-                accept="application/json,.json"
-                :auto-upload="false"
-                :show-file-list="false"
-                :on-change="importResource"
-              >
-                <ElButton tag="span" size="small" data-asset-resource-import>
-                  <Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}
-                </ElButton>
-              </ElUpload>
-              <ElUpload
-                ref="resourceFile"
-                class="asset-manager__upload"
-                data-asset-resource-file
-                :disabled="assetBusy"
-                :auto-upload="false"
-                :show-file-list="false"
-                :on-change="createEmbeddedResource"
-              >
-                <ElButton tag="span" size="small" data-asset-resource-file-picker :loading="assetBusy">
-                  <FilePlus2 :size="13" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
-                </ElButton>
-              </ElUpload>
-            </div>
-          </section>
+            </section>
 
-          <label class="asset-manager__conflict-field">
-            <span>{{ locale.t('assets.importStrategy', 'When an asset already exists') }}</span>
-            <ElSelect
-              v-model="importStrategy"
-              size="small"
-              append-to="#workbench-overlays"
-              :aria-label="locale.t('assets.importStrategy', 'Import conflict strategy')"
-            >
-              <ElOption :label="locale.t('assets.copyOnConflict', 'Copy on conflict')" value="copy" />
-              <ElOption :label="locale.t('assets.overwriteOnConflict', 'Overwrite on conflict')" value="overwrite" />
-              <ElOption :label="locale.t('assets.skipOnConflict', 'Skip on conflict')" value="skip" />
-            </ElSelect>
-          </label>
+            <section class="asset-manager__group">
+              <div class="asset-manager__heading">
+                <div class="asset-manager__section-label">
+                  <Image :size="14" aria-hidden="true" /><strong>{{ locale.t('assets.resources', 'Resources') }}</strong><span>{{ resources.length }}</span>
+                </div>
+                <ElButton
+                  text
+                  circle
+                  :title="locale.t('assets.newUrlResource', 'New URL Resource')"
+                  :aria-label="locale.t('assets.newUrlResource', 'New URL Resource')"
+                  @click="newUrlResource"
+                >
+                  <Plus :size="15" aria-hidden="true" />
+                </ElButton>
+              </div>
+              <nav class="asset-manager__items" :aria-label="locale.t('assets.resources', 'Resources')">
+                <ElButton
+                  v-for="resource in matchingResources"
+                  :key="resource.id"
+                  text
+                  class="asset-manager__item"
+                  :class="{ 'is-active': kind === 'resource' && selectedId === resource.id }"
+                  :aria-pressed="kind === 'resource' && selectedId === resource.id"
+                  :title="resource.name"
+                  @click="select('resource', resource.id)"
+                >
+                  <Link2 v-if="resource.kind === 'url'" :size="14" aria-hidden="true" /><FileText
+                    v-else
+                    :size="14"
+                    aria-hidden="true"
+                  /><span class="asset-manager__item-name">{{ resource.name }}</span><small>{{
+                    resource.kind === 'url'
+                      ? locale.t('assets.urlResourceType', 'URL')
+                      : locale.t('assets.fileResourceType', 'File')
+                  }}</small>
+                </ElButton>
+                <p v-if="resources.length === 0" class="asset-manager__empty-list">
+                  {{ locale.t('assets.emptyResources', 'No resources yet') }}
+                </p>
+              </nav>
+              <div class="asset-manager__actions">
+                <ElUpload
+                  ref="resourceImport"
+                  class="asset-manager__upload"
+                  data-asset-resource-import-file
+                  accept="application/json,.json"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :on-change="importResource"
+                >
+                  <ElButton tag="span" size="small" data-asset-resource-import>
+                    <Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}
+                  </ElButton>
+                </ElUpload>
+                <ElUpload
+                  ref="resourceFile"
+                  class="asset-manager__upload"
+                  data-asset-resource-file
+                  :disabled="assetBusy"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :on-change="createEmbeddedResource"
+                >
+                  <ElButton tag="span" size="small" data-asset-resource-file-picker :loading="assetBusy">
+                    <FilePlus2 :size="13" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
+                  </ElButton>
+                </ElUpload>
+              </div>
+            </section>
+          </div>
+          <ElPopover :width="240" trigger="click" transition="none" :show-after="0" :hide-after="0" append-to="#workbench-overlays" popper-class="asset-import-settings">
+            <template #reference>
+              <ElButton text size="small" class="asset-manager__import-settings">
+                <SlidersHorizontal :size="14" aria-hidden="true" />{{ locale.t('data.importSettings', 'Import settings') }}
+              </ElButton>
+            </template>
+            <label class="asset-manager__conflict-field">
+              <span>{{ locale.t('assets.importStrategy', 'When an asset already exists') }}</span>
+              <ElSelect
+                v-model="importStrategy"
+                size="small"
+                append-to="#workbench-overlays"
+                :aria-label="locale.t('assets.importStrategy', 'Import conflict strategy')"
+              >
+                <ElOption :label="locale.t('assets.copyOnConflict', 'Copy on conflict')" value="copy" />
+                <ElOption :label="locale.t('assets.overwriteOnConflict', 'Overwrite on conflict')" value="overwrite" />
+                <ElOption :label="locale.t('assets.skipOnConflict', 'Skip on conflict')" value="skip" />
+              </ElSelect>
+            </label>
+          </ElPopover>
         </aside>
 
         <section
@@ -802,9 +842,16 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   :key="selectedDataset.id"
                   v-model:json="datasetJson"
                   v-model:cells="datasetCells"
+                  :dirty="datasetDirty"
                   :locale="locale.locale"
                   @save="saveDatasetRows"
-                />
+                >
+                  <template #footer-actions>
+                    <ElButton v-if="datasetDirty" size="small" class="dataset-table-discard" :title="locale.t('data.discardDraft', 'Discard draft')" :aria-label="locale.t('data.discardDraft', 'Discard draft')" @click="discardDatasetDraft">
+                      <X :size="14" aria-hidden="true" /><span class="dataset-table-discard-label">{{ locale.t('data.discardDraft', 'Discard draft') }}</span>
+                    </ElButton>
+                  </template>
+                </DatasetTableEditor>
               </ElTabPane>
               <ElTabPane name="projection">
                 <template #label>
@@ -823,7 +870,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               </ElTabPane>
             </ElTabs>
           </div>
-          <footer v-if="datasetDirty || datasetTab === 'json' || datasetTab === 'projection'" class="asset-manager__editor-footer">
+          <footer v-if="datasetTab !== 'table' && (datasetDirty || datasetTab === 'json' || datasetTab === 'projection')" class="asset-manager__editor-footer">
             <span v-if="datasetDirty" role="status">{{
               locale.t('data.draftHint', 'Unsaved draft · save to apply it')
             }}</span>
@@ -989,7 +1036,10 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           v-else
           :size="14"
           aria-hidden="true"
-        />{{ message }}
+        /><span>{{ message }}</span>
+        <ElButton text circle :aria-label="locale.t('data.dismissMessage', 'Dismiss message')" @click="message = ''">
+          <X :size="14" aria-hidden="true" />
+        </ElButton>
       </p>
     </div>
   </div>
