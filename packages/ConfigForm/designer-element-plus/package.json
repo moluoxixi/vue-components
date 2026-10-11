@@ -79,8 +79,8 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-designer": "^0.2.0",
-    "@moluoxixi/config-form-model": "^0.2.0",
+    "@moluoxixi/config-form-designer": "^0.2.1",
+    "@moluoxixi/config-form-model": "^0.2.1",
     "element-plus": "^2.9.0",
     "vue": "^3.5.0"
   },

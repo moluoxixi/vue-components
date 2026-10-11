@@ -1,5 +1,15 @@
 # @moluoxixi/docs
 
+## 0.1.20
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/config-form@0.3.1
+  - @moluoxixi/config-form-antd-vue@0.3.1
+  - @moluoxixi/config-form-element@0.3.1
+  - @moluoxixi/config-form-headless@0.3.1
+
 ## 0.1.19
 
 ### Patch Changes

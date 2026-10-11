@@ -1,5 +1,15 @@
 # @moluoxixi/config-form-vue-backend
 
+## 0.2.1
+
+### Patch Changes
+
+- Automatically release packages changed in 9162cfa5eb38.
+- Updated dependencies
+  - @moluoxixi/config-form@0.3.1
+  - @moluoxixi/config-form-compiler@0.2.1
+  - @moluoxixi/config-form-model@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

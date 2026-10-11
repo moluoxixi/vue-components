@@ -1,5 +1,13 @@
 # @moluoxixi/config-form
 
+## 0.3.1
+
+### Patch Changes
+
+- Automatically release packages changed in 9162cfa5eb38.
+- Updated dependencies
+  - @moluoxixi/config-form-headless@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

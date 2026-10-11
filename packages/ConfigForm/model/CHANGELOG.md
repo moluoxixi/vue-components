@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-model
 
+## 0.2.1
+
+### Patch Changes
+
+- Automatically release packages changed in 9162cfa5eb38.
+
 ## 0.2.0
 
 ### Minor Changes
