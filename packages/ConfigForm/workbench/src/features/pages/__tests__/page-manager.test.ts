@@ -103,7 +103,8 @@ describe('page manager', () => {
       surfacesById: { ...base.surfacesById, [settings.id]: settings },
     })
     const wrapper = mountManager(project)
-    await wrapper.get('button[aria-label="Delete Settings"]').trigger('click')
+    wrapper.findAllComponents({ name: 'ElDropdown' }).at(-1)!.vm.$emit('command', 'delete')
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('.page-manager__confirm[role="alert"]').exists()).toBe(true)
     expect(wrapper.emitted('action')).toBeUndefined()
 
@@ -162,7 +163,8 @@ describe('page manager', () => {
     const wrapper = mountPage(createProjectDocumentFixture())
 
     expect(wrapper.get('.page-manager__preview').attributes('src')).toMatch(/^data:image\/svg\+xml/)
-    await wrapper.get('button[aria-label="Export Fixture project"]').trigger('click')
+    wrapper.findAllComponents({ name: 'ElDropdown' }).at(-1)!.vm.$emit('command', 'export')
+    await wrapper.vm.$nextTick()
     expect(wrapper.emitted('export')?.[0]).toEqual(['home'])
 
     await wrapper.get('button[aria-label="Open Fixture project in the designer"]').trigger('click')

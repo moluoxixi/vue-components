@@ -226,19 +226,21 @@ async function exportPageSource(surfaceId: string): Promise<void> {
       :show-close="!controller.busy.value"
       :title="controller.workbenchLocale.value.t('pages.fromTemplate', 'From template')"
     >
-      <div class="page-creation-dialog__toolbar">
-        <span>{{ controller.workbenchLocale.value.t('pages.kindLabel', 'Page type') }}</span>
-        <ElSegmented
-          v-model="pageCreationKind"
-          :disabled="controller.busy.value"
-          :options="[
+      <template #header="{ titleId }">
+        <div class="page-creation-dialog__heading">
+          <h2 :id="titleId">{{ controller.workbenchLocale.value.t('pages.fromTemplate', 'From template') }}</h2>
+          <ElSegmented v-model="pageCreationKind" class="page-creation-dialog__types" :disabled="controller.busy.value" :options="[
             { label: controller.workbenchLocale.value.t('pages.kind.form', 'Form'), value: 'page' },
             { label: controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog'), value: 'dialog' },
             { label: controller.workbenchLocale.value.t('pages.kind.drawer', 'Drawer'), value: 'drawer' },
-          ]"
-          :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')"
-        />
-      </div>
+          ]" :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')" />
+          <ElSelect v-model="pageCreationKind" class="page-creation-dialog__type-select" :disabled="controller.busy.value" :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')" append-to="#workbench-overlays">
+            <ElOption value="page" :label="controller.workbenchLocale.value.t('pages.kind.form', 'Form')" />
+            <ElOption value="dialog" :label="controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog')" />
+            <ElOption value="drawer" :label="controller.workbenchLocale.value.t('pages.kind.drawer', 'Drawer')" />
+          </ElSelect>
+        </div>
+      </template>
       <TemplateCreationWorkspace
         :can-close="true"
         initial-mode="template"

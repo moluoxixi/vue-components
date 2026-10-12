@@ -2,7 +2,7 @@ import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 import { strFromU8, unzipSync } from 'fflate'
-import { createProject, openPageCreation, readDownloadText, restoreAppearance, setAppearance } from './helpers'
+import { createProject, openPageCreation, readDownloadText, restoreAppearance, selectDatasetView, setAppearance } from './helpers'
 
 interface DragGeometry {
   height: number
@@ -171,6 +171,12 @@ function dragVisualRuntime(page: Page): FrameLocator {
   return page.frameLocator('iframe[data-design-runtime-variant="drag-visual"]')
 }
 
+async function openProperties(page: Page): Promise<void> {
+  const trigger = page.locator('[data-sidebar-trigger="properties"]')
+  if (await trigger.isVisible() && await trigger.getAttribute('aria-expanded') !== 'true')
+    await trigger.click()
+}
+
 async function runtimeNodeSignature(node: Locator): Promise<{
   descendantCount: number
   kind: string | null
@@ -227,6 +233,9 @@ async function pointerDrop(
   target: Locator,
   options: { verifyCommitGeometry?: boolean } = {},
 ): Promise<DragResult> {
+  // Geometry comparisons require the same panel layout before and after selection.
+  if ((page.viewportSize()?.width ?? 0) > 1100)
+    await openProperties(page)
   const source = page.locator(`[data-material-key="${materialKey}"]`)
   await source.scrollIntoViewIfNeeded()
   const sourceBox = await visibleBox(source)
@@ -442,30 +451,36 @@ async function expectInspectorTabGeometry(page: Page, expectedPanelWidth?: numbe
 }
 
 async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> {
-  const fields = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__breakpoint-fields')
-  await expect(fields).toHaveCount(3)
-  const geometry = await fields.evaluateAll(elements => elements.map((element) => {
-    const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer-property-form__field')]
-    return {
-      setters: setters.map((setter) => {
-        const rect = setter.getBoundingClientRect()
-        const label = setter.querySelector<HTMLElement>('.mx-config-form-designer-property-form__label')
-        return {
-          bottom: rect.bottom,
-          labelFits: !label || label.scrollWidth <= label.clientWidth + 1,
-          hintFits: !setter.dataset.hintLabel || Boolean(label && label.scrollWidth <= label.clientWidth + 1),
-          top: rect.top,
-        }
-      }),
+  await openProperties(page)
+  const properties = page.locator('.mx-config-form-designer__properties')
+  for (const name of ['Desktop', 'Tablet', 'Mobile']) {
+    await properties.getByRole('tab', { name, exact: true }).click()
+    const fields = properties.locator('.mx-config-form-designer__breakpoint-fields:visible')
+    await expect(fields).toHaveCount(1)
+    const geometry = await fields.evaluateAll(elements => elements.map((element) => {
+      const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer-property-form__field')]
+      return {
+        setters: setters.map((setter) => {
+          const rect = setter.getBoundingClientRect()
+          const label = setter.querySelector<HTMLElement>('.mx-config-form-designer-property-form__label')
+          return {
+            bottom: rect.bottom,
+            labelFits: !label || label.scrollWidth <= label.clientWidth + 1,
+            hintFits: !setter.dataset.hintLabel || Boolean(label && label.scrollWidth <= label.clientWidth + 1),
+            top: rect.top,
+          }
+        }),
+      }
+    }),
+    )
+    for (const row of geometry) {
+      expect(row.setters).toHaveLength(3)
+      expect(row.setters[1]!.top).toBeGreaterThanOrEqual(row.setters[0]!.bottom - 1)
+      expect(row.setters[2]!.top).toBeGreaterThanOrEqual(row.setters[1]!.bottom - 1)
+      expect(row.setters.every(setter => setter.labelFits && setter.hintFits)).toBe(true)
     }
-  }),
-  )
-  for (const row of geometry) {
-    expect(row.setters).toHaveLength(3)
-    expect(row.setters[1]!.top).toBeGreaterThanOrEqual(row.setters[0]!.bottom - 1)
-    expect(row.setters[2]!.top).toBeGreaterThanOrEqual(row.setters[1]!.bottom - 1)
-    expect(row.setters.every(setter => setter.labelFits && setter.hintFits)).toBe(true)
   }
+  await page.locator('[data-sidebar-trigger="properties"]').click()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -474,6 +489,7 @@ test.beforeEach(async ({ page }) => {
 
 test('authors, persists, restores, and executes a primary interaction through Studio', async ({ page }) => {
   await createProject(page, 'element')
+  await openProperties(page)
 
   const inspector = page.locator('.mx-config-form-designer__properties')
   await expect(inspector.getByRole('tab', { name: 'Interactions', exact: true })).toBeVisible()
@@ -1364,7 +1380,7 @@ test('keeps Dataset-authored mock data local in Design and Preview', async ({ pa
   const datasetName = dialog.getByRole('textbox', { name: 'Dataset name', exact: true })
   await datasetName.fill('Runtime options')
   await datasetName.press('Tab')
-  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await selectDatasetView(dialog, 'JSON')
   await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify([{ label: 'China', value: 'cn' }]))
   await dialog.locator('[data-asset-dataset-save]').click()
   await expect(dialog.locator('.asset-manager__status')).toContainText('Dataset saved.')
@@ -1545,6 +1561,7 @@ test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench'
 
 test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   await createProject(page, 'element')
+  await openProperties(page)
   const properties = page.locator('.mx-config-form-designer__properties')
   const controls = [
     {
@@ -1643,6 +1660,7 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
 
 test('edits pixel form sizes and keeps responsive number controls inside the Inspector', async ({ page }) => {
   await createProject(page, 'element')
+  await openProperties(page)
   const properties = page.locator('.mx-config-form-designer__properties')
   const gap = properties.getByRole('spinbutton', { name: 'Gap (px)' })
   const desktop = properties.locator('[data-breakpoint="desktop"]')
@@ -1658,8 +1676,10 @@ test('edits pixel form sizes and keeps responsive number controls inside the Ins
   await gap.press('Enter')
   await labelWidth.fill('144')
   await labelWidth.press('Enter')
+  await properties.getByRole('tab', { name: 'Tablet', exact: true }).click()
   await tabletLabelWidth.fill('96')
   await tabletLabelWidth.press('Enter')
+  await properties.getByRole('tab', { name: 'Mobile', exact: true }).click()
   await mobileLabelWidth.fill('72')
   await mobileLabelWidth.press('Enter')
   await gap.focus()
@@ -1680,34 +1700,37 @@ test('edits pixel form sizes and keeps responsive number controls inside the Ins
   await expect.poll(() => runtimeField.evaluate(element => getComputedStyle(element).gridTemplateColumns))
     .toMatch(/^72px /)
 
-  const responsiveNumbers = properties.locator('.mx-config-form-designer__breakpoint-fields .el-input-number')
-  await expect(responsiveNumbers).toHaveCount(9)
-  const geometry = await responsiveNumbers.evaluateAll(elements => elements.map((element) => {
-    const field = element.closest('.mx-config-form-designer-property-form__field')
-    const input = element.querySelector('[role="spinbutton"]')
-    const decrease = element.querySelector('.el-input-number__decrease')
-    const increase = element.querySelector('.el-input-number__increase')
-    const rootRect = element.getBoundingClientRect()
-    const fieldRect = field?.getBoundingClientRect()
-    const decreaseRect = decrease?.getBoundingClientRect()
-    const increaseRect = increase?.getBoundingClientRect()
-    return {
-      ariaMax: input?.getAttribute('aria-valuemax'),
-      ariaMin: input?.getAttribute('aria-valuemin'),
-      fieldRight: fieldRect?.right ?? 0,
-      rootLeft: rootRect.left,
-      rootRight: rootRect.right,
-      decreaseLeft: decreaseRect?.left ?? 0,
-      increaseRight: increaseRect?.right ?? 0,
+  for (const [index, name] of ['Desktop', 'Tablet', 'Mobile'].entries()) {
+    await properties.getByRole('tab', { name, exact: true }).click()
+    const responsiveNumbers = properties.locator('.mx-config-form-designer__breakpoint-fields:visible .el-input-number')
+    await expect(responsiveNumbers).toHaveCount(3)
+    const geometry = await responsiveNumbers.evaluateAll(elements => elements.map((element) => {
+      const field = element.closest('.mx-config-form-designer-property-form__field')
+      const input = element.querySelector('[role="spinbutton"]')
+      const decrease = element.querySelector('.el-input-number__decrease')
+      const increase = element.querySelector('.el-input-number__increase')
+      const rootRect = element.getBoundingClientRect()
+      const fieldRect = field?.getBoundingClientRect()
+      const decreaseRect = decrease?.getBoundingClientRect()
+      const increaseRect = increase?.getBoundingClientRect()
+      return {
+        ariaMax: input?.getAttribute('aria-valuemax'),
+        ariaMin: input?.getAttribute('aria-valuemin'),
+        fieldRight: fieldRect?.right ?? 0,
+        rootLeft: rootRect.left,
+        rootRight: rootRect.right,
+        decreaseLeft: decreaseRect?.left ?? 0,
+        increaseRight: increaseRect?.right ?? 0,
+      }
+    }),
+    )
+    expect(geometry.map(control => control.ariaMax)).toEqual(['24', ['24', '12', '1'][index], '480'])
+    expect(geometry.map(control => control.ariaMin)).toEqual(['1', '1', '0'])
+    for (const control of geometry) {
+      expect(control.rootRight).toBeLessThanOrEqual(control.fieldRight + 1)
+      expect(control.decreaseLeft).toBeGreaterThanOrEqual(control.rootLeft - 1)
+      expect(control.increaseRight).toBeLessThanOrEqual(control.rootRight + 1)
     }
-  }),
-  )
-  expect(geometry.map(control => control.ariaMax)).toEqual(['24', '24', '480', '24', '12', '480', '24', '1', '480'])
-  expect(geometry.map(control => control.ariaMin)).toEqual(['1', '1', '0', '1', '1', '0', '1', '1', '0'])
-  for (const control of geometry) {
-    expect(control.rootRight).toBeLessThanOrEqual(control.fieldRight + 1)
-    expect(control.decreaseLeft).toBeGreaterThanOrEqual(control.rootLeft - 1)
-    expect(control.increaseRight).toBeLessThanOrEqual(control.rootRight + 1)
   }
 })
 
@@ -1812,6 +1835,7 @@ test('uses the real Ant runtime component for pointer candidate, overlay, and co
 
 test('supports keyboard and touch material drops without a second editable model', async ({ page }) => {
   await createProject(page, 'element')
+  await openProperties(page)
   const canvas = page.locator('.mx-config-form-designer__canvas')
   const inputMaterial = page.locator('[data-material-key="element.input"]')
 
@@ -1842,14 +1866,16 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   const materialGrid = page.locator('.designer-material-list').first()
   expect(
     await materialGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length),
-  ).toBe(1)
+  ).toBe(2)
   expect(
     await page.locator('.designer-material-button .mx-config-form-designer__palette-item-name').evaluateAll(names => names.every((name) => {
       const element = name as HTMLElement
-      return element.clientWidth > 80 && element.scrollWidth <= element.clientWidth
+      return element.clientWidth > 0 && element.scrollWidth <= element.clientWidth + 1 && element.scrollHeight <= element.clientHeight + 1
     }),
     ),
   ).toBe(true)
+  const checkboxName = page.locator('[data-material-key="element.checkbox"] .mx-config-form-designer__palette-item-name')
+  expect(await checkboxName.evaluate(element => element.getBoundingClientRect().height <= Number.parseFloat(getComputedStyle(element).lineHeight) + 1)).toBe(true)
 
   await page.getByRole('tab', { name: 'Layers' }).click()
   const firstLayer = page.getByRole('treeitem').first()

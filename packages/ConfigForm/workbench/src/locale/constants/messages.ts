@@ -1,6 +1,11 @@
 import type { WorkbenchLocaleId, WorkbenchMessageCatalog } from '../types'
 
 export const WORKBENCH_EN_US_MESSAGES = {
+  'browse.view': 'Display options',
+  'library.information': 'Template information',
+  'browse.list': 'List view',
+  'browse.cards': 'Card view',
+  'pageManager.design': 'Open design',
   'designer.view.data': 'Data',
   'data.title': 'Data management',
   'data.rowCount': '{count} rows',
@@ -721,6 +726,11 @@ export const WORKBENCH_EN_US_MESSAGES = {
 } as const
 
 export const WORKBENCH_ZH_CN_MESSAGES: WorkbenchMessageCatalog = {
+  'browse.view': '显示方式',
+  'library.information': '模板信息',
+  'browse.list': '列表视图',
+  'browse.cards': '卡片视图',
+  'pageManager.design': '打开设计',
   'designer.view.data': '数据',
   'data.title': '数据管理',
   'data.rowCount': '{count} 行',

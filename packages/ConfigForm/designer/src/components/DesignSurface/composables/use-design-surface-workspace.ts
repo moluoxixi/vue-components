@@ -31,7 +31,29 @@ export function useDesignSurfaceWorkspace(options: UseDesignSurfaceWorkspaceOpti
   const activeWorkspaceView = ref<WorkspaceView>('canvas')
   const workspaceWidth = ref<number>()
   const paletteOpen = ref(true)
-  const propertiesOpen = ref(true)
+  const propertiesOpen = ref(false)
+  const canvasFocused = ref(false)
+  const layoutStorageKey = 'config-form.designer.panel-layout'
+  try {
+    const saved = JSON.parse(localStorage.getItem(layoutStorageKey) ?? '{}')
+    if (typeof saved.palette === 'boolean')
+      paletteOpen.value = saved.palette
+    if (typeof saved.properties === 'boolean')
+      propertiesOpen.value = saved.properties
+    if (typeof saved.focused === 'boolean')
+      canvasFocused.value = saved.focused
+  }
+  catch {
+    // Layout preferences are optional in restricted storage contexts.
+  }
+  watch([paletteOpen, propertiesOpen, canvasFocused], () => {
+    try {
+      localStorage.setItem(layoutStorageKey, JSON.stringify({ palette: paletteOpen.value, properties: propertiesOpen.value, focused: canvasFocused.value }))
+    }
+    catch {
+      // Keep the selected layout for this session.
+    }
+  })
   const mediumPanel = ref<SidePanel>()
   const workspaceId = useId()
   let breakpointManuallySelected = false
@@ -72,6 +94,8 @@ export function useDesignSurfaceWorkspace(options: UseDesignSurfaceWorkspaceOpti
   }
 
   function isSidePanelOpen(view: SidePanel): boolean {
+    if (canvasFocused.value && workspaceMode.value !== 'narrow')
+      return false
     if (workspaceMode.value === 'medium')
       return mediumPanel.value === view
     return view === 'palette' ? paletteOpen.value : propertiesOpen.value
@@ -80,6 +104,8 @@ export function useDesignSurfaceWorkspace(options: UseDesignSurfaceWorkspaceOpti
   function isWorkspacePanelHidden(view: WorkspaceView): boolean {
     if (workspaceMode.value === 'narrow')
       return activeWorkspaceView.value !== view
+    if (canvasFocused.value)
+      return view !== 'canvas'
     if (workspaceMode.value === 'medium')
       return view === 'canvas' ? false : mediumPanel.value !== view
     if (view === 'palette')
@@ -90,6 +116,16 @@ export function useDesignSurfaceWorkspace(options: UseDesignSurfaceWorkspaceOpti
   }
 
   function toggleWorkspacePanel(view: SidePanel): void {
+    if (canvasFocused.value) {
+      canvasFocused.value = false
+      if (workspaceMode.value === 'medium')
+        mediumPanel.value = view
+      else if (view === 'palette')
+        paletteOpen.value = true
+      else
+        propertiesOpen.value = true
+      return
+    }
     if (workspaceMode.value === 'medium') {
       mediumPanel.value = mediumPanel.value === view ? undefined : view
       return
@@ -207,6 +243,7 @@ export function useDesignSurfaceWorkspace(options: UseDesignSurfaceWorkspaceOpti
   })
 
   return {
+    canvasFocused,
     activeBreakpoint,
     activeWorkspaceView,
     closeMediumPanel,

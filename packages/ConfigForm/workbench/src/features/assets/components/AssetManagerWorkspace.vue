@@ -809,6 +809,12 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                 @change="renameDataset"
               />
             </div>
+            <ElSelect v-model="datasetTab" class="asset-manager__view-select" :aria-label="locale.locale === 'zh-CN' ? '数据视图' : 'Data view'" append-to="#workbench-overlays">
+              <ElOption value="table" :label="locale.t('assets.table', 'Table')" />
+              <ElOption value="json" label="JSON" />
+              <ElOption value="projection" :label="locale.t('assets.defaultProjection', 'Default projection')" />
+              <ElOption value="ingest" :label="locale.locale === 'zh-CN' ? '导入数据' : 'Import data'" />
+            </ElSelect>
             <div class="asset-manager__editor-actions">
               <ElButton size="small" data-asset-dataset-export :title="locale.t('assets.export', 'Export')" :aria-label="locale.t('assets.export', 'Export')" :disabled="!selectedDataset" @click="exportDataset">
                 <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
@@ -840,6 +846,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                 </template>
                 <DatasetTableEditor
                   :key="selectedDataset.id"
+                  :dataset-id="project.id + ':' + selectedDataset.id"
                   v-model:json="datasetJson"
                   v-model:cells="datasetCells"
                   :dirty="datasetDirty"

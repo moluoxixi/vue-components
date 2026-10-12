@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject } from './helpers'
+import { createProject, selectDatasetView } from './helpers'
 
 test('materials remain readable and scrollable with mouse and keyboard at the minimum pane width', async ({ page }) => {
   await page.goto('/')
@@ -63,7 +63,7 @@ test('Studio commands, editable data and experience state complete a review work
   const assets = page.getByRole('dialog', { name: 'Assets', exact: true })
   await expect(assets).toBeVisible()
   await assets.getByRole('button', { name: 'New Dataset', exact: true }).click()
-  await assets.getByRole('tab', { name: 'Import data', exact: true }).click()
+  await selectDatasetView(assets, 'Import data')
   await assets.getByRole('textbox', { name: 'Raw data to import', exact: true }).fill('id,name\n001,Alice\n002,Bob')
   await assets.locator('[data-dataset-ingest-apply]').click()
   await expect(assets.getByRole('button', { name: '1 / name', exact: true })).toHaveText('Alice')
@@ -77,7 +77,7 @@ test('Studio commands, editable data and experience state complete a review work
   await page.getByRole('button', { name: 'Quick edit', exact: true }).click()
   await expect(assets.getByRole('button', { name: '1 / name', exact: true })).toHaveText('Alicia')
   await assets.locator('[data-dataset-table-save]').click()
-  await assets.getByRole('tab', { name: 'Default projection', exact: true }).click()
+  await selectDatasetView(assets, 'Default projection')
   await assets.locator('.el-select__wrapper:has(input[aria-label="Label"])').click()
   await page.getByRole('option', { name: 'name', exact: true }).click()
   await assets.locator('.el-select__wrapper:has(input[aria-label="Value"])').click()
@@ -93,6 +93,7 @@ test('Studio commands, editable data and experience state complete a review work
   await expect(assets.locator('[data-dataset-projection-preview]')).toContainText('Alicia')
   await assets.locator('.el-dialog__headerbtn').click()
   await page.getByRole('button', { name: 'Show preview', exact: true }).click()
+  await page.getByRole('button', { name: 'Experience state', exact: true }).click()
   await expect(page.locator('.experience-inspector')).toBeVisible()
   await expect(page.locator('[data-experience-values]')).toContainText('name')
   const runtime = page.frameLocator('iframe[data-preview-runtime-host]')
@@ -252,12 +253,12 @@ test('Projects guide the first visit and let search recover without losing the p
   await createProject(page, 'element')
   await page.goto('/#/projects')
   await expect(page.locator('[data-project-open]')).toHaveCount(1)
-  await page.getByRole('textbox', { name: 'Search projects', exact: true }).fill('Element Plus')
+  await page.getByRole('searchbox', { name: 'Search projects', exact: true }).fill('Element Plus')
   await expect(page.locator('[data-project-open]')).toHaveCount(1)
-  await page.getByRole('textbox', { name: 'Search projects', exact: true }).fill('unmatched project')
+  await page.getByRole('searchbox', { name: 'Search projects', exact: true }).fill('unmatched project')
   await expect(page.locator('.project-manager__list-heading [role="status"]')).toHaveText('0 of 1 projects')
   await page.getByRole('button', { name: 'Clear search', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Search projects', exact: true })).toBeFocused()
+  await expect(page.getByRole('searchbox', { name: 'Search projects', exact: true })).toBeFocused()
   await page.getByRole('combobox', { name: 'Sort projects', exact: true }).focus()
   await page.getByRole('combobox', { name: 'Sort projects', exact: true }).press('ArrowDown')
   await page.getByRole('option', { name: 'Project name', exact: true }).click()

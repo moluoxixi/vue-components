@@ -9,3 +9,7 @@
   color: var(--mx-designer-text);
   font-size: 12px;
 }
+
+.mx-config-form-designer__responsive-tabs { display: flex; gap: 4px; padding: 6px 0; }
+.mx-config-form-designer__responsive-tabs button { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: center; gap: 5px; padding: 7px 4px; border: 1px solid var(--mx-designer-separator); border-radius: 4px; color: var(--mx-designer-muted); background: transparent; font-size: 12px; cursor: pointer; }
+.mx-config-form-designer__responsive-tabs button[aria-selected='true'] { color: var(--mx-designer-text); background: var(--mx-designer-elevated); }

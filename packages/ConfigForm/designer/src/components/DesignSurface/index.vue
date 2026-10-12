@@ -3,7 +3,7 @@ import type { DatasetReference } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type { DesignSurfaceEmits, DesignSurfaceExpose, DesignSurfaceProps, DesignSurfaceSlots } from './types'
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from '@lucide/vue'
+import { Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
 import { DESIGNER_EXPRESSION_EVALUATOR_KEY } from '../../expression'
@@ -43,12 +43,14 @@ watch(
 const {
   activeBreakpoint,
   activeWorkspaceView,
+  canvasFocused,
   closeMediumPanel,
   handleRootFocusin,
   handleWorkspaceTabKeydown,
   isSidePanelOpen,
   isWorkspacePanelHidden,
   mediumPanel,
+  propertiesOpen,
   rootRef,
   selectBreakpoint,
   selectWorkspaceView,
@@ -78,6 +80,11 @@ const controller = useDesignerController({
     emit('selectionChange', nodeId)
     emit('selectionSetChange', nodeIds, nodeId)
   },
+})
+
+watch(controller.selectedId, (nodeId) => {
+  if (nodeId && workspaceMode.value === 'desktop' && !canvasFocused.value)
+    propertiesOpen.value = true
 })
 
 const designSession = createDesignerDesignSession(controller, {
@@ -121,6 +128,7 @@ onBeforeUnmount(designSession.dispose)
 // medium layouts reveal the properties panel, and the first property control
 // receives focus so editing can start immediately.
 async function handleCanvasInspect(nodeId: string, path?: readonly (string | number)[]): Promise<void> {
+  canvasFocused.value = false
   controller.select(nodeId)
   if (workspaceMode.value === 'narrow')
     activeWorkspaceView.value = 'properties'
@@ -344,6 +352,10 @@ defineExpose<DesignSurfaceExpose>({
             <span class="mx-config-form-designer__sidebar-label">{{
               locale.t('designer.view.palette', 'Components')
             }}</span>
+          </button>
+          <button type="button" class="mx-config-form-designer__icon-button" data-canvas-focus :aria-pressed="canvasFocused" :aria-label="locale.t('designer.focusCanvas', 'Focus canvas')" :title="locale.t('designer.focusCanvas', 'Focus canvas')" @click="canvasFocused = !canvasFocused">
+            <Minimize2 v-if="canvasFocused" :size="17" aria-hidden="true" /><Maximize2 v-else :size="17" aria-hidden="true" />
+            <span class="mx-config-form-designer__focus-label">{{ locale.t('designer.focus', 'Focus') }}</span>
           </button>
           <button
             type="button"

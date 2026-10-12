@@ -311,11 +311,9 @@ describe('template creation workspace', () => {
     const wrapper = mountWorkspace('surface')
     await flushPromises()
 
-    const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
-    expect(selectedStatus().attributes('data-status')).toBe('eligible')
-    expect(wrapper.get('[data-template-id="element-profile"] .template-catalog-status').attributes('data-status')).toBe(
-      'eligible',
-    )
+    const selectedStatus = () => wrapper.find('[data-template-id="element-blank"] .template-catalog-status')
+    expect(selectedStatus().exists()).toBe(false)
+    expect(wrapper.find('[data-template-id="element-profile"] .template-catalog-status').exists()).toBe(false)
     const previousAnalyzeCalls = mocks.analyzeEligibility.mock.calls.length
     const nextAdapter = deferred<{
       designerRegistry: { rendererNamespace: string }
@@ -337,7 +335,7 @@ describe('template creation workspace', () => {
       registrySnapshot: { adapter: 'element-plus', components: [] },
     })
     await flushPromises()
-    expect(selectedStatus().attributes('data-status')).toBe('eligible')
+    expect(selectedStatus().exists()).toBe(false)
     expect(mocks.analyzeEligibility.mock.calls.length).toBeGreaterThan(previousAnalyzeCalls)
     wrapper.unmount()
   })

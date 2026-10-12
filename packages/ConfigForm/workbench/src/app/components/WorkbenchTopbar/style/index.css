@@ -2,7 +2,7 @@
   display: grid;
   min-width: 0;
   padding: 0 16px;
-  grid-template-columns: auto minmax(100px, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 18px;
   border-bottom: 1px solid var(--wb-separator);
@@ -298,9 +298,9 @@
   background: var(--wb-elevated);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .workbench-topbar {
-    grid-template-columns: auto minmax(60px, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 10px;
   }
   .revision-state {
@@ -346,7 +346,7 @@
   }
 
   .workbench-topbar {
-    grid-template-columns: auto minmax(28px, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 6px;
   }
 
@@ -374,9 +374,11 @@
 
 @media (max-width: 480px) {
   .workbench-topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
     padding-inline: 6px;
     gap: 4px;
   }
+  .brand-lockup { display: none; }
   .topbar-actions {
     gap: 1px;
   }
@@ -409,6 +411,7 @@
 }
 
 @media (max-width: 640px) and (pointer: coarse) {
+  .workbench-view-switch { height: 44px; padding: 0; grid-template-columns: repeat(3, 44px); }
   .topbar-actions > button,
 .topbar-actions > .mobile-action-menu > button,
 .topbar-actions .export-menu > button {

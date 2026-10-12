@@ -285,7 +285,7 @@ describe('designer property panel lite Inspector', () => {
       },
     })
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+    expect(wrapper.findAll('[data-property-tab]').map(tab => tab.attributes('data-property-tab')))
       .toEqual(['properties', 'validation', 'interactions'])
     const properties = wrapper.get('[data-property-tab="properties"]')
     ;(properties.element as HTMLElement).focus()
@@ -468,7 +468,7 @@ describe('designer property panel lite Inspector', () => {
       },
     })
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+    expect(wrapper.findAll('[data-property-tab]').map(tab => tab.attributes('data-property-tab')))
       .toEqual(['properties', 'validation', 'interactions'])
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
     expect(wrapper.get('input[aria-label="Required"]').attributes('disabled'))
@@ -673,7 +673,7 @@ describe('designer property panel lite Inspector', () => {
       },
     })
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.attributes('data-property-tab')))
+    expect(wrapper.findAll('[data-property-tab]').map(tab => tab.attributes('data-property-tab')))
       .toEqual(['properties', 'interactions'])
     await wrapper.get('[data-property-tab="interactions"]').trigger('click')
     expect(wrapper.find('[data-interaction-editor]').exists()).toBe(true)

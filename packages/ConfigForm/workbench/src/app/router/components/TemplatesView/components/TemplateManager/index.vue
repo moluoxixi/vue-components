@@ -4,6 +4,8 @@ import type { ProjectTemplateCatalogEntry } from '../../../../../../project'
 import { ArrowRight, Copy, Eye, File, LibraryBig, PanelRight, PanelsTopLeft, Pencil, Plus, Search, Trash2 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import BrowseViewToggle from '../../../../../../components/BrowseViewToggle.vue'
+import { useBrowseView } from '../../../../../../components/composables/use-browse-view'
 import { createPagePreviewDataUrl } from '../../../../../../features/pages'
 
 const props = defineProps<{
@@ -23,6 +25,7 @@ const emit = defineEmits<{
 }>()
 const locale = computed(() => createDesignerLocale(props.locale))
 const query = ref('')
+const browseView = useBrowseView('templates', 'cards')
 const adapter = ref('all')
 const source = ref('all')
 const kind = ref('all')
@@ -110,6 +113,7 @@ function clearFilters(): void {
         <div class="template-manager__browse">
           <ElSegmented v-model="kind" :options="kinds" :aria-label="locale.t('library.kind', 'Template type')" />
           <div class="template-manager__results">
+            <BrowseViewToggle v-model="browseView" :locale="props.locale" />
             <ElButton v-if="hasFilters" text @click="clearFilters">
               {{ locale.t('template.clearFilters', 'Clear filters') }}
             </ElButton>
@@ -127,7 +131,7 @@ function clearFilters(): void {
       <p v-if="loading" class="template-manager__empty" role="status">
         {{ locale.t('template.loading', 'Loading templates') }}
       </p>
-      <div v-else-if="filtered.length" class="template-manager__grid" role="list" :aria-label="locale.t('library.title', 'Template library')">
+      <div v-else-if="filtered.length" class="template-manager__grid" :data-view="browseView" role="list" :aria-label="locale.t('library.title', 'Template library')">
         <article v-for="entry in filtered" :key="entry.manifest.id" class="template-card" role="listitem" :data-library-template="entry.manifest.id">
           <button class="template-card__preview" type="button" :aria-label="locale.t('library.previewFor', 'Preview {name}', { name: templateName(entry) })" @click="emit('preview', entry)">
             <img :src="previewImage(entry)" alt="">
@@ -138,10 +142,11 @@ function clearFilters(): void {
             <div class="template-card__tags">
               <span>{{ entry.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }}</span><span :data-source="entry.providerId">{{ entry.providerId === 'personal' ? locale.t('library.personal', 'My templates') : locale.t('library.builtIn', 'Built-in templates') }}</span>
             </div>
-            <h2>{{ cardName(entry) }}</h2>
-            <p>{{ templateDescription(entry) }}</p>
+            <h2 :title="cardName(entry)">{{ cardName(entry) }}</h2>
+            <p :title="templateDescription(entry)">{{ templateDescription(entry) }}</p>
           </div>
           <footer>
+            <ElButton v-if="browseView === 'list'" size="small" text circle :aria-label="locale.t('library.previewFor', 'Preview {name}', { name: templateName(entry) })" @click="emit('preview', entry)"><Eye :size="15" aria-hidden="true" /></ElButton>
             <ElButton class="template-card__edit" :disabled="busy" @click="emit('edit', entry)">
               <Pencil :size="14" aria-hidden="true" />{{ entry.providerId === 'personal' ? locale.t('library.edit', 'Edit template') : locale.t('library.customize', 'Customize') }}
               <ArrowRight :size="14" aria-hidden="true" />

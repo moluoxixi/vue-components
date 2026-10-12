@@ -335,6 +335,37 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
           </span>
         </div>
       </div>
+    <div class="source-workspace__toolbar" role="toolbar" :aria-label="locale.t('export.sourceShape', 'Source shape')">
+      <ElSegmented
+        class="source-workspace__mode"
+        :model-value="mode"
+        :options="[
+          { label: locale.t('export.vueMode', 'Vue source'), value: 'source' },
+          { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
+        ]"
+        :disabled="actionsBusy"
+        @update:model-value="(value) => (value === 'source' || value === 'config') && emit('update:mode', value)"
+      >
+        <template #default="{ item }">
+          <span class="source-workspace__mode-label">
+            <component :is="item.value === 'source' ? Code2 : Braces" :size="14" aria-hidden="true" />
+            {{ item.label }}
+          </span>
+        </template>
+      </ElSegmented>
+      <div class="source-workspace__style">
+        <Wind :size="14" aria-hidden="true" />
+        <ElSegmented
+          class="source-workspace__style-target"
+          :model-value="styleTarget"
+          :options="styleTargetOptions"
+          :disabled="actionsBusy"
+          :aria-label="locale.t('export.style.label', 'Project styling')"
+          @update:model-value="setStyleTarget"
+        />
+      </div>
+    </div>
+
       <div class="source-workspace__commands">
         <ElTooltip
           :content="locale.t('export.refresh', 'Refresh snapshot')"
@@ -405,36 +436,6 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
       </div>
     </header>
 
-    <div class="source-workspace__toolbar" role="toolbar" :aria-label="locale.t('export.sourceShape', 'Source shape')">
-      <ElSegmented
-        class="source-workspace__mode"
-        :model-value="mode"
-        :options="[
-          { label: locale.t('export.vueMode', 'Vue source'), value: 'source' },
-          { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
-        ]"
-        :disabled="actionsBusy"
-        @update:model-value="(value) => (value === 'source' || value === 'config') && emit('update:mode', value)"
-      >
-        <template #default="{ item }">
-          <span class="source-workspace__mode-label">
-            <component :is="item.value === 'source' ? Code2 : Braces" :size="14" aria-hidden="true" />
-            {{ item.label }}
-          </span>
-        </template>
-      </ElSegmented>
-      <div class="source-workspace__style">
-        <Wind :size="14" aria-hidden="true" />
-        <ElSegmented
-          class="source-workspace__style-target"
-          :model-value="styleTarget"
-          :options="styleTargetOptions"
-          :disabled="actionsBusy"
-          :aria-label="locale.t('export.style.label', 'Project styling')"
-          @update:model-value="setStyleTarget"
-        />
-      </div>
-    </div>
 
     <div
       class="source-workspace__body relative flex min-h-0 min-w-0 w-full flex-auto flex-col overflow-hidden bg-wb-editor-surface"

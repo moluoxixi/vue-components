@@ -1,4 +1,6 @@
 export const DESIGNER_ZH_CN_MESSAGES: Record<string, string> = {
+  'designer.focusCanvas': '专注画布',
+  'designer.focus': '专注',
   'designer.title': '表单设计器',
   'selection.path': '选择路径',
   'panel.resizeNavigator': '调整导航面板宽度',

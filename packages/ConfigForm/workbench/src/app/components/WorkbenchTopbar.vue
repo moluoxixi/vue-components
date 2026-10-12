@@ -54,12 +54,18 @@ onMounted(() => {
 
 onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updateSurfaceManagerPlacement))
 
-type MobileAction = 'openAppearance' | 'openSurfaces' | 'toggleLocale'
+type MobileAction = 'openAppearance' | 'openCommands' | 'openProjects' | 'openSurfaces' | 'toggleLocale'
 
 function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
     mobileMenuTrigger.value?.$el?.focus()
     switch (action) {
+      case 'openCommands':
+        emit('openCommands')
+        break
+      case 'openProjects':
+        emit('openProjects')
+        break
       case 'openSurfaces':
         emit('openSurfaces')
         break
@@ -273,6 +279,12 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
         </ElButton>
         <template #dropdown>
           <ElDropdownMenu class="mobile-action-popover" data-mobile-action-menu>
+            <ElDropdownItem command="openProjects">
+              <FolderKanban :size="15" aria-hidden="true" /><span>{{ locale.t('projects.back', 'Back to projects') }}</span>
+            </ElDropdownItem>
+            <ElDropdownItem v-if="project" command="openCommands">
+              <Search :size="15" aria-hidden="true" /><span>{{ locale.t('studio.commands', 'Command center') }}</span>
+            </ElDropdownItem>
             <ElDropdownItem v-if="project" class="topbar-status-item" disabled>
               <span role="status">v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}</span>
             </ElDropdownItem>

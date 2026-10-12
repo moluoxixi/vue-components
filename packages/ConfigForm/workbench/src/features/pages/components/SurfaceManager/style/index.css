@@ -87,8 +87,8 @@
 .page-manager__toolbar {
   display: grid;
   min-width: 0;
-  padding: 12px 24px;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 280px) auto;
+  padding: 10px 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 260px) auto;
   align-items: center;
   gap: 14px;
 }
@@ -186,7 +186,7 @@
   width: 100%;
   min-width: 0;
   padding: 0;
-  aspect-ratio: 16 / 9;
+  height: 140px;
   overflow: hidden;
   border: 0;
   border-bottom: 1px solid var(--wb-separator);
@@ -325,6 +325,21 @@
 }
 .page-manager__actions .el-dropdown {
   margin-left: auto;
+}
+
+.page-manager__actions .page-manager__design-action { width: auto; padding: 0 8px; color: var(--wb-accent-text); font-size: 12px; }
+.page-manager__design-action :deep(> span) { gap: 5px; }
+.page-manager__home-marker { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-positive); }
+.page-manager__table[data-view='list'] { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.page-manager__table[data-view='list'] .page-manager__row { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; border: 0; border-bottom: 1px solid var(--wb-separator); border-radius: 0; min-height: 76px; align-items: center; }
+.page-manager__table[data-view='list'] .page-manager__row:hover { box-shadow: none; background: var(--wb-hover); }
+.page-manager__table[data-view='list'] .page-manager__preview-button { display: none; }
+.page-manager__table[data-view='list'] .page-manager__name-cell { padding: 12px; }
+.page-manager__table[data-view='list'] .page-manager__actions { border: 0; background: transparent; }
+.page-manager__table[data-view='list'] :deep(.surface-presentation-editor) { grid-column: 1 / -1; }
+@media (max-width: 480px) {
+  .page-manager__table[data-view='list'] .page-manager__design-action { display: none; }
+  .page-manager__list-title { font-size: 13px; }
 }
 
 .page-manager__empty {

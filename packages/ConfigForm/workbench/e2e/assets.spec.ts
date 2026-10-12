@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject, readDownloadText } from './helpers'
+import { createProject, readDownloadText, selectDatasetView } from './helpers'
 
 async function openAssetManager(page: import('@playwright/test').Page): Promise<import('@playwright/test').Locator> {
   await page.getByRole('tab', { name: 'Data', exact: true }).click()
@@ -79,7 +79,7 @@ test('quick data drafts survive closing and warn before leaving the designer', a
   await createProject(page, 'element')
   const quick = await openAssetManager(page)
   await quick.getByRole('button', { name: 'New Dataset', exact: true }).click()
-  await quick.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await selectDatasetView(quick, 'JSON')
   const json = quick.getByRole('textbox', { name: 'Dataset JSON', exact: true })
   await json.fill('[{"name":"Draft customer"}]')
   await quick.locator('.el-dialog__headerbtn').click()
@@ -109,7 +109,7 @@ test('project data management preserves drafts, saves table edits and restores i
   await manager.getByRole('button', { name: 'Create dataset', exact: true }).click()
   await manager.getByRole('textbox', { name: 'Dataset name', exact: true }).fill('Customers')
   await manager.getByRole('textbox', { name: 'Dataset name', exact: true }).press('Tab')
-  await manager.getByRole('tab', { name: 'Import data', exact: true }).click()
+  await selectDatasetView(manager, 'Import data')
   await manager.getByRole('textbox', { name: 'Raw data to import', exact: true }).fill('id,name\n001,Alice\n002,Bob')
   await manager.locator('[data-dataset-ingest-apply]').click()
   await manager.getByRole('button', { name: '1 / name', exact: true }).dblclick()
@@ -202,19 +202,19 @@ test('authors Dataset and Resource assets, then applies a project theme across D
     null,
     2,
   )
-  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await selectDatasetView(dialog, 'JSON')
   await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(datasetRows)
   await datasetName.fill('People')
   await datasetName.press('Tab')
   await expect(dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true })).toHaveValue(datasetRows)
   await dialog.locator('[data-asset-dataset-save]').click()
   await expect(dialog.locator('.asset-manager__status')).toContainText('Dataset saved.')
-  await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
+  await selectDatasetView(dialog, 'Table')
   await expect(dialog.getByRole('button', { name: '1 / meta', exact: true })).toHaveText(
     '{"label":"One","disabled":true}',
   )
   await expect(dialog.getByRole('button', { name: '1 / tags', exact: true })).toHaveText('["a"]')
-  await dialog.getByRole('tab', { name: 'Default projection', exact: true }).click()
+  await selectDatasetView(dialog, 'Default projection')
   const projection = { kind: 'options', valuePath: ['id'], labelPath: ['meta', 'label'] }
   await dialog.getByText('Advanced JSON', { exact: true }).click()
   await dialog.getByRole('textbox', { name: 'Dataset default projection JSON', exact: true }).fill(JSON.stringify(projection))
@@ -363,10 +363,11 @@ test('keeps Dataset, Resource, and Theme entry points reachable at 390px', async
   await dialog.getByRole('button', { name: 'New Dataset', exact: true }).click()
   await expect(dialog.locator('[data-dataset-table-save]')).toBeVisible()
   await expectAssetDialogFits(dialog)
-  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await selectDatasetView(dialog, 'JSON')
   await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify(Array.from({ length: 30 }, (_, index) => ({ name: `Record ${index + 1}` }))))
   await dialog.locator('[data-asset-dataset-save]').click()
-  await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
+  await selectDatasetView(dialog, 'Table')
+  await dialog.getByRole('button', { name: 'Table view', exact: true }).click()
   const editorBody = dialog.locator('.asset-manager__editor-body')
   const editorScroll = await editorBody.evaluate((element) => {
     element.scrollTop = element.scrollHeight
@@ -428,10 +429,10 @@ test('reads typed values and saves the original Dataset row after sorting, filte
     meta: { city: '杭州', tags: ['trial', 'priority'] },
     ...(index === 0 ? { optional: 'Only on this row' } : {}),
   }))
-  await dialog.getByRole('tab', { name: 'JSON', exact: true }).click()
+  await selectDatasetView(dialog, 'JSON')
   await dialog.getByRole('textbox', { name: 'Dataset JSON', exact: true }).fill(JSON.stringify(rows, null, 2))
   await dialog.locator('[data-asset-dataset-save]').click()
-  await dialog.getByRole('tab', { name: 'Table', exact: true }).click()
+  await selectDatasetView(dialog, 'Table')
   const table = dialog.locator('[data-asset-dataset-table]')
   await expect(table.locator('input')).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: '1 / id', exact: true })).toHaveText('001')
@@ -484,6 +485,8 @@ test('reads typed values and saves the original Dataset row after sorting, filte
   await expectAssetDialogFits(dialog)
   await expectNoHorizontalOverflow(page)
   await dialog.getByRole('button', { name: 'Close cell details', exact: true }).click()
+  await expect(table).toHaveAttribute('data-view', 'records')
+  await dialog.locator('.dataset-record summary').click()
   await dialog.getByRole('button', { name: '30 / id', exact: true }).click()
   await expect(dialog.locator('[data-dataset-full-value]')).toHaveText('030')
   await dialog.getByRole('button', { name: 'Edit value', exact: true }).click()

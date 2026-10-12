@@ -7,7 +7,7 @@
   display: grid;
   width: 100%;
   height: 100%;
-  min-width: 320px;
+  min-width: 0;
   min-height: 0;
   grid-template-rows: 48px minmax(0, 1fr);
   color: var(--wb-text);
@@ -148,16 +148,16 @@
 
 .template-detail-pane {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--wb-bg);
 }
 
 .template-detail-header {
   display: grid;
   min-width: 0;
-  min-height: 94px;
-  padding: 14px 18px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 54px;
+  padding: 10px 14px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 20px;
   border-bottom: 1px solid var(--wb-separator);
@@ -167,9 +167,11 @@
 .template-detail-header h2 {
   margin: 0;
   color: var(--wb-text-strong);
-  font-size: 18px;
+  font-size: 15px;
   letter-spacing: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .template-detail-header p {
@@ -178,7 +180,9 @@
   color: var(--wb-muted);
   font-size: 12px;
   line-height: 1.4;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .template-detail-header dl {
@@ -285,11 +289,14 @@
 }
 
 .template-runtime-preview .surface-presentation-shell.is-page {
+  height: 100%;
   padding: 16px;
   border: 1px solid var(--wb-canvas-frame);
   border-radius: 4px;
   background: var(--wb-canvas-sheet);
 }
+
+.template-runtime-preview .surface-presentation-shell.is-page .surface-presentation-content { min-height: 0; height: 100%; }
 
 .template-preview-error {
   width: 100%;
@@ -299,13 +306,15 @@
 }
 
 .template-create-footer {
-  min-height: 58px;
+  min-height: 48px;
   padding: 8px 14px 8px 18px;
   justify-content: space-between;
   gap: 16px;
   border-top: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
 }
+
+.template-detail-pane:has(> .template-eligibility) { grid-template-rows: auto auto minmax(0, 1fr) auto; }
 
 .template-create-footer p,
 .template-create-footer > span {

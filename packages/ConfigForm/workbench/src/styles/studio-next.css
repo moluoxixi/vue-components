@@ -1,6 +1,7 @@
 .workbench-app,
 .workbench-overlays {
   font-family: 'IBM Plex Sans', 'Noto Sans SC', 'Segoe UI Variable', 'Microsoft YaHei', sans-serif;
+  --config-form-designer-font-family: 'IBM Plex Sans', 'Noto Sans SC', 'Segoe UI Variable', 'Microsoft YaHei', sans-serif;
 }
 .studio-command-trigger,
 .studio-issues-dock kbd,
@@ -36,11 +37,41 @@
   font-size: 10px;
   white-space: nowrap;
 }
+
+.studio-compact-canvas-actions { display: none; }
+@media (max-width: 480px), (max-width: 720px) and (pointer: coarse) {
+  .studio-selection-command, .studio-compare-command { display: none !important; }
+  .studio-compact-canvas-actions { display: inline-flex; }
+  .embedded-designer .mx-config-form-designer__selection-spine { display: none; }
+  .embedded-designer .mx-config-form-designer__toolbar-controls { width: 100%; justify-content: flex-end; }
+  .embedded-designer .mx-config-form-designer__segmented { flex: none; }
+  .workbench-app .mx-config-form-designer[data-workspace-mode='narrow'] .mx-config-form-designer__toolbar-actions {
+    max-width: none;
+    flex: 1;
+    justify-content: flex-end;
+    overflow: visible;
+  }
+  .embedded-designer .mx-config-form-designer__toolbar-separator { display: none; }
+  .embedded-designer .mx-config-form-designer__toolbar-actions > button { flex: none; }
+}
+@media (max-width: 720px) and (pointer: coarse) {
+  .workbench-app .embedded-designer { --studio-canvas-toolbar-height: 52px; }
+  .embedded-designer .mx-config-form-designer__toolbar-actions .mx-config-form-designer__icon-button,
+  .embedded-designer .mx-config-form-designer__toolbar-actions .mx-config-form-designer__segmented button {
+    width: 44px;
+    height: 44px;
+    flex: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .workbench-topbar .studio-command-trigger { display: none; }
+}
 .editor-pane {
   grid-template-rows: minmax(0, 1fr) auto;
 }
 .workbench-app .embedded-designer.mx-config-form-designer {
-  grid-template-rows: 44px minmax(0, 1fr);
+  grid-template-rows: var(--studio-canvas-toolbar-height, 44px) minmax(0, 1fr);
 }
 .workbench-app .embedded-designer .mx-config-form-designer__status {
   display: none;
@@ -555,14 +586,17 @@ button.studio-issue-main:hover {
   place-items: center;
   border: 0;
   background: transparent;
-  min-width: 32px;
+  min-width: 24px;
   min-height: 36px;
-  padding: 7px;
+  padding: 4px;
   cursor: pointer;
   color: var(--wb-muted);
 }
 .studio-material-favorite[aria-pressed='true'] {
   color: var(--wb-warning);
+}
+@media (pointer: coarse) {
+  .studio-material-favorite { min-width: 44px; min-height: 44px; }
 }
 .studio-material-favorite:focus-visible,
 .studio-material-filters button:focus-visible {

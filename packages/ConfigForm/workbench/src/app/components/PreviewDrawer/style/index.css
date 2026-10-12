@@ -84,6 +84,11 @@
   height: 100%;
 }
 
+.workbench-layout > .preview-dialog-shell > .preview-pane {
+  height: 100%;
+  flex: 1;
+}
+
 .preview-pane.is-expanded {
   width: 100%;
   height: 100%;

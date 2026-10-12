@@ -15,7 +15,7 @@ import type { DesignerPropertyFormEntry } from '../../types'
 import { FORM_LABEL_WIDTH_MAX_PX } from '@moluoxixi/config-form-model'
 import { Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
-import { computed } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { resolveInspectorGridFraction } from '@designer/inspector'
 import { useDesignerLocale } from '@designer/locale'
 import DesignerBreakpointLayoutSettings from '../DesignerBreakpointLayoutSettings/index.vue'
@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<{
   showHeading?: boolean
   readonly?: boolean
   renderer: Component
+  breakpoint?: ConfigFormBreakpoint
 }>(), {
   showHeading: true,
 })
@@ -46,6 +47,9 @@ const emit = defineEmits<{
 }>()
 
 const locale = useDesignerLocale()
+const active = ref<ConfigFormBreakpoint>(props.breakpoint ?? 'desktop')
+const tabsId = useId()
+watch(() => props.breakpoint, (value) => { if (value) active.value = value })
 const responsive = computed(() => props.modelValue ?? props.form?.responsive)
 const baseColumns = computed(() => props.columns ?? props.form?.columns)
 const baseFieldSpan = computed(() => props.fieldSpan ?? props.form?.fieldSpan)
@@ -63,6 +67,16 @@ function title(breakpoint: ConfigFormBreakpoint): string {
   return breakpoint === 'tablet'
     ? locale.t('breakpoint.tablet', 'Tablet')
     : locale.t('breakpoint.mobile', 'Mobile')
+}
+
+function navigateTabs(event: KeyboardEvent): void {
+  const index = breakpoints.findIndex(item => item.key === active.value)
+  const next = event.key === 'ArrowRight' ? (index + 1) % 3 : event.key === 'ArrowLeft' ? (index + 2) % 3 : event.key === 'Home' ? 0 : event.key === 'End' ? 2 : undefined
+  if (next === undefined)
+    return
+  event.preventDefault()
+  active.value = breakpoints[next]!.key
+  void nextTick(() => document.getElementById(`${tabsId}-${active.value}-tab`)?.focus())
 }
 
 function resolvedLayout(breakpoint: ConfigFormBreakpoint) {
@@ -240,9 +254,18 @@ function commitValue(
       <strong>{{ locale.t('property.responsive', 'Responsive layout') }}</strong>
     </div>
 
+    <div class="mx-config-form-designer__responsive-tabs" role="tablist" :aria-label="locale.t('property.responsive', 'Responsive layout')">
+      <button v-for="item in breakpoints" :id="`${tabsId}-${item.key}-tab`" :key="item.key" type="button" role="tab" :aria-selected="active === item.key" :aria-controls="`${tabsId}-${item.key}-panel`" :tabindex="active === item.key ? 0 : -1" @click="active = item.key" @keydown="navigateTabs"><component :is="item.icon" :size="14" aria-hidden="true" />{{ title(item.key) }}</button>
+    </div>
+
     <DesignerBreakpointLayoutSettings
       v-for="breakpoint in breakpoints"
       :key="breakpoint.key"
+      v-show="active === breakpoint.key"
+      :id="`${tabsId}-${breakpoint.key}-panel`"
+      role="tabpanel"
+      :aria-labelledby="`${tabsId}-${breakpoint.key}-tab`"
+      :inert="active !== breakpoint.key ? true : undefined"
       :base-label="breakpoint.key === 'desktop' ? locale.t('property.baseLayout', 'Base') : undefined"
       :components="components"
       :controls="controls"

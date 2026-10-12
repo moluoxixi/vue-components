@@ -22,12 +22,15 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import BrowseViewToggle from '../../components/BrowseViewToggle.vue'
+import { useBrowseView } from '../../components/composables/use-browse-view'
 
 const props = defineProps<ProjectManagerProps>()
 const emit = defineEmits<ProjectManagerEmits>()
 const { controller, ui } = props
 const locale = computed(() => createDesignerLocale(controller.localeOptions.value))
 const query = ref('')
+const browseView = useBrowseView('projects')
 const sort = ref<'updated' | 'name'>('updated')
 const openingId = ref<string>()
 const projectSearch = useTemplateRef<{ focus: () => void }>('projectSearch')
@@ -246,7 +249,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
 
     <section class="project-manager__content" :aria-label="locale.t('projects.title', 'Projects')">
       <div v-if="controller.projects.value.length" class="project-manager__list-heading">
-        <ElInput ref="projectSearch" v-model="query" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
+        <ElInput ref="projectSearch" v-model="query" type="search" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
           <template #prefix>
             <Search :size="16" aria-hidden="true" />
           </template>
@@ -258,12 +261,13 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
           <ElOption value="updated" :label="locale.t('projects.sortUpdated', 'Recently updated')" />
           <ElOption value="name" :label="locale.t('projects.sortName', 'Project name')" />
         </ElSelect>
+        <BrowseViewToggle v-model="browseView" :locale="controller.localeOptions.value" />
       </div>
 
       <p v-if="!controller.initialized.value" class="project-manager__state" role="status">
         {{ locale.t('status.loading', 'Loading') }}
       </p>
-      <div v-else-if="filteredProjects.length" class="project-manager__list">
+      <div v-else-if="filteredProjects.length" class="project-manager__list" :data-view="browseView">
         <article v-for="project in filteredProjects" :key="project.id" class="project-row project-card" :class="{ 'is-opening': openingId === project.id }" :data-project-id="project.id">
           <button type="button" class="project-row__main project-card__main" :aria-label="project.name" :aria-busy="openingId === project.id" :disabled="controller.busy.value || !!openingId" data-project-open @click="openProject(project)">
             <span class="project-card__preview" aria-hidden="true">

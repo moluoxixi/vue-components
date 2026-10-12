@@ -55,7 +55,7 @@
 }
 
 .project-manager__content {
-  width: min(1240px, calc(100% - 48px));
+  width: calc(100% - 40px);
   min-width: 0;
   min-height: 0;
   margin: 0 auto;
@@ -99,7 +99,27 @@
 .project-manager__list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
-  gap: 20px;
+  gap: 14px;
+}
+
+.project-manager__list[data-view='list'] { grid-template-columns: minmax(0, 1fr); gap: 0; border-top: 1px solid var(--wb-separator); }
+.project-manager__list[data-view='list'] .project-row { min-height: 78px; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; border: 0; border-bottom: 1px solid var(--wb-separator); border-radius: 0; }
+.project-manager__list[data-view='list'] .project-row:hover { background: var(--wb-hover); box-shadow: none; }
+.project-manager__list[data-view='list'] .project-card__main { display: block; }
+.project-manager__list[data-view='list'] .project-card__preview { display: none; }
+.project-manager__list[data-view='list'] .project-card__body { grid-template-columns: minmax(180px, 1fr) 180px minmax(240px, auto) auto; align-items: center; gap: 16px; padding: 16px 12px; }
+.project-manager__list[data-view='list'] .project-card__title-row { align-items: center; justify-content: flex-start; }
+.project-manager__list[data-view='list'] .project-card__title-row strong { display: block; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.project-manager__list[data-view='list'] .project-card__open-state { padding: 0; }
+.project-manager__list[data-view='list'] .project-card__footer { border: 0; background: transparent; }
+@media (max-width: 1200px) {
+  .project-manager__list[data-view='list'] .project-card__body { grid-template-columns: minmax(150px, 1fr) 170px auto; }
+  .project-manager__list[data-view='list'] .project-card__open-state { display: none; }
+}
+@media (max-width: 900px) {
+  .project-manager__list[data-view='list'] .project-card__body { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; }
+  .project-manager__list[data-view='list'] .project-card__footer { align-self: start; padding-top: 12px; }
+  .project-manager__list[data-view='list'] .project-card__upload-trigger { font-size: 0; gap: 0; min-height: 30px; }
 }
 
 .project-row {
@@ -151,7 +171,7 @@
   position: relative;
   display: grid;
   min-width: 0;
-  aspect-ratio: 16 / 7;
+  height: 112px;
   overflow: hidden;
   place-items: center;
   color: var(--wb-accent-text);
@@ -471,7 +491,7 @@
   }
   .project-manager__list-heading {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 176px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 140px) auto;
     gap: 8px;
   }
   .project-manager__search {

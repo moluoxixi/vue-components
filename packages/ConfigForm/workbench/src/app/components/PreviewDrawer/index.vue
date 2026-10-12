@@ -11,7 +11,7 @@ import StudioExperienceInspector from './components/StudioExperienceInspector.vu
 
 const props = defineProps<PreviewDrawerProps>()
 const emit = defineEmits<PreviewDrawerEmits>()
-const inspect = ref(true)
+const inspect = ref(false)
 const dialog = useTemplateRef<HTMLElement>('dialog')
 const focus = useWorkbenchDialogFocus(
   () => props.open,

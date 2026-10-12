@@ -393,6 +393,7 @@ defineExpose({ propertyPanelRef })
           @commit="commitForm"
         />
         <DesignerResponsiveSettings
+          :breakpoint="breakpoint"
           :form="graph.form"
           :components="components"
           :controls="propertyControls"

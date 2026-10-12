@@ -11,9 +11,11 @@
 }
 
 .source-workspace__heading {
-  min-height: 74px;
+  min-height: 52px;
   flex: 0 0 auto;
-  padding: 14px 22px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -33,9 +35,9 @@
 
 .source-workspace__mark {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   place-items: center;
   border: 1px solid var(--wb-separator);
   border-radius: 8px;
@@ -145,13 +147,14 @@
 
 .source-workspace__toolbar {
   display: flex;
-  min-height: 54px;
-  padding: 9px 22px;
+  min-height: 32px;
+  padding: 0;
+  margin-left: auto;
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--wb-separator);
+  gap: 10px;
+  border-bottom: 0;
   background: var(--wb-surface);
 }
 
@@ -363,19 +366,22 @@
 
 @media (max-width: 480px) {
   .source-workspace__toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    order: 1;
+    padding: 0;
   }
   .source-workspace__mode {
     flex: none;
-    width: 100%;
+    width: auto;
   }
   .source-workspace__style {
-    width: 100%;
+    width: auto;
     margin: 0;
   }
   .source-workspace__style-target {
-    width: 100%;
+    width: auto;
   }
 }
 

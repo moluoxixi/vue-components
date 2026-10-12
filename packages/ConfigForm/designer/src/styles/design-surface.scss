@@ -48,6 +48,11 @@
   line-height: 1;
 }
 
+.mx-config-form-designer__focus-label { font-size: 12px; }
+.mx-config-form-designer__icon-button[data-canvas-focus] { display: flex; align-items: center; width: auto; gap: 5px; padding-inline: 8px; }
+.mx-config-form-designer__icon-button[data-canvas-focus][aria-pressed='true'] { color: var(--mx-designer-accent-text); background: var(--mx-designer-accent-soft); }
+@media (max-width: 900px) { .mx-config-form-designer__focus-label { display: none; } }
+
 .mx-config-form-designer__toolbar-separator {
   width: 1px;
   height: 20px;

@@ -86,7 +86,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(profile).toHaveAttribute('aria-selected', 'true')
   await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
   await expect(workspace.locator(TEMPLATE_PREVIEW_FRAME)).toHaveAttribute('title', /Runtime preview/)
-  await expect(workspace.getByText('Ready to use', { exact: true })).toBeVisible()
+  await expect(workspace.locator('.template-create-footer button')).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
   const results = await new AxeBuilder({ page })
@@ -95,7 +95,13 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
     .analyze()
   expect(results.violations).toEqual([])
 
+  const pagesUrl = page.url()
+  await page.locator('.page-creation-dialog .el-dialog__headerbtn').click()
+  await page.goto('/#/templates')
   await setAppearance(page, 'dark', 'morandi')
+  await page.goto(pagesUrl)
+  await page.locator('[data-create-trigger="page-manager-template"]').click()
+  await profile.click()
   await expect(workspace).toHaveAttribute('data-theme', 'dark')
   await expect(workspace).toHaveAttribute('data-palette', 'morandi')
   await expect(workspace.locator('.template-catalog-filters .el-select__wrapper').first())
@@ -106,11 +112,19 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
     .analyze()
   expect(lightResults.violations).toEqual([])
 
+  await page.locator('.page-creation-dialog .el-dialog__headerbtn').click()
+  await page.goto('/#/templates')
   await page.getByRole('button', { name: 'Switch language' }).click()
+  await page.goto(pagesUrl)
+  await page.locator('[data-create-trigger="page-manager-template"]').click()
   const localizedWorkspace = page.locator('.template-creation-workspace:visible').first()
   await expect(localizedWorkspace.getByRole('option', { name: /Ant Design Vue 资料表单/ })).toBeVisible()
-  await expect(localizedWorkspace.getByText('可以使用', { exact: true })).toBeVisible()
+  await expect(localizedWorkspace.getByRole('button', { name: '创建表单页面', exact: true })).toBeEnabled()
   await expectNoHorizontalOverflow(page)
+  await page.locator('.page-creation-dialog').evaluate(async (dialog) => {
+    const overlay = dialog.closest('.el-overlay') ?? dialog
+    await Promise.all(overlay.getAnimations({ subtree: true }).map(animation => animation.finished))
+  })
   const localizedResults = await new AxeBuilder({ page })
     .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
@@ -131,7 +145,7 @@ test('creates independent pages and only offers compatible templates', async ({ 
   await expect(workspace.getByText('Cannot create with this Registry', { exact: true })).toHaveCount(0)
 
   await workspace.getByRole('option', { name: /Element Plus profile/ }).click()
-  await expect(workspace.getByText('Ready to use', { exact: true })).toBeVisible()
+  await expect(workspace.locator('.template-create-footer button')).toBeVisible()
   await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const secondPageId = await page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
@@ -149,7 +163,7 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await openPageCreation(page)
   const workspace = page.locator('.template-creation-workspace:visible').first()
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
-  await expect(workspace.getByText('Ready to use', { exact: true })).toBeVisible()
+  await expect(workspace.locator('.template-create-footer button')).toBeVisible()
   await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const createdPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
@@ -173,19 +187,19 @@ test('restores the page-management trigger on cancel and leaves page management 
   const newSurface = pages.getByRole('button', { name: 'From template', exact: true })
   await newSurface.click()
   let workspace = page.locator('.template-creation-workspace:visible').first()
-  await workspace.getByRole('button', { name: 'Back to Designer' }).click()
+  await page.locator('.page-creation-dialog .el-dialog__headerbtn').click()
   await expect(newSurface).toBeFocused()
 
   await newSurface.click()
 
   workspace = page.locator('.template-creation-workspace:visible').first()
   await expect(workspace).toBeVisible()
-  await workspace.getByRole('button', { name: 'Back to Designer' }).click()
+  await page.locator('.page-creation-dialog .el-dialog__headerbtn').click()
   await expect(pages).toBeVisible()
   await expect(newSurface).toBeFocused()
 
   await newSurface.click()
-  await expect(workspace.getByText('Ready to use', { exact: true })).toBeVisible()
+  await expect(workspace.locator('.template-create-footer button')).toBeVisible()
   await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(pages).not.toBeVisible()
   await expect(page.locator('[data-designer-entry]')).toBeFocused()
@@ -207,6 +221,7 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
   // Cards link to their designer and only expose inputs while editing.
+  await pages.getByRole('button', { name: 'Card view', exact: true }).click()
   await expect(pages.getByRole('listitem')).toHaveCount(1)
   await expect(pages.locator('.page-manager__preview').first()).toBeVisible()
   await expect(pages.locator('.page-manager__row input')).toHaveCount(0)
@@ -295,8 +310,10 @@ test('keeps page previews, names, and actions usable when a project scrolls at n
   await openPageManagement(page)
   const pages = page.getByRole('main', { name: 'Page management', exact: true })
   const cards = pages.getByRole('listitem')
+  await pages.getByRole('button', { name: 'Card view', exact: true }).click()
   for (const count of [2, 3]) {
-    await cards.first().getByRole('button', { name: /^Duplicate / }).click()
+    await cards.first().locator('.page-manager__actions .el-dropdown button').click()
+    await page.getByRole('menuitem', { name: 'Duplicate page', exact: true }).click()
     await expect(cards).toHaveCount(count)
   }
 
@@ -356,7 +373,7 @@ test('only shows compatible templates and keeps the create action visible at 390
   const workspace = page.locator('.template-creation-workspace:visible').first()
   await expect(workspace.getByRole('option', { name: /Ant Design Vue/ })).toHaveCount(0)
   await workspace.getByRole('option', { name: /Element Plus profile/ }).click()
-  await expect(workspace.getByText('Ready to use', { exact: true })).toBeVisible()
+  await expect(workspace.locator('.template-create-footer button')).toBeVisible()
   await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeEnabled()
   await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeInViewport()
   await expectNoHorizontalOverflow(page)
@@ -386,11 +403,8 @@ test('keeps the Runtime preview dominant and restores focus after the 900px cata
   expect(geometry.detailWidth).toBeGreaterThan(760)
   await expect(detail.locator(TEMPLATE_PREVIEW_FRAME)).toBeVisible()
 
-  await workspace.getByRole('button', { name: 'Open appearance settings', exact: true }).click()
-  await expect(page.locator('.appearance-panel:visible')).toBeVisible()
   await opener.click()
   const drawer = page.getByRole('dialog', { name: 'Catalog' })
-  await expect(page.locator('.appearance-panel:visible')).toHaveCount(0)
   await expect(drawer).toBeVisible()
   await expect(drawer.getByRole('searchbox', { name: 'Search templates' })).toBeFocused()
   await expect(page.locator('#workbench-overlays').getByRole('dialog', { name: 'Catalog' })).toBeVisible()
@@ -651,13 +665,9 @@ for (const visualCase of templateVisualCases) {
     let workspace = await openProjectCreation(page)
 
     if (locale === 'zh') {
-      if (width > 640) {
-        await workspace.getByRole('button', { name: 'Switch language', exact: true }).click()
-      }
-      else {
-        await workspace.getByRole('button', { name: 'More actions', exact: true }).click()
-        await page.getByRole('menuitem', { name: 'Switch language', exact: true }).click()
-      }
+      await page.evaluate(() => localStorage.setItem('moluoxixi.config-form.workbench.locale', 'zh-CN'))
+      await page.reload()
+      await page.locator('[data-create-trigger="page-manager-template"]').click()
       workspace = page.locator('.template-creation-workspace:visible').first()
     }
 
@@ -671,7 +681,8 @@ for (const visualCase of templateVisualCases) {
     }
 
     await expectNoHorizontalOverflow(page)
-    await expect(page.locator('.template-catalog-item[aria-selected="true"] .template-catalog-status').first()).toHaveAttribute('data-status', 'eligible', { timeout: 15_000 })
+    await expect(workspace.locator('.template-create-footer button')).toBeEnabled({ timeout: 15_000 })
+    await expect(workspace.locator('.template-eligibility')).toHaveCount(0)
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     if (width === 390 && locale === 'en')
       await page.locator('.page-creation-dialog .el-dialog__header').hover({ position: { x: 4, y: 4 } })

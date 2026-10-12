@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesignerLocaleOptions, DesignSurfaceToolbarScope } from '@moluoxixi/config-form-designer'
-import { Columns2, Copy, Monitor, Redo2, Smartphone, Tablet, Trash2, Undo2 } from '@lucide/vue'
+import { Columns2, Copy, Monitor, MoreHorizontal, Redo2, Smartphone, Tablet, Trash2, Undo2 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
@@ -8,6 +8,15 @@ import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
 const props = withDefaults(defineProps<{ scope: DesignSurfaceToolbarScope, locale?: DesignerLocaleOptions, showCompare?: boolean }>(), { showCompare: true })
 const emit = defineEmits<{ compare: [] }>()
 const locale = computed(() => createDesignerLocale(props.locale))
+
+function runCompactCommand(command: string): void {
+  if (command === 'copy' && props.scope.canEditSelection)
+    props.scope.copySelection()
+  else if (command === 'delete' && props.scope.canEditSelection)
+    props.scope.removeSelection()
+  else if (command === 'compare' && props.showCompare)
+    emit('compare')
+}
 </script>
 
 <template>
@@ -60,7 +69,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
     >
       <button
         type="button"
-        class="mx-config-form-designer__icon-button"
+        class="mx-config-form-designer__icon-button studio-selection-command"
         :aria-disabled="!scope.canEditSelection ? 'true' : undefined"
         :title="locale.t('node.copySelectionShortcut', 'Copy selection (Ctrl/Cmd+D)')"
         :aria-label="locale.t('node.copySelection', 'Copy selection')"
@@ -79,7 +88,7 @@ const locale = computed(() => createDesignerLocale(props.locale))
     >
       <button
         type="button"
-        class="mx-config-form-designer__icon-button is-danger"
+        class="mx-config-form-designer__icon-button is-danger studio-selection-command"
         :aria-disabled="!scope.canEditSelection ? 'true' : undefined"
         :title="locale.t('node.deleteSelectionShortcut', 'Delete selection (Delete)')"
         :aria-label="locale.t('node.deleteSelection', 'Delete selection')"
@@ -135,12 +144,20 @@ const locale = computed(() => createDesignerLocale(props.locale))
     <button
       v-if="showCompare"
       type="button"
-      class="mx-config-form-designer__icon-button"
+      class="mx-config-form-designer__icon-button studio-compare-command"
       :aria-label="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
       :title="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
       @click="emit('compare')"
     >
       <Columns2 :size="16" />
     </button>
+    <ElDropdown class="studio-compact-canvas-actions" trigger="click" append-to="#workbench-overlays" @command="runCompactCommand">
+      <button type="button" class="mx-config-form-designer__icon-button" :aria-label="locale.t('designer.commands', 'Designer commands')" :title="locale.t('designer.commands', 'Designer commands')"><MoreHorizontal :size="17" aria-hidden="true" /></button>
+      <template #dropdown><ElDropdownMenu>
+        <ElDropdownItem command="copy" :disabled="!scope.canEditSelection"><Copy :size="15" aria-hidden="true" />{{ locale.t('node.copySelection', 'Copy selection') }}</ElDropdownItem>
+        <ElDropdownItem command="delete" :disabled="!scope.canEditSelection"><Trash2 :size="15" aria-hidden="true" />{{ locale.t('node.deleteSelection', 'Delete selection') }}</ElDropdownItem>
+        <ElDropdownItem v-if="showCompare" command="compare"><Columns2 :size="15" aria-hidden="true" />{{ locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts' }}</ElDropdownItem>
+      </ElDropdownMenu></template>
+    </ElDropdown>
   </div>
 </template>

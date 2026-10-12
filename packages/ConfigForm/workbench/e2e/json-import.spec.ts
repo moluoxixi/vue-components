@@ -41,7 +41,9 @@ async function openSurfaceCreation(page: import('@playwright/test').Page): Promi
 }
 
 async function chooseJsonImport(workspace: import('@playwright/test').Locator): Promise<void> {
-  await workspace.locator('.creation-mode-switch .el-segmented__item').filter({ hasText: 'JSON import' }).click()
+  const mode = workspace.locator('.creation-mode-switch .el-segmented__item').filter({ hasText: 'JSON import' })
+  if (await mode.isVisible())
+    await mode.click()
   await expect(workspace.getByRole('navigation', { name: 'Import stages' })).toBeVisible()
 }
 

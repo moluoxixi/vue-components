@@ -10,7 +10,6 @@ import type { TemplateEligibilityCacheEntry, TemplateEligibilityDisplayStatus } 
 import {
   AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
   File,
   Languages,
   LayoutGrid,
@@ -484,7 +483,6 @@ onBeforeUnmount(() => {
           <ArrowLeft :size="18" aria-hidden="true" />
         </ElButton>
         <div>
-          <span>ConfigForm Workbench</span>
           <h1>{{ creationTitle }}</h1>
         </div>
       </div>
@@ -623,24 +621,14 @@ onBeforeUnmount(() => {
               <button type="button" class="template-mobile-back" @click="showCatalog">
                 <ArrowLeft :size="16" aria-hidden="true" />{{ locale.t('template.catalog', 'Catalog') }}
               </button>
-              <h2>{{ templateName(selectedTemplate) }}</h2>
-              <p>{{ templateDescription(selectedTemplate) }}</p>
+              <h2 :title="templateName(selectedTemplate)">{{ templateName(selectedTemplate) }}</h2>
+              <p :title="templateDescription(selectedTemplate)">{{ templateDescription(selectedTemplate) }}</p>
             </div>
-            <dl>
-              <div><dt>{{ locale.t('library.adapter', 'Component library') }}</dt><dd>{{ selectedTemplate.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }}</dd></div>
-              <div><dt>{{ locale.t('library.kind', 'Template type') }}</dt><dd>{{ locale.t(`surface.kind.${selectedTemplate.surface.kind}`, selectedTemplate.surface.kind) }}</dd></div>
-            </dl>
+
           </header>
 
-          <div class="template-eligibility" :class="{ 'is-blocked': eligibility && !eligibility.eligible }">
-            <p v-if="loadingPreview" role="status">
-              {{ locale.t('template.checkingEligibility', 'Preparing template') }}
-            </p>
-            <template v-else-if="eligibility?.eligible">
-              <CheckCircle2 :size="16" aria-hidden="true" />
-              <p><strong>{{ locale.t('template.eligible', 'Ready to use') }}</strong><span>{{ locale.t('template.eligibleHint', 'This template works with the current component library.') }}</span></p>
-            </template>
-            <template v-else-if="eligibility">
+          <div v-if="eligibility && !eligibility.eligible" class="template-eligibility" :class="{ 'is-blocked': eligibility && !eligibility.eligible }">
+            <template v-if="eligibility">
               <AlertTriangle :size="16" aria-hidden="true" />
               <div role="alert">
                 <strong>{{ locale.t('template.ineligible', 'Cannot create with this Registry') }}</strong>

@@ -192,6 +192,7 @@ defineExpose({ focusSearch, focusTemplate })
               <small>{{ locale.t(`surface.kind.${template.surface.kind}`, template.surface.kind) }} · {{ template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ template.providerId === 'built-in' ? locale.t('library.builtIn', 'Built-in templates') : locale.t('library.personal', 'My templates') }}</small>
             </span>
             <span
+              v-if="eligibilityStatuses[template.manifest.id] && eligibilityStatuses[template.manifest.id] !== 'eligible'"
               class="template-catalog-status"
               :data-status="eligibilityStatuses[template.manifest.id] ?? 'pending'"
             >

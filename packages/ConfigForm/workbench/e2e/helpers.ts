@@ -1,4 +1,4 @@
-import type { Download, Page } from '@playwright/test'
+import type { Download, Locator, Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { expect } from '@playwright/test'
 
@@ -62,7 +62,7 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
     if (await mobileDetails.isVisible())
       await mobileDetails.click()
   }
-  await expect(pageCreation.getByText('Ready to use', { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(pageCreation.getByRole('button', { name: 'Create form page', exact: true })).toBeEnabled({ timeout: 15_000 })
   await pageCreation.getByRole('button', { name: 'Create form page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
@@ -107,7 +107,14 @@ export async function openPageCreation(
   await expect(dialog).toBeVisible()
   if (kind !== 'form') {
     const label = kind === 'dialog' ? 'Dialog' : 'Drawer'
-    await dialog.locator('.page-creation-dialog__toolbar .el-segmented__item').filter({ hasText: label }).click()
+    const compact = dialog.locator('.page-creation-dialog__type-select')
+    if (await compact.isVisible()) {
+      await compact.click()
+      await page.getByRole('option', { name: label, exact: true }).click()
+    }
+    else {
+      await dialog.locator('.page-creation-dialog__types .el-segmented__item').filter({ hasText: label }).click()
+    }
   }
   const workspace = dialog.locator('.template-creation-workspace')
   await expect(workspace).toBeVisible()
@@ -138,12 +145,14 @@ const appearanceLabels: Record<WorkbenchPalette | WorkbenchThemeMode, string> = 
 
 export async function openAppearance(page: Page): Promise<void> {
   const direct = page.getByRole('button', { name: 'Open appearance settings' })
+  const overflow = page.getByRole('button', { name: 'More actions', exact: true })
+  await expect(direct.or(overflow)).toBeVisible()
   const opensPopover = await direct.isVisible()
   if (opensPopover) {
     await direct.click()
   }
   else {
-    await page.getByRole('button', { name: 'More actions' }).click()
+    await overflow.click()
     await page.getByRole('menuitem', { name: 'Open appearance settings' }).click()
   }
   await expect(page.locator('.appearance-panel:visible')).toBeVisible()
@@ -166,9 +175,9 @@ export async function setAppearance(
   }).click()
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
-  await expect(page.locator('.workbench-app, .template-creation-workspace')).toHaveAttribute('data-palette', paletteFamily)
+  await expect(page.locator('html')).toHaveAttribute('data-palette', paletteFamily)
   if (themePreference !== 'system')
-    await expect(page.locator('.workbench-app, .template-creation-workspace')).toHaveAttribute('data-theme', themePreference)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', themePreference)
 }
 
 export async function restoreAppearance(
@@ -186,4 +195,10 @@ export async function restoreAppearance(
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', themePreference)
   await expect(page.locator('html')).toHaveAttribute('data-palette', paletteFamily)
+}
+
+export async function selectDatasetView(scope: Locator | Page, label: string): Promise<void> {
+  const page = 'goto' in scope ? scope : scope.page()
+  await scope.locator('.asset-manager__view-select').click()
+  await page.getByRole('option', { name: label, exact: true }).click()
 }
