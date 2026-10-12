@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject, openPageCreation as openManagedPageCreation, openPageManagement, restoreAppearance, setAppearance } from './helpers'
+import { createProject, openPageCreation as openManagedPageCreation, openPageManagement, restoreAppearance, setAppearance, waitForPageCreation } from './helpers'
 
 const TEMPLATE_PREVIEW_FRAME = '.template-runtime-preview iframe[data-design-runtime-host][data-design-runtime-variant="canvas"]'
 
@@ -121,10 +121,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(localizedWorkspace.getByRole('option', { name: /Ant Design Vue 资料表单/ })).toBeVisible()
   await expect(localizedWorkspace.getByRole('button', { name: '创建表单页面', exact: true })).toBeEnabled()
   await expectNoHorizontalOverflow(page)
-  await page.locator('.page-creation-dialog').evaluate(async (dialog) => {
-    const overlay = dialog.closest('.el-overlay') ?? dialog
-    await Promise.all(overlay.getAnimations({ subtree: true }).map(animation => animation.finished))
-  })
+  await waitForPageCreation(page)
   const localizedResults = await new AxeBuilder({ page })
     .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
@@ -686,6 +683,7 @@ for (const visualCase of templateVisualCases) {
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     if (width === 390 && locale === 'en')
       await page.locator('.page-creation-dialog .el-dialog__header').hover({ position: { x: 4, y: 4 } })
+    await waitForPageCreation(page)
     await expect(page).toHaveScreenshot(
       `template-${width}-${palette}-${theme}-${locale}${overlay ? '-drawer' : ''}.png`,
       { animations: 'disabled' },

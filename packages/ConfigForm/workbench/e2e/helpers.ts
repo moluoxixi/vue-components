@@ -105,6 +105,7 @@ export async function openPageCreation(
   await manager.getByRole('button', { name: 'From template', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'From template', exact: true })
   await expect(dialog).toBeVisible()
+  await waitForPageCreation(page)
   if (kind !== 'form') {
     const label = kind === 'dialog' ? 'Dialog' : 'Drawer'
     const compact = dialog.locator('.page-creation-dialog__type-select')
@@ -119,6 +120,15 @@ export async function openPageCreation(
   const workspace = dialog.locator('.template-creation-workspace')
   await expect(workspace).toBeVisible()
   return workspace
+}
+
+export async function waitForPageCreation(page: Page): Promise<void> {
+  const overlay = page.locator('.el-overlay').filter({ has: page.locator('.page-creation-dialog') })
+  await expect(overlay).toBeVisible()
+  await expect(overlay).not.toHaveClass(/dialog-fade-enter-/)
+  await expect.poll(() => overlay.evaluate(element => element.getAnimations({ subtree: true })
+    .filter(animation => animation.playState === 'running' && animation.effect?.getComputedTiming().iterations !== Infinity)
+    .length)).toBe(0)
 }
 
 /** Open the JSON page-import workspace from page management. */
@@ -145,7 +155,7 @@ const appearanceLabels: Record<WorkbenchPalette | WorkbenchThemeMode, string> = 
 
 export async function openAppearance(page: Page): Promise<void> {
   const direct = page.getByRole('button', { name: 'Open appearance settings' })
-  const overflow = page.getByRole('button', { name: 'More actions', exact: true })
+  const overflow = page.locator('.workbench-topbar, .template-workspace-header').getByRole('button', { name: 'More actions', exact: true })
   await expect(direct.or(overflow)).toBeVisible()
   const opensPopover = await direct.isVisible()
   if (opensPopover) {
