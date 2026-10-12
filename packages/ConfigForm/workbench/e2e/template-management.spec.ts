@@ -693,13 +693,16 @@ for (const visualCase of templateVisualCases) {
 
 for (const viewport of [
   { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+  { width: 1280, height: 540 },
   { width: 900, height: 900 },
   { width: 390, height: 844 },
+  { width: 320, height: 568 },
 ]) {
   test(`keeps the creation workspace usable at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
     const workspace = await openProjectCreation(page)
-    if (viewport.width === 390) {
+    if (viewport.width <= 390) {
       await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
       await expect(workspace.getByRole('button', { name: 'Catalog', exact: true })).toBeVisible()
       await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeVisible()
@@ -715,6 +718,11 @@ for (const viewport of [
       expect(catalogWidth).toBeGreaterThanOrEqual(280)
       expect(catalogWidth).toBeLessThanOrEqual(340)
     }
+    const overlay = page.locator('.el-overlay-dialog').filter({ has: workspace })
+    await expect.poll(() => overlay.evaluate(element => ({
+      overflow: Math.max(0, element.scrollHeight - element.clientHeight),
+      scrollTop: element.scrollTop,
+    }))).toEqual({ overflow: 0, scrollTop: 0 })
     await expectNoHorizontalOverflow(page)
   })
 }

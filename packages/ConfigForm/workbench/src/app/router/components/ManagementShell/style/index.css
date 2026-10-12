@@ -186,7 +186,7 @@
   border-radius: 0;
 }
 
-.page-creation-dialog { padding: 0; max-height: calc(100dvh - 32px); overflow: hidden; }
+.page-creation-dialog { padding: 0; margin-bottom: 0; max-height: calc(100dvh - 32px); overflow: hidden; }
 .page-creation-dialog .el-dialog__header { padding: 8px 44px 8px 14px; margin: 0; border-bottom: 1px solid var(--wb-separator); }
 .page-creation-dialog .template-workspace-header { display: none; }
 .page-creation-dialog__heading { display: flex; align-items: center; gap: 16px; min-width: 0; }
