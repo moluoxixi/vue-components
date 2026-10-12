@@ -207,6 +207,30 @@ describe('json import pane', () => {
     wrapper.unmount()
   })
 
+  it('allows data-only project imports and explains the absence of a page preview', async () => {
+    const candidate = prepared('业务数据示例')
+    const dataOnly = {
+      ...candidate,
+      preview: undefined,
+      previewCompilation: undefined,
+      summary: { ...candidate.summary, surfaceCount: 0, nodeCount: 0 },
+    }
+    mocks.prepare.mockResolvedValue({ success: true, prepared: dataOnly })
+    const wrapper = mountPane('zh-CN')
+    await wrapper.get('textarea').setValue('{}')
+    await wrapper.findAll('button').find(button => button.text().includes('分析 JSON'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-import-preview]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('此项目尚无页面，导入后可管理数据和资源。')
+    const create = wrapper.findAll('button').find(button => button.text().includes('创建导入项目'))!
+    expect(create.attributes('disabled')).toBeUndefined()
+    await create.trigger('click')
+    await flushPromises()
+    expect(mocks.create).toHaveBeenCalledWith(dataOnly)
+    expect(wrapper.emitted('created')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('does not publish an analysis completed for an older source', async () => {
     let resolveFirst!: (value: unknown) => void
     mocks.prepare

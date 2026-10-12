@@ -474,6 +474,42 @@ describe('config model JSON import', () => {
     expect(surfaceResult.prepared.preview.compilation.surface.id).toBe(surfaceResult.prepared.surface.id)
   })
 
+  it('imports data and resources before the first page without requiring a runtime preview', async () => {
+    const source = structuredClone(await currentProject())
+    source.homeSurfaceId = ''
+    source.surfaceOrder = []
+    source.surfacesById = {}
+    source.datasetOrder = ['orders']
+    source.datasetsById = {
+      orders: { id: 'orders', name: 'Orders', rows: [{ number: 'SO-001', amount: 0, invoiced: false, deliveredAt: null }] },
+    }
+    source.resources = {
+      cover: { id: 'cover', name: 'Cover', kind: 'url', url: '/cover.svg', mediaType: 'image/svg+xml' },
+    }
+    source.settings.projectImageResourceId = 'cover'
+    const result = await prepareConfigImport({
+      identityFactory: deterministicFactory(),
+      source: JSON.stringify(await projectTransfer(source)),
+      target: 'project',
+    })
+    expect(result.success).toBe(true)
+    if (!result.success || result.prepared.target !== 'project')
+      return
+    const imported = result.prepared.document
+    expect(imported.id).not.toBe(source.id)
+    expect(imported.homeSurfaceId).toBe('')
+    expect(imported.surfaceOrder).toEqual([])
+    expect(imported.surfacesById).toEqual({})
+    expect(imported.datasetsById[imported.datasetOrder[0]!]?.rows).toEqual(source.datasetsById.orders!.rows)
+    const coverId = String(imported.settings.projectImageResourceId)
+    expect(coverId).not.toBe('cover')
+    expect(imported.resources[coverId]).toMatchObject({ id: coverId, url: '/cover.svg' })
+    expect(source.settings.projectImageResourceId).toBe('cover')
+    expect(result.prepared.preview).toBeUndefined()
+    expect(result.prepared.previewCompilation).toBeUndefined()
+    expect(result.prepared.summary).toMatchObject({ surfaceCount: 0, nodeCount: 0, resourceCount: 1 })
+  })
+
   it('remaps complete Dataset and Resource bindings during Project import identity allocation', async () => {
     const source = structuredClone(await currentProject())
     const surface = source.surfacesById[source.homeSurfaceId]!

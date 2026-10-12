@@ -66,18 +66,20 @@ interface PreparedConfigImportBase {
   adapter: WorkbenchAdapterId
   diagnostics: ConfigImportDiagnostic[]
   embeddedContents: ProjectEmbeddedResourceWrite[]
-  preview: IsolatedProjectPreview
-  previewCompilation: SurfaceCompilation
   summary: ConfigImportSummary
   target: ConfigImportTarget
 }
 
 export interface PreparedProjectImport extends PreparedConfigImportBase {
   document: ProjectDocument
+  preview?: IsolatedProjectPreview
+  previewCompilation?: SurfaceCompilation
   target: 'project'
 }
 
 export interface PreparedSurfaceImport extends PreparedConfigImportBase {
+  preview: IsolatedProjectPreview
+  previewCompilation: SurfaceCompilation
   originContentHash: string
   originProjectId: string
   /** Candidate document containing the flat dependency closure to add. */

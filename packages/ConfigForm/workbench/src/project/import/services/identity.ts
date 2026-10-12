@@ -86,17 +86,21 @@ export function instantiateImportedProject(
       throw new TypeError(`IMPORT_RESOURCE_IDENTITY_CONFLICT: Resource identity would overwrite another asset: ${id}.`)
     resourcesById[id] = { ...structuredClone(resource), id }
   })
+  const settings = structuredClone(source.settings)
+  const imageResourceId = settings.projectImageResourceId
+  if (typeof imageResourceId === 'string' && resources.has(imageResourceId))
+    settings.projectImageResourceId = requireImportedIdentity(resources, imageResourceId, 'resource')
   const document = assertProjectDocument({
     ...structuredClone(source),
     id: projectId,
-    homeSurfaceId: requireImportedIdentity(surfaces, source.homeSurfaceId, 'surface'),
+    homeSurfaceId: source.homeSurfaceId ? requireImportedIdentity(surfaces, source.homeSurfaceId, 'surface') : '',
     surfaceOrder: source.surfaceOrder.map(surfaceId => requireImportedIdentity(surfaces, surfaceId, 'surface')),
     surfacesById,
     datasetOrder: source.datasetOrder.map(datasetId => requireImportedIdentity(datasets, datasetId, 'dataset')),
     datasetsById,
     resources: resourcesById,
     theme: structuredClone(source.theme) ?? { version: PROJECT_THEME_VERSION },
-    settings: structuredClone(source.settings),
+    settings,
   })
   return { document, maps: { surfaces, datasets, resources } }
 }

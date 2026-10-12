@@ -198,7 +198,7 @@ async function createImported(): Promise<void> {
 }
 
 function resolvePreviewCompilation() {
-  return prepared.value?.preview.compilation
+  return prepared.value?.preview?.compilation
 }
 
 watch(() => props.target, () => resetAnalysis(false))
@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
         <div class="json-import-preview" :class="{ 'is-mobile-hidden': mobileStage !== 'preview' }">
           <header><div class="json-import-panel-title"><CheckCircle2 :size="17" aria-hidden="true" /><h2>{{ locale.t('import.preview', 'Preview') }}</h2></div></header>
           <DesignRuntimeHostFrame
-            v-if="prepared"
+            v-if="prepared?.preview"
             :adapter="prepared.preview.adapter"
             breakpoint="desktop"
             :camera-scale="1"
@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
             variant="canvas"
             @error="ui.notify"
           />
-          <div v-else class="json-import-empty"><FileJson2 :size="22" aria-hidden="true" /><span>{{ locale.t('import.previewUnavailable', 'Preview unavailable') }}</span></div>
+          <div v-else class="json-import-empty"><FileJson2 :size="22" aria-hidden="true" /><span>{{ prepared ? locale.t('import.noPages', 'This project has no pages yet. Import it to manage its data and resources.') : locale.t('import.previewUnavailable', 'Preview unavailable') }}</span></div>
         </div>
       </section>
     </div>

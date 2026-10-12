@@ -271,7 +271,9 @@ async function prepareConfigImportUnsafe(options: PrepareConfigImportOptions): P
     if (compileDiagnostics.length > 0)
       return { success: false, diagnostics: compileDiagnostics }
     const embeddedContents = embeddedWrites(source.resources, transfer.data.embeddedBytesByResourceId, remapped.maps.resources)
-    const preview = createPreview(remapped.document, adapter, id, `import:${getConfigFormJsonSemanticHash(remapped.document)}`)
+    const preview = remapped.document.homeSurfaceId
+      ? createPreview(remapped.document, adapter, id, `import:${getConfigFormJsonSemanticHash(remapped.document)}`)
+      : undefined
     return {
       success: true,
       prepared: {
@@ -280,7 +282,7 @@ async function prepareConfigImportUnsafe(options: PrepareConfigImportOptions): P
         document: remapped.document,
         embeddedContents,
         preview,
-        previewCompilation: preview.compilation,
+        previewCompilation: preview?.compilation,
         summary: summary(remapped.document, 'project'),
         target: 'project',
       },
