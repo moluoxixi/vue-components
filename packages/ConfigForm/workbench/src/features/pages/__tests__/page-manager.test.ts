@@ -45,7 +45,7 @@ describe('page manager', () => {
     expect(wrapper.find('input[aria-label^="Page name"]').exists()).toBe(false)
     expect(wrapper.find('input[aria-label^="Route for"]').exists()).toBe(false)
 
-    const openLink = wrapper.get('button[aria-label="Open Fixture project in the designer"]')
+    const openLink = wrapper.get('.page-manager__link[aria-label="Open Fixture project in the designer"]')
     expect(openLink.text()).toBe('Fixture project')
     await openLink.trigger('click')
     expect(wrapper.emitted('openPage')?.[0]).toEqual(['home'])
@@ -72,7 +72,7 @@ describe('page manager', () => {
     await name.trigger('keydown', { key: 'Escape' })
 
     expect(wrapper.emitted('action')).toBeUndefined()
-    expect(wrapper.get('button[aria-label="Open Fixture project in the designer"]').text())
+    expect(wrapper.get('.page-manager__link[aria-label="Open Fixture project in the designer"]').text())
       .toBe('Fixture project')
     wrapper.unmount()
   })
@@ -167,7 +167,7 @@ describe('page manager', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('export')?.[0]).toEqual(['home'])
 
-    await wrapper.get('button[aria-label="Open Fixture project in the designer"]').trigger('click')
+    await wrapper.get('.page-manager__link[aria-label="Open Fixture project in the designer"]').trigger('click')
     expect(wrapper.emitted('openPage')?.[0]).toEqual(['home'])
 
     await wrapper.get('.page-manager__breadcrumb-link').trigger('click')

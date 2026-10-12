@@ -302,20 +302,27 @@ test('requires a chosen project and scopes page browsing to that project', async
   await expect(page.locator('.page-manager')).toHaveCount(0)
 })
 
-test('keeps page previews, names, and actions usable when a project scrolls at narrow widths', async ({ page }) => {
+test('keeps page cards compact and their previews, names, and actions usable across viewport sizes', async ({ page }) => {
   await createProject(page, 'element')
   await openPageManagement(page)
   const pages = page.getByRole('main', { name: 'Page management', exact: true })
   const cards = pages.getByRole('listitem')
   await pages.getByRole('button', { name: 'Card view', exact: true }).click()
-  for (const count of [2, 3]) {
+  for (let count = 2; count <= 12; count++) {
     await cards.first().locator('.page-manager__actions .el-dropdown button').click()
     await page.getByRole('menuitem', { name: 'Duplicate page', exact: true }).click()
     await expect(cards).toHaveCount(count)
   }
 
-  for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 })
+  for (const { width, height, visibleCards } of [
+    { width: 1366, height: 768, visibleCards: 10 },
+    { width: 1024, height: 600, visibleCards: 6 },
+    { width: 800, height: 700, visibleCards: 6 },
+    { width: 390, height: 844, visibleCards: 2 },
+    { width: 320, height: 844, visibleCards: 2 },
+  ]) {
+    await page.setViewportSize({ width, height })
+    await pages.locator('.page-manager__table').evaluate(table => table.scrollTop = 0)
     await expect(pages.getByRole('heading', { level: 1 })).toBeInViewport()
     await expect(pages.getByRole('searchbox', { name: 'Search pages', exact: true })).toBeInViewport()
     await expect(pages.getByRole('button', { name: 'New page', exact: true })).toBeInViewport()
@@ -323,30 +330,50 @@ test('keeps page previews, names, and actions usable when a project scrolls at n
 
     const geometry = await pages.locator('.page-manager__table').evaluate((table) => {
       const cards = [...table.querySelectorAll('.page-manager__row')]
+      const competingScrolls = []
+      for (let node = table.parentElement; node; node = node.parentElement) {
+        if (['auto', 'scroll'].includes(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1)
+          competingScrolls.push(node.className)
+      }
       return {
         scrolls: table.scrollHeight > table.clientHeight,
+        competingScrolls,
+        visibleCards: cards.filter(card => card.getBoundingClientRect().bottom <= innerHeight).length,
         cards: cards.map((card, index) => {
           const preview = card.querySelector('.page-manager__preview-button')!.getBoundingClientRect()
           const name = card.querySelector('.page-manager__name-cell')!.getBoundingClientRect()
+          const title = card.querySelector('.page-manager__link')!.getBoundingClientRect()
+          const route = card.querySelector('.page-manager__meta code')!.getBoundingClientRect()
           const actions = card.querySelector('.page-manager__actions')!.getBoundingClientRect()
+          const bounds = card.getBoundingClientRect()
           return {
+            previewHeight: preview.height,
             previewBottom: preview.bottom,
             nameTop: name.top,
-            nameBottom: name.bottom,
+            titleBottom: title.bottom,
+            routeRight: route.right,
+            actionsLeft: actions.left,
             actionsTop: actions.top,
             actionsBottom: actions.bottom,
-            cardBottom: card.getBoundingClientRect().bottom,
+            cardHeight: bounds.height,
+            cardTop: bounds.top,
+            cardBottom: bounds.bottom,
             nextTop: cards[index + 1]?.getBoundingClientRect().top,
           }
         }),
       }
     })
     expect(geometry.scrolls).toBe(true)
+    expect(geometry.competingScrolls).toEqual([])
+    expect(geometry.visibleCards).toBeGreaterThanOrEqual(visibleCards)
     for (const card of geometry.cards) {
+      expect(card.previewHeight).toBeGreaterThanOrEqual(120)
+      expect(card.cardHeight).toBeLessThanOrEqual(220)
       expect(card.previewBottom).toBeLessThanOrEqual(card.nameTop + 1)
-      expect(card.nameBottom).toBeLessThanOrEqual(card.actionsTop + 1)
+      expect(card.titleBottom).toBeLessThanOrEqual(card.actionsTop + 1)
+      expect(card.routeRight).toBeLessThanOrEqual(card.actionsLeft)
       expect(card.actionsBottom).toBeLessThanOrEqual(card.cardBottom)
-      if (card.nextTop !== undefined)
+      if (card.nextTop !== undefined && card.nextTop > card.cardTop)
         expect(card.cardBottom).toBeLessThanOrEqual(card.nextTop)
     }
 
@@ -360,6 +387,9 @@ test('keeps page previews, names, and actions usable when a project scrolls at n
     await lastCard.getByRole('button', { name: /^Finish editing / }).click()
     await expect(lastCard.locator('.page-manager__link-label')).toHaveText(name)
   }
+
+  await cards.last().locator('.page-manager__preview-button').click()
+  await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 })
 
 test('only shows compatible templates and keeps the create action visible at 390px', async ({ page }) => {
@@ -563,7 +593,7 @@ test('saves a project page to the template library and reuses an independent cop
   expect(await copied.getAttribute('data-config-node-id')).not.toBe(firstNode)
 })
 
-test('creates a drawer directly as the first project surface and persists it', async ({ page }) => {
+test('creates a drawer directly, persists it, and edits its presentation in a compact card', async ({ page }) => {
   await page.locator('[data-project-create]').first().click()
   const dialog = page.locator('.project-creation-dialog:visible')
   await dialog.getByRole('textbox', { name: 'Project name', exact: true }).fill('Overlay first')
@@ -581,6 +611,37 @@ test('creates a drawer directly as the first project surface and persists it', a
   await page.reload()
   await expect(page.locator('[data-surface-presentation="drawer"]')).toBeVisible()
   await expect(runtime.locator('[data-config-node-id]').first()).toBeVisible()
+
+  await openPageManagement(page)
+  await manager.getByRole('button', { name: 'Card view', exact: true }).click()
+  const card = manager.getByRole('listitem').first()
+  await card.getByRole('button', { name: 'More page actions', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Overlay appearance', exact: true }).click()
+  const presentation = card.locator('.surface-presentation-editor')
+  await expect(presentation).toBeVisible()
+  for (const width of [1366, 320]) {
+    await page.setViewportSize({ width, height: 768 })
+    const controlsFit = await presentation.evaluate((editor) => {
+      const bounds = editor.getBoundingClientRect()
+      return [...editor.querySelectorAll('.el-input-number, .el-select, footer .el-button')].every((control) => {
+        const rect = control.getBoundingClientRect()
+        return rect.width >= 60 && rect.left >= bounds.left && rect.right <= bounds.right
+      })
+    })
+    expect(controlsFit).toBe(true)
+    const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+    expect(accessibility.violations).toEqual([])
+  }
+  await presentation.getByRole('spinbutton', { name: 'Desktop size', exact: true }).fill('480')
+  const apply = presentation.getByRole('button', { name: 'Apply', exact: true })
+  await apply.scrollIntoViewIfNeeded()
+  await expect(apply).toBeInViewport({ ratio: 1 })
+  await apply.click()
+  await expect(presentation).not.toBeVisible()
+  await page.reload()
+  await card.getByRole('button', { name: 'More page actions', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Overlay appearance', exact: true }).click()
+  await expect(presentation.getByRole('spinbutton', { name: 'Desktop size', exact: true })).toHaveValue('480')
 })
 
 for (const scenario of [

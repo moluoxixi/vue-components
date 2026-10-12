@@ -67,16 +67,16 @@ function save(): void {
     </label>
     <fieldset>
       <legend>{{ locale.t('surface.desktopSize', 'Desktop size') }}</legend>
-      <ElInputNumber v-model="size.desktop.value" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
-      <ElSelect v-model="size.desktop.unit" :disabled="disabled" append-to="#workbench-overlays">
+      <ElInputNumber v-model="size.desktop.value" :aria-label="locale.t('surface.desktopSize', 'Desktop size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
+      <ElSelect v-model="size.desktop.unit" :aria-label="locale.t('surface.desktopUnit', 'Desktop size unit')" :disabled="disabled" append-to="#workbench-overlays">
         <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
       </ElSelect>
     </fieldset>
     <fieldset>
       <legend>{{ locale.t('surface.mobileSize', 'Mobile size') }}</legend>
       <template v-if="size.mobile">
-        <ElInputNumber v-model="size.mobile.value" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
-        <ElSelect v-model="size.mobile.unit" :disabled="disabled" append-to="#workbench-overlays">
+        <ElInputNumber v-model="size.mobile.value" :aria-label="locale.t('surface.mobileSize', 'Mobile size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
+        <ElSelect v-model="size.mobile.unit" :aria-label="locale.t('surface.mobileUnit', 'Mobile size unit')" :disabled="disabled" append-to="#workbench-overlays">
           <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
         </ElSelect>
         <ElButton native-type="button" text :disabled="disabled" @click="removeMobileSize">{{ locale.t('surface.useDesktopSize', 'Use desktop') }}</ElButton>
@@ -122,11 +122,23 @@ function save(): void {
 .surface-presentation-editor label > span,
 .surface-presentation-editor legend {
   color: var(--wb-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .surface-presentation-editor fieldset {
-  grid-template-columns: minmax(0, 1fr) minmax(82px, 0.55fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, 0.55fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.surface-presentation-editor .el-input-number {
+  width: 100%;
+  min-width: 0;
+}
+
+.surface-presentation-editor fieldset > .el-button {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 
 .surface-presentation-editor legend {
@@ -158,6 +170,12 @@ function save(): void {
 }
 
 @media (max-width: 680px) {
+  .surface-presentation-editor,
+  .surface-presentation-editor__switches {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (max-width: 380px) {
   .surface-presentation-editor,
   .surface-presentation-editor__switches {
     grid-template-columns: minmax(0, 1fr);

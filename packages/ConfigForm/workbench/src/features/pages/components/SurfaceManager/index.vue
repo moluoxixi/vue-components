@@ -280,7 +280,7 @@ function runPageAction(command: string, surfaceId: string): void {
         role="listitem"
         @keydown.esc="cancelEdit"
       >
-        <button type="button" class="page-manager__preview-button" :disabled="busy" :aria-label="locale.t('pageManager.previewAlt', 'Preview of {name}', { name: page.name })" @click="emit('openPage', page.id)">
+        <button type="button" class="page-manager__preview-button" :disabled="busy" :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })" @click="emit('openPage', page.id)">
           <img class="page-manager__preview" :src="previewImage(page)" alt="">
           <span class="page-manager__preview-kind" :data-kind="page.kind">{{ surfaceKindLabel(page.kind) }}</span>
           <span v-if="project.homeSurfaceId === page.id" class="page-manager__preview-home"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span>
@@ -326,7 +326,7 @@ function runPageAction(command: string, surfaceId: string): void {
             </ElButton>
             <div class="page-manager__meta">
               <span v-if="project.homeSurfaceId === page.id" class="page-manager__home-marker"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span><span class="page-manager__kind"><Files :size="12" aria-hidden="true" />{{ surfaceKindLabel(page.kind) }}</span>
-              <code v-if="page.kind === 'page'">{{ page.route }}</code>
+              <code v-if="page.kind === 'page'" :title="page.route">{{ page.route }}</code>
             </div>
           </div>
         </div>
