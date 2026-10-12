@@ -3,7 +3,6 @@ import type { ProjectSummary } from '@moluoxixi/config-form-model'
 import type { UploadFile } from 'element-plus'
 import type { ProjectImageInput, ProjectManagerEmits, ProjectManagerProps } from './types'
 import {
-  ArrowUpRight,
   Code2,
   Copy,
   Database,
@@ -289,10 +288,9 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
                 <span><Database :size="13" aria-hidden="true" />{{ project.datasetCount }} {{ locale.t('projects.datasets', 'datasets') }}</span>
                 <span><Image :size="13" aria-hidden="true" />{{ project.resourceCount }} {{ locale.t('projects.resources', 'resources') }}</span>
               </span>
-              <span class="project-card__open-state" :role="openingId === project.id ? 'status' : undefined">
-                <LoaderCircle v-if="openingId === project.id" :size="15" class="is-loading" aria-hidden="true" />
-                {{ openingId === project.id ? locale.t('projects.opening', 'Opening…') : locale.t('projects.open', 'Open project') }}
-                <ArrowUpRight v-if="openingId !== project.id" :size="15" aria-hidden="true" />
+              <span v-if="openingId === project.id" class="project-card__open-state" role="status">
+                <LoaderCircle :size="15" class="is-loading" aria-hidden="true" />
+                {{ locale.t('projects.opening', 'Opening…') }}
               </span>
             </span>
           </button>

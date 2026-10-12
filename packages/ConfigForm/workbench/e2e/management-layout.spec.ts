@@ -264,8 +264,11 @@ async function createReviewDataset(page: Page): Promise<void> {
 test('remembers manager display preferences and keeps the current search when switching views', async ({ page }) => {
   await createManagementProject(page)
   await page.locator('[data-create-trigger="page-manager-new-surface"]').click()
+  await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
+  await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 20_000 })
   await openPageManagement(page)
   const pages = page.locator('.page-manager')
+  const pagesUrl = page.url()
   const pageName = (await pages.locator('.page-manager__link-label').textContent())!.trim()
   await pages.getByRole('searchbox', { name: 'Search pages', exact: true }).fill(pageName)
   await pages.getByRole('button', { name: 'Card view', exact: true }).click()
@@ -273,8 +276,18 @@ test('remembers manager display preferences and keeps the current search when sw
   await expect(pages.getByRole('searchbox', { name: 'Search pages', exact: true })).toHaveValue(pageName)
   await page.reload()
   await expect(pages.getByRole('button', { name: 'Card view', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const card = pages.getByRole('listitem').first()
+  const cardBounds = (await card.boundingBox())!
+  await card.click({ position: { x: 18, y: cardBounds.height - 18 } })
+  await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
+  await page.goto(pagesUrl)
   await pages.getByRole('button', { name: 'List view', exact: true }).click()
   await expect(pages.locator('.page-manager__preview')).not.toBeVisible()
+  const row = pages.getByRole('listitem').first()
+  const rowBounds = (await row.boundingBox())!
+  await row.click({ position: { x: 18, y: rowBounds.height - 18 } })
+  await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
+  await page.goto(pagesUrl)
 
   await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
   const projects = page.locator('.project-manager')

@@ -4,7 +4,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  ArrowUpRight,
   Check,
   ChevronDown,
   Code2,
@@ -280,11 +279,11 @@ function runPageAction(command: string, surfaceId: string): void {
         role="listitem"
         @keydown.esc="cancelEdit"
       >
-        <button type="button" class="page-manager__preview-button" :disabled="busy" :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })" @click="emit('openPage', page.id)">
+        <div class="page-manager__preview-frame">
           <img class="page-manager__preview" :src="previewImage(page)" alt="">
           <span class="page-manager__preview-kind" :data-kind="page.kind">{{ surfaceKindLabel(page.kind) }}</span>
           <span v-if="project.homeSurfaceId === page.id" class="page-manager__preview-home"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span>
-        </button>
+        </div>
         <div class="page-manager__name-cell">
           <div class="page-manager__name-content">
             <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
@@ -316,13 +315,12 @@ function runPageAction(command: string, surfaceId: string): void {
               link
               type="primary"
               class="page-manager__link"
-              :title="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
+              :title="page.kind === 'page' ? `${page.name} · ${page.route}` : page.name"
               :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
               :disabled="busy"
               @click="emit('openPage', page.id)"
             >
               <span class="page-manager__link-label">{{ page.name }}</span>
-              <ArrowUpRight :size="13" aria-hidden="true" />
             </ElButton>
             <div class="page-manager__meta">
               <span v-if="project.homeSurfaceId === page.id" class="page-manager__home-marker"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span><span class="page-manager__kind"><Files :size="12" aria-hidden="true" />{{ surfaceKindLabel(page.kind) }}</span>
@@ -331,9 +329,6 @@ function runPageAction(command: string, surfaceId: string): void {
           </div>
         </div>
         <footer class="page-manager__actions">
-          <ElButton class="page-manager__design-action" native-type="button" text :disabled="busy" @click="emit('openPage', page.id)">
-            <ArrowUpRight :size="15" aria-hidden="true" />{{ locale.t('pageManager.design', 'Open design') }}
-          </ElButton>
           <ElButton v-if="editingId !== page.id" native-type="button" text circle :title="locale.t('pageManager.edit', 'Edit page')" :aria-label="locale.t('pageManager.editAria', 'Edit {name}', { name: page.name })" :disabled="busy" @click="beginEdit(page.id)">
             <Pencil :size="15" aria-hidden="true" />
           </ElButton>

@@ -245,7 +245,8 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
-  await pages.getByRole('button', { name: /^Open .* in the designer$/ }).first().click()
+  await pages.getByRole('button', { name: /^Open .* in the designer$/ }).first().focus()
+  await page.keyboard.press('Enter')
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages/[^/]+/design$`))
 
@@ -340,7 +341,7 @@ test('keeps page cards compact and their previews, names, and actions usable acr
         competingScrolls,
         visibleCards: cards.filter(card => card.getBoundingClientRect().bottom <= innerHeight).length,
         cards: cards.map((card, index) => {
-          const preview = card.querySelector('.page-manager__preview-button')!.getBoundingClientRect()
+          const preview = card.querySelector('.page-manager__preview-frame')!.getBoundingClientRect()
           const name = card.querySelector('.page-manager__name-cell')!.getBoundingClientRect()
           const title = card.querySelector('.page-manager__link')!.getBoundingClientRect()
           const route = card.querySelector('.page-manager__meta code')!.getBoundingClientRect()
@@ -388,7 +389,7 @@ test('keeps page cards compact and their previews, names, and actions usable acr
     await expect(lastCard.locator('.page-manager__link-label')).toHaveText(name)
   }
 
-  await cards.last().locator('.page-manager__preview-button').click()
+  await cards.last().click({ position: { x: 20, y: 20 } })
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 })
 
