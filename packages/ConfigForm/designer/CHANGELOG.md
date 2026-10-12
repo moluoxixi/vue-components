@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-designer
 
+## 0.2.2
+
+### Patch Changes
+
+- Automatically release packages changed in ee4f33526928.
+
 ## 0.2.1
 
 ### Patch Changes
