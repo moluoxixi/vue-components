@@ -1,0 +1,5 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "incremental": false, "composite": false, "lib": ["ESNext", "DOM"], "resolveJsonModule": true, "types": ["node", "vitest/globals"] },
+  "include": ["index.ts", "src", "src/**/*.json", "__tests__"]
+}

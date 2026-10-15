@@ -5,6 +5,7 @@ ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工
 业务界面 Demo，再把可运行源码单向交给程序员。
 
 - 目标产品边界见 [PRODUCT.md](./PRODUCT.md)。
+- 源码生成 SDK、本地工作区与 MCP 的新增架构提案见 [SOURCE-WORKSPACE-PLAN.md](./SOURCE-WORKSPACE-PLAN.md)。
 - 当前实现、迁移阶段和目标版本见 [ROADMAP.md](./ROADMAP.md)。
 - 本轮工作流升级的试用步骤、验证记录和限制见 [STUDIO-REVIEW.md](./STUDIO-REVIEW.md)。
 

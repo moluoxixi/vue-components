@@ -37,11 +37,11 @@ export interface RendererControllerState<TValues extends ConfigFormValues>
   ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
   resolveInstanceReactionProps: (
     address: Parameters<ConfigFormController<TValues>['getInstanceReactionProps']>[0],
-    field: string,
+    field?: string,
   ) => ConfigFormAttrs
   resolveInstanceReactionState: (
     address: Parameters<ConfigFormController<TValues>['getInstanceReactionState']>[0],
-    field: string,
+    field?: string,
   ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
 }
 

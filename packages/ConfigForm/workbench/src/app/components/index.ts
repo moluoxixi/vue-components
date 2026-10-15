@@ -14,3 +14,4 @@ export { default as WorkbenchAppearancePanel } from './WorkbenchAppearancePanel.
 export { default as WorkbenchAppearancePopover } from './WorkbenchAppearancePopover.vue'
 export { default as WorkbenchCommandHint } from './WorkbenchCommandHint/index.vue'
 export { default as WorkbenchTopbar } from './WorkbenchTopbar.vue'
+export { default as WorkspaceStatus } from './WorkspaceStatus/index.vue'

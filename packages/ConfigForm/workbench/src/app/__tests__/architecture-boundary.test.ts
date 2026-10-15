@@ -40,6 +40,7 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin': ['index.ts'],
   'element': ['index.ts', 'index.vue'],
   'headless': ['index.ts'],
+  'local': [],
   'model': ['index.ts'],
   'playground': ['App.vue', 'main.ts'],
   'plugin-antd-vue': ['index.ts'],
@@ -47,6 +48,7 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   'prototype-runtime': [],
   'runtime': ['index.vue'],
   'source': [],
+  'studio': [],
   'vue-backend': ['index.ts'],
   'workbench': ['adapter-styles.d.ts', 'App.vue', 'components.d.ts', 'main.ts'],
 }

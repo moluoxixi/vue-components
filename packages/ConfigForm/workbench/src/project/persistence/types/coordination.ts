@@ -38,6 +38,7 @@ export interface ProjectCoordinationPort {
 }
 
 export interface ProjectCoordinationChannelOptions {
+  namespace?: string
   createId?: () => string
   now?: () => string
   port?: ProjectCoordinationPort

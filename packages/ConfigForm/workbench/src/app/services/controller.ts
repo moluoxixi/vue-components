@@ -65,6 +65,7 @@ export function createWorkbenchController(
   const configError = ref('')
   const busy = ref(false)
   const initialized = ref(false)
+  const storageInfo = ref({ mode: 'browser' as 'browser' | 'local', name: '', connected: true })
   let disposed = false
   const previewSession = createWorkbenchPreviewSession()
   const designSession = createWorkbenchDesignSession({
@@ -341,6 +342,7 @@ export function createWorkbenchController(
 
   let listRecoveryDraftsPort = async (): Promise<WorkbenchRecoveryDraftSummary[]> => []
   const projectBinding = createWorkbenchProjectBinding({
+    storageInfo,
     configError,
     currentAdapter,
     currentSurfaceId,
@@ -441,6 +443,7 @@ export function createWorkbenchController(
   })
 
   return {
+    storageInfo,
     projects,
     busy,
     closeProject: projectBinding.closeProject,

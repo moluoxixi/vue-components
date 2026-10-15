@@ -1,23 +1,17 @@
-import type { ProjectDocument, ProjectPageSurface, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { GeneratedSourceArchiveInput, ProjectSourceInput, ProjectSourceInputOptions } from '../types'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import {
-  assertProjectDocument,
-  collectSurfaceDependencyClosure,
-  createProjectSnapshot,
-  PROJECT_DOCUMENT_VERSION,
-  PROJECT_THEME_VERSION,
-  readProjectImageResourceId,
-  SURFACE_GRAPH_VERSION,
-} from '@moluoxixi/config-form-model'
-import { generateVueSource } from '@moluoxixi/config-form-source/generator'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { generateVueSource, selectProjectSourceDocument } from '@moluoxixi/config-form-source/generator'
 import { downloadStructuredSourceArchive } from './download'
 
 /** Create the Source Generator input for a persisted project. */
 export function createProjectSourceInput(
   input: ProjectSourceInputOptions,
 ): ProjectSourceInput {
-  const document = sourceDocument(input.document, input.surfaceId)
+  const selected = selectProjectSourceDocument(input.document, input.surfaceId)
+  if (!selected.success)
+    throw new TypeError(selected.diagnostics[0]?.message ?? 'Project source selection failed.')
+  const document = selected.data
   const result = compileCanonicalProject({
     snapshot: createProjectSnapshot(document, input.editVersion ?? 0),
     registry: input.registry,
@@ -33,63 +27,6 @@ export function createProjectSourceInput(
       styleTarget: 'tailwind-v4',
     },
   }
-}
-
-function sourceDocument(
-  document: ReadonlyProjectDocument,
-  surfaceId?: string,
-): ProjectDocument {
-  const mutableDocument = structuredClone(document) as unknown as ProjectDocument
-  if (!surfaceId)
-    return mutableDocument
-  const root = mutableDocument.surfacesById[surfaceId]
-  if (!root)
-    throw new TypeError(`Surface does not exist: ${surfaceId}`)
-  const closure = collectSurfaceDependencyClosure(mutableDocument, surfaceId)
-  const surfaceOrder = [...closure.surfaceIds]
-  const surfacesById = Object.fromEntries(surfaceOrder.map(id => [id, structuredClone(mutableDocument.surfacesById[id]!)]))
-  const page = root.kind === 'page'
-    ? root
-    : closure.surfaceIds.map(id => mutableDocument.surfacesById[id]).find(surface => surface?.kind === 'page')
-  if (!page) {
-    const hostId = 'export-host-page'
-    const host: ProjectPageSurface = {
-      id: hostId,
-      kind: 'page',
-      name: 'Export host',
-      route: '/',
-      parameters: [],
-      outputs: [],
-      interactions: [],
-      graph: {
-        version: SURFACE_GRAPH_VERSION,
-        props: {},
-        form: {},
-        root: [],
-        nodesById: {},
-      },
-    }
-    surfacesById[hostId] = host
-    surfaceOrder.push(hostId)
-  }
-  const imageId = readProjectImageResourceId(mutableDocument.settings)
-  const resourceIds = imageId && mutableDocument.resources[imageId] && !closure.resourceIds.includes(imageId)
-    ? [...closure.resourceIds, imageId]
-    : closure.resourceIds
-  return assertProjectDocument({
-    version: PROJECT_DOCUMENT_VERSION,
-    id: mutableDocument.id,
-    name: mutableDocument.name,
-    homeSurfaceId: page?.id ?? 'export-host-page',
-    surfaceOrder,
-    surfacesById,
-    datasetOrder: closure.datasetIds,
-    datasetsById: Object.fromEntries(closure.datasetIds.map(id => [id, structuredClone(mutableDocument.datasetsById[id]!)])),
-    resources: Object.fromEntries(resourceIds.map(id => [id, structuredClone(mutableDocument.resources[id]!)])),
-    theme: structuredClone(mutableDocument.theme) ?? { version: PROJECT_THEME_VERSION },
-    registryLock: structuredClone(mutableDocument.registryLock),
-    settings: structuredClone(mutableDocument.settings),
-  })
 }
 
 /** Generate and download the structured project/page source archive. */

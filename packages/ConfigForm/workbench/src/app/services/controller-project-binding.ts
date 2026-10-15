@@ -19,13 +19,11 @@ import type { WorkbenchRecoveryDraftSummary, WorkbenchUiStore } from '../types'
 import { initializePrototypeProjectSession } from '@moluoxixi/config-form-prototype-runtime/session'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
-  createIndexedDBProjectRecoveryDraftStore,
-  createMemoryProjectRecoveryDraftStore,
   createProjectCoordinationChannel,
   createProjectEditorSession,
   createProjectPersistenceSession,
-  openDefaultProjectRepository,
 } from '../../project'
+import { createWorkbenchRecoveryDraftStore, discoverWorkspaceUrl, isHttpWorkbenchRepository, openWorkbenchProjectRepository } from './workspace-repository'
 
 export function createWorkbenchProjectBinding(options: {
   configError: Ref<string>
@@ -46,6 +44,7 @@ export function createWorkbenchProjectBinding(options: {
   repository: ShallowRef<ProjectRepository | undefined>
   ui: WorkbenchUiStore
   workbenchLocale: ComputedRef<ReturnType<typeof createDesignerLocale>>
+  storageInfo: Ref<{ mode: 'browser' | 'local', name: string, connected: boolean }>
 }) {
   const {
     configError,
@@ -172,20 +171,24 @@ export function createWorkbenchProjectBinding(options: {
     preferredSurfaceId: string,
     activeRepository: ProjectRepository,
     activate: () => void,
-  ): Promise<void> {
+    canActivate: () => boolean = () => true,
+  ): Promise<boolean> {
     const nextSurfaceId = resolveCurrentSurfaceId(session.snapshot, preferredSurfaceId)
     const sessionId = `${session.snapshot.document.id}:workbench:${++projectSessionIdSequence}:${Date.now().toString(36)}`
-    const draftStore = activeRepository.persistence === 'durable'
-      ? createIndexedDBProjectRecoveryDraftStore()
-      : createMemoryProjectRecoveryDraftStore()
+    const draftStore = createWorkbenchRecoveryDraftStore(activeRepository)
     let coordination: ReturnType<typeof createProjectCoordinationChannel> | undefined
     let nextPersistenceSession: ProjectPersistenceSession | undefined
     try {
       if ('open' in draftStore)
         await draftStore.open()
+      if (!canActivate()) {
+        draftStore.close()
+        return false
+      }
       coordination = createProjectCoordinationChannel({
         projectId: session.snapshot.document.id,
         sessionId,
+        ...(isHttpWorkbenchRepository(activeRepository) ? { namespace: activeRepository.workspaceId } : {}),
       })
       nextPersistenceSession = createProjectPersistenceSession({
         coordination,
@@ -195,11 +198,12 @@ export function createWorkbenchProjectBinding(options: {
         sessionId,
         onExternalRevision: async (resolution) => {
           if (resolution === 'reload' && !isDisposed() && projectSession.value === session)
-            await openProject(session.snapshot.document.id, currentSurfaceId.value)
+            await openProject(session.snapshot.document.id, currentSurfaceId.value, session)
         },
       })
-      await disposeProjectPersistence()
+      const previousPersistenceSession = persistenceSession
       activate()
+      unsubscribePersistenceSession?.()
       unsubscribeProjectSession?.()
       projectSession.value = session
       currentSurfaceId.value = nextSurfaceId
@@ -209,6 +213,7 @@ export function createWorkbenchProjectBinding(options: {
       unsubscribePersistenceSession = nextPersistenceSession.subscribe((snapshot) => {
         persistenceSnapshot.value = snapshot
       })
+      await previousPersistenceSession?.dispose().catch(error => ui.notify(error))
     }
     catch (error) {
       if (nextPersistenceSession) {
@@ -227,6 +232,7 @@ export function createWorkbenchProjectBinding(options: {
       recoveryDrafts.value = []
       ui.notify(error)
     }
+    return true
   }
 
   function selectCurrentSurface(surfaceId: string): boolean {
@@ -271,8 +277,9 @@ export function createWorkbenchProjectBinding(options: {
       projects.value = nextProjects
   }
 
-  async function openProject(id: string, surfaceId?: string): Promise<void> {
+  async function openProject(id: string, surfaceId?: string, externalBase?: ProjectEditorSession): Promise<void> {
     const requestId = ++openProjectRequestId
+    const baseEditVersion = externalBase?.snapshot.editVersion
     const activeRepository = repository.value
     if (!activeRepository)
       return
@@ -305,13 +312,26 @@ export function createWorkbenchProjectBinding(options: {
       registry: adapter.componentRegistry,
       repository: activeRepository,
     })
-    await bindProjectSession(session, page?.id ?? '', activeRepository, () => {
+    function canActivate(): boolean {
+      if (isDisposed() || requestId !== openProjectRequestId || activeRepository !== repository.value)
+        return false
+      if (!externalBase)
+        return true
+      if (projectSession.value !== externalBase)
+        return false
+      return externalBase.snapshot.editVersion === baseEditVersion && !hasUnsavedChanges.value
+    }
+    const activated = canActivate() && await bindProjectSession(session, page?.id ?? '', activeRepository, () => {
       previewSession.clear()
       configError.value = ''
       currentAdapter.value = adapter
       designSession.configure(adapter)
       exportService.clear()
-    })
+    }, canActivate)
+    if (!activated && externalBase && projectSession.value === externalBase) {
+      await persistenceSession?.notifyExternalRevision(project.repositoryRevision)
+      ui.notify('外部保存期间产生了本地编辑，已保留当前草稿。请保存为新项目或重新加载已保存版本。')
+    }
   }
 
   async function requestOpenProject(id: string, surfaceId?: string): Promise<void> {
@@ -348,12 +368,44 @@ export function createWorkbenchProjectBinding(options: {
   }
 
   async function initializeRepository(): Promise<void> {
-    const openedRepository = await openDefaultProjectRepository({})
+    const workspaceUrl = await discoverWorkspaceUrl()
+    if (workspaceUrl)
+      options.storageInfo.value = { mode: 'local', name: new URL(workspaceUrl).host, connected: false }
+    const openedRepository = await openWorkbenchProjectRepository()
     if (isDisposed()) {
       openedRepository.close()
       return
     }
     repository.value = openedRepository
+    if (isHttpWorkbenchRepository(openedRepository)) {
+      options.storageInfo.value = { mode: 'local', name: openedRepository.workspaceName, connected: true }
+      openedRepository.subscribeConnection(connected => options.storageInfo.value = { ...options.storageInfo.value, connected })
+      let changes: Promise<void> = Promise.resolve()
+      openedRepository.subscribeChanges((change) => {
+        changes = changes.then(async () => {
+          if (isDisposed() || repository.value !== openedRepository)
+            return
+          await refreshProjects()
+          const active = projectSession.value
+          if (!active || (change.projectId && change.projectId !== active.snapshot.document.id))
+            return
+          const latest = await openedRepository.get(active.snapshot.document.id)
+          if (!latest) {
+            if (hasUnsavedChanges.value) {
+              await persistenceSession?.notifyExternalRevision(Number.MAX_SAFE_INTEGER)
+              ui.notify('The project was deleted in another client. Save the local draft as a new project.')
+            }
+            else {
+              await closeProject()
+            }
+            return
+          }
+          const resolution = await persistenceSession?.notifyExternalRevision(latest.repositoryRevision)
+          if (resolution === 'reload' && projectSession.value === active)
+            await openProject(active.snapshot.document.id, currentSurfaceId.value, active)
+        }).catch(error => ui.notify(error))
+      })
+    }
     await refreshProjects()
     if (isDisposed() || repository.value !== openedRepository)
       return

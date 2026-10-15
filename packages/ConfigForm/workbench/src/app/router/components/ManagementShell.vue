@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FolderKanban, Languages, LibraryBig, PanelsTopLeft, Settings2 } from '@lucide/vue'
-import { WorkbenchAppearancePopover } from '../../components'
+import { WorkbenchAppearancePopover, WorkspaceStatus } from '../..'
 import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import { projectsPath, templatesPath } from '../../navigation'
 
@@ -22,6 +22,7 @@ const ui = useWorkbenchUiStore()
       <RouterLink :to="templatesPath()" :class="{ 'is-active': $route.path.startsWith('/templates') }" :aria-current="$route.path.startsWith('/templates') ? 'page' : undefined" :aria-label="controller.workbenchLocale.value.t('management.templates', 'Template management')">
         <LibraryBig :size="17" aria-hidden="true" /><span class="management-navigation__label">{{ controller.workbenchLocale.value.t('management.templates', 'Template management') }}</span><span class="management-navigation__compact">{{ controller.workbenchLocale.value.t('management.templatesShort', 'Templates') }}</span>
       </RouterLink>
+      <WorkspaceStatus v-if="controller.storageInfo" :storage="controller.storageInfo.value" :locale="ui.localeId.value" />
       <div v-if="$route.name === 'templates' || $route.name === 'project-data'" class="management-navigation__tools">
         <ElButton text circle :title="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" :aria-label="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" @click="ui.toggleLocale">
           <Languages :size="17" aria-hidden="true" />

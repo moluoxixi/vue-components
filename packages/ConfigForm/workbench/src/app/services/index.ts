@@ -1,3 +1,5 @@
 export * from './appearance-preference'
 export * from './controller'
 export { evaluateStudioExpression } from './expression-preview'
+export * from './revision-preview'
+export * from './workspace-repository'

@@ -1,7 +1,7 @@
 import type { ConfigFormValueSchema } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
 import type { ConfigFormRendererExpose, ConfigFormRendererNode } from '../types'
-import { createConfigFormValueScopeStore } from '@moluoxixi/config-form-core'
+import { createConfigFormValueScopeStore, getConfigFormValueScopeInstanceKey } from '@moluoxixi/config-form-core'
 import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -64,6 +64,27 @@ describe('array rendering presentation', () => {
       api.removeRow('orders', api.listRows('orders')[0]!.rowId)
       staleRemove.click()
       expect(errorHandler).toHaveBeenCalled()
+    }
+    finally { wrapper.unmount() }
+  })
+
+  it('isolates projected element visibility and props in each array row', async () => {
+    const wrapper = mount(ConfigFormRenderer as Component, { props: {
+      fields: [{ id: 'orders', component: 'section', valueScope: { kind: 'array', field: 'orders' }, slots: { default: [{ id: 'row-action', component: 'button', props: { title: 'Original' } }] } }],
+      model: createConfigFormModel(shallowRef({ orders: [{}, {}] })),
+    } })
+    const api = wrapper.vm as unknown as ConfigFormRendererExpose
+    const rows = api.listRows('orders')
+    const key = (rowId: string) => getConfigFormValueScopeInstanceKey('row-action', [{ scopeId: 'orders', rowId }])
+    try {
+      await wrapper.setProps({ reactionProjection: {
+        values: api.getValues(),
+        props: { [key(rows[1]!.rowId)]: { title: 'Second row' } },
+        states: { [key(rows[0]!.rowId)]: { visible: false }, [key(rows[1]!.rowId)]: { disabled: true } },
+        validate: [],
+      } })
+      expect(wrapper.findAll('[data-config-node-id="row-action"]')).toHaveLength(1)
+      expect(wrapper.get('button[data-config-node-id="row-action"]').attributes()).toMatchObject({ title: 'Second row', disabled: '' })
     }
     finally { wrapper.unmount() }
   })

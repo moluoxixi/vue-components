@@ -1,0 +1,5 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "incremental": false, "composite": false, "lib": ["ESNext", "DOM"], "types": ["node", "vitest/globals"] },
+  "include": ["index.ts", "src", "__tests__"]
+}

@@ -13,6 +13,7 @@ import type {
 import type { Component } from 'vue'
 import type { ConfigFormRendererEmits, ConfigFormRendererProps } from '../types'
 import type { RendererControllerState } from '../types/internal'
+import { getConfigFormValueScopeInstanceKey } from '@moluoxixi/config-form-core'
 import { createConfigFormController } from '@moluoxixi/config-form-headless'
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 
@@ -178,15 +179,17 @@ export function useRendererController<TValues extends ConfigFormValues>(
   function resolveInstanceProjection<T>(
     source: Record<string, T> | undefined,
     address: { nodeId: string, scope: ConfigFormScopePath },
-    field: string,
+    field?: string,
   ): T | undefined {
     if (!source)
       return undefined
-    const instanceKey = controller.getInstanceKey(address)
+    const instanceKey = getConfigFormValueScopeInstanceKey(address.nodeId, address.scope)
     if (source[instanceKey] !== undefined)
       return source[instanceKey]
     if (source[address.nodeId] !== undefined)
       return source[address.nodeId]
+    if (field === undefined)
+      return undefined
     const instance = controller.listFieldInstances(address.nodeId)
       .find(item => item.instanceKey === instanceKey)
     return instance?.ownerScopeId === undefined ? source[field] : undefined
@@ -194,17 +197,17 @@ export function useRendererController<TValues extends ConfigFormValues>(
 
   function resolveInstanceReactionProps(
     address: { nodeId: string, scope: ConfigFormScopePath },
-    field: string,
+    field?: string,
   ): ConfigFormAttrs {
     return {
-      ...controller.getInstanceReactionProps(address),
+      ...(field === undefined ? controller.getReactionProps(address.nodeId) : controller.getInstanceReactionProps(address)),
       ...resolveInstanceProjection(projection()?.props, address, field),
     }
   }
 
-  function resolveInstanceReactionState(address: { nodeId: string, scope: ConfigFormScopePath }, field: string) {
+  function resolveInstanceReactionState(address: { nodeId: string, scope: ConfigFormScopePath }, field?: string) {
     return {
-      ...controller.getInstanceReactionState(address),
+      ...(field === undefined ? controller.getReactionState(address.nodeId) : controller.getInstanceReactionState(address)),
       ...resolveInstanceProjection(projection()?.states, address, field),
     }
   }

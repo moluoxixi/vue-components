@@ -45,9 +45,10 @@ export function createNodeRenderer<TValues extends ConfigFormValues>(
     const { activePresentationLayout, bem, controller, editorBridge, props, responsiveLayouts } = context
     assertAcyclicNode(node, ancestors)
     const nextAncestors = new Set(ancestors).add(node)
-    const reactionState = isConfigFormField(node)
-      ? controller.getInstanceReactionState({ nodeId: node.id, scope })
-      : undefined
+    const reactionState = controller.resolveInstanceReactionState(
+      { nodeId: node.id, scope },
+      isConfigFormField(node) ? node.field : undefined,
+    )
     const visible = reactionState?.visible ?? isConfigFormNodeVisible(node, controller.model.value)
     if (!visible)
       return null

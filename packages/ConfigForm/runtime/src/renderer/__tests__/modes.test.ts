@@ -208,4 +208,36 @@ describe('configFormRenderer design and preview modes', () => {
     expect(input.attributes('disabled')).toBeUndefined()
     expect(input.attributes('aria-required')).toBeUndefined()
   })
+
+  it('applies projected visibility and properties to fields, elements and their parent layouts', async () => {
+    const Action = defineComponent({
+      props: { text: String },
+      setup: props => () => h('button', { 'data-testid': 'projected-action' }, props.text),
+    })
+    const wrapper = mount(ConfigFormRenderer as Component, { props: {
+      fields: [
+        { id: 'section', component: Host, slots: { default: { id: 'name-node', field: 'name', component: Input } } },
+        { id: 'action', component: Action, props: { text: 'Original' } },
+      ],
+      model: createConfigFormModel(shallowRef({ name: 'Ada' })),
+      reactionProjection: { values: { name: 'Ada' }, props: {}, states: { section: { visible: false }, action: { visible: false } }, validate: [] },
+    } })
+    expect(wrapper.find('[data-testid="surface-host"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="projected-action"]').exists()).toBe(false)
+    await wrapper.setProps({ reactionProjection: {
+      values: { name: 'Ada' },
+      props: { action: { text: 'Projected' } },
+      states: { 'section': { visible: true }, 'name-node': { visible: false }, 'action': { visible: true, disabled: true } },
+      validate: [],
+    } })
+    expect(wrapper.find('[data-testid="surface-host"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="surface-input"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="projected-action"]').text()).toBe('Projected')
+    expect(wrapper.get('[data-testid="projected-action"]').attributes('disabled')).toBe('')
+    await wrapper.setProps({ reactionProjection: { values: { name: 'Ada' }, props: {}, states: {}, validate: [] } })
+    expect(wrapper.get<HTMLInputElement>('[data-testid="surface-input"]').element.value).toBe('Ada')
+    expect(wrapper.get('[data-testid="projected-action"]').text()).toBe('Original')
+    expect(wrapper.get('[data-testid="projected-action"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
 })

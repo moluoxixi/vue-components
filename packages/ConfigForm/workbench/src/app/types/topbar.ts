@@ -19,6 +19,7 @@ export interface WorkbenchTopbarProps {
   sourceOpen?: boolean
   repositoryRevision?: number
   statusLabel: string
+  storageInfo?: { mode: 'browser' | 'local', name: string, connected: boolean }
   themePreference: WorkbenchThemePreference
 }
 

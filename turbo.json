@@ -16,6 +16,10 @@
       "dependsOn": ["^build"],
       "outputs": [".vitepress/dist/**"]
     },
+    "@moluoxixi/config-form-local#build": {
+      "dependsOn": ["^build", "@config-form/workbench#build"],
+      "outputs": ["dist/**"]
+    },
     "@moluoxixi/docs#test": {
       "dependsOn": ["^build"],
       "outputs": []

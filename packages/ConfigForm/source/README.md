@@ -26,6 +26,46 @@ pnpm add vue
 
 ## Generator
 
+### 直接从项目配置生成 Vue 源码
+
+`generateProjectSource` 接受当前项目对象、项目 transfer 或它们的 JSON 文本。它完成
+文档校验、可选的 Surface 依赖提取、编译和源码生成，宿主不需要自行构造 compilation：
+
+```ts
+import type { SourceProjectPreset } from '@moluoxixi/config-form-source/generator'
+import { generateProjectSource } from '@moluoxixi/config-form-source/generator'
+
+// preset 由宿主提供：registry 是组件契约快照，componentResolver 是纯源码组件映射。
+declare const preset: SourceProjectPreset
+declare const projectJson: string
+
+const result = await generateProjectSource({
+  project: projectJson,
+  preset,
+  styleTarget: 'tailwind-v4',
+})
+
+if (!result.success) {
+  throw new Error(JSON.stringify(result.diagnostics))
+}
+
+console.log(result.data.entry, result.data.files)
+```
+
+`surfaceId` 可限制为一个 Surface 及其引用的页面、浮层、数据和资源，项目封面同时保留。
+单独导出 Dialog/Drawer 时补入独立的宿主页面，且不会覆盖同名资产。
+`selectProjectSourceDocument(project, surfaceId)` 公开同一份校验与依赖提取，供宿主在
+生成前展示选中的配置和资产。
+
+完整项目 transfer 自带 embedded bytes，无需额外 reader；裸 `ProjectDocument` 含
+embedded 资源时必须传入 `resourceReader`，缺失或内容损坏时返回诊断，不会返回部分源码。
+此入口不初始化浏览器、Repository、IndexedDB 或设计器，也不发起 URL 资源网络请求。
+
+当前 `preset` 是注入的对象，不接受 `'element-plus'` 等预设名称。纯数据内置 preset、CLI、
+本地共享工作区与 MCP 分别由 [Studio](../studio/README.md) 与 [Local](../local/README.md) 提供。
+
+### 从已有 compilation 生成源码
+
 ```ts
 import { generateConfigFormBindings, generateVueSource } from '@moluoxixi/config-form-source/generator'
 

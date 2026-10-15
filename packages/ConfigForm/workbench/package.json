@@ -8,7 +8,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
-    "verify:templates": "vitest run --config vitest.integration.config.ts"
+    "verify:templates": "vitest run --config vitest.integration.config.ts",
+    "generate:catalogs": "node scripts/generate-studio-catalogs.mjs"
   },
   "dependencies": {
     "@babel/parser": "catalog:dev",
@@ -24,6 +25,7 @@
     "@moluoxixi/config-form-model": "workspace:*",
     "@moluoxixi/config-form-prototype-runtime": "workspace:*",
     "@moluoxixi/config-form-source": "workspace:*",
+    "@moluoxixi/config-form-studio": "workspace:*",
     "@moluoxixi/config-form-vue-backend": "workspace:*",
     "@moluoxixi/indexed-db": "workspace:*",
     "ant-design-vue": "catalog:ui",

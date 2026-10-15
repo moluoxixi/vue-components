@@ -468,6 +468,34 @@ describe('workbench template project creation transaction', () => {
     expect(controller.currentProject.value).toBeUndefined()
   })
 
+  it('preserves edits made while an external reload is waiting for its draft store', async () => {
+    const repository = durableRepository()
+    const { controller } = await setup(repository)
+    expect(await controller.createProjectFromTemplate(await elementTemplate(), 'Original')).toBe(true)
+    await controller.saveProject()
+    const original = (await repository.get(controller.currentProject.value!.id))!
+    await repository.commit({ id: original.document.id, commandId: 'external-edit', expectedRepositoryRevision: original.repositoryRevision, document: { ...original.document, name: 'Other client' }, metadata: { source: 'manual' } })
+    let release!: () => void
+    let opened!: () => void
+    const gate = new Promise<void>(accept => release = accept)
+    const waiting = new Promise<void>(accept => opened = accept)
+    const store = durableDraftStore()
+    store.open.mockImplementation(async () => {
+      opened()
+      await gate
+    })
+    mocks.createDraftStore.mockReturnValueOnce(store)
+    const reload = mocks.externalReloads.at(-1)!()
+    await waiting
+    await controller.renameProject(original.document.id, 'My draft')
+    release()
+    await reload
+    expect(controller.currentProject.value!.name).toBe('My draft')
+    expect(controller.dirty.value).toBe(true)
+    expect(controller.workspaceRecoveryNotice.value).toBeDefined()
+    expect((await repository.get(original.document.id))!.document.name).toBe('Other client')
+  })
+
   it('ignores an external reload callback from a superseded project session', async () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')

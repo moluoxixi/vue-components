@@ -5,6 +5,7 @@ import type {
   ModelJsonObject,
   ModelJsonValue,
   ProjectId,
+  RegistryContractSnapshot,
   ResourceId,
 } from '@moluoxixi/config-form-model'
 
@@ -166,3 +167,22 @@ export interface GenerateConfigFormBindingsInput extends SourceGenerationInputBa
 
 export type GenerateVueSourceResult = Promise<ContractResult<RawSourceFileSetV1>>
 export type GenerateConfigFormBindingsResult = Promise<ContractResult<ConfigBindingFileSetV1>>
+
+/** Portable provider inputs shared by browser, CLI and other hosts. */
+export interface SourceProjectPreset {
+  registry: RegistryContractSnapshot
+  componentResolver: SourceComponentResolver
+}
+
+export interface GenerateProjectSourceInput {
+  /** Current ProjectDocument, project transfer envelope, or either as JSON text. */
+  project: unknown
+  preset: SourceProjectPreset
+  /** Required for embedded resources in a bare document; transfers own their bytes. */
+  resourceReader?: SourceResourceReader
+  styleTarget?: SourceStyleTarget
+  /** Export one Surface and its dependency closure. */
+  surfaceId?: string
+}
+
+export type GenerateProjectSourceResult = Promise<ContractResult<RawSourceFileSetV1>>

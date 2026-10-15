@@ -1,0 +1,4444 @@
+{
+  "version": 1,
+  "preset": "element-plus",
+  "materials": [
+    {
+      "contract": {
+        "key": "element.input",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "placeholder",
+            "path": [
+              "props",
+              "placeholder"
+            ]
+          },
+          {
+            "key": "clearable",
+            "path": [
+              "props",
+              "clearable"
+            ]
+          },
+          {
+            "key": "maxlength",
+            "path": [
+              "props",
+              "maxlength"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "placeholder": ""
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "输入框",
+      "category": "字段",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "placeholder",
+          "path": [
+            "props",
+            "placeholder"
+          ],
+          "label": "Placeholder",
+          "control": "text"
+        },
+        {
+          "key": "clearable",
+          "path": [
+            "props",
+            "clearable"
+          ],
+          "label": "Clearable",
+          "control": "boolean"
+        },
+        {
+          "key": "maxlength",
+          "path": [
+            "props",
+            "maxlength"
+          ],
+          "label": "Max length",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.input",
+            "props": {
+              "placeholder": ""
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Input"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "text",
+        "tag": "el-input",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.textarea",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "placeholder",
+            "path": [
+              "props",
+              "placeholder"
+            ]
+          },
+          {
+            "key": "rows",
+            "path": [
+              "props",
+              "rows"
+            ]
+          },
+          {
+            "key": "maxlength",
+            "path": [
+              "props",
+              "maxlength"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "type": "textarea",
+          "placeholder": "",
+          "rows": 3
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "多行输入",
+      "category": "字段",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "placeholder",
+          "path": [
+            "props",
+            "placeholder"
+          ],
+          "label": "Placeholder",
+          "control": "text"
+        },
+        {
+          "key": "rows",
+          "path": [
+            "props",
+            "rows"
+          ],
+          "label": "Rows",
+          "control": "number"
+        },
+        {
+          "key": "maxlength",
+          "path": [
+            "props",
+            "maxlength"
+          ],
+          "label": "Max length",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.textarea",
+            "props": {
+              "type": "textarea",
+              "placeholder": "",
+              "rows": 3
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Textarea"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "textarea",
+        "tag": "el-input",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "staticProps": {
+          "type": "textarea"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.input-number",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "min",
+            "path": [
+              "props",
+              "min"
+            ]
+          },
+          {
+            "key": "max",
+            "path": [
+              "props",
+              "max"
+            ]
+          },
+          {
+            "key": "step",
+            "path": [
+              "props",
+              "step"
+            ]
+          },
+          {
+            "key": "controls",
+            "path": [
+              "props",
+              "controls"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "step": 1,
+          "controls": true
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "数字输入",
+      "category": "字段",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "min",
+          "path": [
+            "props",
+            "min"
+          ],
+          "label": "Minimum",
+          "control": "number"
+        },
+        {
+          "key": "max",
+          "path": [
+            "props",
+            "max"
+          ],
+          "label": "Maximum",
+          "control": "number"
+        },
+        {
+          "key": "step",
+          "path": [
+            "props",
+            "step"
+          ],
+          "label": "Step",
+          "control": "number"
+        },
+        {
+          "key": "controls",
+          "path": [
+            "props",
+            "controls"
+          ],
+          "label": "Controls",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.input-number",
+            "props": {
+              "step": 1,
+              "controls": true
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Number"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "number",
+        "tag": "el-input-number",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.select",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "options",
+            "path": [
+              "props",
+              "options"
+            ]
+          },
+          {
+            "key": "placeholder",
+            "path": [
+              "props",
+              "placeholder"
+            ]
+          },
+          {
+            "key": "clearable",
+            "path": [
+              "props",
+              "clearable"
+            ]
+          },
+          {
+            "key": "filterable",
+            "path": [
+              "props",
+              "filterable"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "options": [
+            {
+              "label": "Option A",
+              "value": "a"
+            },
+            {
+              "label": "Option B",
+              "value": "b"
+            }
+          ],
+          "placeholder": ""
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [
+          {
+            "key": "options",
+            "projectionKinds": [
+              "options"
+            ]
+          }
+        ],
+        "resourceBindings": []
+      },
+      "title": "选择器",
+      "category": "选择",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "custom"
+        },
+        {
+          "key": "options",
+          "path": [
+            "props",
+            "options"
+          ],
+          "label": "Static options",
+          "control": "options"
+        },
+        {
+          "key": "placeholder",
+          "path": [
+            "props",
+            "placeholder"
+          ],
+          "label": "Placeholder",
+          "control": "text"
+        },
+        {
+          "key": "clearable",
+          "path": [
+            "props",
+            "clearable"
+          ],
+          "label": "Clearable",
+          "control": "boolean"
+        },
+        {
+          "key": "filterable",
+          "path": [
+            "props",
+            "filterable"
+          ],
+          "label": "Filterable",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.select",
+            "props": {
+              "options": [
+                {
+                  "label": "Option A",
+                  "value": "a"
+                },
+                {
+                  "label": "Option B",
+                  "value": "b"
+                }
+              ],
+              "placeholder": ""
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Select"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "select",
+        "tag": "el-select",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "options": {
+          "mode": "children",
+          "optionTag": "el-option",
+          "labelProp": "label",
+          "valueProp": "value"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.radio",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "options",
+            "path": [
+              "props",
+              "options"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "options": [
+            {
+              "label": "Option A",
+              "value": "a"
+            },
+            {
+              "label": "Option B",
+              "value": "b"
+            }
+          ]
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "单选框",
+      "category": "选择",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "custom"
+        },
+        {
+          "key": "options",
+          "path": [
+            "props",
+            "options"
+          ],
+          "label": "Static options",
+          "control": "options"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.radio",
+            "props": {
+              "options": [
+                {
+                  "label": "Option A",
+                  "value": "a"
+                },
+                {
+                  "label": "Option B",
+                  "value": "b"
+                }
+              ]
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Radio"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "select",
+        "tag": "el-radio-group",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "options": {
+          "mode": "children",
+          "optionTag": "el-radio",
+          "labelProp": "label",
+          "valueProp": "value"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.checkbox",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "options",
+            "path": [
+              "props",
+              "options"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "options": [
+            {
+              "label": "Option A",
+              "value": "a"
+            },
+            {
+              "label": "Option B",
+              "value": "b"
+            }
+          ]
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "复选框",
+      "category": "选择",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "custom"
+        },
+        {
+          "key": "options",
+          "path": [
+            "props",
+            "options"
+          ],
+          "label": "Static options",
+          "control": "options"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.checkbox",
+            "props": {
+              "options": [
+                {
+                  "label": "Option A",
+                  "value": "a"
+                },
+                {
+                  "label": "Option B",
+                  "value": "b"
+                }
+              ]
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Checkbox",
+            "defaultValue": []
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "select",
+        "tag": "el-checkbox-group",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "defaultValue": [],
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "options": {
+          "mode": "children",
+          "optionTag": "el-checkbox",
+          "labelProp": "label",
+          "valueProp": "value"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.switch",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "activeText",
+            "path": [
+              "props",
+              "activeText"
+            ]
+          },
+          {
+            "key": "inactiveText",
+            "path": [
+              "props",
+              "inactiveText"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {},
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "开关",
+      "category": "选择",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "activeText",
+          "path": [
+            "props",
+            "activeText"
+          ],
+          "label": "Active text",
+          "control": "text"
+        },
+        {
+          "key": "inactiveText",
+          "path": [
+            "props",
+            "inactiveText"
+          ],
+          "label": "Inactive text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.switch",
+            "props": {},
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Switch",
+            "defaultValue": false
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "boolean",
+        "tag": "el-switch",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "defaultValue": false,
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.date",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "placeholder",
+            "path": [
+              "props",
+              "placeholder"
+            ]
+          },
+          {
+            "key": "clearable",
+            "path": [
+              "props",
+              "clearable"
+            ]
+          },
+          {
+            "key": "format",
+            "path": [
+              "props",
+              "format"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "type": "date",
+          "valueFormat": "YYYY-MM-DD",
+          "placeholder": ""
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "日期",
+      "category": "日期时间",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "placeholder",
+          "path": [
+            "props",
+            "placeholder"
+          ],
+          "label": "Placeholder",
+          "control": "text"
+        },
+        {
+          "key": "clearable",
+          "path": [
+            "props",
+            "clearable"
+          ],
+          "label": "Clearable",
+          "control": "boolean"
+        },
+        {
+          "key": "format",
+          "path": [
+            "props",
+            "format"
+          ],
+          "label": "Display format",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.date",
+            "props": {
+              "type": "date",
+              "valueFormat": "YYYY-MM-DD",
+              "placeholder": ""
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Date"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "text",
+        "tag": "el-date-picker",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.time",
+        "version": "1",
+        "kind": "field",
+        "props": [
+          {
+            "key": "placeholder",
+            "path": [
+              "props",
+              "placeholder"
+            ]
+          },
+          {
+            "key": "clearable",
+            "path": [
+              "props",
+              "clearable"
+            ]
+          },
+          {
+            "key": "format",
+            "path": [
+              "props",
+              "format"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "name": "value",
+            "valueProp": "modelValue",
+            "trigger": "update:modelValue"
+          }
+        ],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "valueFormat": "HH:mm:ss",
+          "placeholder": ""
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "时间",
+      "category": "日期时间",
+      "properties": [
+        {
+          "key": "defaultValue",
+          "path": [
+            "defaultValue"
+          ],
+          "label": "Default value",
+          "control": "defaultValue"
+        },
+        {
+          "key": "placeholder",
+          "path": [
+            "props",
+            "placeholder"
+          ],
+          "label": "Placeholder",
+          "control": "text"
+        },
+        {
+          "key": "clearable",
+          "path": [
+            "props",
+            "clearable"
+          ],
+          "label": "Clearable",
+          "control": "boolean"
+        },
+        {
+          "key": "format",
+          "path": [
+            "props",
+            "format"
+          ],
+          "label": "Display format",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.time",
+            "props": {
+              "valueFormat": "HH:mm:ss",
+              "placeholder": ""
+            },
+            "kind": "field",
+            "field": "__studio_field__",
+            "label": "Time"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "text",
+        "tag": "el-time-picker",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        },
+        "trigger": "update:modelValue",
+        "valueProp": "modelValue"
+      }
+    },
+    {
+      "contract": {
+        "key": "element.section",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "description",
+            "path": [
+              "props",
+              "description"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "title": "Section"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "分区",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "description",
+          "path": [
+            "props",
+            "description"
+          ],
+          "label": "Description",
+          "control": "textarea"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.section",
+            "props": {
+              "title": "Section"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "section",
+        "render": "section",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.card",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "header",
+            "path": [
+              "props",
+              "header"
+            ]
+          },
+          {
+            "key": "shadow",
+            "path": [
+              "props",
+              "shadow"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "header": "Card",
+          "shadow": "never"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "卡片",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "header",
+          "path": [
+            "props",
+            "header"
+          ],
+          "label": "Header",
+          "control": "text"
+        },
+        {
+          "key": "shadow",
+          "path": [
+            "props",
+            "shadow"
+          ],
+          "label": "Shadow",
+          "control": "select",
+          "options": [
+            {
+              "label": "Always",
+              "value": "always"
+            },
+            {
+              "label": "Hover",
+              "value": "hover"
+            },
+            {
+              "label": "Never",
+              "value": "never"
+            }
+          ]
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.card",
+            "props": {
+              "header": "Card",
+              "shadow": "never"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "div",
+        "tag": "el-card",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.tabs",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "tabPosition",
+            "path": [
+              "props",
+              "tabPosition"
+            ]
+          },
+          {
+            "key": "stretch",
+            "path": [
+              "props",
+              "stretch"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "layout"
+            ],
+            "components": [
+              "element.tab-pane"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "tabPosition": "top",
+          "modelValue": "__registry_default__-pane-1"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "标签页",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "tabPosition",
+          "path": [
+            "props",
+            "tabPosition"
+          ],
+          "label": "Position",
+          "control": "select",
+          "options": [
+            {
+              "label": "Top",
+              "value": "top"
+            },
+            {
+              "label": "Right",
+              "value": "right"
+            },
+            {
+              "label": "Bottom",
+              "value": "bottom"
+            },
+            {
+              "label": "Left",
+              "value": "left"
+            }
+          ]
+        },
+        {
+          "key": "stretch",
+          "path": [
+            "props",
+            "stretch"
+          ],
+          "label": "Stretch",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.tabs",
+            "props": {
+              "tabPosition": "top",
+              "modelValue": "__studio_node__-pane-1"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": [
+                {
+                  "nodeId": "__studio_node__-pane-1",
+                  "placement": {}
+                }
+              ]
+            }
+          },
+          "__studio_node__-pane-1": {
+            "id": "__studio_node__-pane-1",
+            "component": "element.tab-pane",
+            "props": {
+              "label": "Tab 1",
+              "name": "__studio_node__-pane-1"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "div",
+        "tag": "el-tabs",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.tab-pane",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "label",
+            "path": [
+              "props",
+              "label"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [
+          {
+            "component": "element.tabs",
+            "slot": "default"
+          }
+        ],
+        "defaults": {
+          "label": "Tab",
+          "name": "__registry_default__"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "标签面板",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "label",
+          "path": [
+            "props",
+            "label"
+          ],
+          "label": "Label",
+          "control": "text"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.tab-pane",
+            "props": {
+              "label": "Tab",
+              "name": "__studio_node__"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "div",
+        "tag": "el-tab-pane",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.collapse",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "accordion",
+            "path": [
+              "props",
+              "accordion"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "layout"
+            ],
+            "components": [
+              "element.collapse-item"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "accordion": false,
+          "modelValue": [
+            "__registry_default__-item-1"
+          ]
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "折叠面板",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "accordion",
+          "path": [
+            "props",
+            "accordion"
+          ],
+          "label": "Accordion",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.collapse",
+            "props": {
+              "accordion": false,
+              "modelValue": [
+                "__studio_node__-item-1"
+              ]
+            },
+            "kind": "layout",
+            "slots": {
+              "default": [
+                {
+                  "nodeId": "__studio_node__-item-1",
+                  "placement": {}
+                }
+              ]
+            }
+          },
+          "__studio_node__-item-1": {
+            "id": "__studio_node__-item-1",
+            "component": "element.collapse-item",
+            "props": {
+              "title": "Item 1",
+              "name": "__studio_node__-item-1"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "div",
+        "tag": "el-collapse",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.collapse-item",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [
+          {
+            "component": "element.collapse",
+            "slot": "default"
+          }
+        ],
+        "defaults": {
+          "title": "Item",
+          "name": "__registry_default__"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "折叠项",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.collapse-item",
+            "props": {
+              "title": "Item",
+              "name": "__studio_node__"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "div",
+        "tag": "el-collapse-item",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.flex",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "direction",
+            "path": [
+              "props",
+              "direction"
+            ]
+          },
+          {
+            "key": "wrap",
+            "path": [
+              "props",
+              "wrap"
+            ]
+          },
+          {
+            "key": "justify",
+            "path": [
+              "props",
+              "justify"
+            ]
+          },
+          {
+            "key": "align",
+            "path": [
+              "props",
+              "align"
+            ]
+          },
+          {
+            "key": "gap",
+            "path": [
+              "props",
+              "gap"
+            ]
+          },
+          {
+            "key": "itemWidth",
+            "path": [
+              "props",
+              "itemWidth"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "direction": "row",
+          "wrap": true,
+          "gap": 12,
+          "justify": "flex-start",
+          "align": "stretch",
+          "itemWidth": 220
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Flex 换行",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "direction",
+          "path": [
+            "props",
+            "direction"
+          ],
+          "label": "Direction",
+          "control": "select",
+          "options": [
+            {
+              "label": "Row",
+              "value": "row"
+            },
+            {
+              "label": "Column",
+              "value": "column"
+            }
+          ]
+        },
+        {
+          "key": "wrap",
+          "path": [
+            "props",
+            "wrap"
+          ],
+          "label": "Wrap",
+          "control": "boolean"
+        },
+        {
+          "key": "justify",
+          "path": [
+            "props",
+            "justify"
+          ],
+          "label": "Justify",
+          "control": "select",
+          "options": [
+            {
+              "label": "Start",
+              "value": "flex-start"
+            },
+            {
+              "label": "Center",
+              "value": "center"
+            },
+            {
+              "label": "End",
+              "value": "flex-end"
+            },
+            {
+              "label": "Between",
+              "value": "space-between"
+            }
+          ]
+        },
+        {
+          "key": "align",
+          "path": [
+            "props",
+            "align"
+          ],
+          "label": "Align",
+          "control": "select",
+          "options": [
+            {
+              "label": "Start",
+              "value": "flex-start"
+            },
+            {
+              "label": "Center",
+              "value": "center"
+            },
+            {
+              "label": "End",
+              "value": "flex-end"
+            },
+            {
+              "label": "Stretch",
+              "value": "stretch"
+            }
+          ]
+        },
+        {
+          "key": "gap",
+          "path": [
+            "props",
+            "gap"
+          ],
+          "label": "Gap",
+          "control": "number"
+        },
+        {
+          "key": "itemWidth",
+          "path": [
+            "props",
+            "itemWidth"
+          ],
+          "label": "Item width",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.flex",
+            "props": {
+              "direction": "row",
+              "wrap": true,
+              "gap": 12,
+              "justify": "flex-start",
+              "align": "stretch",
+              "itemWidth": 220
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "div",
+        "render": "layout-flex",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.grid",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "columns",
+            "path": [
+              "props",
+              "columns"
+            ]
+          },
+          {
+            "key": "gap",
+            "path": [
+              "props",
+              "gap"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "columns": 2,
+          "gap": 12
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Grid 栅格",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "columns",
+          "path": [
+            "props",
+            "columns"
+          ],
+          "label": "Columns",
+          "control": "number"
+        },
+        {
+          "key": "gap",
+          "path": [
+            "props",
+            "gap"
+          ],
+          "label": "Gap",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.grid",
+            "props": {
+              "columns": 2,
+              "gap": 12
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "div",
+        "render": "layout-grid",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.object-group",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "readonly",
+            "path": [
+              "props",
+              "readonly"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "title": "Object group"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "对象分组",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "readonly",
+          "path": [
+            "props",
+            "readonly"
+          ],
+          "label": "Read only",
+          "control": "boolean"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.object-group",
+            "props": {
+              "title": "Object group"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            },
+            "valueScope": {
+              "kind": "object",
+              "field": "object"
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "section",
+        "render": "section",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.array-subform",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "arrayDisplay",
+            "path": [
+              "props",
+              "arrayDisplay"
+            ]
+          },
+          {
+            "key": "readonly",
+            "path": [
+              "props",
+              "readonly"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "title": "Array subform",
+          "arrayDisplay": "list"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "数组子表单",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "arrayDisplay",
+          "path": [
+            "props",
+            "arrayDisplay"
+          ],
+          "label": "Display",
+          "control": "select",
+          "options": [
+            {
+              "label": "List",
+              "value": "list"
+            },
+            {
+              "label": "Table",
+              "value": "table"
+            }
+          ]
+        },
+        {
+          "key": "readonly",
+          "path": [
+            "props",
+            "readonly"
+          ],
+          "label": "Read only",
+          "control": "boolean"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.array-subform",
+            "props": {
+              "title": "Array subform",
+              "arrayDisplay": "list"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            },
+            "valueScope": {
+              "kind": "array",
+              "field": "items",
+              "minItems": 0
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "section",
+        "render": "section",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.detail-table",
+        "version": "1",
+        "kind": "layout",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "arrayDisplay",
+            "path": [
+              "props",
+              "arrayDisplay"
+            ]
+          },
+          {
+            "key": "readonly",
+            "path": [
+              "props",
+              "readonly"
+            ]
+          },
+          {
+            "key": "disabled",
+            "path": [
+              "props",
+              "disabled"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [
+          {
+            "name": "default",
+            "accepts": [
+              "field",
+              "layout",
+              "element"
+            ]
+          }
+        ],
+        "allowedParents": [],
+        "defaults": {
+          "title": "Detail table",
+          "arrayDisplay": "table"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "明细表格",
+      "category": "布局",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "arrayDisplay",
+          "path": [
+            "props",
+            "arrayDisplay"
+          ],
+          "label": "Display",
+          "control": "select",
+          "options": [
+            {
+              "label": "List",
+              "value": "list"
+            },
+            {
+              "label": "Table",
+              "value": "table"
+            }
+          ]
+        },
+        {
+          "key": "readonly",
+          "path": [
+            "props",
+            "readonly"
+          ],
+          "label": "Read only",
+          "control": "boolean"
+        },
+        {
+          "key": "disabled",
+          "path": [
+            "props",
+            "disabled"
+          ],
+          "label": "Disabled",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.detail-table",
+            "props": {
+              "title": "Detail table",
+              "arrayDisplay": "table"
+            },
+            "kind": "layout",
+            "slots": {
+              "default": []
+            },
+            "valueScope": {
+              "kind": "array",
+              "field": "details",
+              "minItems": 0
+            }
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "div",
+        "tag": "section",
+        "render": "section",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.text",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "Text"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Text",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.text",
+            "props": {
+              "text": "Text"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "text",
+        "tag": "el-text",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.title",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          },
+          {
+            "key": "level",
+            "path": [
+              "props",
+              "level"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "Title",
+          "level": 2
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Title",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        },
+        {
+          "key": "level",
+          "path": [
+            "props",
+            "level"
+          ],
+          "label": "Level",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.title",
+            "props": {
+              "text": "Title",
+              "level": 2
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "title",
+        "tag": "h2",
+        "render": "component",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.icon",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "i"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Icon",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.icon",
+            "props": {
+              "text": "i"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "icon",
+        "tag": "span",
+        "render": "component",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {}
+      }
+    },
+    {
+      "contract": {
+        "key": "element.image",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "src",
+            "path": [
+              "props",
+              "src"
+            ]
+          },
+          {
+            "key": "alt",
+            "path": [
+              "props",
+              "alt"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "src": "",
+          "alt": ""
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": [
+          {
+            "key": "src",
+            "mediaTypes": [
+              "image/*"
+            ]
+          }
+        ]
+      },
+      "title": "Image",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "src",
+          "path": [
+            "props",
+            "src"
+          ],
+          "label": "Source",
+          "control": "text"
+        },
+        {
+          "key": "alt",
+          "path": [
+            "props",
+            "alt"
+          ],
+          "label": "Alternative text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.image",
+            "props": {
+              "src": "",
+              "alt": ""
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "image",
+        "tag": "el-image",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.divider",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": ""
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Divider",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.divider",
+            "props": {
+              "text": ""
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "divider",
+        "tag": "el-divider",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.button",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          },
+          {
+            "key": "type",
+            "path": [
+              "props",
+              "type"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "Button",
+          "type": "primary"
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Button",
+      "category": "Actions",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        },
+        {
+          "key": "type",
+          "path": [
+            "props",
+            "type"
+          ],
+          "label": "Type",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.button",
+            "props": {
+              "text": "Button",
+              "type": "primary"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "button",
+        "tag": "el-button",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.link",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "Link"
+        },
+        "semanticTriggers": [
+          "activate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Link",
+      "category": "Actions",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.link",
+            "props": {
+              "text": "Link"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "link",
+        "tag": "el-link",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {
+          "activate": {
+            "event": "click",
+            "listenerProp": "onClick",
+            "item": {
+              "kind": "none"
+            }
+          }
+        },
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.tag",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "text",
+            "path": [
+              "props",
+              "text"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "text": "Tag"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Tag",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "text",
+          "path": [
+            "props",
+            "text"
+          ],
+          "label": "Text",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.tag",
+            "props": {
+              "text": "Tag"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "tag",
+        "tag": "el-tag",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.alert",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "title",
+            "path": [
+              "props",
+              "title"
+            ]
+          },
+          {
+            "key": "description",
+            "path": [
+              "props",
+              "description"
+            ]
+          },
+          {
+            "key": "type",
+            "path": [
+              "props",
+              "type"
+            ]
+          },
+          {
+            "key": "showIcon",
+            "path": [
+              "props",
+              "showIcon"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "title": "Alert",
+          "description": "",
+          "type": "info",
+          "showIcon": true
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Alert",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "title",
+          "path": [
+            "props",
+            "title"
+          ],
+          "label": "Title",
+          "control": "text"
+        },
+        {
+          "key": "description",
+          "path": [
+            "props",
+            "description"
+          ],
+          "label": "Description",
+          "control": "textarea"
+        },
+        {
+          "key": "type",
+          "path": [
+            "props",
+            "type"
+          ],
+          "label": "Type",
+          "control": "text"
+        },
+        {
+          "key": "showIcon",
+          "path": [
+            "props",
+            "showIcon"
+          ],
+          "label": "Show icon",
+          "control": "boolean"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.alert",
+            "props": {
+              "title": "Alert",
+              "description": "",
+              "type": "info",
+              "showIcon": true
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "alert",
+        "tag": "el-alert",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.table",
+        "version": "1",
+        "kind": "element",
+        "props": [],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "rows": []
+        },
+        "semanticTriggers": [
+          "rowActivate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [
+          {
+            "key": "rows",
+            "projectionKinds": [
+              "table"
+            ]
+          }
+        ],
+        "resourceBindings": []
+      },
+      "title": "Table",
+      "category": "Data",
+      "properties": [],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.table",
+            "props": {
+              "rows": []
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "table",
+        "tag": "el-table",
+        "render": "dataset-table",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {
+          "rowActivate": {
+            "event": "row-click",
+            "listenerProp": "onRowClick",
+            "item": {
+              "kind": "argument",
+              "index": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.list",
+        "version": "1",
+        "kind": "element",
+        "props": [],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "items": []
+        },
+        "semanticTriggers": [
+          "itemActivate"
+        ],
+        "stateProjectionProperties": [],
+        "datasetBindings": [
+          {
+            "key": "items",
+            "projectionKinds": [
+              "list"
+            ]
+          }
+        ],
+        "resourceBindings": []
+      },
+      "title": "List",
+      "category": "Data",
+      "properties": [],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.list",
+            "props": {
+              "items": []
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "",
+        "importName": "",
+        "configComponent": "list",
+        "tag": "div",
+        "render": "dataset-list",
+        "styleImports": [],
+        "dependencies": {},
+        "semanticListeners": {
+          "itemActivate": {
+            "event": "item-click",
+            "listenerProp": "onItemClick",
+            "item": {
+              "kind": "argument",
+              "index": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.empty",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "description",
+            "path": [
+              "props",
+              "description"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "description": "No data"
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Empty",
+      "category": "Display",
+      "properties": [
+        {
+          "key": "description",
+          "path": [
+            "props",
+            "description"
+          ],
+          "label": "Description",
+          "control": "text"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.empty",
+            "props": {
+              "description": "No data"
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "empty",
+        "tag": "el-empty",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    },
+    {
+      "contract": {
+        "key": "element.pagination",
+        "version": "1",
+        "kind": "element",
+        "props": [
+          {
+            "key": "total",
+            "path": [
+              "props",
+              "total"
+            ]
+          },
+          {
+            "key": "pageSize",
+            "path": [
+              "props",
+              "pageSize"
+            ]
+          }
+        ],
+        "bindings": [],
+        "slots": [],
+        "allowedParents": [],
+        "defaults": {
+          "total": 0,
+          "pageSize": 10
+        },
+        "semanticTriggers": [],
+        "stateProjectionProperties": [],
+        "datasetBindings": [],
+        "resourceBindings": []
+      },
+      "title": "Pagination",
+      "category": "Data",
+      "properties": [
+        {
+          "key": "total",
+          "path": [
+            "props",
+            "total"
+          ],
+          "label": "Total",
+          "control": "number"
+        },
+        {
+          "key": "pageSize",
+          "path": [
+            "props",
+            "pageSize"
+          ],
+          "label": "Page size",
+          "control": "number"
+        }
+      ],
+      "defaultSubgraph": {
+        "root": [
+          {
+            "nodeId": "__studio_node__",
+            "placement": {}
+          }
+        ],
+        "nodesById": {
+          "__studio_node__": {
+            "id": "__studio_node__",
+            "component": "element.pagination",
+            "props": {
+              "total": 0,
+              "pageSize": 10
+            },
+            "kind": "element"
+          }
+        }
+      },
+      "resolution": {
+        "moduleSpecifier": "element-plus",
+        "importName": "ElementPlus",
+        "configComponent": "pagination",
+        "tag": "el-pagination",
+        "render": "component",
+        "styleImports": [
+          "element-plus/dist/index.css"
+        ],
+        "dependencies": {
+          "element-plus": "^2.9.1"
+        },
+        "semanticListeners": {},
+        "library": {
+          "packageName": "element-plus",
+          "plugin": "ElementPlus",
+          "stylesheet": "element-plus/dist/index.css",
+          "version": "^2.9.1"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "element-blank",
+      "name": "Element Plus blank form",
+      "description": "An empty Element Plus form with responsive layout settings.",
+      "preset": "element-plus",
+      "tags": [
+        "Element Plus",
+        "blank",
+        "empty"
+      ],
+      "surface": {
+        "id": "template-page",
+        "name": "Blank form",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "left",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [],
+          "nodesById": {}
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "page",
+        "route": "/"
+      }
+    },
+    {
+      "id": "element-dialog",
+      "name": "Element Plus blank dialog",
+      "description": "An empty reusable Element Plus dialog Surface.",
+      "preset": "element-plus",
+      "tags": [
+        "Element Plus",
+        "dialog",
+        "overlay"
+      ],
+      "surface": {
+        "id": "template-dialog",
+        "name": "Blank dialog",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "left",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [],
+          "nodesById": {}
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "dialog",
+        "presentation": {
+          "kind": "dialog",
+          "title": "Dialog title",
+          "width": {
+            "desktop": {
+              "value": 560,
+              "unit": "px"
+            },
+            "mobile": {
+              "value": 92,
+              "unit": "vw"
+            }
+          },
+          "mask": true,
+          "close": {
+            "escape": true,
+            "mask": true,
+            "button": true
+          }
+        }
+      }
+    },
+    {
+      "id": "element-drawer",
+      "name": "Element Plus blank drawer",
+      "description": "An empty reusable Element Plus drawer Surface.",
+      "preset": "element-plus",
+      "tags": [
+        "Element Plus",
+        "drawer",
+        "overlay"
+      ],
+      "surface": {
+        "id": "template-drawer",
+        "name": "Blank drawer",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "left",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [],
+          "nodesById": {}
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "drawer",
+        "presentation": {
+          "kind": "drawer",
+          "title": "Drawer title",
+          "placement": "right",
+          "size": {
+            "desktop": {
+              "value": 480,
+              "unit": "px"
+            },
+            "mobile": {
+              "value": 92,
+              "unit": "vw"
+            }
+          },
+          "mask": true,
+          "close": {
+            "escape": true,
+            "mask": true,
+            "button": true
+          }
+        }
+      }
+    },
+    {
+      "id": "element-profile",
+      "name": "Element Plus profile form",
+      "description": "A responsive Element Plus profile form with name, role, and active fields.",
+      "preset": "element-plus",
+      "tags": [
+        "Element Plus",
+        "profile",
+        "starter"
+      ],
+      "surface": {
+        "id": "template-page",
+        "name": "Profile form",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "left",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [
+            {
+              "nodeId": "profile-name",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "profile-role",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "profile-active",
+              "placement": {
+                "span": 24
+              }
+            }
+          ],
+          "nodesById": {
+            "profile-name": {
+              "id": "profile-name",
+              "kind": "field",
+              "component": "element.input",
+              "field": "name",
+              "label": "Name",
+              "defaultValue": "",
+              "props": {
+                "placeholder": "Enter your name"
+              }
+            },
+            "profile-role": {
+              "id": "profile-role",
+              "kind": "field",
+              "component": "element.select",
+              "field": "role",
+              "label": "Role",
+              "defaultValue": "developer",
+              "props": {
+                "options": [
+                  {
+                    "label": "Developer",
+                    "value": "developer"
+                  },
+                  {
+                    "label": "Designer",
+                    "value": "designer"
+                  }
+                ],
+                "placeholder": "Select a role"
+              }
+            },
+            "profile-active": {
+              "id": "profile-active",
+              "kind": "field",
+              "component": "element.switch",
+              "field": "active",
+              "label": "Active",
+              "defaultValue": true,
+              "props": {}
+            }
+          }
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "page",
+        "route": "/"
+      }
+    },
+    {
+      "id": "element-approval",
+      "name": "Element Plus approval form",
+      "description": "A request form with required fields, amount limits and contextual help.",
+      "preset": "element-plus",
+      "tags": [
+        "approval",
+        "task",
+        "validation",
+        "responsive",
+        "starter"
+      ],
+      "surface": {
+        "id": "template-page",
+        "name": "approval form",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "top",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [
+            {
+              "nodeId": "approval-requester",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "approval-department",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "approval-amount",
+              "placement": {
+                "span": 24
+              }
+            },
+            {
+              "nodeId": "approval-reason",
+              "placement": {
+                "span": 24
+              }
+            }
+          ],
+          "nodesById": {
+            "approval-requester": {
+              "id": "approval-requester",
+              "kind": "field",
+              "component": "element.input",
+              "field": "requester",
+              "label": "Applicant",
+              "props": {},
+              "required": true,
+              "description": "Use the name shown in your employee record.",
+              "validation": {
+                "version": 2,
+                "base": {
+                  "type": "string"
+                },
+                "rules": [
+                  {
+                    "kind": "minLength",
+                    "value": 2
+                  }
+                ]
+              }
+            },
+            "approval-department": {
+              "id": "approval-department",
+              "kind": "field",
+              "component": "element.select",
+              "field": "department",
+              "label": "Department",
+              "props": {
+                "options": [
+                  {
+                    "label": "Engineering",
+                    "value": "Engineering"
+                  },
+                  {
+                    "label": "Design",
+                    "value": "Design"
+                  },
+                  {
+                    "label": "Operations",
+                    "value": "Operations"
+                  }
+                ]
+              },
+              "required": true
+            },
+            "approval-amount": {
+              "id": "approval-amount",
+              "kind": "field",
+              "component": "element.input-number",
+              "field": "amount",
+              "label": "Amount",
+              "props": {
+                "min": 1
+              },
+              "required": true,
+              "defaultValue": 1,
+              "help": "Enter the amount in your local currency.",
+              "validation": {
+                "version": 2,
+                "base": {
+                  "type": "number"
+                },
+                "rules": [
+                  {
+                    "kind": "min",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "approval-reason": {
+              "id": "approval-reason",
+              "kind": "field",
+              "component": "element.textarea",
+              "field": "reason",
+              "label": "Business reason",
+              "props": {
+                "rows": 4
+              },
+              "required": true,
+              "help": "Describe the purpose and expected outcome.",
+              "validation": {
+                "version": 2,
+                "base": {
+                  "type": "string"
+                },
+                "rules": [
+                  {
+                    "kind": "minLength",
+                    "value": 10
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "page",
+        "route": "/"
+      }
+    },
+    {
+      "id": "element-survey",
+      "name": "Element Plus survey form",
+      "description": "A feedback form with rating, optional email and validation.",
+      "preset": "element-plus",
+      "tags": [
+        "survey",
+        "task",
+        "validation",
+        "responsive",
+        "starter"
+      ],
+      "surface": {
+        "id": "template-page",
+        "name": "survey form",
+        "graph": {
+          "version": 3,
+          "props": {},
+          "form": {
+            "columns": 24,
+            "fieldSpan": 24,
+            "labelPosition": "top",
+            "labelWidth": 120,
+            "responsive": {
+              "tablet": {
+                "columns": 12,
+                "fieldSpan": 12,
+                "labelWidth": 96
+              },
+              "mobile": {
+                "columns": 1,
+                "fieldSpan": 1,
+                "labelWidth": 72
+              }
+            }
+          },
+          "root": [
+            {
+              "nodeId": "survey-contact",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "survey-rating",
+              "placement": {
+                "span": 12
+              }
+            },
+            {
+              "nodeId": "survey-feedback",
+              "placement": {
+                "span": 24
+              }
+            },
+            {
+              "nodeId": "survey-followUp",
+              "placement": {
+                "span": 24
+              }
+            }
+          ],
+          "nodesById": {
+            "survey-contact": {
+              "id": "survey-contact",
+              "kind": "field",
+              "component": "element.input",
+              "field": "contact",
+              "label": "Contact email",
+              "props": {},
+              "description": "Optional. Only used if you want a follow-up.",
+              "validation": {
+                "version": 2,
+                "base": {
+                  "type": "string"
+                },
+                "optional": true,
+                "rules": [
+                  {
+                    "kind": "email"
+                  }
+                ]
+              }
+            },
+            "survey-rating": {
+              "id": "survey-rating",
+              "kind": "field",
+              "component": "element.select",
+              "field": "rating",
+              "label": "Overall experience",
+              "props": {
+                "options": [
+                  {
+                    "label": "Excellent",
+                    "value": "Excellent"
+                  },
+                  {
+                    "label": "Good",
+                    "value": "Good"
+                  },
+                  {
+                    "label": "Fair",
+                    "value": "Fair"
+                  },
+                  {
+                    "label": "Poor",
+                    "value": "Poor"
+                  }
+                ]
+              },
+              "required": true
+            },
+            "survey-feedback": {
+              "id": "survey-feedback",
+              "kind": "field",
+              "component": "element.textarea",
+              "field": "feedback",
+              "label": "What should we improve?",
+              "props": {
+                "rows": 5
+              },
+              "required": true,
+              "help": "A concrete example helps us understand your experience.",
+              "validation": {
+                "version": 2,
+                "base": {
+                  "type": "string"
+                },
+                "rules": [
+                  {
+                    "kind": "minLength",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "survey-followUp": {
+              "id": "survey-followUp",
+              "kind": "field",
+              "component": "element.switch",
+              "field": "followUp",
+              "label": "Allow follow-up",
+              "props": {},
+              "defaultValue": false,
+              "warning": "Enable only if you have provided a contact email."
+            }
+          }
+        },
+        "parameters": [],
+        "outputs": [],
+        "interactions": [],
+        "kind": "page",
+        "route": "/"
+      }
+    }
+  ]
+}

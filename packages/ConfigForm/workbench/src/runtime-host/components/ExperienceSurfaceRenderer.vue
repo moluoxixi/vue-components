@@ -11,8 +11,9 @@ import type { PrototypeVueSurfaceRendererBindings } from '@moluoxixi/config-form
 import type { VueSurfaceRuntimeArtifact } from '@moluoxixi/config-form-vue-backend'
 import type { RuntimeHostFormStateSnapshotV7 } from '../types'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { getConfigFormValueScopeInstanceKey } from '@moluoxixi/config-form-core'
 import { createPrototypeInstanceRuntimeSnapshot } from '@moluoxixi/config-form-prototype-runtime/session'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
 import { cloneWorkbenchJson } from '../../utils'
 
 interface ExperienceSurfaceRendererProps {
@@ -52,7 +53,6 @@ const renderer = useTemplateRef<ConfigFormRendererExpose<ModelJsonObject>>('rend
 const values = shallowRef<ModelJsonObject>(cloneWorkbenchJson(props.bindings.values))
 const projection = shallowRef<PrototypeInstanceProjectionV1>(cloneWorkbenchJson(props.bindings.projection))
 const focusedAddress = shallowRef<PrototypeNodeAddressV1>()
-const rendererRevision = ref(0)
 let disposed = false
 let unregister: (() => void) | undefined
 
@@ -202,13 +202,7 @@ function handleSubmit(event: Event): void {
 }
 
 function projectionKey(address: PrototypeNodeAddressV1): string {
-  void rendererRevision.value
-  try {
-    return renderer.value?.getInstanceKey(address) ?? address.nodeId
-  }
-  catch {
-    return address.nodeId
-  }
+  return getConfigFormValueScopeInstanceKey(address.nodeId, address.scope)
 }
 
 function setNestedProperty(target: Record<string, unknown>, path: readonly string[], value: unknown): void {
@@ -369,7 +363,6 @@ onMounted(() => {
       disposed = true
     },
   })
-  rendererRevision.value += 1
   void nextTick(emitState)
 })
 

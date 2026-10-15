@@ -11,7 +11,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { PROJECT_IMAGE_RESOURCE_SETTING } from '@moluoxixi/config-form-model'
-import { generateConfigFormBindings, generateVueSource } from '@moluoxixi/config-form-source/generator'
+import { generateConfigFormBindings, generateProjectSource, generateVueSource } from '@moluoxixi/config-form-source/generator'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -192,7 +192,12 @@ describe('structured export consumer', () => {
   it.each<WorkbenchAdapterId>(['element-plus', 'antd-vue'])('typechecks and builds a Tailwind project for %s', async (provider) => {
     const input = await fixture(provider)
     const source = createProjectSourceInput({ ...input, registry: input.adapter.registrySnapshot, componentResolver: input.adapter.sourceComponentResolver })
-    const generated = await generateVueSource(source.source)
+    const generated = await generateProjectSource({
+      project: input.document,
+      preset: { registry: input.adapter.registrySnapshot, componentResolver: input.adapter.sourceComponentResolver },
+      resourceReader: { readEmbedded: input.readEmbedded },
+      styleTarget: 'tailwind-v4',
+    })
     if (!generated.success)
       throw new Error(JSON.stringify(generated.diagnostics))
     await verifyArchive(generated.data, source.document)

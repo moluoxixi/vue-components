@@ -521,6 +521,7 @@ watch(
       :source-open="Boolean(exportPreviewMode)"
       :repository-revision="repositoryRevision"
       :status-label="statusLabel"
+      :storage-info="controller.storageInfo.value"
       :theme-preference="themePreference"
       @export="handleExportCommand"
       @create-checkpoint="showPersistenceDialog('checkpoint')"

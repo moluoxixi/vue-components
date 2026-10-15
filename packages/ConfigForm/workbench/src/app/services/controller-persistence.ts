@@ -12,10 +12,7 @@ import type {
   ProjectPersistenceSession,
 } from '../../project'
 import type { WorkbenchRecoveryDraftSummary, WorkbenchUiStore } from '../types'
-import {
-  createIndexedDBProjectRecoveryDraftStore,
-  createMemoryProjectRecoveryDraftStore,
-} from '../../project'
+import { createWorkbenchRecoveryDraftStore } from './workspace-repository'
 
 async function readEmbeddedSnapshot(
   repository: ProjectRepository,
@@ -204,9 +201,7 @@ export function createWorkbenchPersistenceCommands(options: {
     const activeRepository = repository.value
     if (!activeRepository)
       return undefined
-    const store = activeRepository.persistence === 'durable'
-      ? createIndexedDBProjectRecoveryDraftStore()
-      : createMemoryProjectRecoveryDraftStore()
+    const store = createWorkbenchRecoveryDraftStore(activeRepository)
     if ('open' in store)
       await store.open()
     return store

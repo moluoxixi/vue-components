@@ -43,10 +43,10 @@ function parseMessage(input: unknown): ProjectCoordinationMessage | undefined {
   return undefined
 }
 
-function browserPort(): ProjectCoordinationPort | undefined {
+function browserPort(namespace?: string): ProjectCoordinationPort | undefined {
   if (typeof BroadcastChannel !== 'function')
     return undefined
-  const channel = new BroadcastChannel(COORDINATION_CHANNEL_NAME)
+  const channel = new BroadcastChannel(namespace ? `${COORDINATION_CHANNEL_NAME}:${namespace}` : COORDINATION_CHANNEL_NAME)
   const listeners = new Set<(message: unknown) => void>()
   channel.addEventListener('message', event =>
     listeners.forEach(listener => listener(event.data)))
@@ -69,7 +69,7 @@ function defaultId(): string {
 export function createProjectCoordinationChannel(
   options: ProjectCoordinationChannelOptions,
 ): ProjectCoordinationChannel {
-  const port = options.port ?? browserPort()
+  const port = options.port ?? browserPort(options.namespace)
   const projectId = options.projectId
   const sessionId = options.sessionId
   const createId = options.createId ?? defaultId

@@ -40,16 +40,22 @@ export function createComponentRenderer<TValues extends ConfigFormValues>(
     scope: ConfigFormScopePath,
     slotOverride?: RendererSlots,
   ): VNodeChild {
-    const { binding, componentListeners, designGuard, editorBridge, props } = context
+    const { binding, componentListeners, controller, designGuard, editorBridge, props } = context
     const slots = slotOverride ?? createNodeSlots(node, path, ancestors, scope)
     const registration = binding.resolveRegistration(node.component)
     const component = registration?.component ?? node.component
     const metadataAttrs = registerElement ? editorBridge.nodeMetadataAttrs(metadata) : {}
+    const address = { nodeId: node.id, scope }
+    const projectedProps = controller.resolveInstanceReactionProps(address)
+    const projectedState = controller.resolveInstanceReactionState(address)
     const componentProps: Record<string, unknown> = {
       ...registration?.props,
       ...node.props,
+      ...projectedProps,
+      ...(projectedState.disabled === undefined ? {} : { disabled: projectedState.disabled }),
+      ...(projectedState.readonly === undefined ? {} : { readonly: projectedState.readonly }),
       ...metadataAttrs,
-      'class': [registration?.props?.class, node.props?.class, metadataAttrs.class],
+      'class': [registration?.props?.class, node.props?.class, projectedProps.class, metadataAttrs.class],
       'data-config-form-value-scope': node.valueScope?.kind,
     }
     designGuard.applyDesignInteractionGuard(componentProps)

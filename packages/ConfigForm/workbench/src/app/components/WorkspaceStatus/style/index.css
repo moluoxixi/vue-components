@@ -1,0 +1,19 @@
+.workspace-status {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 190px;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.workspace-status > svg { flex: none; }
+.workspace-status > span { overflow: hidden; text-overflow: ellipsis; }
+.workspace-status.is-disconnected { color: var(--wb-danger, #b42318); }
+.management-navigation > .workspace-status { margin-left: auto; }
+.workspace-context .workspace-status { max-width: 130px; flex: none; margin-left: 2px; padding-left: 10px; border-left: 1px solid var(--wb-separator); }
+@media (max-width: 1000px) { .workspace-context .workspace-status:not(.is-disconnected) { display: none; } }
+@media (max-width: 640px) {
+  .workspace-status { max-width: 110px; }
+}

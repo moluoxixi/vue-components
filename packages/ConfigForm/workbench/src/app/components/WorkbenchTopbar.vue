@@ -20,6 +20,7 @@ import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import WorkbenchAppearancePopover from './WorkbenchAppearancePopover.vue'
 import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
+import WorkspaceStatus from './WorkspaceStatus/index.vue'
 
 const props = defineProps<WorkbenchTopbarProps>()
 
@@ -110,6 +111,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
       </button>
       <span class="workspace-context__separator" aria-hidden="true">/</span>
       <strong>{{ currentSurface.name }}</strong>
+      <WorkspaceStatus v-if="storageInfo" :storage="storageInfo" :locale="localeId" />
     </div>
 
     <div

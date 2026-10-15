@@ -76,6 +76,7 @@ export interface WorkbenchController extends
   dirty: ComputedRef<boolean>
   getCurrentAdapterId: () => WorkbenchAdapterId
   initialized: Ref<boolean>
+  storageInfo: Ref<{ mode: 'browser' | 'local', name: string, connected: boolean }>
   localeOptions: ComputedRef<DesignerLocaleOptions>
   previewState: ComputedRef<{ label: string, tone: 'error' | 'live' }>
   readEmbeddedResource: (input: ProjectEmbeddedResourceRead) => Promise<Uint8Array | undefined>

@@ -128,6 +128,20 @@ describe('published package verifier helpers', () => {
         },
       },
       {
+        name: '@moluoxixi/config-form-local',
+        exports: {
+          '.': { import: './dist/index.js', types: './dist/index.d.ts' },
+          './mcp': { import: './dist/mcp.js', types: './dist/src/mcp/index.d.ts' },
+        },
+      },
+      {
+        name: '@moluoxixi/config-form-studio',
+        exports: {
+          '.': { import: './dist/index.js', types: './dist/index.d.ts' },
+          './client': { import: './dist/client.js', types: './dist/src/client/index.d.ts' },
+        },
+      },
+      {
         name: '@moluoxixi/i18n-tool',
         exports: {
           './config': { import: './dist/config.js', types: './dist/config.d.ts' },
@@ -151,6 +165,10 @@ describe('published package verifier helpers', () => {
     ])).toEqual([
       '@moluoxixi/ai-doc-assistant/plugin',
       '@moluoxixi/ai-provider/server',
+      '@moluoxixi/config-form-local',
+      '@moluoxixi/config-form-local/mcp',
+      '@moluoxixi/config-form-studio',
+      '@moluoxixi/config-form-studio/client',
       '@moluoxixi/i18n-tool/config',
       '@moluoxixi/i18n-tool/core',
       '@moluoxixi/i18n-tool/server',
