@@ -8,7 +8,7 @@
  *
  * The hierarchy is project › page › design. A `pageId` segment carries the
  * Surface id of any kind (page, dialog, or drawer), because page management
- * lists all three kinds and they share one form designer.
+ * lists all three kinds and they share one UI designer.
  */
 export type WorkbenchRouteName
   = | 'projects'

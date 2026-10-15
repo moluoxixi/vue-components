@@ -12,6 +12,10 @@ import type {
 import { matchesResourceMediaType } from '../../registry'
 import { analyzeSurfaceValueScopes } from '../../value-scope'
 
+// Vue presentation attributes belong to every component independently of its
+// business property contract. Their values retain the existing JSON boundary.
+const COMMON_PRESENTATION_PROPS = ['class', 'style'] as const
+
 export function validateRegistryLock(
   document: ProjectDocument,
   registry: ComponentContractRegistry,
@@ -142,6 +146,7 @@ function validateNode(
     return
   }
   const allowedProps = new Set([
+    ...COMMON_PRESENTATION_PROPS,
     ...Object.keys(contract.defaults),
     ...contract.props.map(property => property.path[0] === 'props' ? property.path[1] : property.path[0]).filter((key): key is string => !!key),
   ])

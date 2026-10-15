@@ -62,8 +62,8 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
     if (await mobileDetails.isVisible())
       await mobileDetails.click()
   }
-  await expect(pageCreation.getByRole('button', { name: 'Create form page', exact: true })).toBeEnabled({ timeout: 15_000 })
-  await pageCreation.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await expect(pageCreation.getByRole('button', { name: 'Create page', exact: true })).toBeEnabled({ timeout: 15_000 })
+  await pageCreation.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
   await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 60_000 })

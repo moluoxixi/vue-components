@@ -10,7 +10,7 @@ export interface SurfaceManagerEmits {
   export: [id: string]
   /** Export one page's copy-friendly source directory. */
   exportSource: [id: string]
-  /** Open one page's form designer. */
+  /** Open one page's UI designer. */
   openPage: [id: string]
   /** Leave page management for the projects list. */
   openProjects: []

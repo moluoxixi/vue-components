@@ -83,7 +83,7 @@ describe('workbench router', () => {
     })
   })
 
-  it('keeps the form designer page-scoped instead of project-scoped', () => {
+  it('keeps the UI designer page-scoped instead of project-scoped', () => {
     expect(WORKBENCH_PATHS.pageDesign).toBe('/projects/:projectId/pages/:pageId/design')
     expect(pageDesignPath('project-a', 'page-b')).toBe('/projects/project-a/pages/page-b/design')
     expect(WORKBENCH_ROUTES.map(route => String(route.name ?? ''))).not.toContain('project-design')

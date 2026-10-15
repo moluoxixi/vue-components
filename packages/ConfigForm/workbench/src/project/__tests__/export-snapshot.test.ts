@@ -1,8 +1,10 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { SurfaceGraph } from '@moluoxixi/config-form-model'
 import type { SourceBinaryFile } from '@moluoxixi/config-form-source/generator'
 import type { BuildExportSnapshotInput, ExportArtifact } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot } from '@moluoxixi/config-form-model'
+import { createNodePathCommand } from '@moluoxixi/config-form-designer'
+import { createMemoryProjectRepository, createProjectSnapshot, readProjectTransfer, writeProjectTransfer } from '@moluoxixi/config-form-model'
 import { compileCanonicalSurfaceRuntime } from '@moluoxixi/config-form-vue-backend'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -15,6 +17,7 @@ import {
   resolveExportSnapshotPath,
   sourceFileBytes,
 } from '../export'
+import { createProjectEditorSession, openProjectEditorSession } from '../services'
 import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
@@ -53,6 +56,77 @@ function expectReady<T>(artifact: ExportArtifact<T>): T {
 }
 
 describe('export snapshot', () => {
+  it.each(['element-plus', 'antd-vue'] as const)(
+    'keeps %s visual edits through history, reopening, transfer, preview and both source modes',
+    async (provider) => {
+      const adapter = await loadWorkbenchAdapter(provider)
+      const prefix = provider === 'element-plus' ? 'element' : 'antd'
+      const document = createBuiltInProjectFixture(
+        provider === 'element-plus' ? 'element-profile' : 'antd-profile',
+        { id: 'visual-project', name: 'Visual design' },
+        adapter.componentRegistry.lock,
+      )
+      const surfaceId = document.homeSurfaceId
+      const surface = document.surfacesById[surfaceId]!
+      const layout = adapter.designerRegistry.createSubgraph(`${prefix}.flex`, { id: 'layout' })
+      const input = adapter.designerRegistry.createSubgraph(`${prefix}.input`, { id: 'name', field: 'name' })
+      const layoutNode = layout.nodesById.layout!
+      if (layoutNode.kind !== 'layout')
+        throw new Error('Expected a layout material')
+      layoutNode.slots.default = input.root
+      layoutNode.props.style = { 'padding': '24px', '--kept': 'layout' }
+      input.nodesById.name!.props.style = { 'width': '80%', '--kept': 'input' }
+      surface.interactions = []
+      surface.graph.root = layout.root
+      surface.graph.nodesById = { ...layout.nodesById, ...input.nodesById }
+      const repository = createMemoryProjectRepository()
+      const persisted = await repository.create({ document, embeddedContents: [] })
+      const editor = createProjectEditorSession({ project: persisted, repository, registry: adapter.componentRegistry })
+      const graph = () => JSON.parse(JSON.stringify(editor.snapshot.document.surfacesById[surfaceId]!.graph)) as SurfaceGraph
+      const before = graph()
+      const change = editor.execute(createNodePathCommand(graph(), surfaceId, ['layout', 'name'], ['props', 'style', 'backgroundColor'], '#edf3ff'))
+      expect(change.changed, JSON.stringify(change.diagnostics)).toBe(true)
+      expect(editor.snapshot.history.position).toBe(1)
+      expect(graph().nodesById.layout!.props.style).toEqual({ 'padding': '24px', '--kept': 'layout', 'backgroundColor': '#edf3ff' })
+      expect(graph().nodesById.name!.props.style).toEqual({ 'width': '80%', '--kept': 'input', 'backgroundColor': '#edf3ff' })
+      expect(editor.undo().changed).toBe(true)
+      expect(graph()).toEqual(before)
+      expect(editor.redo().changed).toBe(true)
+      expect((await editor.save({ source: 'manual', sealHistoryGroup: true })).success).toBe(true)
+      const reopened = await openProjectEditorSession({ projectId: document.id, repository, registry: adapter.componentRegistry })
+      expect(reopened.snapshot.document).toEqual(editor.snapshot.document)
+      const transfer = await writeProjectTransfer({ document: reopened.snapshot.document, readEmbedded: async () => undefined })
+      if (!transfer.success)
+        throw new Error(JSON.stringify(transfer.diagnostics))
+      const restored = await readProjectTransfer(JSON.parse(JSON.stringify(transfer.data)))
+      if (!restored.success)
+        throw new Error(JSON.stringify(restored.diagnostics))
+      expect(restored.data.document).toEqual(reopened.snapshot.document)
+      const compiled = compileCanonicalProject({ snapshot: createProjectSnapshot(restored.data.document, 1), registry: adapter.registrySnapshot })
+      if (!compiled.success)
+        throw new Error(JSON.stringify(compiled.diagnostics))
+      const runtime = compileCanonicalSurfaceRuntime({ compilation: compiled.compilation, surfaceId }, adapter.runtimeResolver)
+      if (!runtime.success)
+        throw new Error(JSON.stringify(runtime.diagnostics))
+      expect(runtime.artifact.renderer.fields[0]!.props).toMatchObject({ style: { 'padding': '24px', 'backgroundColor': '#edf3ff', '--kept': 'layout' } })
+      for (const styleTarget of ['css', 'tailwind-v4'] as const) {
+        const snapshot = await buildExportSnapshot({
+          compilation: compiled.compilation,
+          bindingResolver: adapter.sourceBindingResolver,
+          componentResolver: adapter.sourceComponentResolver,
+          styleTarget,
+          resourceReader: { readEmbedded: async () => ({ success: true, data: new Uint8Array(), diagnostics: [] }) },
+        })
+        for (const fileSet of [expectReady(snapshot.rawSource), expectReady(snapshot.configBindings)]) {
+          const source = fileSet.files.flatMap(file => file.kind === 'text' ? [file.content] : []).join('\n')
+          for (const value of ['24px', '80%', '#edf3ff', '--kept'])
+            expect(source).toContain(value)
+        }
+      }
+      repository.close()
+    },
+  )
+
   it.each(['css', 'tailwind-v4'] as const)(
     'preserves field guidance and density through compilation, runtime and %s export',
     async (styleTarget) => {

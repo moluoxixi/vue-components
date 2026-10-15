@@ -59,7 +59,7 @@ export function pageCreatePath(projectId: string): string {
 }
 
 /**
- * The form designer of one page.
+ * The UI designer of one page.
  *
  * `pageId` carries the Surface id of any kind (page, dialog, or drawer): page
  * management lists all three and they share one designer.

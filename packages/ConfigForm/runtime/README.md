@@ -1,6 +1,6 @@
 # @moluoxixi/config-form
 
-Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigFormRenderer 执行；ConfigForm 是带字段预处理的薄组件。长期产品边界见 [`../PRODUCT.md`](../PRODUCT.md)。
+Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigFormRenderer 执行；ConfigForm 是带字段预处理的薄组件。生产 Runtime 保持独立，Studio UI 设计工具的定位见 [产品文档](../docs/product.md)。
 
 ## 使用
 

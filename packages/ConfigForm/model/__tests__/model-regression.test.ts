@@ -272,6 +272,87 @@ describe('surface graph and snapshot regression coverage', () => {
 })
 
 describe('transaction and history regression coverage', () => {
+  it('accepts common presentation attributes in full and trusted incremental validation without widening component props', () => {
+    const contract: ComponentContract = {
+      key: 'test.input',
+      version: '1',
+      kind: 'field',
+      props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
+      bindings: [],
+      slots: [],
+      allowedParents: [],
+      defaults: {},
+      semanticTriggers: [],
+      stateProjectionProperties: [],
+      datasetBindings: [],
+      resourceBindings: [],
+    }
+    const registry = createComponentContractRegistry([contract], { adapter: 'test-adapter', version: '1.0.0' })
+    const original = documentFixture({ registryLock: registry.lock })
+    const source = createProjectSnapshot(original).document as ProjectDocument
+    const props = {
+      placeholder: 'Name',
+      class: ['design-title', { active: true }],
+      style: { 'width': '75%', 'padding': '16px', 'color': 'var(--demo-color-primary, #2563EB)', '--custom-space': '2rem' },
+    }
+    for (const document of [original, source]) {
+      const applied = applyProjectDraftTransaction(document, transaction('design-props', [{
+        type: 'node.props',
+        surfaceId: 'home',
+        nodeId: 'name',
+        props,
+      }]), { registry })
+      expect(applied).toMatchObject({ success: true, changed: true, diagnostics: [] })
+      if (!applied.success)
+        continue
+      expect(applied.document.surfacesById.home!.graph.nodesById.name!.props).toEqual(props)
+      expect(applied.document.registryLock).toEqual(source.registryLock)
+      const reopened = createProjectSnapshot(JSON.parse(JSON.stringify(applied.document)))
+      expect(reopened.document.surfacesById.home!.graph.nodesById.name!.props).toEqual(props)
+      const reverted = applyProjectDraftTransaction(applied.document, applied.inverse, { registry })
+      expect(reverted.success && reverted.document).toEqual(original)
+      expect(applyProjectDraftTransaction(document, transaction('unknown-prop', [{
+        type: 'node.props',
+        surfaceId: 'home',
+        nodeId: 'name',
+        props: { ...props, unregisteredBusinessProp: true },
+      }]), { registry })).toMatchObject({
+        success: false,
+        diagnostics: [expect.objectContaining({ code: 'PROJECT_COMPONENT_PROP_UNKNOWN', path: ['surfacesById', 'home', 'graph', 'nodesById', 'name', 'props', 'unregisteredBusinessProp'] })],
+      })
+    }
+    expect(original.surfacesById.home!.graph.nodesById.name!.props).toEqual({})
+  })
+
+  it('preserves string and array presentation styles under the existing JSON value contract', () => {
+    const contract: ComponentContract = {
+      key: 'test.input',
+      version: '1',
+      kind: 'field',
+      props: [],
+      bindings: [],
+      slots: [],
+      allowedParents: [],
+      defaults: {},
+      semanticTriggers: [],
+      stateProjectionProperties: [],
+      datasetBindings: [],
+      resourceBindings: [],
+    }
+    const registry = createComponentContractRegistry([contract], { adapter: 'test-adapter', version: '1.0.0' })
+    const document = documentFixture({ registryLock: registry.lock })
+    for (const style of ['width: 50%; color: red', [{ width: '50%' }, 'color: red']]) {
+      const applied = applyProjectDraftTransaction(document, transaction('preserve-style', [{
+        type: 'node.props',
+        surfaceId: 'home',
+        nodeId: 'name',
+        props: { class: 'existing-class', style },
+      }]), { registry })
+      expect(applied).toMatchObject({ success: true, diagnostics: [] })
+      expect(applied.success && applied.document.surfacesById.home!.graph.nodesById.name!.props.style).toEqual(style)
+    }
+  })
+
   it('keeps trusted incremental validation strict and never trusts plain documents', () => {
     const contract: ComponentContract = {
       key: 'test.input',

@@ -1,183 +1,36 @@
-# ConfigForm 架构入口
+# ConfigForm
 
-ConfigForm 同时服务两条互不混淆的路径：当前生产 Runtime 让工程师用 Vue/TypeScript
-配置运行表单；目标 ConfigForm Studio 让工程师或 UI 设计师创建无真实接口的高保真
-业务界面 Demo，再把可运行源码单向交给程序员。
+ConfigForm 包含独立的生产表单 Runtime，以及使用真实 Vue 组件、可以持续在线编辑的
+Studio UI 设计工具。Studio 配置是设计源文档，设计、体验和源码交付共享同一模型；
+复杂生产业务逻辑继续使用普通 Vue/TypeScript。
 
-- 目标产品边界见 [PRODUCT.md](./PRODUCT.md)。
-- 源码生成 SDK、本地工作区与 MCP 的新增架构提案见 [SOURCE-WORKSPACE-PLAN.md](./SOURCE-WORKSPACE-PLAN.md)。
-- 当前实现、迁移阶段和目标版本见 [ROADMAP.md](./ROADMAP.md)。
-- 本轮工作流升级的试用步骤、验证记录和限制见 [STUDIO-REVIEW.md](./STUDIO-REVIEW.md)。
+产品、架构、实施与验证统一从 [文档索引](./docs/README.md)进入。
+未来部分源码导入属于[未实现的边界提案](./docs/source-import.md)，当前源码交付是单向的。
 
-## 当前实现
+## 包与用法
 
-ConfigForm Studio 的本地 Demo 创作主链已经落地。`ProjectDocument v8`、
-`SurfaceGraph v3`、RuleSet v2、Canonical IR v7、Compiler 8.0.0、Vue backend、
-Workbench persistence/Experience 和 Source generator 都以 `SurfaceAsset` 为身份；
-Page/Dialog/Drawer 共享 `SurfaceGraph`，每次 Experience 打开由 Prototype Runtime 创建
-隔离的 `SurfaceInstance`。Designer 仍聚焦一个 Surface，Inspector 提供
-`properties`、`validation` 与 `interactions`；Studio 应用壳负责项目、Surface、Dataset、
-Resource、主题、Design/Experience 和源码导出。
+| 包 / 应用                                                                 | 用法                                             |
+| ------------------------------------------------------------------------- | ------------------------------------------------ |
+| [Core](./core/README.md)                                                  | JSON、值引用、reaction、Data Source 和布局规则   |
+| [Headless](./headless/README.md)                                          | 字段模型、状态、校验与提交                       |
+| [Runtime](./runtime/README.md)                                            | Vue 配置表单与 Renderer                          |
+| [Element Plus](./element/README.md) / [Ant Design Vue](./antd/README.md)  | 生产 UI 适配                                     |
+| [Model](./model/README.md)                                                | 项目文档、资产、事务与 Repository                |
+| [Compiler](./compiler/README.md) / [Vue backend](./vue-backend/README.md) | Canonical IR 与 Runtime 投影                     |
+| [Designer](./designer/README.md)                                          | 单 Surface 设计器与物料注册                      |
+| [Prototype Runtime](./prototype-runtime/README.md)                        | 本地体验会话与浮层实例                           |
+| [Source](./source/README.md)                                              | 原生 Vue / ConfigForm 绑定生成与只读 Viewer      |
+| [Studio SDK](./studio/README.md)                                          | 配置创作、纯数据 preset 与 Node / 浏览器源码生成 |
+| [Local](./local/README.md)                                                | 文件工作区、服务、CLI 与 MCP                     |
+| [Workbench](./workbench/README.md)                                        | 仓库内设计应用与集成验证                         |
 
-本轮升级将工作区组织为设计、体验与交付三个入口。设计侧提供命令中心、可调整面板、
-物料收藏/最近使用、可搜索大纲、属性分组、校验实验室、安全条件树和三个断点的实际
-渲染对照；体验侧可检查每个 Surface 实例的值与状态并重置会话。数据资产支持表格、
-CSV/JSON 导入、可视映射和查询预览，平面 JSON Schema 可以先审核映射再一次性插入字段。
+## 开发
 
-字段 `description/help/warning` 与表单 `density` 贯穿 Model、Compiler、Runtime 和源码。
-生产 Runtime 另提供错误摘要、首次错误定位、加载/校验状态及可固定的 `actions` 插槽。
-这些 Runtime 展示选项由宿主 API 配置，Studio 不把它们全部序列化为表单设置。
-
-当前可用分层：
-
-| 层          | 包 / 应用                                  | 当前责任                                                                     |
-| ----------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
-| 纯领域      | `@moluoxixi/config-form-core`              | JSON、value reference、reaction、Data Source 与布局规则                      |
-| 表单内核    | `@moluoxixi/config-form-headless`          | 字段树、模型读写、状态、校验、提交与 controller                              |
-| Vue Runtime | `@moluoxixi/config-form`                   | 组件解析、值绑定、布局、readonly 与 Data 生命周期                            |
-| UI 适配     | Element Plus / Ant Design Vue packages     | 真实组件、值绑定预设与样式                                                   |
-| Designer    | Designer 与 provider adapters              | 单 Surface 的结构、布局、静态属性、options、字段 Required 与 RuleSet v2 校验 |
-| Model       | `@moluoxixi/config-form-model`             | Surface/Dataset/Resource、事务、Repository 与 transfer                       |
-| Prototype   | `@moluoxixi/config-form-prototype-runtime` | DOM-free session、SurfaceInstance 与 Vue overlay host                        |
-| Source      | `@moluoxixi/config-form-source`            | 原生 Vue/ConfigForm 绑定生成器与只读源码 Viewer                              |
-| Workbench   | `@config-form/workbench`                   | Project 编辑、iframe Preview 与源码导出宿主                                  |
-
-当前代码依赖方向是：
-
-```text
-Core <- Headless <- Runtime <- UI adapters
-  ^                    ^
-  |                    |
-Model -> Compiler -> Vue Backend
-  ^          |
-  |          v
-Designer  Prototype Runtime
-  ^          ^
-  |          |
-  +-- Workbench composition root ----> Source
-```
-
-Core、Headless 和 Runtime 不依赖 Designer 或 Workbench；Designer 不拥有业务副作用。
-Prototype Runtime 依赖 Compiler/Core 的纯合同，但生产 Runtime 不反向依赖它；Workbench
-作为私有组合根连接编译 artifact、Prototype session、provider adapter 与 Source。
-ProjectDocument、Canonical IR、Preview transport 和 Source generator 只处理 JSON-safe
-数据，不承载函数。
-
-## 目标架构
-
-当前合同在生产链路之上增加完整的 Surface、Dataset、Resource、Prototype Runtime、
-Designer 作者入口与 Source 交付链：
-
-```text
-Core <- Headless <- Runtime <- UI adapters
-
-Model -> Compiler -> Canonical IR -> Vue Backend -> Runtime
-  ^                                      |
-  |                                      v
-Designer                         Prototype Runtime
-  ^                                      ^
-  |                                      |
-Studio ----------------------------------+
-  |
-  +---- injects provider/resource adapters ----> Source generator / viewer
-```
-
-| 目标层            | 责任                                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| Model             | `SurfaceAsset`、Dataset、Resource、引用和 versioned envelope                                              |
-| Designer          | 聚焦一个 Surface 的结构、布局、属性、校验和交互作者能力                                                   |
-| Studio            | 项目/资产管理、Design/Experience、持久化、导入导出和宿主命令                                              |
-| Prototype Runtime | 页面历史、SurfaceInstance 栈、参数/结果事务和主要 UI 动作                                                 |
-| Source            | 无 DOM Generator、component resolver、ConfigForm binding resolver、异步 Resource reader 和只读源码 Viewer |
-
-`@moluoxixi/config-form-prototype-runtime` 已提供根、`/session`、`/vue` 和
-`/vue/style` 入口。`@moluoxixi/config-form-source` 已提供根、`/generator`、`/viewer`
-和 `/viewer/style` 入口；两者都进入当前发布矩阵。
-
-目标依赖规则：
-
-- Studio 是 private 应用组合根，可以组合公开的 Model、Compiler、Designer、Runtime、
-  Prototype Runtime 和 Source 包。
-- Prototype Runtime 的根入口和 `/session` 无 DOM；`/vue` 与 `/vue/style` 才拥有
-  Surface/overlay host。生产 Runtime、Core 和 Headless 不反向依赖它。
-- Source generator 只依赖稳定 compilation、Source 自有 component resolver、ConfigForm
-  binding resolver、Resource reader 合同和纯数据，不依赖 Designer、Workbench、具体
-  provider UI、Repository 或 DOM。Raw 只接收 component resolver 与 Resource reader。
-- Studio 在组合根读取 adapter metadata 与 Repository，并把三项职责分别注入 Source。
-- 默认 Raw 工程的 `package.json.dependencies` 与应用运行时代码中的裸包 import 严格限定为 Vue、
-  Vue Router 与目标 UI 包；不得包含 ConfigForm、Zod、`@moluoxixi/*`、
-  `@config-form/*` 或内部 Runtime。Vite、TypeScript 等构建工具可作为 `devDependencies`。
-  Required 与 RuleSet v2 编译为工程内可读校验代码。ConfigForm 绑定工程只 import 已
-  发布公开包并保留配置，不内嵌执行核心。两者都不生成 `src/runtime/**`。
-- Raw 与 ConfigForm binding 基于同一 compilation 独立生成、独立失败；一个 mode 的
-  diagnostics 不会抹掉另一个 mode 的可用文件集。
-- Dataset 查询只在共享数据服务实现一次；Material 只拥有渲染、选择和语义激活。
-
-## Runtime 与代码态组件事件
-
-生产 Runtime 继续允许工程师直接传入普通 Vue listener：
-
-```ts
-const fields = [
-  defineField({
-    id: 'save',
-    component: 'ElButton',
-    props: {
-      onClick: () => saveDraft(),
-    },
-  }),
-]
-```
-
-值/blur 触发时，Runtime 先完成绑定、模型写入和校验记账，再调用宿主 listener。
-Design mode 在 Renderer 内部阻断交互。`props.onX` 只存在于宿主内存配置，不序列化、
-不转换成 Studio 交互，也不通过 Preview iframe 转发。
-
-全产品禁止恢复任意事件编辑、事件总线、动作链、handler registry 或 Flow。目标
-Prototype Interaction 仅包含安全表达式状态投影、`set/copy/clear` 和一个主要 UI
-动作，详细合同见产品文档。
-
-## 合同与版本
-
-持久化、Registry、Canonical IR、Compiler、Runtime Host、Source generator 与新增
-Dataset/Prototype session 都遵循 current-contract-only：writer 和 reader 原子切换，
-旧、未来、缺失、畸形或混合版本 fail closed。不提供迁移器、兼容别名、deprecated
-wrapper、双模型或联合 peer range。
-
-当前校验链路使用 RuleSet v2、ProjectDocument v8、SurfaceGraph v3、Canonical IR v7
-与 Compiler 8.0.0。字段 Required 由 `required` / `requiredMessage` 独立表达，RuleSet
-不再接受 `kind: 'required'`，也没有 `time` base；时间物料只提供 Required 与
-`validateOn`。Select options 变化会在同一命令中同步已有 enum/literal base、清除失效
-默认值，无法表达时清除 validation；一次 Undo 整体恢复。动态 Required 只在运行态
-覆盖字段静态基线。
-
-显式 Dataset raw rows ingestion 是创建当前 v1 Dataset 的命令，不是 envelope Reader
-的兼容分支。Reader 收到无版本数组必须拒绝。
-
-## 包内文档
-
-- [Runtime](./runtime/README.md)
-- [Headless](./headless/README.md)
-- [Core](./core/README.md)
-- [Designer](./designer/README.md)
-- [Source](./source/README.md)
-- [Workbench](./workbench/README.md)
-
-Model、Compiler、Vue backend、Prototype Runtime、Designer、Source 与 Workbench 的
-README 均描述当前 Studio 主链；规划能力仍只在路线图中明确标记，不进入当前 API 示例。
-
-## 验证
-
-```bash
-pnpm test:config-form-packages
-pnpm test:package-architecture
-pnpm --filter @moluoxixi/config-form test
-pnpm --filter @moluoxixi/config-form typecheck
-pnpm --filter @moluoxixi/config-form-designer test
-pnpm --filter @moluoxixi/config-form-source test
-pnpm --filter @moluoxixi/config-form-source typecheck
-pnpm --filter @moluoxixi/config-form-source build
-pnpm --filter @config-form/workbench test --maxWorkers=2
+```powershell
+pnpm dev:config-form-workbench
+pnpm --filter @config-form/workbench test
 pnpm --filter @config-form/workbench typecheck
 pnpm --filter @config-form/workbench build
 ```
+
+跨包、生成消费者和浏览器验证见 [验证文档](./docs/verification.md)。

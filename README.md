@@ -7,7 +7,7 @@
 - [组件文档](https://moluoxixi.github.io/vue-components/)
 - [ConfigForm 可视化设计器](https://moluoxixi.github.io/vue-components/config-form-playground/designer.html)
 
-ConfigForm 的当前生产底座是 Vue/TypeScript Runtime；目标产品 ConfigForm Studio 用于创作不调用真实接口的高保真业务界面 Demo，覆盖 UI、布局、校验、模拟 Dataset 和本地页面/浮层交互，再把可运行源码单向交给程序员。复杂业务逻辑仍直接写在导出后的代码或宿主 config 的 `props.onX` 函数中，不进入事件转发、动作链或 Flow。当前仓库仍是 Page-only 实现，Surface、Prototype Runtime 和独立 Source 包属于规划目标；状态与取舍见 [ConfigForm 产品边界](./packages/ConfigForm/PRODUCT.md)、[路线图](./packages/ConfigForm/ROADMAP.md)和[架构文档](./packages/ConfigForm/README.md)。
+ConfigForm Studio 使用真实 Vue 组件创作可以持续在线编辑的 UI 设计项目。配置是设计源文档，人工与 AI 共用编辑事务，设计、体验预览和 Vue 源码交付围绕同一项目工作。当前已提供页面、弹窗、抽屉、示例数据、资源、校验、本地交互、源码 SDK、文件工作区与 MCP。源码交付是单向的，生产 Runtime 继续独立支持工程师的代码态配置与业务逻辑。产品定位、架构与实施计划见 [ConfigForm 文档](./packages/ConfigForm/docs/README.md)，各包用法见 [ConfigForm 入口](./packages/ConfigForm/README.md)。
 
 ## 包
 
@@ -20,7 +20,7 @@ ConfigForm 的当前生产底座是 Vue/TypeScript Runtime；目标产品 Config
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/)                             | Element Plus 轻量 ConfigForm                                |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/)                               | Ant Design Vue 轻量 ConfigForm                              |
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigForm/devtools-vite-plugin/)   | 开发态源码定位 Vite 插件                                    |
-| [`@moluoxixi/config-form-designer`](./packages/ConfigForm/designer/)                           | 当前 UI 框架无关的 Page 设计器与属性/校验检查器             |
+| [`@moluoxixi/config-form-designer`](./packages/ConfigForm/designer/)                           | 物料无关的 Surface 设计器与属性/校验检查器                  |
 | [`@moluoxixi/config-form-designer-element-plus`](./packages/ConfigForm/designer-element-plus/) | Element Plus 可视化设计器适配                               |
 | [`@moluoxixi/config-form-designer-antd-vue`](./packages/ConfigForm/designer-antd-vue/)         | Ant Design Vue 可视化设计器适配                             |
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigForm/plugin-antd-vue/)             | Ant Design Vue runtime adapter                              |

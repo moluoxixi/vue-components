@@ -2,6 +2,7 @@
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { ChevronRight, Layers3, PanelsTopLeft, Search, SlidersHorizontal, X } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
+import { isVisualStyleEditable, VISUAL_STYLE_GROUPS } from '../../inspector'
 import { useDesignerLocale } from '../../locale'
 import {
   DesignerDataBindingEditor,
@@ -10,6 +11,7 @@ import {
   DesignerResponsiveSettings,
 } from './components'
 import DesignerValidationLab from './components/DesignerValidationLab.vue'
+import DesignerVisualStyleEditor from './components/DesignerVisualStyleEditor/index.vue'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
 
 const props = defineProps<DesignerPropertyPanelProps>()
@@ -127,8 +129,21 @@ const propertyGroups = computed(() => {
       entries: entriesByGroup.get(id)!,
     }))
 })
+const visualPropertyFields = computed(() => selectedNodes.value.length > 0 && selectedNodes.value.every(isVisualStyleEditable)
+  ? VISUAL_STYLE_GROUPS.flatMap(group => group.fields.map(field => ({
+      label: locale.t(`visual.${field.key}`, field.label),
+      group: locale.t(`visual.group.${group.key}`, group.label),
+    })))
+  : [],
+)
+const visibleVisualPropertyCount = computed(() => {
+  const query = propertyQuery.value.trim().toLocaleLowerCase()
+  return visualPropertyFields.value.filter(field => !query || [field.label, field.group, locale.t('visual.title', 'Design')]
+    .some(label => label.toLocaleLowerCase().includes(query))).length
+})
+const totalPropertyCount = computed(() => propertyEntries.value.properties.length + visualPropertyFields.value.length)
 const showPropertySearch = computed(
-  () => activeTab.value === 'properties' && propertyEntries.value.properties.length >= 5,
+  () => activeTab.value === 'properties' && totalPropertyCount.value >= 5,
 )
 const hasPropertyQuery = computed(() => propertyQuery.value.trim().length > 0)
 
@@ -165,6 +180,10 @@ function togglePropertyGroup(id: PropertyGroupId): void {
   else
     next.add(id)
   collapsedPropertyGroups.value = next
+}
+
+function updateVisualStyle(key: string, value: string | undefined): void {
+  commitNodePath(value, { key, label: key, path: ['props', 'style', key], control: 'text' })
 }
 
 function updateDatasetBinding(
@@ -244,7 +263,7 @@ defineExpose({ propertyPanelRef })
         <span
           v-if="tab.id === 'properties' && selectedNodes.length"
           class="mx-config-form-designer__tab-count"
-          :data-count="propertyEntries.properties.length"
+          :data-count="totalPropertyCount"
           aria-hidden="true"
         />
       </button>
@@ -262,8 +281,8 @@ defineExpose({ propertyPanelRef })
       <output v-if="hasPropertyQuery" class="mx-config-form-designer__search-count" aria-live="polite">
         {{
           locale.t('property.searchResultCount', '{visible} / {total}', {
-            visible: visiblePropertyEntries.length,
-            total: propertyEntries.properties.length,
+            visible: visiblePropertyEntries.length + visibleVisualPropertyCount,
+            total: totalPropertyCount,
           })
         }}
       </output>
@@ -314,6 +333,12 @@ defineExpose({ propertyPanelRef })
           @commit="commitNodePath"
         />
         <template v-if="tab.id === 'properties'">
+          <DesignerVisualStyleEditor
+            :nodes="selectedNodes"
+            :readonly="sectionReadonly(tab.id)"
+            :query="propertyQuery"
+            @update="updateVisualStyle"
+          />
           <section
             v-for="group in propertyGroups"
             :key="group.id"
@@ -355,7 +380,7 @@ defineExpose({ propertyPanelRef })
           </section>
         </template>
         <div
-          v-if="tab.id === 'properties' && hasPropertyQuery && propertyGroups.length === 0"
+          v-if="tab.id === 'properties' && hasPropertyQuery && propertyGroups.length === 0 && visibleVisualPropertyCount === 0"
           class="mx-config-form-designer__property-empty"
           data-property-empty
           role="status"

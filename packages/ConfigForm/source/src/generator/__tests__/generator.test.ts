@@ -4,6 +4,7 @@ import type {
   DatasetProjection,
   DatasetViewQuery,
   ModelJsonObject,
+  ModelJsonValue,
   ProjectDataset,
   ProjectDocument,
   ProjectTheme,
@@ -19,6 +20,7 @@ import type {
   SourceStyleTarget,
 } from '../types'
 import { createHash } from 'node:crypto'
+import { runInNewContext } from 'node:vm'
 import { CANONICAL_PROJECT_IR_VERSION } from '@moluoxixi/config-form-compiler'
 import {
   getProjectDocumentContentHash,
@@ -29,7 +31,9 @@ import {
   SURFACE_GRAPH_VERSION,
 } from '@moluoxixi/config-form-model'
 import { compileTemplate, parse } from '@vue/compiler-sfc'
+import { Window } from 'happy-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { normalizeClass, normalizeStyle } from 'vue'
 import { generateConfigFormBindings, generateVueSource } from '..'
 import {
   assertGeneratedRuntimeBoundary,
@@ -584,6 +588,17 @@ function compilation(providerId: TestProviderId = 'element-plus'): ProjectCompil
 
 const DELETE_COMPILATION_VALUE = Symbol('delete-compilation-value')
 
+function styledCompilation(provider: TestProviderId = 'element-plus'): ProjectCompilation {
+  const result = compilation(provider)
+  const layout = result.ir.surfacesById.home!.nodesById.layout! as unknown as { props: ModelJsonObject }
+  layout.props = {
+    ...layout.props,
+    class: ['authored-card', { highlighted: true }],
+    style: { 'padding': '24px', 'backgroundColor': 'var(--demo-color-surface, #FFFFFF)', 'gap': '28px', '--custom-size': '12px' },
+  }
+  return result
+}
+
 function compilationWithValue(
   path: readonly string[],
   value: unknown | typeof DELETE_COMPILATION_VALUE,
@@ -750,7 +765,101 @@ function generatedConst(
   return JSON.parse(source.slice(start + prefix.length, end))
 }
 
+function computedSpacing(value: unknown): { paddingLeft: string, marginLeft: string } {
+  const window = new Window()
+  const element = window.document.createElement('div')
+  const styles = normalizeStyle([value]) as Record<string, string>
+  for (const [key, item] of Object.entries(styles))
+    element.style.setProperty(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), item)
+  window.document.body.append(element)
+  const computed = window.getComputedStyle(element)
+  return { paddingLeft: computed.paddingLeft, marginLeft: computed.marginLeft }
+}
+
 describe('source generators', () => {
+  it.each(['css', 'tailwind-v4'] as const)(
+    'preserves shorthand and longhand style precedence in raw and binding %s output',
+    async (styleTarget) => {
+      const authoredStyles: ModelJsonValue[] = [
+        { paddingLeft: '24px', padding: '8px', marginLeft: '32px', margin: '4px' },
+        { padding: '8px', paddingLeft: '24px', margin: '4px', marginLeft: '32px' },
+        [[{ paddingLeft: '28px', padding: '10px' }], { marginLeft: '12px', margin: '6px' }],
+      ]
+      for (const authoredStyle of authoredStyles) {
+        const compiled = compilation()
+        const layout = compiled.ir.surfacesById.home!.nodesById.layout! as unknown as { props: ModelJsonObject }
+        layout.props = { ...layout.props, id: 'ordered-layout', style: authoredStyle }
+        const before = JSON.stringify(layout.props)
+        const [raw, binding] = await Promise.all([
+          generateVueSource(rawInput({ compilation: compiled, styleTarget })),
+          generateConfigFormBindings(bindingInput({ compilation: compiled, styleTarget })),
+        ])
+        if (!raw.success || !binding.success)
+          throw new Error(JSON.stringify([raw.diagnostics, binding.diagnostics]))
+        const template = parse(textAt(raw.data, 'src/surfaces/home/Surface.vue')).descriptor.template!.content
+        const opening = template.match(/<div\s[^>]*\bid="ordered-layout"[^>]*>/u)?.[0]
+        const rawStyle = opening?.match(/:style="([^"]+)"/u)?.[1]
+        const bindingStyle = textAt(binding.data, 'src/surfaces/home/config.ts').match(/^\s*"style": (.+),$/mu)?.[1]
+        expect(rawStyle).toBeDefined()
+        expect(bindingStyle).toBeDefined()
+        for (const expression of [rawStyle, bindingStyle]) {
+          const generatedStyle = runInNewContext(`(${expression})`)
+          expect(computedSpacing(generatedStyle)).toEqual(computedSpacing(authoredStyle))
+          const normalized = normalizeStyle([authoredStyle]) as Record<string, string>
+          const authoredKeys = Object.keys(normalized)
+          expect(Object.keys(normalizeStyle([generatedStyle]) as object).filter(key => authoredKeys.includes(key)))
+            .toEqual(authoredKeys)
+        }
+        expect(JSON.stringify(layout.props)).toBe(before)
+      }
+    },
+  )
+
+  it.each(['css', 'tailwind-v4'] as const)(
+    'preserves authored layout styles and classes with Vue merge semantics in %s output',
+    async (styleTarget) => {
+      for (const provider of ['element-plus', 'antd-vue'] as const) {
+        const authoredStyles: ModelJsonValue[] = [
+          { 'padding': '24px', 'backgroundColor': '#f0f4ff', 'gap': '28px', '--custom-size': '12px' },
+          'padding: 24px; background-color: #f0f4ff; gap: 28px; --custom-size: 12px',
+          [{ padding: '8px', gap: '4px' }, { 'padding': '24px', 'backgroundColor': '#f0f4ff', 'gap': '28px', '--custom-size': '12px' }],
+        ]
+        for (const authoredStyle of authoredStyles) {
+          const compiled = compilation(provider)
+          const layout = compiled.ir.surfacesById.home!.nodesById.layout! as unknown as { props: ModelJsonObject }
+          layout.props = { ...layout.props, id: 'authored-layout', class: ['authored-card', { highlighted: true }], style: authoredStyle }
+          const before = structuredClone(layout.props)
+          const result = await generateVueSource(rawInput({ compilation: compiled, componentResolver: componentResolver([], provider), styleTarget }))
+          expect(result.success, JSON.stringify(result.diagnostics)).toBe(true)
+          if (!result.success)
+            throw new Error(JSON.stringify(result.diagnostics))
+          const source = textAt(result.data, 'src/surfaces/home/Surface.vue')
+          const template = parse(source).descriptor.template!.content
+          const opening = template.match(/<div\s[^>]*\bid="authored-layout"[^>]*>/u)?.[0]
+          expect(opening).toBeDefined()
+          const styleExpression = opening!.match(/:style="([^"]+)"/u)?.[1]
+          const literalStyle = opening!.match(/\sstyle="([^"]+)"/u)?.[1]
+          const classExpression = opening!.match(/:class="([^"]+)"/u)?.[1]
+          expect(styleExpression ?? literalStyle).toBeDefined()
+          expect(classExpression).toBeDefined()
+          const styles = normalizeStyle([styleExpression === undefined ? literalStyle : runInNewContext(`(${styleExpression})`)])
+          expect(styles).toMatchObject({ 'padding': '24px', '--custom-size': '12px' })
+          expect(styles).toHaveProperty(typeof authoredStyle === 'string' ? 'background-color' : 'backgroundColor', '#f0f4ff')
+          expect(styles).toHaveProperty('gap', '28px')
+          if (styleTarget === 'css')
+            expect(styles).toMatchObject({ display: 'flex', flexDirection: 'column' })
+          const classes = normalizeClass(runInNewContext(`(${classExpression})`))
+          expect(classes).toContain('authored-card highlighted')
+          if (styleTarget === 'tailwind-v4')
+            expect(classes).toContain('flex flex-col')
+          expect(layout.props).toEqual(before)
+          const checked = compileTemplate({ id: 'authored-layout', filename: 'Surface.vue', source: template })
+          expect(checked.errors).toEqual([])
+        }
+      }
+    },
+  )
+
   it('exports a simple business page without designer runtime scaffolding', async () => {
     const minimal = compilation()
     const source = minimal.ir.surfacesById.home!
@@ -800,7 +909,7 @@ describe('source generators', () => {
   it('generates deterministic raw Vue source that directly uses provider UI', async () => {
     const requests: SourceComponentRequest[] = []
     const reader = resourceReader()
-    const sourceInput = rawInput({ componentResolver: componentResolver(requests), resourceReader: reader })
+    const sourceInput = rawInput({ compilation: styledCompilation(), componentResolver: componentResolver(requests), resourceReader: reader })
     const first = await generateVueSource(sourceInput)
     const second = await generateVueSource(sourceInput)
     expect(first).toEqual(second)
@@ -925,7 +1034,7 @@ describe('source generators', () => {
 
   it('builds standalone Ant Design Vue source with the same dependency boundary', async () => {
     const result = await generateVueSource(rawInput({
-      compilation: compilation('antd-vue'),
+      compilation: styledCompilation('antd-vue'),
       componentResolver: componentResolver([], 'antd-vue'),
     }))
     expect(result.success).toBe(true)
@@ -1352,8 +1461,8 @@ describe('source generators', () => {
 
   it('typechecks and builds Element Plus Raw and ConfigForm binding Tailwind consumers', async () => {
     const [raw, binding] = await Promise.all([
-      generateVueSource(rawInput({ styleTarget: 'tailwind-v4' })),
-      generateConfigFormBindings(bindingInput({ styleTarget: 'tailwind-v4' })),
+      generateVueSource(rawInput({ compilation: styledCompilation(), styleTarget: 'tailwind-v4' })),
+      generateConfigFormBindings(bindingInput({ compilation: styledCompilation(), styleTarget: 'tailwind-v4' })),
     ])
     expect(raw.success && binding.success).toBe(true)
     if (!raw.success || !binding.success)
@@ -1368,7 +1477,7 @@ describe('source generators', () => {
 
   it('typechecks and builds an Ant Design Vue Raw Tailwind consumer', async () => {
     const result = await generateVueSource(rawInput({
-      compilation: compilation('antd-vue'),
+      compilation: styledCompilation('antd-vue'),
       componentResolver: componentResolver([], 'antd-vue'),
       styleTarget: 'tailwind-v4',
     }))

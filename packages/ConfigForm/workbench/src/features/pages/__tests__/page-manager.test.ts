@@ -159,7 +159,7 @@ describe('page manager', () => {
     wrapper.unmount()
   })
 
-  it('links each row to its form designer and links back to project management', async () => {
+  it('links each row to its UI designer and links back to project management', async () => {
     const wrapper = mountPage(createProjectDocumentFixture())
 
     expect(wrapper.get('.page-manager__preview').attributes('src')).toMatch(/^data:image\/svg\+xml/)

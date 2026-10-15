@@ -122,7 +122,7 @@ const createLabel = computed(() => props.target === 'project'
     ? locale.value.t('pages.createDialogAction', 'Create dialog')
     : creationSurfaceKind.value === 'drawer'
       ? locale.value.t('pages.createDrawerAction', 'Create drawer')
-      : locale.value.t('pages.createFormAction', 'Create form page'))
+      : locale.value.t('pages.createFormAction', 'Create page'))
 const createUnavailableReason = computed(() => {
   if (loadingPreview.value || loadingCatalog.value)
     return locale.value.t('template.checkingEligibility', 'Preparing template')

@@ -1,0 +1,78 @@
+# 验证
+
+本页记录可复跑的验证方式。验证结果只对应实际执行的改动与环境，不沿用旧文档中的
+历史测试数量或验收结论。
+
+## 设计体验验收
+
+按 [实施计划](./implementation-plan.md#验收项目)完成创建、多轮修改、撤销重做、保存重开、
+体验和源码交付。检查 Element Plus 与 Ant Design Vue，并覆盖桌面和手机视口。
+视觉属性编辑应检查合法值、清空、其他 style 键保留、非对象和受支持属性别名只读、
+命令拒绝后的权威值及历史一致性。检查既有表单断点布局，但不将静态视觉属性记为
+节点级响应式能力。
+
+## 主要命令
+
+在仓库根目录执行，先安装当前锁文件依赖：
+
+```powershell
+pnpm --filter @moluoxixi/config-form-designer test
+pnpm --filter @moluoxixi/config-form-designer typecheck
+pnpm --filter @config-form/workbench test
+pnpm --filter @config-form/workbench typecheck
+pnpm --filter @config-form/workbench build
+pnpm --filter @config-form/workbench verify:templates
+pnpm --filter @config-form/workbench test:e2e
+pnpm test:package-architecture
+pnpm test:config-form-packages
+node scripts/check-element-plus-imports.mjs
+```
+
+Workbench 构建附带 Element Plus、Monaco 和 Tailwind 产物检查；模板验证执行真实源码
+消费者的类型检查与构建。浏览器检查覆盖交互、键盘、可访问性和响应式，视觉基线变更
+需要实际查看截图。代码风格检查应覆盖本轮修改文件。
+
+涉及跨层模型与生成行为时，补充：
+
+```powershell
+pnpm exec turbo run test typecheck --filter='./packages/ConfigForm/**' --filter='!@config-form/playground' --concurrency=2
+pnpm --filter @moluoxixi/config-form-source test
+pnpm --filter @moluoxixi/config-form-source typecheck
+```
+
+涉及 SDK、本地工作区与 MCP 时，按各包 README 执行
+[Studio SDK](../studio/README.md)和[Local 验证](../local/README.md)。
+Local 的 `verify:source` 与 `verify:pack` 需要先构建，验证实际安装和独立生成工程。
+
+## 本轮记录
+
+文档重组已移除四份旧主文档，并替换其全部本地引用。12 份当前文档通过 ESLint；
+使用 Markdown-it 解析检查的 54 个本地文件与锚点链接全部可解析，索引覆盖六份新文档。
+
+2026-10-15 实际通过的检查：
+
+| 检查              | 已执行范围                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Designer 单测     | 30 个文件、258 项通过                                                                                                           |
+| Model 单测        | 8 个文件、80 项通过                                                                                                             |
+| Source 单测       | 10 个文件、114 项通过，CSS / Tailwind 真实消费者完成自定义 class、style 和主题变量的类型检查与构建                              |
+| Workbench 单测    | 69 个文件、683 项通过；其中 14 项导出快照覆盖双组件库、多选与撤销、保存重开、transfer、Runtime、Raw / Binding 和 CSS / Tailwind |
+| 类型检查          | Designer、Model、Source、Workbench 均通过                                                                                       |
+| Workbench 构建    | 通过，Element Plus、Monaco、Tailwind 三项产物检查通过                                                                           |
+| 模板消费者        | 6 项通过                                                                                                                        |
+| 全仓包架构        | 26 项测试通过；单项超时预算调整为 15 秒后重跑通过，CLI 检查 39 个包、0 项欠账                                                   |
+| ConfigForm 发布包 | 16 项构建任务成功，公开包边界验证通过                                                                                           |
+| SDK / Local 回归  | Studio 6 项、Local 7 项，以及两包类型检查通过                                                                                   |
+| 代码风格          | 当前 ESLint 配置覆盖的改动文件无错误；该配置不匹配 Vue SFC，未将其计为 SFC lint 通过                                            |
+
+Workbench 完整浏览器检查共 123 项，115 项通过；其余 8 项是 1440px 桌面视觉基线差异，
+内容均为保存位置的 `This browser` 状态标识。八组差异逐一人工查看并更新基线后，独立
+定向重跑 8 项全部通过。共 123 项场景在完整执行与定向复跑中通过。
+
+双组件库的新视觉编辑、保存恢复、Runtime computed style、撤销重做、手机 Inspector
+及 Axe 检查通过。三个手机管理页面的列宽裁剪修复后通过。已人工查看双组件库桌面与
+手机截图；4 组模板创建文案基线已更新并重跑通过。
+
+独立审查发现并修复源码序列化排序改变 CSS 简写与长写优先级的问题。回归覆盖对象与
+嵌套数组，比较预览和两种导出结果的 CSS 计算值；修复前测试失败，修复后 Source
+114 项、类型检查和相关代码风格检查全部通过。

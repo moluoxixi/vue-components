@@ -143,7 +143,7 @@ describe('designer property panel lite Inspector', () => {
       datasets: [{ id: 'choices', name: 'Choices', rows: [{ id: 2, name: 'Two' }] }],
       diagnostics: [],
     } })
-    const control = wrapper.getComponent(ElSelect)
+    const control = wrapper.get('[data-property-group="data"]').getComponent(ElSelect)
     expect(control.props('modelValue')).toBe(2)
     expect(control.findAllComponents(ElOption).map(option => option.props())).toEqual([expect.objectContaining({ label: 'Two', value: 2 })])
     await wrapper.setProps({ datasets: [{ id: 'choices', name: 'Choices', rows: [{ id: 3, name: 'Three' }] }] })
@@ -336,7 +336,7 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
       .toEqual(['essentials'])
-    expect(wrapper.get('.mx-config-form-designer__search-count').text()).toBe('1 / 11')
+    expect(wrapper.get('.mx-config-form-designer__search-count').text()).toBe('1 / 26')
 
     await search.setValue('maxlength')
     expect(wrapper.find('input[aria-label="Max length"]').exists()).toBe(true)

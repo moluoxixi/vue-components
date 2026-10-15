@@ -481,14 +481,22 @@ function nodeProperties(
   const values = new Map<string, string>()
   for (const [key, value] of Object.entries(resolution.staticProps ?? {}).sort(([left], [right]) => left.localeCompare(right),
   ))
-    values.set(key, sourceAttributeJson(value))
+    values.set(key, sourceAttributeJson(value, key))
   for (const [key, value] of Object.entries(node.props).sort(([left], [right]) => left.localeCompare(right)))
-    values.set(key, sourceAttributeJson(value))
+    values.set(key, sourceAttributeJson(value, key))
   const layout = style.layoutAttributes(node, resolution)
-  if (layout.className)
-    values.set('class', sourceAttributeString(layout.className))
-  if (layout.style)
-    values.set('style', sourceAttributeJson(layout.style as ModelJsonObject))
+  // Layout supplies defaults; authored classes and styles remain intact and
+  // follow Vue's normal merge order, including string/array style values.
+  if (layout.className) {
+    const existing = values.get('class')
+    const defaults = sourceAttributeString(layout.className)
+    values.set('class', existing === undefined ? defaults : `[${defaults}, ${existing}]`)
+  }
+  if (layout.style) {
+    const existing = values.get('style')
+    const defaults = sourceAttributeJson(layout.style as ModelJsonObject, 'style')
+    values.set('style', existing === undefined ? defaults : `[${defaults}, ${existing}]`)
+  }
   for (const [key] of Object.entries(node.datasetBindings ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
     const view = `datasetViews[${sourceAttributeString(datasetViewKey(surface.id, node.id, key))}]`
     values.set(key, `${view}.items`)

@@ -2076,7 +2076,7 @@ test('downloads the selected source shape and styling for a page while project Z
   await createProject(page, 'element')
   const creation = await openPageCreation(page)
   await creation.getByRole('option', { name: /Element Plus profile/ }).click()
-  await creation.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await creation.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await page.getByRole('button', { name: 'Handoff', exact: true }).click()
   const sourcePane = page.locator('.source-pane')

@@ -1,4 +1,4 @@
-function canonicalValue(value: unknown): unknown {
+function canonicalValue(value: unknown, preserveObjectOrder = false): unknown {
   if (
     value === null
     || typeof value === 'string'
@@ -8,12 +8,15 @@ function canonicalValue(value: unknown): unknown {
     return value
   }
   if (Array.isArray(value))
-    return value.map(item => canonicalValue(item))
+    return value.map(item => canonicalValue(item, preserveObjectOrder))
   if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value)
+    // CSS shorthand/longhand precedence depends on declaration order, including
+    // objects nested in Vue style arrays. Other JSON objects stay canonical.
+    if (!preserveObjectOrder)
+      entries.sort(([left], [right]) => left.localeCompare(right))
     return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, item]) => [key, canonicalValue(item)]),
+      entries.map(([key, item]) => [key, canonicalValue(item, preserveObjectOrder || key === 'style')]),
     )
   }
   throw new TypeError('Source JSON values must be finite JSON data.')
@@ -54,8 +57,8 @@ function attributeValueSource(value: unknown): string {
     .join(', ')} }`
 }
 
-export function sourceAttributeJson(value: unknown): string {
-  return attributeValueSource(canonicalValue(value))
+export function sourceAttributeJson(value: unknown, propertyName?: string): string {
+  return attributeValueSource(canonicalValue(value, propertyName === 'style'))
 }
 
 export function escapeHtml(value: string): string {

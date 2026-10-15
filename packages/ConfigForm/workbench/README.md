@@ -1,9 +1,8 @@
 # @config-form/workbench
 
-Workbench 是当前仓库内部的 Project 编辑、Preview、源码导出和集成验证应用。它是
-ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖导入。Surface Foundation
-已将持久化、Preview 与缓存切换为 Surface；源码生成和只读查看由独立
-`@moluoxixi/config-form-source` 包提供。
+Workbench 是仓库内部的 ConfigForm Studio UI 设计应用与集成验证入口，不应被业务应用
+作为运行时依赖导入。项目配置持续保存设计决定，设计、体验预览与源码交付共享同一模型。
+源码生成和只读查看由独立 `@moluoxixi/config-form-source` 包提供。
 
 ## 当前实现
 
@@ -14,7 +13,7 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
 - Dataset 支持表格分页/筛选、CSV/JSON 导入、可视映射和查询预览。未保存的单元格及映射
   草稿在当前会话内按数据集保留，切换或关闭面板不会丢失，刷新页面会丢弃未提交草稿。
 - 平面 JSON Schema 先展示字段/校验映射与不支持项，再一次性插入，可整体撤销。
-  内置目录增加两套 adapter 的审批和问卷页面。试用步骤见 [审核指南](../STUDIO-REVIEW.md)。
+  内置目录提供两套 adapter 的审批和问卷页面。验收场景见 [验证文档](../docs/verification.md)。
 
 - 组合公开的 Model、Compiler、Vue backend、Runtime、Designer 与 provider adapter。
 - 应用壳是真正的路由应用，层级为**项目 › 页面 › 表单设计器**：`/projects`（项目管理）、
@@ -38,7 +37,7 @@ ConfigForm Studio 的演进基线，不应被业务应用作为运行时依赖�
   作者变更进入同一历史、自动保存和刷新恢复链。
 - Preview 验证结构、布局、绑定、校验、同步 reaction、Runtime Data Source 和
   readonly 行为，不复现未注入的宿主函数。
-- 动态 Runtime Data Source 仍属于生产 Runtime 的代码态能力，不进入 Studio Demo 合同。
+- 动态 Runtime Data Source 属于生产 Runtime 的代码态能力，不进入 Studio 设计文档。
 - 默认导出直接使用 Vue、Vue Router 与目标 UI 组件的原始工程源码，Required 与
   RuleSet v2 是工程内可读校验代码；它不依赖 ConfigForm、Zod、`@moluoxixi/*`、
   `@config-form/*` 或内部 Runtime。第二种导出只组合公开 ConfigForm adapter、
@@ -88,8 +87,7 @@ Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 
 - Designer 只编辑当前 `SurfaceAsset`。
 - `@moluoxixi/config-form-prototype-runtime` 统一执行页面历史、overlay instance 栈、
   参数/结果事务和主要 UI 动作；Studio Preview 不复制该 reducer。
-- Studio 作者体验只使用静态 Dataset；现有动态 Runtime Data Source 作者 UI 将从
-  Studio 移除，但生产 Runtime 的代码态 Data Source 能力保留。
+- Studio 设计体验使用静态 Dataset，生产 Runtime 的代码态 Data Source 能力独立保留。
 - `@moluoxixi/config-form-source` 拥有无 DOM Generator、SourceFileSet、文件树模型和
   只读 Viewer；Studio 在组合根分别注入同步 provider component resolver、独立的
   ConfigForm binding resolver 与异步 Resource reader。Raw 不接收 binding resolver；
@@ -97,9 +95,8 @@ Design/Experience 切换、IndexedDB、项目 JSON 导入导出，以及 Source 
 - Viewer 桌面显示左文件树和右源码，窄屏切换 tree/code；Monaco 仅在 Viewer 内
   异步加载。Viewer 不拥有弹窗、复制、下载、ZIP、通知或持久化。
 
-Surface Foundation、Prototype Runtime、Source、资产树、Dataset/Resource 编辑器、
-主题和 Interactions Inspector 均已接入当前 Studio。实现状态以
-[路线图](../ROADMAP.md) 为准。
+Prototype Runtime、Source、资产树、Dataset/Resource 编辑器、主题和 Interactions
+Inspector 均已接入当前 Studio。本轮范围和后续顺序见 [实施计划](../docs/implementation-plan.md)。
 
 ## 当前合同
 
@@ -122,4 +119,4 @@ pnpm --filter @config-form/workbench verify:templates
 pnpm --filter @config-form/workbench test:e2e
 ```
 
-目标产品边界见 [PRODUCT.md](../PRODUCT.md)，架构入口见 [README.md](../README.md)。
+产品定位与架构见 [文档索引](../docs/README.md)，包用法见 [ConfigForm 入口](../README.md)。

@@ -3,6 +3,67 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { createProject, selectDatasetView } from './helpers'
 
+for (const adapter of ['element', 'antd'] as const) {
+  test(`${adapter} visual edits survive undo, reopening and experience preview`, async ({ page }) => {
+    test.setTimeout(120_000)
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto('/')
+    await createProject(page, adapter)
+    const selectName = async () => {
+      await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+      await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
+    }
+    await selectName()
+    const visual = page.locator('[data-visual-style]')
+    const padding = visual.locator('[data-visual-field="padding"] input')
+    const width = visual.locator('[data-visual-field="width"] input')
+    const controlSelector = adapter === 'element' ? '.el-input' : '.ant-input'
+    const control = page.frameLocator('iframe[data-design-runtime-variant="canvas"]').locator(`[data-field="name"] ${controlSelector}`).first()
+    await width.fill('240')
+    await width.press('Tab')
+    await expect(width).toHaveValue('240px')
+    await padding.fill('12')
+    await padding.press('Tab')
+    await expect(control).toHaveCSS('padding-top', '12px')
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(padding).toHaveValue('')
+    await page.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect(control).toHaveCSS('padding-top', '12px')
+    await visual.locator('[data-visual-group="appearance"] summary').click()
+    const fill = visual.locator('[data-visual-field="backgroundColor"] .el-select')
+    await fill.click()
+    await page.getByRole('option', { name: 'Primary', exact: true }).click()
+    await expect(control).toHaveCSS('background-color', 'rgb(37, 99, 235)')
+    const designColor = await control.evaluate(element => getComputedStyle(element).backgroundColor)
+    expect(designColor).not.toBe('rgba(0, 0, 0, 0)')
+    await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 60_000 })
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 30_000 })
+    await selectName()
+    await expect(width).toHaveValue('240px')
+    await expect(padding).toHaveValue('12px')
+    await expect(control).toHaveCSS('padding-top', '12px')
+    await expect(control).toHaveCSS('background-color', designColor)
+    await visual.locator('[data-visual-group="appearance"] summary').click()
+    expect((await new AxeBuilder({ page }).include('[data-visual-style]').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()).violations).toEqual([])
+    await mkdir('dist/ui-design-review', { recursive: true })
+    await page.screenshot({ path: `dist/ui-design-review/${adapter}-design.png`, fullPage: true })
+    await page.getByRole('button', { name: 'Show preview', exact: true }).click()
+    const experience = page.frameLocator('iframe[data-preview-runtime-host]').locator(`[data-field="name"] ${controlSelector}`).first()
+    await expect(experience).toHaveCSS('padding-top', '12px')
+    await expect(experience).toHaveCSS('background-color', designColor)
+    await page.getByRole('button', { name: 'Design', exact: true }).click()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByRole('tab', { name: 'Inspector', exact: true }).click()
+    await expect(padding).toBeVisible()
+    expect(await visual.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+    await page.screenshot({ path: `dist/ui-design-review/${adapter}-mobile.png`, fullPage: true })
+    expect(errors).toEqual([])
+  })
+}
+
 test('materials remain readable and scrollable with mouse and keyboard at the minimum pane width', async ({ page }) => {
   await page.goto('/')
   await createProject(page, 'element')

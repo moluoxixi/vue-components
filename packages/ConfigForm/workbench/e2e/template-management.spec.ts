@@ -119,7 +119,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await page.locator('[data-create-trigger="page-manager-template"]').click()
   const localizedWorkspace = page.locator('.template-creation-workspace:visible').first()
   await expect(localizedWorkspace.getByRole('option', { name: /Ant Design Vue 资料表单/ })).toBeVisible()
-  await expect(localizedWorkspace.getByRole('button', { name: '创建表单页面', exact: true })).toBeEnabled()
+  await expect(localizedWorkspace.getByRole('button', { name: '创建页面', exact: true })).toBeEnabled()
   await expectNoHorizontalOverflow(page)
   await waitForPageCreation(page)
   const localizedResults = await new AxeBuilder({ page })
@@ -143,7 +143,7 @@ test('creates independent pages and only offers compatible templates', async ({ 
 
   await workspace.getByRole('option', { name: /Element Plus profile/ }).click()
   await expect(workspace.locator('.template-create-footer button')).toBeVisible()
-  await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const secondPageId = await page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id]')
@@ -161,7 +161,7 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   const workspace = page.locator('.template-creation-workspace:visible').first()
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
   await expect(workspace.locator('.template-create-footer button')).toBeVisible()
-  await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const createdPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
   expect(createdPageNodeId).not.toBe(firstPageNodeId)
@@ -197,7 +197,7 @@ test('restores the page-management trigger on cancel and leaves page management 
 
   await newSurface.click()
   await expect(workspace.locator('.template-create-footer button')).toBeVisible()
-  await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(pages).not.toBeVisible()
   await expect(page.locator('[data-designer-entry]')).toBeFocused()
 })
@@ -402,8 +402,8 @@ test('only shows compatible templates and keeps the create action visible at 390
   await expect(workspace.getByRole('option', { name: /Ant Design Vue/ })).toHaveCount(0)
   await workspace.getByRole('option', { name: /Element Plus profile/ }).click()
   await expect(workspace.locator('.template-create-footer button')).toBeVisible()
-  await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeEnabled()
-  await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeInViewport()
+  await expect(workspace.getByRole('button', { name: 'Create page', exact: true })).toBeEnabled()
+  await expect(workspace.getByRole('button', { name: 'Create page', exact: true })).toBeInViewport()
   await expectNoHorizontalOverflow(page)
 })
 
@@ -588,7 +588,7 @@ test('saves a project page to the template library and reuses an independent cop
   const workspace = page.locator('.template-creation-workspace:visible').first()
   await expect(workspace.getByRole('option', { name: /Ant Design Vue/ })).toHaveCount(0)
   await workspace.getByRole('option', { name: /Reusable profile/ }).click()
-  await workspace.getByRole('button', { name: 'Create form page', exact: true }).click()
+  await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   const copied = page.frameLocator('iframe[data-design-runtime-variant="canvas"]').locator('[data-config-node-id]').first()
   await expect(copied).toBeVisible()
   expect(await copied.getAttribute('data-config-node-id')).not.toBe(firstNode)
@@ -767,7 +767,7 @@ for (const viewport of [
     if (viewport.width <= 390) {
       await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
       await expect(workspace.getByRole('button', { name: 'Catalog', exact: true })).toBeVisible()
-      await expect(workspace.getByRole('button', { name: 'Create form page', exact: true })).toBeVisible()
+      await expect(workspace.getByRole('button', { name: 'Create page', exact: true })).toBeVisible()
     }
     else if (viewport.width === 900) {
       await expect(workspace.locator('.template-category-rail')).toBeVisible()
