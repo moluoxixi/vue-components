@@ -5,35 +5,27 @@
   align-items: center;
   margin-bottom: 12px;
 }
-.dataset-editor-toolbar button,
+.dataset-editor-toolbar button:not(.el-button),
 .dataset-projection-columns button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--wb-control-border);
-  background: var(--wb-surface);
+  border: 1px solid transparent;
+  background: var(--wb-control-bg);
   color: var(--wb-text);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 5px 8px;
   cursor: pointer;
   font-size: 11px;
 }
+.dataset-editor-toolbar button:not(.el-button):hover:not(:disabled),
+.dataset-projection-columns button:hover:not(:disabled) {
+  background: var(--wb-hover);
+  border-color: var(--wb-field-hover);
+}
 .dataset-editor-toolbar button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-.dataset-editor-toolbar input,
-.dataset-editor-toolbar select,
-.dataset-projection-builder select,
-.dataset-projection-builder input {
-  max-width: 100%;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--wb-control-border);
-  border-radius: 4px;
-  font: inherit;
-  color: var(--wb-text);
-  background: var(--wb-surface);
 }
 .dataset-editor-toolbar > .el-select {
   width: 170px;
@@ -102,8 +94,8 @@
 .dataset-column-form {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid var(--wb-separator);
-  border-radius: 6px;
+  border: 1px solid var(--wb-field-border);
+  border-radius: 8px;
   background: var(--wb-elevated);
 }
 .dataset-column-form > .el-input {
@@ -137,8 +129,8 @@
   height: 100%;
   overflow: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--wb-separator);
-  border-radius: 6px;
+  border: 1px solid var(--wb-field-border);
+  border-radius: 8px;
   scrollbar-gutter: stable;
   background: var(--wb-surface);
 }
@@ -150,8 +142,8 @@
   font-size: 13px;
 }
 
-.dataset-table-scroll .is-pinned { position: sticky; left: 52px; z-index: 1; background: var(--wb-surface); box-shadow: 2px 0 0 var(--wb-control-border); }
-.dataset-table-scroll thead .is-pinned { z-index: 3; background: var(--wb-elevated); }
+.dataset-table-scroll .is-pinned { position: sticky; left: 52px; z-index: 1; background: var(--dataset-row-bg, var(--wb-surface)); box-shadow: 1px 0 0 var(--wb-field-border); }
+.dataset-table-scroll thead .is-pinned { z-index: 3; background: var(--wb-control-bg); }
 .dataset-column-resizer { position: absolute; right: -4px; top: 0; bottom: 0; z-index: 4; width: 9px; cursor: col-resize; touch-action: none; }
 .dataset-column-resizer:hover, .dataset-column-resizer:focus-visible { background: var(--wb-accent-soft); outline: 1px solid var(--wb-accent-line); }
 .dataset-column-settings-heading { margin-bottom: 8px; color: var(--wb-text-strong); font-size: 13px; }
@@ -162,13 +154,13 @@
 .dataset-column-setting button[aria-pressed='true'] { color: var(--wb-accent-text); background: var(--wb-accent-soft); }
 .dataset-column-settings-actions { display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid var(--wb-separator); }
 .dataset-column-settings-actions .el-button { margin: 0; }
-.dataset-record { padding: 0 12px 10px; border-bottom: 1px solid var(--wb-separator); }
+.dataset-record { padding: 0 12px 10px; border-bottom: 1px solid var(--wb-field-border); }
 .dataset-record summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; list-style: none; font-size: 13px; }
 .dataset-record summary strong { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dataset-record summary > span:last-child { flex: none; color: var(--wb-accent-text); font-size: 12px; }
 .dataset-record-number { color: var(--wb-muted); font-variant-numeric: tabular-nums; }
 .dataset-record dl { margin: 0; }
-.dataset-record dl > div { display: grid; grid-template-columns: minmax(70px, 30%) minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--wb-separator); }
+.dataset-record dl > div { display: grid; grid-template-columns: minmax(70px, 30%) minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--wb-field-border); }
 .dataset-record dt { overflow-wrap: anywhere; color: var(--wb-muted); font-size: 12px; }
 .dataset-record dd { margin: 0; min-width: 0; }
 .dataset-record dd button { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--wb-text); cursor: pointer; text-align: left; }
@@ -182,21 +174,24 @@
 .dataset-table-scroll th,
 .dataset-table-scroll td {
   padding: 0;
-  border-right: 1px solid var(--wb-separator);
-  border-bottom: 1px solid var(--wb-separator);
+  border: 0;
+  border-bottom: 1px solid var(--wb-field-border);
 }
 .dataset-table-scroll th {
   text-align: left;
   font-weight: 500;
   color: var(--wb-text);
-  background: var(--wb-elevated);
+  background: var(--wb-control-bg);
 }
 .dataset-table-scroll thead th {
   position: sticky;
   top: 0;
   z-index: 2;
   padding: 6px 10px;
-  border-bottom-color: var(--wb-control-border);
+  border-right: 1px solid var(--wb-field-border);
+}
+.dataset-table-scroll thead th:last-child {
+  border-right: 0;
 }
 .dataset-column-heading {
   display: flex;
@@ -273,21 +268,25 @@
   z-index: 1;
   padding: 6px;
   color: var(--wb-muted);
-  background: var(--wb-elevated);
+  background: var(--dataset-row-bg, var(--wb-surface));
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
 .dataset-table-scroll thead .dataset-row-number {
   z-index: 3;
+  background: var(--wb-control-bg);
 }
 .dataset-table-scroll .dataset-row-actions {
   position: sticky;
   right: 0;
-  background: var(--wb-elevated);
-  border-left: 1px solid var(--wb-separator);
+  background: var(--dataset-row-bg, var(--wb-surface));
+  border-left: 1px solid var(--wb-field-border);
   border-right: 0;
   text-align: center;
+}
+.dataset-table-scroll thead .dataset-row-actions {
+  background: var(--wb-control-bg);
 }
 .dataset-cell {
   position: relative;
@@ -344,11 +343,14 @@
   font-style: italic;
 }
 .dataset-table-scroll tbody tr:nth-child(even) {
-  background: color-mix(in srgb, var(--wb-hover) 40%, var(--wb-surface));
+  --dataset-row-bg: color-mix(in srgb, var(--wb-hover) 40%, var(--wb-surface));
+}
+.dataset-table-scroll tbody tr {
+  background: var(--dataset-row-bg, var(--wb-surface));
 }
 .dataset-table-scroll tbody tr:hover,
 .dataset-table-scroll tbody tr.is-selected {
-  background: var(--wb-hover);
+  --dataset-row-bg: var(--wb-hover);
 }
 .dataset-table-scroll th.is-selected,
 .dataset-table-scroll td.is-selected {
@@ -602,14 +604,8 @@
     11px/1.7 Consolas,
     monospace;
 }
-.dataset-projection-builder textarea,
-.dataset-ingest textarea {
-  width: 100%;
-  padding: 12px;
-  color: var(--wb-text);
-  background: var(--wb-surface);
-  border: 1px solid var(--wb-control-border);
-  border-radius: 4px;
+.dataset-projection-builder .el-textarea__inner,
+.dataset-ingest .el-textarea__inner {
   font:
     12px/1.7 Consolas,
     monospace;
