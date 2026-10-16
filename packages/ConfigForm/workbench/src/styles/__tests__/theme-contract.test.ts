@@ -536,7 +536,7 @@ describe('workbench theme contract', () => {
     expect(stylesheet).toContain('--el-border-color-light: var(--wb-separator);')
     const paletteItem = selectorBlock('.mx-config-form-designer__palette-item', designerStylesheet)
     expect(paletteItem).toContain('background: var(--mx-designer-subtle);')
-    expect(paletteItem).toContain('border: 1px solid var(--mx-designer-separator);')
+    expect(paletteItem).toContain('border: 1px solid transparent;')
     expect(paletteItem).toContain('transition: background-color 100ms ease, border-color 100ms ease;')
     expect(selectorBlock('.mx-config-form-designer__palette-item:focus-within', designerStylesheet)).toContain(
       'outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);',

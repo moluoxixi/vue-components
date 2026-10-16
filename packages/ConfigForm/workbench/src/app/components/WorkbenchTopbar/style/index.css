@@ -83,9 +83,9 @@
   height: 34px;
   padding: 3px;
   gap: 2px;
-  border: 1px solid var(--wb-separator);
+  border: 1px solid transparent;
   border-radius: 6px;
-  background: var(--wb-bg);
+  background: var(--wb-control-bg);
 }
 
 .workbench-view-switch button {
@@ -249,14 +249,12 @@
 
 .topbar-actions button:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--wb-text-strong);
-  border-color: var(--wb-control-border);
   background: var(--wb-hover);
 }
 
 .topbar-actions > button.is-active {
   color: var(--wb-accent-text);
-  border-color: var(--wb-accent-line);
-  background: var(--wb-hover);
+  background: var(--wb-accent-soft);
 }
 
 .topbar-actions button:disabled {

@@ -175,8 +175,8 @@
   align-items: center;
   gap: 7px;
   color: var(--mx-designer-muted);
-  background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-control-border);
+  background: var(--mx-designer-control-bg);
+  border: 1px solid var(--mx-designer-field-border);
   border-radius: 6px;
   transition:
     border-color 120ms ease,
@@ -184,10 +184,14 @@
     background 120ms ease;
 }
 
+.mx-config-form-designer__property-search:hover {
+  border-color: var(--mx-designer-field-hover);
+}
+
 .mx-config-form-designer__property-search:focus-within {
   background: var(--mx-designer-surface-raised);
   border-color: var(--mx-designer-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mx-designer-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--mx-designer-accent);
 }
 
 .mx-config-form-designer__property-search > svg {
@@ -381,4 +385,21 @@
   .mx-config-form-designer__property-group-trigger > svg {
     transition: none;
   }
+}
+
+.mx-config-form-designer__properties {
+  --el-border-radius-base: 6px;
+}
+
+.mx-config-form-designer__properties .el-input,
+.mx-config-form-designer__properties .el-textarea {
+  --el-input-bg-color: var(--mx-designer-control-bg);
+  --el-input-border-color: var(--mx-designer-field-border);
+  --el-input-hover-border-color: var(--mx-designer-field-hover);
+}
+
+.mx-config-form-designer__properties .el-select {
+  --el-fill-color-blank: var(--mx-designer-control-bg);
+  --el-border-color: var(--mx-designer-field-border);
+  --el-border-color-hover: var(--mx-designer-field-hover);
 }

@@ -5,6 +5,10 @@
   --wb-bg: #ffffff;
   --wb-border: #8b939c;
   --wb-control-border: #8b939c;
+  --wb-control-bg: #f3f5f7;
+  --wb-field-border: #e5e9ee;
+  --wb-field-hover: #bdc6d0;
+  --wb-workspace-bg: #f5f6f8;
   --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
   --wb-hover: #f5f6f7;
@@ -45,6 +49,28 @@
   --wb-canvas-danger-ink: #7b241c;
   --wb-canvas-danger-line: #efb5af;
   --wb-canvas-danger-soft: #fff1ef;
+}
+
+/* Editing surfaces use quiet seams; state controls retain the stronger border. */
+:is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays) .el-input,
+:is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays) .el-textarea {
+  --el-input-bg-color: var(--wb-control-bg);
+  --el-input-border-color: var(--wb-field-border);
+  --el-input-hover-border-color: var(--wb-field-hover);
+}
+
+:is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays) .el-select {
+  --el-fill-color-blank: var(--wb-control-bg);
+  --el-border-color: var(--wb-field-border);
+  --el-border-color-hover: var(--wb-field-hover);
+}
+
+:is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays) .el-checkbox {
+  --el-checkbox-input-border: 1px solid var(--wb-control-border);
+}
+
+:is(.workbench-app, .management-shell, .template-creation-workspace, .workbench-overlays) .el-radio {
+  --el-radio-input-border: 1px solid var(--wb-control-border);
 }
 
 .workbench-app,
@@ -93,10 +119,11 @@
   --el-color-info-light-8: color-mix(in srgb, var(--wb-muted) 20%, var(--wb-surface));
   --el-color-info-light-9: color-mix(in srgb, var(--wb-muted) 12%, var(--wb-surface));
   --el-color-info-dark-2: color-mix(in srgb, var(--wb-muted) 80%, var(--wb-text-strong));
-  --el-border-color: var(--wb-control-border);
+  --el-border-color: var(--wb-field-border);
   --el-border-color-light: var(--wb-separator);
   --el-border-color-lighter: var(--wb-separator);
-  --el-border-color-hover: var(--wb-accent-line);
+  --el-border-color-hover: var(--wb-field-hover);
+  --el-border-radius-base: 6px;
   --el-bg-color: var(--wb-surface-raised);
   --el-bg-color-overlay: var(--wb-surface-raised);
   --el-fill-color: var(--wb-hover);
@@ -149,6 +176,10 @@
   --wb-bg: #ffffff;
   --wb-border: #8b939c;
   --wb-control-border: #8b939c;
+  --wb-control-bg: #f3f5f7;
+  --wb-field-border: #e5e9ee;
+  --wb-field-hover: #bdc6d0;
+  --wb-workspace-bg: #f5f6f8;
   --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
   --wb-hover: #f5f6f7;
@@ -188,6 +219,10 @@
   --wb-bg: #191b1f;
   --wb-border: #818c98;
   --wb-control-border: #818c98;
+  --wb-control-bg: #30343b;
+  --wb-field-border: #414752;
+  --wb-field-hover: #687382;
+  --wb-workspace-bg: #191b1f;
   --wb-separator: #414750;
   --wb-elevated: #22252a;
   --wb-hover: #2e3339;
@@ -227,6 +262,10 @@
   --wb-bg: #ffffff;
   --wb-border: #8b939c;
   --wb-control-border: #8b939c;
+  --wb-control-bg: #f3f5f7;
+  --wb-field-border: #e5e9ee;
+  --wb-field-hover: #bdc6d0;
+  --wb-workspace-bg: #f5f6f8;
   --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
   --wb-hover: #f5f6f7;
@@ -261,6 +300,10 @@
   --wb-bg: #191b1f;
   --wb-border: #818c98;
   --wb-control-border: #818c98;
+  --wb-control-bg: #30343b;
+  --wb-field-border: #414752;
+  --wb-field-hover: #687382;
+  --wb-workspace-bg: #191b1f;
   --wb-separator: #414750;
   --wb-elevated: #22252a;
   --wb-hover: #2e3339;
@@ -295,6 +338,10 @@
   --wb-bg: #ffffff;
   --wb-border: #8b939c;
   --wb-control-border: #8b939c;
+  --wb-control-bg: #f3f5f7;
+  --wb-field-border: #e5e9ee;
+  --wb-field-hover: #bdc6d0;
+  --wb-workspace-bg: #f5f6f8;
   --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
   --wb-hover: #f5f6f7;
@@ -329,6 +376,10 @@
   --wb-bg: #191b1f;
   --wb-border: #818c98;
   --wb-control-border: #818c98;
+  --wb-control-bg: #30343b;
+  --wb-field-border: #414752;
+  --wb-field-hover: #687382;
+  --wb-workspace-bg: #191b1f;
   --wb-separator: #414750;
   --wb-elevated: #22252a;
   --wb-hover: #2e3339;
@@ -365,6 +416,10 @@
   --wb-bg: #ffffff;
   --wb-border: #8b939c;
   --wb-control-border: #8b939c;
+  --wb-control-bg: #f3f5f7;
+  --wb-field-border: #e5e9ee;
+  --wb-field-hover: #bdc6d0;
+  --wb-workspace-bg: #f5f6f8;
   --wb-separator: #dfe3e8;
   --wb-elevated: #ffffff;
   --wb-hover: #f5f6f7;
@@ -406,6 +461,10 @@
   --wb-bg: #191b1f;
   --wb-border: #818c98;
   --wb-control-border: #818c98;
+  --wb-control-bg: #30343b;
+  --wb-field-border: #414752;
+  --wb-field-hover: #687382;
+  --wb-workspace-bg: #191b1f;
   --wb-separator: #414750;
   --wb-elevated: #22252a;
   --wb-hover: #2e3339;

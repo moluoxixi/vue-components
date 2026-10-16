@@ -27,11 +27,15 @@
   min-height: 34px;
   padding: 7px 9px 7px 32px;
   color: inherit;
-  background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-control-border);
+  background: var(--mx-designer-control-bg);
+  border: 1px solid var(--mx-designer-field-border);
   border-radius: 4px;
   font: inherit;
   letter-spacing: 0;
+}
+
+.mx-config-form-designer__search input:hover {
+  border-color: var(--mx-designer-field-hover);
 }
 
 .mx-config-form-designer__search input:focus-visible {
@@ -94,7 +98,7 @@
   text-align: left;
   color: var(--mx-designer-text);
   background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-separator);
+  border: 1px solid transparent;
   border-radius: 5px;
   cursor: grab;
   grid-template-columns: minmax(0, 1fr);
@@ -111,8 +115,8 @@
   background: var(--mx-designer-accent-soft);
 }
 
-.mx-config-form-designer__palette-item:hover:not(.is-disabled) {
-  border-color: var(--mx-designer-border);
+.mx-config-form-designer__palette-item:hover:not(.is-disabled, .is-keyboard-dragging) {
+  border-color: var(--mx-designer-field-border);
   background: var(--mx-designer-hover);
 }
 

@@ -15,13 +15,16 @@
   --mx-designer-border: var(--wb-separator);
   --mx-designer-separator: var(--wb-separator);
   --mx-designer-control-border: var(--wb-control-border);
+  --mx-designer-control-bg: var(--wb-control-bg);
+  --mx-designer-field-border: var(--wb-field-border);
+  --mx-designer-field-hover: var(--wb-field-hover);
   --mx-designer-muted: var(--wb-muted);
   --mx-designer-surface: var(--wb-surface);
   --mx-designer-surface-raised: var(--wb-surface-raised);
   --mx-designer-overlay: var(--wb-surface-raised);
   --mx-designer-subtle: var(--wb-elevated);
   --mx-designer-hover: var(--wb-hover);
-  --mx-designer-canvas: var(--wb-bg);
+  --mx-designer-canvas: var(--wb-workspace-bg);
   --mx-designer-canvas-sheet: #fff;
   --mx-designer-text: var(--wb-text);
   --mx-designer-accent: var(--wb-accent);
@@ -58,16 +61,16 @@
   --el-text-color-regular: var(--mx-designer-text);
   --el-text-color-secondary: var(--mx-designer-muted);
   --el-text-color-placeholder: var(--mx-designer-disabled);
-  --el-border-color: var(--mx-designer-control-border);
+  --el-border-color: var(--mx-designer-field-border);
   --el-border-color-light: var(--mx-designer-border);
-  --el-border-color-hover: var(--mx-designer-accent-line);
+  --el-border-color-hover: var(--mx-designer-field-hover);
   --el-color-primary: var(--mx-designer-accent);
   --el-disabled-bg-color: var(--mx-designer-subtle);
   --el-disabled-text-color: var(--mx-designer-disabled);
-  --el-input-bg-color: var(--mx-designer-surface-raised);
+  --el-input-bg-color: var(--mx-designer-control-bg);
   --el-input-text-color: var(--mx-designer-text);
-  --el-input-border-color: var(--mx-designer-control-border);
-  --el-input-hover-border-color: var(--mx-designer-accent-line);
+  --el-input-border-color: var(--mx-designer-field-border);
+  --el-input-hover-border-color: var(--mx-designer-field-hover);
   --el-input-placeholder-color: var(--mx-designer-disabled);
   --el-switch-off-color: var(--mx-designer-switch);
   --el-switch-on-color: var(--mx-designer-accent);
@@ -93,13 +96,13 @@
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input,
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input-number {
   color: var(--mx-designer-text);
-  background: var(--mx-designer-surface-raised);
-  border-color: var(--mx-designer-control-border);
+  background: var(--mx-designer-control-bg);
+  border-color: var(--mx-designer-field-border);
 }
 
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input:hover,
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input-number:hover {
-  border-color: var(--mx-designer-accent-line);
+  border-color: var(--mx-designer-field-hover);
 }
 
 .workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .ant-input:focus,

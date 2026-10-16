@@ -10,7 +10,7 @@
 .mx-config-form-designer__flag-buttons,
 .mx-config-form-designer__mini-button,
 .mx-config-form-designer__command-button.is-secondary {
-  border-color: var(--mx-designer-control-border);
+  border-color: var(--mx-designer-field-border);
 }
 
 .mx-config-form-designer__switch {
@@ -30,7 +30,7 @@
 .mx-config-form-designer__command-button.is-secondary:hover:not(:disabled) {
   color: var(--mx-designer-text);
   background: var(--mx-designer-hover);
-  border-color: var(--mx-designer-control-border);
+  border-color: var(--mx-designer-field-hover);
 }
 
 .mx-config-form-designer__segmented button.is-active,

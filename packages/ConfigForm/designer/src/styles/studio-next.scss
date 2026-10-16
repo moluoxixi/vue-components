@@ -110,7 +110,7 @@
 .mx-config-form-designer__validation-lab textarea {
   color: var(--mx-designer-text);
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-control-border);
+  border: 1px solid var(--mx-designer-field-border);
   border-radius: 4px;
   padding: 6px;
   font: inherit;
@@ -160,7 +160,7 @@
   padding: 8px;
   color: var(--mx-designer-text);
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-control-border);
+  border: 1px solid var(--mx-designer-field-border);
   border-radius: 4px;
   font:
     11px/1.5 Consolas,

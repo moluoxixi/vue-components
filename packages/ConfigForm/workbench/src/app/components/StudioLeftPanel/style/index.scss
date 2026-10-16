@@ -189,17 +189,24 @@
   gap: 0;
   color: var(--wb-text);
   background: var(--wb-control-bg);
-  border: 1px solid var(--wb-separator);
+  border: 1px solid transparent;
   border-radius: 5px;
   white-space: normal;
 }
 
-.designer-material-button.el-button:hover,
+.designer-material-button.el-button:hover {
+  color: var(--wb-text-strong);
+  background: var(--wb-hover);
+  border-color: var(--wb-field-border);
+}
+
 .designer-material-button.el-button:focus-visible,
 .designer-material-button.el-button.is-keyboard-dragging {
   color: var(--wb-text-strong);
-  background: var(--wb-hover);
+  background: var(--wb-accent-soft);
   border-color: var(--wb-accent-line);
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 1px;
 }
 
 .designer-material-button.el-button > span {
@@ -311,7 +318,8 @@
 .designer-asset-group > header > span {
   min-width: 22px;
   padding: 1px 5px;
-  border: 1px solid var(--wb-separator);
+  background: var(--wb-control-bg);
+  border: 1px solid transparent;
   border-radius: 999px;
   text-align: center;
 }
@@ -436,14 +444,14 @@
 
 .manage-data-button:not(.el-button--primary) {
   color: var(--wb-text);
-  border: 1px solid var(--wb-control-border);
+  border: 1px solid var(--wb-field-border);
   border-radius: 4px;
-  background: var(--wb-surface);
+  background: var(--wb-control-bg);
 }
 
 .manage-data-button:not(.el-button--primary):hover {
   color: var(--wb-text-strong);
-  border-color: var(--wb-accent-line);
+  border-color: var(--wb-field-hover);
   background: var(--wb-hover);
 }
 
@@ -579,17 +587,18 @@
   cursor: pointer;
 }
 
-.designer-history-list button:hover:not(:disabled),
-.designer-history-list button:focus-visible {
+.designer-history-list button:hover:not(:disabled) {
   color: var(--wb-text-strong);
-  border-color: var(--wb-control-border);
   background: var(--wb-hover);
-  outline: none;
+}
+
+.designer-history-list button:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -2px;
 }
 
 .designer-history-list li.is-current button {
   color: var(--wb-text-strong);
-  border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);
   cursor: default;
 }
@@ -599,7 +608,7 @@
   width: 20px;
   height: 20px;
   color: var(--wb-muted);
-  border: 1px solid var(--wb-control-border);
+  border: 1px solid var(--wb-field-border);
   border-radius: 50%;
   background: var(--wb-surface);
   place-items: center;
@@ -645,16 +654,16 @@
   justify-content: center;
   gap: 6px;
   color: var(--wb-text);
-  border: 1px solid var(--wb-control-border);
+  border: 1px solid var(--wb-field-border);
   border-radius: 4px;
-  background: var(--wb-surface);
+  background: var(--wb-control-bg);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .manage-pages-button:hover {
   color: var(--wb-text-strong);
-  border-color: var(--wb-accent-line);
+  border-color: var(--wb-field-hover);
   background: var(--wb-hover);
 }
 
@@ -808,8 +817,14 @@
 .designer-layers > div.is-selected,
 .designer-pages button.is-current {
   color: var(--wb-text-strong);
-  border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);
+  box-shadow: inset 2px 0 0 var(--wb-accent);
+}
+
+.designer-layers button:focus-visible,
+.designer-pages button:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -2px;
 }
 
 .designer-pages small {
