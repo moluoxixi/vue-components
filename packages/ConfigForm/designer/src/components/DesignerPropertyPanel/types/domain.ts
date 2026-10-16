@@ -1,13 +1,27 @@
 import type { RuleDescriptor } from '@moluoxixi/zod3-to-rule'
-import type { DesignerPropertySetterDefinition } from '../../../registry'
+import type { DesignerPropertyControlDefinition, DesignerPropertySetterDefinition } from '../../../registry'
 
 export type DesignerEditableRuleKind = Exclude<RuleDescriptor['kind'], 'compare' | 'custom'>
+
+export type DesignerPropertyParseResult = { valid: true, value: unknown } | { valid: false, message?: string }
+
+/** Local Inspector adapters; these functions never enter the design document. */
+export interface DesignerPropertyFormEditor {
+  control: DesignerPropertyControlDefinition
+  commitOn: 'change' | 'explicit'
+  parse?: (value: unknown) => DesignerPropertyParseResult
+}
 
 export interface DesignerPropertyFormEntry {
   setter: DesignerPropertySetterDefinition
   value: unknown
   inheritedValue?: unknown
   hint?: string
+  mixed?: boolean
+  /** Authoritative values behind a multi-selection's displayed mixed value. */
+  sourceValues?: readonly unknown[]
+  span?: number
+  editor?: DesignerPropertyFormEditor
 }
 
 export interface DesignerInteractionSurfaceOption {

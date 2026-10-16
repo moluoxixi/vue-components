@@ -3,7 +3,7 @@ import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } fro
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
-import { ElOption, ElSelect } from 'element-plus'
+import { ElInputNumber, ElOption, ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
@@ -454,6 +454,34 @@ describe('designer property panel lite Inspector', () => {
       ['props', 'placeholder'],
       'Shared hint',
     ])
+  })
+
+  it.each([1, undefined])('commits mixed root spans as one update when changed to %s', async (next) => {
+    const first = field('first', 'test.input')
+    const second = field('second', 'test.input')
+    const material = fieldMaterial('test.input')
+    const definition = contract('test.input')
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        renderer: ConfigFormRenderer,
+        graph: graph([first, second], { first: 1, second: 2 }, { columns: 2, fieldSpan: 1 }),
+        node: first,
+        nodes: [first, second],
+        material,
+        componentDefinition: definition,
+        getMaterial: () => material,
+        getComponentDefinition: () => definition,
+        diagnostics: [],
+      },
+    })
+    const span = wrapper.get('[data-property-group="layout"]').getComponent(ElInputNumber)
+
+    span.vm.$emit('change', next, 2)
+    await nextTick()
+
+    expect(wrapper.emitted('updatePaths')).toEqual([[['first', 'second'], ['span'], next]])
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+    wrapper.unmount()
   })
 
   it('keeps both sections read-only when material metadata is missing', async () => {

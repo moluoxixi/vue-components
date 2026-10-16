@@ -1,0 +1,75 @@
+import type { DesignerPropertyFormEntry, DesignerPropertyParseResult } from '../types'
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
+import { computed, nextTick, shallowRef, watch } from 'vue'
+import { areDesignerJsonValuesEqual } from '../../../graph'
+
+/** Inspector drafts are local; only validated commits can reach Model commands. */
+export function useDesignerPropertyFormState(options: {
+  entries: () => readonly DesignerPropertyFormEntry[]
+  identity: () => unknown
+  readonly: () => boolean | undefined
+  project: (entry: DesignerPropertyFormEntry) => unknown
+  parse: (entry: DesignerPropertyFormEntry, value: unknown) => DesignerPropertyParseResult
+  commit: (value: unknown, entry: DesignerPropertyFormEntry) => void
+}) {
+  function fieldKey(entry: DesignerPropertyFormEntry): string {
+    return JSON.stringify([entry.setter.path, entry.setter.key])
+  }
+
+  const model = shallowRef<Record<string, unknown>>({})
+  const modelPort = createConfigFormModel(computed({
+    get: () => model.value,
+    set: (next) => {
+      if (!options.readonly())
+        model.value = next
+    },
+  }))
+  const errors = shallowRef<Record<string, string | undefined>>({})
+  const projection = computed(() => Object.fromEntries(options.entries().map(entry => [fieldKey(entry), {
+    displayValue: options.project(entry),
+    value: entry.value,
+    inheritedValue: entry.inheritedValue,
+    mixed: entry.mixed === true,
+    sourceValues: entry.sourceValues,
+  }])))
+  const entriesByField = computed(() => new Map(options.entries().map(entry => [fieldKey(entry), entry])))
+
+  watch([projection, options.identity, options.readonly], ([next, identity, readonly], previous) => {
+    const [before, previousIdentity, previousReadonly] = previous ?? []
+    const reset = !before || identity !== previousIdentity || readonly !== previousReadonly
+    model.value = Object.fromEntries(Object.entries(next).map(([key, state]) => [
+      key,
+      !reset && Object.hasOwn(before, key) && areDesignerJsonValuesEqual(before[key], state)
+        ? model.value[key]
+        : state.displayValue,
+    ]))
+    errors.value = reset
+      ? {}
+      : Object.fromEntries(Object.entries(errors.value)
+          .filter(([key]) => Object.hasOwn(next, key) && areDesignerJsonValuesEqual(before[key], next[key])))
+  }, { immediate: true, deep: true })
+
+  function reconcile(key: string): void {
+    model.value = { ...model.value, [key]: projection.value[key]?.displayValue }
+  }
+
+  function commit(entry: DesignerPropertyFormEntry, value: unknown): void {
+    const key = fieldKey(entry)
+    const identity = options.identity()
+    const unchanged = !entry.mixed && areDesignerJsonValuesEqual(value, options.project(entry))
+    if (!options.readonly()) {
+      const parsed = options.parse(entry, value)
+      errors.value = { ...errors.value, [key]: parsed.valid ? undefined : parsed.message }
+      if (parsed.valid && !unchanged && (entry.mixed || !areDesignerJsonValuesEqual(parsed.value, entry.value)))
+        options.commit(parsed.value, entry)
+    }
+    // Model commands can reject without changing the authoritative projection.
+    // Restore this field only, leaving unrelated drafts intact.
+    void nextTick(() => {
+      if (options.identity() === identity && entriesByField.value.has(key))
+        reconcile(key)
+    })
+  }
+
+  return { commit, entriesByField, errors, fieldKey, model, modelPort }
+}

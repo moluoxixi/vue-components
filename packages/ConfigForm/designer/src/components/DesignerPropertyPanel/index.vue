@@ -36,6 +36,10 @@ const {
   onUpdatePath: (nodeId, path, value) => emit('updatePath', nodeId, path, value),
   onUpdatePaths: (nodeIds, path, value) => emit('updatePaths', nodeIds, path, value),
 })
+const selectionIdentity = computed(() => JSON.stringify([
+  props.surfaceId,
+  selectedNodes.value.map(node => [node.id, node.component, node.kind]),
+]))
 
 const { activeTab, handlePropertyTabKeydown, propertyPanelRef, propertyTabId, propertyTabPanelId, selectPropertyTab }
   = useDesignerPropertyTabs({
@@ -330,11 +334,15 @@ defineExpose({ propertyPanelRef })
           :controls="propertyControls"
           :readonly="sectionReadonly(tab.id)"
           :node="node"
+          :identity="selectionIdentity"
           @commit="commitNodePath"
         />
         <template v-if="tab.id === 'properties'">
           <DesignerVisualStyleEditor
             :nodes="selectedNodes"
+            :identity="selectionIdentity"
+            :renderer="renderer"
+            :components="components"
             :readonly="sectionReadonly(tab.id)"
             :query="propertyQuery"
             @update="updateVisualStyle"
@@ -374,6 +382,7 @@ defineExpose({ propertyPanelRef })
                 :controls="propertyControls"
                 :readonly="sectionReadonly(tab.id)"
                 :node="node"
+                :identity="selectionIdentity"
                 @commit="commitNodePath"
               />
             </div>
@@ -411,6 +420,7 @@ defineExpose({ propertyPanelRef })
       <template v-else>
         <DesignerPropertyForm
           :entries="formEntries"
+          :identity="surfaceId"
           :renderer="renderer"
           :components="components"
           :controls="propertyControls"
@@ -418,6 +428,7 @@ defineExpose({ propertyPanelRef })
           @commit="commitForm"
         />
         <DesignerResponsiveSettings
+          :key="surfaceId"
           :breakpoint="breakpoint"
           :form="graph.form"
           :components="components"

@@ -1633,12 +1633,7 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   })
   await defaultValueControl.click()
   await page.waitForTimeout(250)
-  const defaultValueFocus = await page.evaluate(() => {
-    const element = document.querySelector<HTMLInputElement>(
-      '.mx-config-form-designer-property-form__field[data-field$=":defaultValue"] .el-input__inner',
-    )
-    if (!element)
-      return undefined
+  const defaultValueFocus = await defaultValueControl.evaluate((element) => {
     const field = element.closest('.mx-config-form-designer-property-form__field')
     const label = field?.querySelector('.mx-config-form-designer-property-form__label')
     const wrapper = element.closest('.el-input__wrapper')

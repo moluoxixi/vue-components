@@ -165,19 +165,6 @@ export function useDesignerPropertyEntries(
     return value
   }
 
-  function readPath(path: string[]): unknown {
-    const values = selectedNodes.value.map(node => readNodePath(node, path))
-    return values.length > 1 && values.some(value => !areDesignerJsonValuesEqual(value, values[0]))
-      ? undefined
-      : values[0]
-  }
-
-  function inheritedValue(setter: DesignerPropertySetterDefinition): unknown {
-    return setter.key === 'span' && readPath(setter.path) === undefined
-      ? resolvedLayout.value.fieldSpan
-      : undefined
-  }
-
   function resolveNodeSetterOptions(
     node: SurfaceNode,
     setter: DesignerPropertySetterDefinition,
@@ -326,10 +313,16 @@ export function useDesignerPropertyEntries(
   }
 
   function toPropertyEntry(setter: DesignerPropertySetterDefinition): DesignerPropertyFormEntry {
+    const sourceValues = selectedNodes.value.map(node => readNodePath(node, setter.path))
+    const mixed = sourceValues.some(value => !areDesignerJsonValuesEqual(value, sourceValues[0]))
     return {
       setter,
-      value: readPath(setter.path),
-      inheritedValue: inheritedValue(setter),
+      value: mixed ? undefined : sourceValues[0],
+      mixed,
+      sourceValues,
+      inheritedValue: !mixed && setter.key === 'span' && sourceValues[0] === undefined
+        ? resolvedLayout.value.fieldSpan
+        : undefined,
       ...(setter.key === 'span' && spanFractionHint.value ? { hint: spanFractionHint.value } : {}),
     }
   }

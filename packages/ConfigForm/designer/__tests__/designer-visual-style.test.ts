@@ -29,7 +29,48 @@ function graph(nodes: SurfaceNode[]): SurfaceGraph {
 }
 
 function editor(nodes: SurfaceNode[], readonly = false) {
-  const wrapper = mount(DesignerVisualStyleEditor, { props: { nodes, readonly } })
+  const wrapper = mount(DesignerVisualStyleEditor, { props: { nodes, readonly, renderer: ConfigFormRenderer } })
+  wrappers.push(wrapper)
+  return wrapper
+}
+
+function panel(nodes: SurfaceNode[], surfaceId?: string) {
+  const contract: ComponentContract = {
+    key: 'test.text',
+    version: '1',
+    kind: 'element',
+    props: [],
+    bindings: [],
+    semanticTriggers: [],
+    stateProjectionProperties: [],
+    datasetBindings: [],
+    resourceBindings: [],
+    slots: [],
+    allowedParents: [],
+    defaults: {},
+  }
+  const material = {
+    key: 'test.text',
+    version: 1,
+    kind: 'element' as const,
+    title: 'Text',
+    category: 'Elements',
+    runtime: { component: 'span' },
+    setters: [],
+    createNode: ({ id }: { id: string }) => node(id),
+  }
+  const wrapper = mount(DesignerPropertyPanel, { props: {
+    renderer: ConfigFormRenderer,
+    surfaceId,
+    graph: graph(nodes),
+    node: nodes[0],
+    nodes,
+    material,
+    componentDefinition: contract,
+    getMaterial: () => material,
+    getComponentDefinition: () => contract,
+    diagnostics: [],
+  } })
   wrappers.push(wrapper)
   return wrapper
 }
@@ -58,6 +99,7 @@ describe('visual UI style authoring', () => {
   it('keeps real text input drafts until blur and reconciles accepted and rejected commands', async () => {
     const wrapper = mount(DesignerVisualStyleEditor, {
       props: {
+        renderer: ConfigFormRenderer,
         nodes: [node('title', { width: '80%', opacity: 0.5 })],
         onUpdate: (key, next) => {
           if (next === '999px')
@@ -86,6 +128,43 @@ describe('visual UI style authoring', () => {
     expect((input.element as HTMLInputElement).value).toBe('240px')
     await wrapper.setProps({ nodes: [node('other', { width: '50%' })] })
     expect((input.element as HTMLInputElement).value).toBe('50%')
+  })
+
+  it.each([
+    ['mixed', [node('first', { width: '40%' }), node('second', { width: '70%' })]],
+    ['cleared', [node('first'), node('second')]],
+  ])('discards mixed drafts and errors when authoritative values become %s', async (_, nodes) => {
+    const wrapper = editor([node('first', { width: '40%' }), node('second', { width: '60%' })])
+    const width = wrapper.get('[data-visual-field="width"]')
+    width.getComponent(ElInput).vm.$emit('change', 'invalid')
+    await nextTick()
+    expect(width.find('[role="status"]').exists()).toBe(true)
+
+    const input = width.get('input')
+    ;(input.element as HTMLInputElement).value = '240'
+    await input.trigger('input')
+    expect((input.element as HTMLInputElement).value).toBe('240')
+
+    await wrapper.setProps({ nodes })
+
+    expect((input.element as HTMLInputElement).value).toBe('')
+    expect(width.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.emitted('update')).toBeUndefined()
+  })
+
+  it('discards drafts when switching surfaces with the same node identity and value', async () => {
+    const selected = node('title', { width: '80%' })
+    const wrapper = panel([selected], 'first')
+    const input = wrapper.get('[data-visual-field="width"] input')
+    ;(input.element as HTMLInputElement).value = '240'
+    await input.trigger('input')
+    expect((input.element as HTMLInputElement).value).toBe('240')
+
+    await wrapper.setProps({ surfaceId: 'second' })
+
+    expect((wrapper.get('[data-visual-field="width"] input').element as HTMLInputElement).value).toBe('80%')
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+    expect(wrapper.emitted('updatePaths')).toBeUndefined()
   })
 
   it('supports auto, percentages, relative units and negative outer spacing', async () => {
@@ -169,42 +248,7 @@ describe('visual UI style authoring', () => {
 
   it('uses the existing panel path command once for a multi-selection edit', async () => {
     const nodes = [node('first', { width: '40%', opacity: 0.5 }), node('second', { width: '60%', padding: '4px' })]
-    const contract: ComponentContract = {
-      key: 'test.text',
-      version: '1',
-      kind: 'element',
-      props: [],
-      bindings: [],
-      semanticTriggers: [],
-      stateProjectionProperties: [],
-      datasetBindings: [],
-      resourceBindings: [],
-      slots: [],
-      allowedParents: [],
-      defaults: {},
-    }
-    const material = {
-      key: 'test.text',
-      version: 1,
-      kind: 'element' as const,
-      title: 'Text',
-      category: 'Elements',
-      runtime: { component: 'span' },
-      setters: [],
-      createNode: ({ id }: { id: string }) => node(id),
-    }
-    const wrapper = mount(DesignerPropertyPanel, { props: {
-      renderer: ConfigFormRenderer,
-      graph: graph(nodes),
-      node: nodes[0],
-      nodes,
-      material,
-      componentDefinition: contract,
-      getMaterial: () => material,
-      getComponentDefinition: () => contract,
-      diagnostics: [],
-    } })
-    wrappers.push(wrapper)
+    const wrapper = panel(nodes)
     wrapper.get('[data-visual-field="width"]').getComponent(ElInput).vm.$emit('change', '75%')
     await nextTick()
     expect(wrapper.emitted('updatePaths')).toEqual([[['first', 'second'], ['props', 'style', 'width'], '75%']])

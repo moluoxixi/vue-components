@@ -8,12 +8,13 @@ import type {
   DesignerSetterControl,
   DesignerSimpleSetterControl,
 } from '@designer/registry'
-import type { DesignerPropertyFormEntry } from '../../types'
+import type { DesignerPropertyFormEntry, DesignerPropertyParseResult } from '../../types'
 import type { Component } from 'vue'
-import { createConfigFormModel } from '@moluoxixi/config-form-headless'
-import { computed, markRaw, nextTick, shallowRef, toRaw, watch } from 'vue'
+import { defineField } from '@moluoxixi/config-form-headless'
+import { computed, markRaw, toRaw } from 'vue'
 import { useDesignerLocale } from '@designer/locale'
 import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
+import { useDesignerPropertyFormState } from '../../composables'
 import DesignerSetter from '../DesignerSetter/index.vue'
 
 const props = defineProps<{
@@ -23,6 +24,9 @@ const props = defineProps<{
   readonly?: boolean
   node?: SurfaceNode
   renderer: Component
+  identity?: string
+  columns?: number
+  gap?: string
 }>()
 
 const emit = defineEmits<{
@@ -30,8 +34,6 @@ const emit = defineEmits<{
 }>()
 
 const locale = useDesignerLocale()
-const model = shallowRef<Record<string, unknown>>({})
-const modelPort = createConfigFormModel(model)
 const formRenderer = computed(() => rawComponent(props.renderer))
 const simpleControls = new Set<DesignerSetterControl>(['text', 'textarea', 'number', 'boolean', 'select'])
 const propertySetterComponent = markRaw(DesignerSetter)
@@ -52,11 +54,9 @@ function isSimpleControl(control: DesignerSetterControl): control is DesignerSim
   return simpleControls.has(control)
 }
 
-function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
-  return `setter:${index}:${entry.setter.key}`
-}
-
 function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
+  if (entry.editor)
+    return entry.editor.control
   if (isSimpleControl(entry.setter.control))
     return controls.value[entry.setter.control]
   return entry.setter.control === 'defaultValue' && entry.setter.valueKind
@@ -74,23 +74,14 @@ function fieldValue(entry: DesignerPropertyFormEntry): unknown {
   return match ? Number(match[1]) : value
 }
 
-const projectedModel = computed<Record<string, unknown>>(() => Object.fromEntries(
-  props.entries.map((entry, index) => [fieldKey(entry, index), fieldValue(entry)]),
-))
-
-function syncProjectedModel(): void {
-  model.value = { ...projectedModel.value }
-}
-
-watch(projectedModel, syncProjectedModel, { deep: true, immediate: true })
-
-function commit(value: unknown, setter: DesignerPropertySetterDefinition): void {
-  emit('commit', value, setter)
-  // A rejected command does not change the projected props, so the normal
-  // watcher cannot fire. Reassign the authoritative projection after the
-  // parent command has settled to keep local controls honest.
-  void nextTick(syncProjectedModel)
-}
+const { commit, entriesByField, errors, fieldKey, model, modelPort } = useDesignerPropertyFormState({
+  entries: () => props.entries,
+  identity: () => props.identity ?? props.node?.id,
+  readonly: () => props.readonly,
+  project: fieldValue,
+  parse: parseValue,
+  commit: (value, entry) => emit('commit', value, entry.setter),
+})
 
 function handleTextKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Enter')
@@ -99,20 +90,16 @@ function handleTextKeydown(event: KeyboardEvent): void {
   ;(event.currentTarget as HTMLElement).blur()
 }
 
-function commitTextDraft(entry: DesignerPropertyFormEntry, index: number): void {
-  const value = normalizeValue(entry.setter, model.value[fieldKey(entry, index)])
-  const current = normalizeValue(entry.setter, entry.value)
-  if (value !== invalidNumber && !Object.is(value, current))
-    commit(value, entry.setter)
+function commitTextDraft(entry: DesignerPropertyFormEntry): void {
+  commit(entry, model.value[fieldKey(entry)])
 }
 
 function simpleField(
   entry: DesignerPropertyFormEntry,
-  index: number,
   control: DesignerPropertyControlDefinition,
 ): ConfigFormField {
   const { setter } = entry
-  const key = fieldKey(entry, index)
+  const key = fieldKey(entry)
   const controlClass = setter.control === 'defaultValue' ? 'default-value' : setter.control
   const inheritedLabel = entry.value === undefined && entry.inheritedValue !== undefined
     ? locale.t('setter.inherited', 'Inherited')
@@ -121,7 +108,12 @@ function simpleField(
   const visualHint = entry.hint
     ? [inheritedLabel, entry.hint].filter(Boolean).join(' · ')
     : undefined
-  const componentProps: Record<string, unknown> = {
+  const componentProps: Record<string, unknown> = entry.editor ? {
+    ...control.props,
+    disabled: props.readonly,
+    error: errors.value[key],
+    onCommit: (value: unknown) => commit(entry, value),
+  } : {
     ...control.props,
     'aria-description': description,
     'aria-label': setter.label,
@@ -146,42 +138,42 @@ function simpleField(
       : {}),
     ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
     ...(['text', 'textarea'].includes(setter.control)
-      ? { onBlur: () => commitTextDraft(entry, index) }
+      ? { onBlur: () => commitTextDraft(entry) }
       : {}),
   }
 
-  return {
+  return defineField({
     id: key,
     field: key,
-    label: setter.label,
+    ...(entry.editor ? {} : { label: setter.label }),
     component: rawComponent(control.component),
     valueProp: control.valueProp,
     trigger: control.trigger,
     blurTrigger: control.blurTrigger,
     getValueFromEvent: control.getValueFromEvent,
+    ...(entry.span === undefined ? {} : { span: entry.span }),
     props: componentProps,
     fieldAttrs: {
       class: [
         'mx-config-form-designer-property-form__field',
-        'is-simple',
+        entry.editor ? 'is-editor' : 'is-simple',
         `is-control-${controlClass}`,
       ],
       title: setter.label,
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
       ...(visualHint ? { 'data-hint-label': visualHint } : {}),
     } as Record<string, unknown>,
-  }
+  })
 }
 
 function customField(
   entry: DesignerPropertyFormEntry,
-  index: number,
 ): ConfigFormField {
-  const key = fieldKey(entry, index)
+  const key = fieldKey(entry)
   const setter = entry.setter.component
     ? { ...entry.setter, component: rawComponent(entry.setter.component) }
     : entry.setter
-  return {
+  return defineField({
     id: key,
     field: key,
     component: propertySetterComponent,
@@ -197,17 +189,13 @@ function customField(
     fieldAttrs: {
       class: 'mx-config-form-designer-property-form__field is-custom',
     },
-  }
+  })
 }
 
-const fields = computed<ConfigFormField[]>(() => props.entries.map((entry, index) => {
+const fields = computed<ConfigFormField[]>(() => props.entries.map((entry) => {
   const control = controlFor(entry)
-  return control ? simpleField(entry, index, control) : customField(entry, index)
+  return control ? simpleField(entry, control) : customField(entry)
 }))
-
-const entriesByField = computed(() => new Map(
-  props.entries.map((entry, index) => [fieldKey(entry, index), entry]),
-))
 
 const invalidNumber = Symbol('invalid-number')
 
@@ -231,18 +219,28 @@ function normalizeValue(setter: DesignerPropertySetterDefinition, value: unknown
   return value
 }
 
+function parseValue(entry: DesignerPropertyFormEntry, value: unknown): DesignerPropertyParseResult {
+  if (entry.editor?.parse)
+    return entry.editor.parse(value)
+  const normalized = normalizeValue(entry.setter, value)
+  return normalized === invalidNumber ? { valid: false } : {
+    valid: true,
+    value: entry.setter.unit === 'px' && typeof normalized === 'number' ? `${normalized}px` : normalized,
+  }
+}
+
 function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, unknown>>): void {
   const entry = entriesByField.value.get(String(payload.field))
   if (!entry)
     return
+  if (entry.editor?.commitOn === 'explicit')
+    return
   if (
     (entry.setter.control === 'text' || entry.setter.control === 'textarea')
-    && controlFor(entry)
+    && !entry.editor && controlFor(entry)
   )
     return
-  const value = normalizeValue(entry.setter, payload.value)
-  if (value !== invalidNumber)
-    commit(entry.setter.unit === 'px' && typeof value === 'number' ? `${value}px` : value, entry.setter)
+  commit(entry, payload.value)
 }
 </script>
 
@@ -252,9 +250,9 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
     :model="modelPort"
     :components="components"
     :fields="fields"
-    :columns="1"
+    :columns="columns ?? 1"
     :field-span="1"
-    gap="13px"
+    :gap="gap ?? '13px'"
     label-position="top"
     namespace="mx-config-form-designer-property-form"
     @field-change="handleFieldChange"

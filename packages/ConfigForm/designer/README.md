@@ -67,6 +67,20 @@ export const designerRegistry = createDesignerRegistry({
 
 `DesignSurface` 接收受控 `graph`、命令/历史控制器、组件合同 registry、设计器 registry，以及用于属性编辑的 `renderer` 组件。画布真实渲染通过 `runtime` 与 `dragVisual` 插槽由宿主提供；插槽只有图、模型、命令和 geometry/pointer bridge，不传递 Vue RuntimePlan。Workbench 在这些插槽中使用独立 iframe RuntimeHost。Designer 生产依赖不包含 Runtime 或 Vue backend；响应式规则来自 Core。
 
+## 属性面板复用 ConfigForm
+
+普通属性、校验字段和通用视觉属性通过同一个 `DesignerPropertyForm` 渲染。面板把 setter
+投影为 Headless `defineField` 配置，交给宿主注入的 `renderer`；数字、开关等常规控件
+和尺寸、颜色等专用 setter 共用字段绑定与表单布局。
+
+共享状态负责本地草稿、解析、错误提示和提交后的权威值回灌。文本可以先输入、再失焦
+提交；视觉 setter 显式提交合法值。提交一个字段保留其他字段的未提交输入，选区变化
+则清理旧草稿；只读控件不提交修改。控件顺序变化不会把草稿移到另一个字段。
+
+这些表单配置属于 Inspector 的内存投影，组件、解析函数和草稿不进入设计文档。
+`defineField` 继续作为执行配置的轻量入口，设计意图仍由 SurfaceGraph 与物料合同表达。
+选择、多选、路径修改、Model 校验和撤销重做继续由 Designer 的现有命令处理。
+
 ## 样式
 
 整套设计器样式：

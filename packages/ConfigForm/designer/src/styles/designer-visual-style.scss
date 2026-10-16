@@ -71,11 +71,8 @@
   outline-offset: 2px;
 }
 
-.mx-config-form-designer__visual-grid {
-  display: grid;
+.mx-config-form-designer__visual-form {
   min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
   padding-top: 3px;
 }
 
@@ -86,8 +83,14 @@
   gap: 4px;
 }
 
-.mx-config-form-designer__visual-field.is-color {
-  grid-column: 1 / -1;
+.mx-config-form-designer__visual-form .mx-config-form-designer-property-form__control,
+.mx-config-form-designer__visual-form .mx-config-form-designer-property-form__field.is-editor {
+  display: block;
+  min-width: 0;
+}
+
+.mx-config-form-designer__visual-form .mx-config-form-designer__visual-field {
+  width: 100%;
 }
 
 .mx-config-form-designer__visual-label label {
