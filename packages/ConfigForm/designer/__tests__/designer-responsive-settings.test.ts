@@ -1,5 +1,6 @@
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { mount } from '@vue/test-utils'
+import { ElSwitch } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { DesignerResponsiveSettings } from '../src/components/DesignerPropertyPanel'
@@ -108,7 +109,7 @@ describe('designer responsive settings', () => {
     ])
   })
 
-  it('projects all breakpoint controls through the adapter registry and commits one form patch', async () => {
+  it('uses one renderer for numeric fields and keeps breakpoint commands outside its model', async () => {
     const form = {
       ...baseForm,
       responsive: {
@@ -126,7 +127,9 @@ describe('designer responsive settings', () => {
     })
 
     const cards = wrapper.findAll('.mx-config-form-designer__breakpoint-layout')
-    expect(wrapper.findAll('[data-adapter-boolean]')).toHaveLength(2)
+    expect(wrapper.findAllComponents(ConfigFormRenderer)).toHaveLength(1)
+    expect(wrapper.findAll('[data-adapter-boolean]')).toHaveLength(0)
+    expect(wrapper.findAll('[role="switch"]')).toHaveLength(2)
     expect(wrapper.findAll('[data-adapter-number]')).toHaveLength(9)
     expect(cards.map(card => card.findAll('[data-adapter-number]').map(control => control.attributes('aria-label')))).toEqual([
       ['Columns', 'Field span', 'Label width (px)'],
@@ -150,7 +153,7 @@ describe('designer responsive settings', () => {
       { max: '480', min: '0', precision: '0', step: '1' },
     ])
 
-    await wrapper.findAll('[data-adapter-boolean]')[0]!.trigger('click')
+    await wrapper.get('[data-breakpoint="tablet"] .mx-config-form-designer__responsive-toggle-control').trigger('click')
     await nextTick()
     expect(wrapper.emitted('commit')?.at(-1)).toEqual([{
       mobile: { columns: 8, fieldSpan: 8, labelWidth: 72 },
@@ -187,7 +190,74 @@ describe('designer responsive settings', () => {
     expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{ labelWidth: 144 }])
 
     await wrapper.setProps({ readonly: true })
-    expect(wrapper.findAll('[data-adapter-boolean]').every(control => control.attributes('disabled') !== undefined)).toBe(true)
+    expect(wrapper.findAll('[role="switch"]').every(control => control.attributes('disabled') !== undefined)).toBe(true)
     expect(wrapper.findAll('[data-adapter-number]').every(control => control.attributes('disabled') !== undefined)).toBe(true)
+  })
+
+  it('copies the resolved inherited layout when enabling and removes only that override when disabling', async () => {
+    const wrapper = mount(DesignerResponsiveSettings, {
+      props: { renderer: ConfigFormRenderer, form: baseForm, components, controls },
+    })
+    const mobile = () => wrapper.get('[data-breakpoint="mobile"]')
+    expect(mobile().find('.mx-config-form-designer__breakpoint-fields').exists()).toBe(false)
+    await mobile().get('.mx-config-form-designer__responsive-toggle-control').trigger('click')
+    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{
+      responsive: {
+        tablet: { columns: 12, fieldSpan: 6, labelWidth: 96 },
+        mobile: { columns: 12, fieldSpan: 6, labelWidth: 96 },
+      },
+    }])
+    // A rejected command must leave the authoritative disabled state visible.
+    await nextTick()
+    expect(mobile().get('[role="switch"]').attributes('aria-checked')).toBe('false')
+    expect(mobile().find('.mx-config-form-designer__breakpoint-fields').exists()).toBe(false)
+
+    await wrapper.setProps({ form: {
+      ...baseForm,
+      responsive: { ...baseForm.responsive, mobile: { columns: 12, fieldSpan: 6, labelWidth: 96 } },
+    } })
+    expect(mobile().get('[role="switch"]').attributes('aria-checked')).toBe('true')
+    expect(mobile().findAll('[data-adapter-number]')).toHaveLength(3)
+    await mobile().get('.mx-config-form-designer__responsive-toggle-control').trigger('click')
+    expect(wrapper.emitted('commit')?.at(-1)).toEqual([baseForm.responsive])
+    expect(baseForm.responsive).toEqual({ tablet: { columns: 12, fieldSpan: 6, labelWidth: 96 } })
+  })
+
+  it('reconciles rejected numeric commands and blocks disabled control emissions', async () => {
+    const wrapper = mount(DesignerResponsiveSettings, {
+      props: { renderer: ConfigFormRenderer, form: baseForm, components, controls },
+    })
+    const tabletColumns = () => wrapper.get('[data-breakpoint="tablet"] [data-adapter-number][aria-label="Columns"]')
+    ;(tabletColumns().element as HTMLInputElement).value = '4'
+    await tabletColumns().trigger('change')
+    await nextTick()
+    expect((tabletColumns().element as HTMLInputElement).value).toBe('12')
+    expect(wrapper.emitted('updateForm')).toHaveLength(1)
+
+    await wrapper.setProps({ disabled: true })
+    wrapper.findAllComponents(ElSwitch)[0]!.vm.$emit('change', false)
+    wrapper.findAllComponents(NumberControl)[0]!.vm.$emit('change', 4)
+    await nextTick()
+    expect(wrapper.emitted('updateForm')).toHaveLength(1)
+    expect((tabletColumns().element as HTMLInputElement).value).toBe('12')
+    expect(wrapper.findAll('[role="switch"]').every(control => control.attributes('disabled') !== undefined)).toBe(true)
+    expect(wrapper.findAll('[data-adapter-number]').every(control => control.attributes('disabled') !== undefined)).toBe(true)
+  })
+
+  it('keeps accessible tab relationships and keyboard navigation', async () => {
+    const wrapper = mount(DesignerResponsiveSettings, {
+      props: { renderer: ConfigFormRenderer, form: baseForm, breakpoint: 'tablet' },
+    })
+    const tabs = () => wrapper.findAll('[role="tab"]')
+    const panels = () => wrapper.findAll('[role="tabpanel"]')
+    expect(tabs().map(tab => tab.attributes('aria-selected'))).toEqual(['false', 'true', 'false'])
+    expect(tabs().map(tab => tab.attributes('aria-controls'))).toEqual(panels().map(panel => panel.attributes('id')))
+    expect(panels().map(panel => panel.attributes('aria-labelledby'))).toEqual(tabs().map(tab => tab.attributes('id')))
+    await tabs()[1]!.trigger('keydown', { key: 'ArrowRight' })
+    expect(tabs().map(tab => tab.attributes('aria-selected'))).toEqual(['false', 'false', 'true'])
+    await tabs()[2]!.trigger('keydown', { key: 'Home' })
+    expect(tabs().map(tab => tab.attributes('aria-selected'))).toEqual(['true', 'false', 'false'])
+    await wrapper.setProps({ breakpoint: 'mobile' })
+    expect(tabs().map(tab => tab.attributes('aria-selected'))).toEqual(['false', 'false', 'true'])
   })
 })

@@ -37,20 +37,6 @@
   flex: 0 0 44px;
 }
 
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__label,
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter-label-row {
-  display: none;
-}
-
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__field.is-simple,
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter {
-  display: block;
-}
-
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__control {
-  min-height: 0;
-}
-
 .mx-config-form-designer__responsive-fraction {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -61,8 +47,9 @@
   line-height: 1.45;
 }
 
-.mx-config-form-designer__breakpoint-fields,
-.mx-config-form-designer__breakpoint-fields .mx-config-form-designer-property-form {
+.mx-config-form-designer__breakpoint-fields {
+  display: grid;
   width: 100%;
   min-width: 0;
+  gap: 13px;
 }

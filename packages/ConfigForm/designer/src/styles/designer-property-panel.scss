@@ -142,6 +142,30 @@
   font-size: 13px;
 }
 
+.mx-config-form-designer__inspector-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.mx-config-form-designer__inspector-form > .mx-config-form-designer-property-form__row,
+.mx-config-form-designer__inspector-form > .mx-config-form-designer-property-form__row > .mx-config-form-designer-property-form__cell {
+  display: contents;
+}
+
+.mx-config-form-designer__property-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 13px;
+}
+
+.mx-config-form-designer__property-grid.is-visual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .mx-config-form-designer__property-search {
   display: flex;
   min-width: 0;

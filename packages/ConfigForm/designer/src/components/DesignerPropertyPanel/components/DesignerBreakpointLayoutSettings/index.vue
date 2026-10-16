@@ -1,37 +1,27 @@
 <script setup lang="ts">
-import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
-import type {
-  DesignerPropertyControlRegistry,
-  DesignerPropertySetterDefinition,
-} from '@designer/registry'
-import type { DesignerPropertyFormEntry } from '../../types'
-import DesignerPropertyForm from '../DesignerPropertyForm/index.vue'
+import { ElSwitch } from 'element-plus'
 
 defineOptions({ name: 'DesignerBreakpointLayoutSettings' })
 
-defineProps<{
+const props = defineProps<{
   baseLabel?: string
-  components?: ConfigFormComponentRegistry
-  controls?: DesignerPropertyControlRegistry
   enabled: boolean
-  entries: DesignerPropertyFormEntry[]
   fraction: string
   fractionAria: string
   icon: Component
-  readonly?: boolean
-  renderer: Component
+  commandsDisabled?: boolean
   title: string
-  toggleEntry?: DesignerPropertyFormEntry
+  toggleLabel?: string
 }>()
 
 const emit = defineEmits<{
-  commit: [payload: { setter: DesignerPropertySetterDefinition, value: unknown }]
-  toggle: [value: unknown]
+  toggle: [value: boolean]
 }>()
 
-function commitEntry(value: unknown, setter: DesignerPropertySetterDefinition): void {
-  emit('commit', { setter, value })
+function toggle(value: string | number | boolean): void {
+  if (!props.commandsDisabled)
+    emit('toggle', Boolean(value))
 }
 </script>
 
@@ -42,15 +32,13 @@ function commitEntry(value: unknown, setter: DesignerPropertySetterDefinition): 
         <component :is="icon" :size="15" aria-hidden="true" />
         {{ title }}
       </span>
-      <DesignerPropertyForm
-        v-if="toggleEntry"
+      <ElSwitch
+        v-if="toggleLabel"
         class="mx-config-form-designer__responsive-toggle-control"
-        :entries="[toggleEntry]"
-        :components="components"
-        :controls="controls"
-        :readonly="readonly"
-        :renderer="renderer"
-        @commit="emit('toggle', $event)"
+        :model-value="enabled"
+        :aria-label="toggleLabel"
+        :disabled="commandsDisabled"
+        @change="toggle"
       />
       <span v-else class="mx-config-form-designer__breakpoint-base">{{ baseLabel }}</span>
     </header>
@@ -59,15 +47,8 @@ function commitEntry(value: unknown, setter: DesignerPropertySetterDefinition): 
       {{ fraction }}
     </output>
 
-    <DesignerPropertyForm
-      v-if="enabled"
-      class="mx-config-form-designer__breakpoint-fields"
-      :entries="entries"
-      :components="components"
-      :controls="controls"
-      :readonly="readonly"
-      :renderer="renderer"
-      @commit="commitEntry"
-    />
+    <div v-if="enabled" class="mx-config-form-designer__breakpoint-fields">
+      <slot />
+    </div>
   </section>
 </template>

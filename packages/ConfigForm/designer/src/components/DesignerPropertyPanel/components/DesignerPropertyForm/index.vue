@@ -8,7 +8,7 @@ import type {
   DesignerSetterControl,
   DesignerSimpleSetterControl,
 } from '@designer/registry'
-import type { DesignerPropertyFormEntry, DesignerPropertyParseResult } from '../../types'
+import type { DesignerPropertyFormEntry, DesignerPropertyFormLayout, DesignerPropertyParseResult } from '../../types'
 import type { Component } from 'vue'
 import { defineField } from '@moluoxixi/config-form-headless'
 import { computed, markRaw, toRaw } from 'vue'
@@ -27,6 +27,7 @@ const props = defineProps<{
   identity?: string
   columns?: number
   gap?: string
+  layout?: DesignerPropertyFormLayout
 }>()
 
 const emit = defineEmits<{
@@ -74,13 +75,13 @@ function fieldValue(entry: DesignerPropertyFormEntry): unknown {
   return match ? Number(match[1]) : value
 }
 
-const { commit, entriesByField, errors, fieldKey, model, modelPort } = useDesignerPropertyFormState({
+const { captureCommit, commit, entriesByField, errors, fieldKey, model, modelPort } = useDesignerPropertyFormState({
   entries: () => props.entries,
   identity: () => props.identity ?? props.node?.id,
   readonly: () => props.readonly,
   project: fieldValue,
   parse: parseValue,
-  commit: (value, entry) => emit('commit', value, entry.setter),
+  commit: (value, entry) => entry.onCommit ? entry.onCommit(value) : emit('commit', value, entry.setter),
 })
 
 function handleTextKeydown(event: KeyboardEvent): void {
@@ -90,16 +91,13 @@ function handleTextKeydown(event: KeyboardEvent): void {
   ;(event.currentTarget as HTMLElement).blur()
 }
 
-function commitTextDraft(entry: DesignerPropertyFormEntry): void {
-  commit(entry, model.value[fieldKey(entry)])
-}
-
 function simpleField(
   entry: DesignerPropertyFormEntry,
   control: DesignerPropertyControlDefinition,
 ): ConfigFormField {
   const { setter } = entry
   const key = fieldKey(entry)
+  const commitValue = captureCommit(entry)
   const controlClass = setter.control === 'defaultValue' ? 'default-value' : setter.control
   const inheritedLabel = entry.value === undefined && entry.inheritedValue !== undefined
     ? locale.t('setter.inherited', 'Inherited')
@@ -110,9 +108,9 @@ function simpleField(
     : undefined
   const componentProps: Record<string, unknown> = entry.editor ? {
     ...control.props,
-    disabled: props.readonly,
+    disabled: props.readonly || entry.readonly,
     error: errors.value[key],
-    onCommit: (value: unknown) => commit(entry, value),
+    onCommit: commitValue,
   } : {
     ...control.props,
     'aria-description': description,
@@ -122,7 +120,7 @@ function simpleField(
       'mx-config-form-designer__property-control',
       `is-${controlClass}`,
     ],
-    'disabled': props.readonly,
+    'disabled': props.readonly || entry.readonly,
     ...(setter.control === 'textarea' ? { rows: 3 } : {}),
     ...(setter.control === 'number'
       ? {
@@ -138,7 +136,7 @@ function simpleField(
       : {}),
     ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
     ...(['text', 'textarea'].includes(setter.control)
-      ? { onBlur: () => commitTextDraft(entry) }
+      ? { onBlur: () => commitValue(model.value[key]) }
       : {}),
   }
 
@@ -160,6 +158,7 @@ function simpleField(
         `is-control-${controlClass}`,
       ],
       title: setter.label,
+      ...(entry.span === undefined ? {} : { style: { gridColumn: `span ${entry.span}` } }),
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
       ...(visualHint ? { 'data-hint-label': visualHint } : {}),
     } as Record<string, unknown>,
@@ -183,7 +182,7 @@ function customField(
       setter,
       hint: entry.hint,
       inheritedValue: entry.inheritedValue,
-      readonly: props.readonly,
+      readonly: props.readonly || entry.readonly,
       node: props.node,
     },
     fieldAttrs: {
@@ -192,10 +191,12 @@ function customField(
   })
 }
 
-const fields = computed<ConfigFormField[]>(() => props.entries.map((entry) => {
+function field(entry: DesignerPropertyFormEntry): ConfigFormField {
   const control = controlFor(entry)
   return control ? simpleField(entry, control) : customField(entry)
-}))
+}
+
+const fields = computed(() => props.layout ? props.layout(field) : props.entries.map(field))
 
 const invalidNumber = Symbol('invalid-number')
 

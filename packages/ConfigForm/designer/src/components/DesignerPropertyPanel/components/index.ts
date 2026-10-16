@@ -5,6 +5,7 @@ export { default as DesignerInteractionEditor } from './DesignerInteractionEdito
 export { default as DesignerOptionsSetter } from './DesignerOptionsSetter/index.vue'
 export { default as DesignerPropertyForm } from './DesignerPropertyForm/index.vue'
 export { default as DesignerResponsiveSettings } from './DesignerResponsiveSettings/index.vue'
+export { default as DesignerResponsiveSettingsShell } from './DesignerResponsiveSettingsShell/index.vue'
 export { default as DesignerSetter } from './DesignerSetter/index.vue'
 export { default as DesignerValidateOnSetter } from './DesignerValidateOnSetter/index.vue'
 export { default as DesignerValidationSetter } from './DesignerValidationSetter/index.vue'

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { VisualStyleField } from '../../../../../../inspector'
+import type { VisualStyleField } from '../../../../inspector'
 import { RotateCcw } from '@lucide/vue'
 import { ElColorPicker, ElInput, ElOption, ElSelect } from 'element-plus'
 import { computed, useId } from 'vue'
-import { VISUAL_STYLE_COLOR_OPTIONS } from '../../../../../../inspector'
-import { useDesignerLocale } from '../../../../../../locale'
+import { VISUAL_STYLE_COLOR_OPTIONS } from '../../../../inspector'
+import { useDesignerLocale } from '../../../../locale'
 
 const props = defineProps<{
   modelValue?: string | number

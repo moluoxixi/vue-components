@@ -328,8 +328,8 @@ export function useDesignerPropertyEntries(
   }
 
   const propertyEntries = computed<Record<PropertyTab, DesignerPropertyFormEntry[]>>(() => ({
-    properties: propertySetters.value.map(toPropertyEntry),
-    validation: validationSetters.value.map(toPropertyEntry),
+    properties: propertySetters.value.map(setter => ({ ...toPropertyEntry(setter), readonly: sectionReadonly('properties') })),
+    validation: validationSetters.value.map(setter => ({ ...toPropertyEntry(setter), readonly: sectionReadonly('validation') })),
     interactions: [],
   }))
 

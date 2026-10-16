@@ -69,13 +69,24 @@ export const designerRegistry = createDesignerRegistry({
 
 ## 属性面板复用 ConfigForm
 
-普通属性、校验字段和通用视觉属性通过同一个 `DesignerPropertyForm` 渲染。面板把 setter
-投影为 Headless `defineField` 配置，交给宿主注入的 `renderer`；数字、开关等常规控件
-和尺寸、颜色等专用 setter 共用字段绑定与表单布局。
+一个 Inspector 使用一个 `DesignerPropertyForm`、一个模型和一个宿主注入的 `renderer`
+实例。节点的普通属性、视觉属性和校验字段，或表单级属性与断点布局字段，统一投影为
+Headless `defineField` 条目；数字、开关等常规控件和尺寸、颜色等专用 setter 共用字段
+绑定与本地编辑状态。
+
+面板布局使用已有 `ConfigFormNode` 的 component nodes 与 slots 组织标签页、折叠分组
+和字段。搜索只筛选布局中的字段，标签页切换只隐藏内容；完整字段条目保留在同一模型
+中，避免丢失其他分组的草稿和错误。数据绑定、交互编辑器和校验实验室继续作为 Vue
+组件嵌入布局，不为界面容器或命令创建伪字段。
 
 共享状态负责本地草稿、解析、错误提示和提交后的权威值回灌。文本可以先输入、再失焦
 提交；视觉 setter 显式提交合法值。提交一个字段保留其他字段的未提交输入，选区变化
-则清理旧草稿；只读控件不提交修改。控件顺序变化不会把草稿移到另一个字段。
+则清理旧草稿；每个条目分别执行只读限制，只读控件不提交修改。控件顺序变化不会把
+草稿移到另一个字段。
+
+断点启用开关直接调用创建或删除覆盖配置的命令，不把覆盖对象包装成 boolean 表单
+字段；断点列数、跨度和标签宽度仍属于属性表单。画布、体验预览使用 ConfigForm 渲染实际
+内容，校验实验室使用 Headless controller 执行实际规则，均保留各自职责。
 
 这些表单配置属于 Inspector 的内存投影，组件、解析函数和草稿不进入设计文档。
 `defineField` 继续作为执行配置的轻量入口，设计意图仍由 SurfaceGraph 与物料合同表达。

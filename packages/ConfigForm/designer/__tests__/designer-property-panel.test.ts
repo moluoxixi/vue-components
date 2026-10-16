@@ -128,6 +128,63 @@ afterEach(() => {
 })
 
 describe('designer property panel lite Inspector', () => {
+  it('shares one renderer across property, visual, validation and form layout sections', async () => {
+    const node = field('name', 'test.input')
+    const wrapper = mount(DesignerPropertyPanel, { props: {
+      renderer: ConfigFormRenderer,
+      graph: graph([node]),
+      node,
+      material: fieldMaterial('test.input', [placeholderSetter]),
+      componentDefinition: contract('test.input'),
+      diagnostics: [],
+    } })
+    const renderer = wrapper.getComponent({ name: 'ConfigFormRenderer' })
+    const formElement = wrapper.get('form').element
+    const model = renderer.props('model')
+    expect(wrapper.findAllComponents(ConfigFormRenderer)).toHaveLength(1)
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    expect(wrapper.get('form').element).toBe(formElement)
+    expect(wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('model')).toBe(model)
+    await wrapper.setProps({ node: undefined })
+    expect(wrapper.findAllComponents(ConfigFormRenderer)).toHaveLength(1)
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    expect(wrapper.find('form form').exists()).toBe(false)
+    expect(wrapper.find('[data-breakpoint="desktop"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('preserves uncommitted text and visual errors through search and tab changes', async () => {
+    const node = field('name', 'test.input', { props: { placeholder: 'Saved hint', style: { width: '80%' } } })
+    const wrapper = mount(DesignerPropertyPanel, { props: {
+      renderer: ConfigFormRenderer,
+      graph: graph([node]),
+      node,
+      material: fieldMaterial('test.input', [placeholderSetter]),
+      componentDefinition: contract('test.input'),
+      diagnostics: [],
+    } })
+    await wrapper.get('input[aria-label="Placeholder"]').setValue('Uncommitted hint')
+    const width = wrapper.get('[data-visual-field="width"] input')
+    ;(width.element as HTMLInputElement).value = 'invalid length'
+    await width.trigger('input')
+    await width.trigger('change')
+    expect(wrapper.get('[data-visual-field="width"] [role="status"]').text()).toContain('Use a number')
+    await wrapper.get('[data-property-search]').setValue('Required')
+    expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(false)
+    await wrapper.get('button[aria-label="Clear property search"]').trigger('click')
+    expect((wrapper.get('input[aria-label="Placeholder"]').element as HTMLInputElement).value).toBe('Uncommitted hint')
+    expect(wrapper.get('[data-visual-field="width"] [role="status"]').text()).toContain('Use a number')
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    await wrapper.get('[data-property-tab="properties"]').trigger('click')
+    expect((wrapper.get('input[aria-label="Placeholder"]').element as HTMLInputElement).value).toBe('Uncommitted hint')
+    expect(wrapper.get('[data-visual-field="width"] [role="status"]').text()).toContain('Use a number')
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+    await wrapper.get('input[aria-label="Placeholder"]').trigger('blur')
+    expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['props', 'placeholder'], 'Uncommitted hint'])
+    wrapper.unmount()
+  })
+
   it('renders and refreshes Dataset options for the default setter without publishing an edit', async () => {
     const node = field('choice', 'test.select', {
       defaultValue: 2,
@@ -596,10 +653,21 @@ describe('designer property panel lite Inspector', () => {
     })
 
     expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    const bindingEditor = wrapper.get('[data-data-binding-editor]').element
+    const filterDraft = '{ "unfinished": true }'
+    await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue(filterDraft)
     await wrapper.get('[data-property-search]').setValue('unmatched')
     expect(wrapper.find('[data-property-empty]').exists()).toBe(true)
     expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
+    expect(wrapper.get('[data-data-binding-editor]').element).toBe(bindingEditor)
+    expect((wrapper.get('textarea[aria-label="Filter expression JSON"]').element as HTMLTextAreaElement).value).toBe(filterDraft)
     await wrapper.get('button[aria-label="Clear property search"]').trigger('click')
+    expect(wrapper.get('[data-data-binding-editor]').element).toBe(bindingEditor)
+    expect((wrapper.get('textarea[aria-label="Filter expression JSON"]').element as HTMLTextAreaElement).value).toBe(filterDraft)
+    await wrapper.get('[data-property-tab="validation"]').trigger('click')
+    await wrapper.get('[data-property-tab="properties"]').trigger('click')
+    expect((wrapper.get('textarea[aria-label="Filter expression JSON"]').element as HTMLTextAreaElement).value).toBe(filterDraft)
+    await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue('')
     await wrapper.get('[data-apply-dataset-binding]').trigger('click')
     expect(wrapper.emitted('updateDatasetBinding')?.at(-1)).toEqual([
       'role',

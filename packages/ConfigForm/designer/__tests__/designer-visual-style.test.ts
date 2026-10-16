@@ -1,12 +1,14 @@
 import type { ComponentContract, ModelJsonObject, ProjectDocument, SurfaceGraph, SurfaceNode } from '@moluoxixi/config-form-model'
+import type { PropType } from 'vue'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createProjectDomainEngine, createProjectSnapshot, PROJECT_DOCUMENT_VERSION, PROJECT_THEME_VERSION, registryLockFingerprint, SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { ElColorPicker, ElInput, ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
-import DesignerVisualStyleEditor from '../src/components/DesignerPropertyPanel/components/DesignerVisualStyleEditor/index.vue'
+import DesignerPropertyForm from '../src/components/DesignerPropertyPanel/components/DesignerPropertyForm/index.vue'
+import { useDesignerVisualStyleEntries } from '../src/components/DesignerPropertyPanel/composables/use-designer-visual-style-entries'
 import { createNodePathCommand } from '../src/graph'
 
 const wrappers: Array<{ unmount: () => void }> = []
@@ -28,8 +30,34 @@ function graph(nodes: SurfaceNode[]): SurfaceGraph {
   }
 }
 
+const VisualStyleForm = defineComponent({
+  props: {
+    nodes: { type: Array as PropType<SurfaceNode[]>, required: true },
+    readonly: Boolean,
+    query: String,
+  },
+  emits: {
+    update: (key: string, value: string | undefined) => typeof key === 'string' && (value === undefined || typeof value === 'string'),
+  },
+  setup(props, { emit }) {
+    const { entries, layout } = useDesignerVisualStyleEntries({
+      nodes: () => props.nodes,
+      readonly: () => props.readonly,
+      query: () => props.query,
+      update: (key, value) => emit('update', key, value),
+    })
+    return () => h(DesignerPropertyForm, {
+      entries: entries.value,
+      layout,
+      renderer: ConfigFormRenderer,
+      readonly: props.readonly,
+      identity: props.nodes.map(item => item.id).join(','),
+    })
+  },
+})
+
 function editor(nodes: SurfaceNode[], readonly = false) {
-  const wrapper = mount(DesignerVisualStyleEditor, { props: { nodes, readonly, renderer: ConfigFormRenderer } })
+  const wrapper = mount(VisualStyleForm, { props: { nodes, readonly } })
   wrappers.push(wrapper)
   return wrapper
 }
@@ -97,9 +125,8 @@ describe('visual UI style authoring', () => {
   })
 
   it('keeps real text input drafts until blur and reconciles accepted and rejected commands', async () => {
-    const wrapper = mount(DesignerVisualStyleEditor, {
+    const wrapper = mount(VisualStyleForm, {
       props: {
-        renderer: ConfigFormRenderer,
         nodes: [node('title', { width: '80%', opacity: 0.5 })],
         onUpdate: (key, next) => {
           if (next === '999px')

@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
+import type { ConfigFormNode } from '@moluoxixi/config-form-headless'
+import type { DesignerPropertyFormLayout, DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
 import { ChevronRight, Layers3, PanelsTopLeft, Search, SlidersHorizontal, X } from '@lucide/vue'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, h, markRaw, nextTick, ref, watch } from 'vue'
 import { isVisualStyleEditable, VISUAL_STYLE_GROUPS } from '../../inspector'
 import { useDesignerLocale } from '../../locale'
 import {
   DesignerDataBindingEditor,
   DesignerInteractionEditor,
   DesignerPropertyForm,
-  DesignerResponsiveSettings,
 } from './components'
 import DesignerValidationLab from './components/DesignerValidationLab.vue'
-import DesignerVisualStyleEditor from './components/DesignerVisualStyleEditor/index.vue'
-import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
+import { useDesignerPropertyEntries, useDesignerPropertyTabs, useDesignerResponsiveSettings, useDesignerVisualStyleEntries } from './composables'
 
 const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
@@ -190,6 +189,13 @@ function updateVisualStyle(key: string, value: string | undefined): void {
   commitNodePath(value, { key, label: key, path: ['props', 'style', key], control: 'text' })
 }
 
+function commitInspectorProperty(...args: Parameters<typeof commitNodePath>): void {
+  if (props.node)
+    commitNodePath(...args)
+  else
+    commitForm(...args)
+}
+
 function updateDatasetBinding(
   bindingKey: string,
   reference: DesignerPropertyPanelEmits['updateDatasetBinding'][2],
@@ -212,6 +218,150 @@ function materializeOptionsSnapshot(bindingKey: string): void {
   if (props.node)
     emit('materializeOptionsSnapshot', props.node.id, bindingKey)
 }
+
+const visual = useDesignerVisualStyleEntries({
+  nodes: () => selectedNodes.value,
+  readonly: () => sectionReadonly('properties'),
+  query: () => propertyQuery.value,
+  update: updateVisualStyle,
+})
+const responsive = useDesignerResponsiveSettings(
+  () => ({ form: props.graph.form, breakpoint: props.breakpoint, readonly: props.readonly }),
+  { onUpdateForm: changes => emit('updateForm', changes) },
+)
+// Keep the complete draft model when search or tabs change the visible layout.
+const inspectorEntries = computed(() => props.node
+  ? [...propertyEntries.value.properties, ...propertyEntries.value.validation, ...visual.entries.value]
+  : [...formEntries.value, ...responsive.entries.value])
+
+const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.map((tab) => {
+  const content: ConfigFormNode[] = []
+  if (tab.id === 'interactions') {
+    content.push({
+      id: 'interaction-editor',
+      component: markRaw(DesignerInteractionEditor),
+      props: {
+        key: `${selectionIdentity.value}:interaction-editor`,
+        componentDefinition: props.componentDefinition,
+        getComponentDefinition: props.getComponentDefinition,
+        graph: props.graph,
+        interactions: props.interactions,
+        node: props.node,
+        readonly: props.node ? sectionReadonly(tab.id) : props.readonly,
+        surfaceId: props.surfaceId,
+        surfaces: props.surfaces,
+        onUpdate: (value: DesignerPropertyPanelEmits['updateInteractions'][0]) => emit('updateInteractions', value),
+      },
+    })
+  }
+  else if (!props.node) {
+    content.push({
+      id: 'form-properties',
+      component: 'div',
+      props: { class: 'mx-config-form-designer__property-grid' },
+      slots: { default: formEntries.value.map(field) },
+    }, ...responsive.layout(field))
+  }
+  else if (tab.id === 'validation') {
+    content.push({
+      id: 'validation-properties',
+      component: 'div',
+      props: { class: 'mx-config-form-designer__property-grid' },
+      slots: { default: propertyEntries.value.validation.map(field) },
+    })
+    if (selectedNodes.value.length === 1 && props.node.kind === 'field') {
+      content.push({ id: 'validation-lab', component: markRaw(DesignerValidationLab), props: { node: props.node } })
+    }
+  }
+  else {
+    content.push(...visual.layout(field))
+    for (const group of propertyGroups.value) {
+      const groupId = `${propertyTabPanelId('properties')}-group-${group.id}`
+      content.push({
+        id: `property-group-${group.id}`,
+        component: 'section',
+        props: { 'class': 'mx-config-form-designer__property-group', 'data-property-group': group.id },
+        slots: { default: [
+          {
+            id: `${groupId}-trigger`,
+            component: 'button',
+            props: {
+              'id': `${groupId}-trigger`,
+              'type': 'button',
+              'class': 'mx-config-form-designer__property-group-trigger',
+              'aria-controls': `${groupId}-content`,
+              'aria-expanded': !isPropertyGroupCollapsed(group.id),
+              'disabled': hasPropertyQuery.value,
+              'onClick': () => togglePropertyGroup(group.id),
+            },
+            slots: { default: () => [
+              h(ChevronRight, { size: 14, 'aria-hidden': true }),
+              h('span', group.label),
+              h('span', { class: 'mx-config-form-designer__property-group-count', 'aria-hidden': true }, group.entries.length),
+            ] },
+          },
+          {
+            id: `${groupId}-content`,
+            component: 'div',
+            props: {
+              'id': `${groupId}-content`,
+              'class': 'mx-config-form-designer__property-group-content mx-config-form-designer__property-grid',
+              'style': isPropertyGroupCollapsed(group.id) ? { display: 'none' } : undefined,
+              'aria-labelledby': `${groupId}-trigger`,
+              'role': 'group',
+            },
+            slots: { default: group.entries.map(field) },
+          },
+        ] },
+      })
+    }
+    if (hasPropertyQuery.value && propertyGroups.value.length === 0 && visibleVisualPropertyCount.value === 0) {
+      content.push({
+        id: 'empty-property-search',
+        component: 'div',
+        props: { 'class': 'mx-config-form-designer__property-empty', 'data-property-empty': '', 'role': 'status' },
+        slots: { default: () => [
+          h(Search, { size: 15, 'aria-hidden': true }),
+          h('span', locale.t('property.emptySearch', 'No properties match this search.')),
+          h('button', { type: 'button', onClick: clearPropertyQuery }, locale.t('property.clearSearch', 'Clear search')),
+        ] },
+      })
+    }
+    if (selectedNodes.value.length === 1) {
+      content.push({
+        id: 'data-binding-editor',
+        component: markRaw(DesignerDataBindingEditor),
+        props: {
+          key: `${selectionIdentity.value}:data-binding-editor`,
+          componentDefinition: props.componentDefinition,
+          datasets: props.datasets,
+          node: props.node,
+          readonly: sectionReadonly(tab.id),
+          resources: props.resources,
+          onMaterializeOptions: materializeOptionsSnapshot,
+          onSaveOptions: saveOptionsAsDataset,
+          onUpdateDataset: updateDatasetBinding,
+          onUpdateResource: updateResourceBinding,
+        },
+      })
+    }
+  }
+  return {
+    id: `inspector-panel-${tab.id}`,
+    component: 'div',
+    props: {
+      'id': propertyTabPanelId(tab.id),
+      'class': 'mx-config-form-designer__property-fields',
+      'data-property-panel': tab.id,
+      'role': 'tabpanel',
+      'aria-labelledby': propertyTabId(tab.id),
+      'hidden': activeTab.value !== tab.id,
+      'inert': activeTab.value !== tab.id ? true : undefined,
+      'tabindex': activeTab.value === tab.id ? 0 : -1,
+    },
+    slots: { default: content },
+  }
+})
 
 defineExpose({ propertyPanelRef })
 </script>
@@ -301,145 +451,19 @@ defineExpose({ propertyPanelRef })
       </button>
     </div>
 
-    <div
-      v-for="tab in propertyTabs"
-      :id="propertyTabPanelId(tab.id)"
-      :key="tab.id"
-      class="mx-config-form-designer__property-fields"
-      :data-property-panel="tab.id"
-      role="tabpanel"
-      :aria-labelledby="propertyTabId(tab.id)"
-      :hidden="activeTab !== tab.id"
-      :inert="activeTab !== tab.id ? true : undefined"
-      :tabindex="activeTab === tab.id ? 0 : -1"
-    >
-      <DesignerInteractionEditor
-        v-if="tab.id === 'interactions'"
-        :component-definition="componentDefinition"
-        :get-component-definition="getComponentDefinition"
-        :graph="graph"
-        :interactions="interactions"
-        :node="node"
-        :readonly="node ? sectionReadonly(tab.id) : readonly"
-        :surface-id="surfaceId"
-        :surfaces="surfaces"
-        @update="emit('updateInteractions', $event)"
-      />
-      <template v-else-if="node">
-        <DesignerPropertyForm
-          v-if="tab.id === 'validation' && propertyEntries.validation.length > 0"
-          :entries="propertyEntries.validation"
-          :renderer="renderer"
-          :components="components"
-          :controls="propertyControls"
-          :readonly="sectionReadonly(tab.id)"
-          :node="node"
-          :identity="selectionIdentity"
-          @commit="commitNodePath"
-        />
-        <template v-if="tab.id === 'properties'">
-          <DesignerVisualStyleEditor
-            :nodes="selectedNodes"
-            :identity="selectionIdentity"
-            :renderer="renderer"
-            :components="components"
-            :readonly="sectionReadonly(tab.id)"
-            :query="propertyQuery"
-            @update="updateVisualStyle"
-          />
-          <section
-            v-for="group in propertyGroups"
-            :key="group.id"
-            class="mx-config-form-designer__property-group"
-            :data-property-group="group.id"
-          >
-            <button
-              :id="`${propertyTabPanelId('properties')}-group-${group.id}-trigger`"
-              type="button"
-              class="mx-config-form-designer__property-group-trigger"
-              :aria-controls="`${propertyTabPanelId('properties')}-group-${group.id}-content`"
-              :aria-expanded="!isPropertyGroupCollapsed(group.id)"
-              :disabled="hasPropertyQuery"
-              @click="togglePropertyGroup(group.id)"
-            >
-              <ChevronRight :size="14" aria-hidden="true" />
-              <span>{{ group.label }}</span>
-              <span class="mx-config-form-designer__property-group-count" aria-hidden="true">{{
-                group.entries.length
-              }}</span>
-            </button>
-            <div
-              v-show="!isPropertyGroupCollapsed(group.id)"
-              :id="`${propertyTabPanelId('properties')}-group-${group.id}-content`"
-              class="mx-config-form-designer__property-group-content"
-              :aria-labelledby="`${propertyTabPanelId('properties')}-group-${group.id}-trigger`"
-              role="group"
-            >
-              <DesignerPropertyForm
-                :entries="group.entries"
-                :renderer="renderer"
-                :components="components"
-                :controls="propertyControls"
-                :readonly="sectionReadonly(tab.id)"
-                :node="node"
-                :identity="selectionIdentity"
-                @commit="commitNodePath"
-              />
-            </div>
-          </section>
-        </template>
-        <div
-          v-if="tab.id === 'properties' && hasPropertyQuery && propertyGroups.length === 0 && visibleVisualPropertyCount === 0"
-          class="mx-config-form-designer__property-empty"
-          data-property-empty
-          role="status"
-        >
-          <Search :size="15" aria-hidden="true" />
-          <span>{{ locale.t('property.emptySearch', 'No properties match this search.') }}</span>
-          <button type="button" @click="clearPropertyQuery">
-            {{ locale.t('property.clearSearch', 'Clear search') }}
-          </button>
-        </div>
-        <DesignerDataBindingEditor
-          v-if="tab.id === 'properties' && selectedNodes.length === 1"
-          :component-definition="componentDefinition"
-          :datasets="datasets"
-          :node="node"
-          :readonly="sectionReadonly(tab.id)"
-          :resources="resources"
-          @materialize-options="materializeOptionsSnapshot"
-          @save-options="saveOptionsAsDataset"
-          @update-dataset="updateDatasetBinding"
-          @update-resource="updateResourceBinding"
-        />
-        <DesignerValidationLab
-          v-if="tab.id === 'validation' && selectedNodes.length === 1 && node?.kind === 'field'"
-          :node="node"
-        />
-      </template>
-      <template v-else>
-        <DesignerPropertyForm
-          :entries="formEntries"
-          :identity="surfaceId"
-          :renderer="renderer"
-          :components="components"
-          :controls="propertyControls"
-          :readonly="readonly"
-          @commit="commitForm"
-        />
-        <DesignerResponsiveSettings
-          :key="surfaceId"
-          :breakpoint="breakpoint"
-          :form="graph.form"
-          :components="components"
-          :controls="propertyControls"
-          :readonly="readonly"
-          :renderer="renderer"
-          @update-form="emit('updateForm', $event)"
-        />
-      </template>
-    </div>
-
+    <DesignerPropertyForm
+      class="mx-config-form-designer__inspector-form"
+      :entries="inspectorEntries"
+      :layout="inspectorLayout"
+      :renderer="renderer"
+      :components="components"
+      :controls="propertyControls"
+      :readonly="readonly"
+      :node="node"
+      :identity="selectionIdentity"
+      gap="0"
+      @commit="commitInspectorProperty"
+    />
     <ul
       v-if="selectedDiagnostics.length"
       class="mx-config-form-designer__property-diagnostics"

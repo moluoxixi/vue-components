@@ -1,4 +1,4 @@
-import type { DesignerPropertyFormEntry } from '../src/components/DesignerPropertyPanel/types'
+import type { DesignerPropertyFormEntry, DesignerPropertyFormLayout } from '../src/components/DesignerPropertyPanel/types'
 import type { DesignerPropertySetterDefinition } from '../src/registry'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { mount } from '@vue/test-utils'
@@ -46,6 +46,61 @@ const ExplicitControl = markRaw(defineComponent({
 }))
 
 describe('property form draft and command state', () => {
+  it('shares one form model across layout groups without modeling command controls', async () => {
+    const title = { setter: textSetter('Title'), value: 'Title before' }
+    const subtitle = { setter: textSetter('Subtitle'), value: 'Subtitle before' }
+    const entries = [title, subtitle]
+    let actions = 0
+    const layout: DesignerPropertyFormLayout = field => [
+      {
+        id: 'properties',
+        component: 'section',
+        props: { 'data-property-group': 'properties' },
+        slots: { default: [field(title)] },
+      },
+      {
+        id: 'validation',
+        component: 'section',
+        props: { 'data-property-group': 'validation' },
+        slots: { default: [field(subtitle)] },
+      },
+      {
+        id: 'command',
+        component: 'div',
+        slots: {
+          default: () => h('button', { type: 'button', onClick: () => actions++ }, 'Add override'),
+        },
+      },
+    ]
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries, layout, renderer: ConfigFormRenderer },
+    })
+    wrappers.push(wrapper)
+    const renderer = wrapper.getComponent({ name: 'ConfigFormRenderer' })
+
+    expect(wrapper.findAllComponents(ConfigFormRenderer)).toHaveLength(1)
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    expect(wrapper.get('[data-property-group="properties"]').get('input').attributes('aria-label')).toBe('Title')
+    expect(wrapper.get('[data-property-group="validation"]').get('input').attributes('aria-label')).toBe('Subtitle')
+    expect(Object.values(renderer.props('model').read())).toEqual(['Title before', 'Subtitle before'])
+    await wrapper.get('input[aria-label="Subtitle"]').setValue('Subtitle draft')
+    await wrapper.get('button').trigger('click')
+    expect(actions).toBe(1)
+    expect(Object.values(renderer.props('model').read())).toEqual(['Title before', 'Subtitle draft'])
+    expect(wrapper.emitted('commit')).toBeUndefined()
+
+    await wrapper.setProps({ layout: field => [{
+      id: 'filtered',
+      component: 'section',
+      slots: { default: [field(title)] },
+    }] })
+    expect(wrapper.find('input[aria-label="Subtitle"]').exists()).toBe(false)
+    expect(Object.values(renderer.props('model').read())).toEqual(['Title before', 'Subtitle draft'])
+    await wrapper.setProps({ layout })
+    expect((wrapper.get('input[aria-label="Subtitle"]').element as HTMLInputElement).value).toBe('Subtitle draft')
+    expect(wrapper.findAllComponents(ConfigFormRenderer)).toHaveLength(1)
+  })
+
   it('keeps a text draft local until blur and reprojects an accepted value', async () => {
     const setter = textSetter('Title')
     const wrapper = mount(DesignerPropertyForm, {
@@ -314,5 +369,175 @@ describe('property form draft and command state', () => {
     expect(wrapper.emitted('commit')).toBeUndefined()
     expect(wrapper.props('entries').map(entry => entry.value)).toEqual([1, 'Before'])
     expect((wrapper.get('[data-custom-control]').element as HTMLInputElement).value).toBe('Before')
+  })
+
+  it('protects readonly entries from model and commit emissions while other entries remain editable', async () => {
+    const count: DesignerPropertySetterDefinition = {
+      key: 'count',
+      label: 'Count',
+      path: ['props', 'count'],
+      control: 'number',
+    }
+    const custom: DesignerPropertySetterDefinition = {
+      key: 'custom',
+      label: 'Custom',
+      path: ['props', 'custom'],
+      control: 'custom',
+      component: CustomControl,
+    }
+    const width = textSetter('Width')
+    const title = textSetter('Title')
+    const entries: DesignerPropertyFormEntry[] = [
+      { setter: count, value: 1, readonly: true },
+      { setter: custom, value: 'Custom before', readonly: true },
+      {
+        setter: width,
+        value: '80px',
+        readonly: true,
+        editor: { control: { component: ExplicitControl, trigger: 'update:modelValue' }, commitOn: 'explicit' },
+      },
+      { setter: title, value: 'Title before' },
+    ]
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries, renderer: ConfigFormRenderer },
+    })
+    wrappers.push(wrapper)
+    const input = wrapper.get('input[aria-label="Title"]')
+    await input.setValue('Title draft')
+
+    expect(wrapper.getComponent(ElInputNumber).props('disabled')).toBe(true)
+    expect(wrapper.getComponent(CustomControl).props('disabled')).toBe(true)
+    expect(wrapper.getComponent(ExplicitControl).props('disabled')).toBe(true)
+    wrapper.getComponent(ElInputNumber).vm.$emit('update:modelValue', 2)
+    wrapper.getComponent(ElInputNumber).vm.$emit('change', 2)
+    wrapper.getComponent(CustomControl).vm.$emit('update:modelValue', 'Changed custom')
+    wrapper.getComponent(ExplicitControl).vm.$emit('update:modelValue', '200px')
+    wrapper.getComponent(ExplicitControl).vm.$emit('commit', '200px')
+    await nextTick()
+
+    expect(wrapper.emitted('commit')).toBeUndefined()
+    expect(Object.values(wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('model').read())).toEqual([1, 'Custom before', '80px', 'Title draft'])
+    expect((input.element as HTMLInputElement).value).toBe('Title draft')
+    await input.trigger('blur')
+    expect(wrapper.emitted('commit')).toEqual([['Title draft', title]])
+  })
+
+  it('clears a newly readonly entry draft and error while preserving another editable draft', async () => {
+    const width: DesignerPropertyFormEntry = {
+      setter: textSetter('Width'),
+      value: '80px',
+      editor: {
+        control: { component: ExplicitControl, trigger: 'update:modelValue' },
+        commitOn: 'explicit',
+        parse: () => ({ valid: false, message: 'Enter a number' }),
+      },
+    }
+    const title = { setter: textSetter('Title'), value: 'Title before' }
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries: [width, title], renderer: ConfigFormRenderer },
+    })
+    wrappers.push(wrapper)
+    const control = wrapper.getComponent(ExplicitControl)
+    control.vm.$emit('commit', 'invalid')
+    await nextTick()
+    expect(control.props('error')).toBe('Enter a number')
+    control.vm.$emit('update:modelValue', 'Width draft')
+    await wrapper.get('input[aria-label="Title"]').setValue('Title draft')
+
+    await wrapper.setProps({ entries: [{ ...width, readonly: true }, title] })
+
+    expect(control.props('modelValue')).toBe('80px')
+    expect(control.props('error')).toBeUndefined()
+    expect(control.props('disabled')).toBe(true)
+    expect((wrapper.get('input[aria-label="Title"]').element as HTMLInputElement).value).toBe('Title draft')
+    expect(wrapper.emitted('commit')).toBeUndefined()
+  })
+
+  it.each(['readonly', 'removed'] as const)('rejects a saved editor commit after its entry becomes %s', async (state) => {
+    const committed: unknown[] = []
+    const entry: DesignerPropertyFormEntry = {
+      setter: textSetter('Width'),
+      value: '80px',
+      onCommit: value => committed.push(value),
+      editor: {
+        control: { component: ExplicitControl, trigger: 'update:modelValue' },
+        commitOn: 'explicit',
+      },
+    }
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries: [entry], renderer: ConfigFormRenderer },
+    })
+    wrappers.push(wrapper)
+    const savedCommit = wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('fields')[0]!.props!.onCommit as (value: unknown) => void
+
+    await wrapper.setProps({ entries: state === 'removed' ? [] : [{ ...entry, readonly: true }] })
+    savedCommit('200px')
+    await nextTick()
+
+    expect(committed).toEqual([])
+    expect(wrapper.emitted('commit')).toBeUndefined()
+    expect(Object.values(wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('model').read())).toEqual(state === 'removed' ? [] : ['80px'])
+  })
+
+  it.each(['editor', 'text'] as const)('ignores a saved %s callback after changing selection with the same field value', async (kind) => {
+    const committed: unknown[] = []
+    const entry: DesignerPropertyFormEntry = {
+      setter: textSetter('Title'),
+      value: 'Shared title',
+      onCommit: value => committed.push(value),
+      ...(kind === 'editor'
+        ? {
+            editor: {
+              control: { component: ExplicitControl, trigger: 'update:modelValue' },
+              commitOn: 'explicit' as const,
+            },
+          }
+        : {}),
+    }
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries: [entry], renderer: ConfigFormRenderer, identity: 'first' },
+    })
+    wrappers.push(wrapper)
+    const savedCallback = wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('fields')[0]!.props![kind === 'editor' ? 'onCommit' : 'onBlur'] as (value?: unknown) => void
+
+    await wrapper.setProps({ identity: 'second' })
+    const input = wrapper.get('input')
+    ;(input.element as HTMLInputElement).value = 'Second selection draft'
+    await input.trigger('input')
+    savedCallback('First selection commit')
+    await nextTick()
+
+    expect(committed).toEqual([])
+    expect(wrapper.emitted('commit')).toBeUndefined()
+    expect((input.element as HTMLInputElement).value).toBe('Second selection draft')
+  })
+
+  it('resolves a saved editor callback through the current entry parser and command', async () => {
+    const committed: unknown[] = []
+    const previous: DesignerPropertyFormEntry = {
+      setter: textSetter('Width'),
+      value: '80px',
+      onCommit: value => committed.push(['previous', value]),
+      editor: {
+        control: { component: ExplicitControl, trigger: 'update:modelValue' },
+        commitOn: 'explicit',
+        parse: value => ({ valid: true, value: `previous:${String(value)}` }),
+      },
+    }
+    const wrapper = mount(DesignerPropertyForm, {
+      props: { entries: [previous], renderer: ConfigFormRenderer },
+    })
+    wrappers.push(wrapper)
+    const savedCommit = wrapper.getComponent({ name: 'ConfigFormRenderer' }).props('fields')[0]!.props!.onCommit as (value: unknown) => void
+    await wrapper.setProps({ entries: [{
+      ...previous,
+      onCommit: value => committed.push(['current', value]),
+      editor: { ...previous.editor!, parse: value => ({ valid: true, value: `${String(value)}px` }) },
+    }] })
+
+    savedCommit('200')
+    await nextTick()
+
+    expect(committed).toEqual([['current', '200px']])
   })
 })
