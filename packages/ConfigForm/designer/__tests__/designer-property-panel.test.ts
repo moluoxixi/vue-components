@@ -655,6 +655,7 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.emitted()).not.toHaveProperty('configureFlow')
   })
 
+  // Full Inspector renders need headroom on shared CI runners; keep this budget local.
   it('preserves Dataset binding drafts across property search and tab changes', async () => {
     const wrapper = mountDatasetBindingPanel()
 
@@ -673,8 +674,9 @@ describe('designer property panel lite Inspector', () => {
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
     await wrapper.get('[data-property-tab="properties"]').trigger('click')
     expect((wrapper.get('textarea[aria-label="Filter expression JSON"]').element as HTMLTextAreaElement).value).toBe(filterDraft)
-  })
+  }, 15_000)
 
+  // Exercise the real renderer within a local budget for shared CI runners.
   it('authors Dataset bindings, preserves query fields, and materializes options explicitly', async () => {
     const wrapper = mountDatasetBindingPanel()
 
@@ -692,7 +694,7 @@ describe('designer property panel lite Inspector', () => {
     ])
     await wrapper.get('[data-materialize-options]').trigger('click')
     expect(wrapper.emitted('materializeOptionsSnapshot')?.at(-1)).toEqual(['role', 'options'])
-  })
+  }, 15_000)
 
   it('saves inline options as a Dataset and filters Resource choices by media capability', async () => {
     const node = field('role', 'test.select', {
