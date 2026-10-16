@@ -1,5 +1,12 @@
 # @moluoxixi/config-form-prototype-runtime
 
+## 0.2.2
+
+### Patch Changes
+
+- Automatically release packages changed in 7d7872c60a06.
+  - @moluoxixi/config-form-compiler@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

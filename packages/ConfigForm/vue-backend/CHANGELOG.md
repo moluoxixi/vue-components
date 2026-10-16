@@ -1,5 +1,15 @@
 # @moluoxixi/config-form-vue-backend
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [05d0b2e]
+  - @moluoxixi/config-form@0.3.2
+  - @moluoxixi/config-form-model@0.2.2
+  - @moluoxixi/config-form-compiler@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

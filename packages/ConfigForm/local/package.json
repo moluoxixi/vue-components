@@ -1,20 +1,44 @@
 {
   "name": "@moluoxixi/config-form-local",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ConfigForm local workspace server, source CLI and MCP tools",
-  "repository": { "type": "git", "url": "https://github.com/moluoxixi/vue-components", "directory": "packages/ConfigForm/local" },
-  "sideEffects": ["./dist/cli.js", "./src/cli/index.ts", "./src/services/cli.ts"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/local"
+  },
+  "sideEffects": [
+    "./dist/cli.js",
+    "./src/cli/index.ts",
+    "./src/services/cli.ts"
+  ],
   "exports": {
-    ".": { "source": "./index.ts", "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./mcp": { "source": "./src/mcp/index.ts", "types": "./dist/src/mcp/index.d.ts", "import": "./dist/mcp.js" }
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "source": "./src/mcp/index.ts",
+      "types": "./dist/src/mcp/index.d.ts",
+      "import": "./dist/mcp.js"
+    }
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": { "config-form": "./dist/cli.js" },
-  "files": ["dist", "index.ts", "src"],
-  "engines": { "node": ">=22.6.0" },
+  "bin": {
+    "config-form": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "scripts": {
     "build": "vite build && node scripts/build-designer.mjs",
     "build:lib": "vite build",
@@ -42,5 +66,7 @@
     "vite": "catalog:dev",
     "vitest": "catalog:dev"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

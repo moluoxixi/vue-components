@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-headless
 
+## 0.3.2
+
+### Patch Changes
+
+- Automatically release packages changed in 7d7872c60a06.
+
 ## 0.3.1
 
 ### Patch Changes

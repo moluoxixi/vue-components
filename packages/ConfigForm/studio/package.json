@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/config-form-studio",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Portable ConfigForm authoring and standalone Vue source SDK",
   "repository": {
     "type": "git",
@@ -10,13 +10,25 @@
   },
   "sideEffects": false,
   "exports": {
-    ".": { "source": "./index.ts", "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./client": { "source": "./src/client/index.ts", "types": "./dist/src/client/index.d.ts", "import": "./dist/client.js" }
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "source": "./src/client/index.ts",
+      "types": "./dist/src/client/index.d.ts",
+      "import": "./dist/client.js"
+    }
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "index.ts", "src"],
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
   "scripts": {
     "build": "vite build",
     "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
@@ -34,5 +46,7 @@
     "vite": "catalog:dev",
     "vitest": "catalog:dev"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

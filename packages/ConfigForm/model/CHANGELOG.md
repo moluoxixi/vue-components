@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-model
 
+## 0.2.2
+
+### Patch Changes
+
+- 05d0b2e: Add visual editing for component dimensions, spacing, appearance and typography with selection history and theme colors. Accept common Vue presentation properties in project validation and preserve authored styles and classes when generating layouts.
+
 ## 0.2.1
 
 ### Patch Changes

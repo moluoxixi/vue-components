@@ -1,5 +1,16 @@
 # @moluoxixi/config-form-designer-element-plus
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [b657aa7]
+- Updated dependencies [3e3c44e]
+- Updated dependencies [4e39769]
+- Updated dependencies [05d0b2e]
+  - @moluoxixi/config-form-designer@0.3.0
+  - @moluoxixi/config-form-model@0.2.2
+
 ## 0.2.0
 
 ### Minor Changes

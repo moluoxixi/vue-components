@@ -1,5 +1,21 @@
 # @moluoxixi/config-form-designer
 
+## 0.3.0
+
+### Minor Changes
+
+- 05d0b2e: Add visual editing for component dimensions, spacing, appearance and typography with selection history and theme colors. Accept common Vue presentation properties in project validation and preserve authored styles and classes when generating layouts.
+
+### Patch Changes
+
+- b657aa7: Refine editor controls with softly filled inputs, lighter field borders, and quieter material cards and responsive tabs. Add separate field and hover tokens while preserving keyboard focus, selection, and switch boundaries.
+- 3e3c44e: Render visual style editors through the shared ConfigForm property form. Preserve unrelated drafts during commits, reset drafts when selection changes, and prevent readonly edits and unchanged inherited values from producing commands.
+- 4e39769: Consolidate Inspector property, visual, validation, and responsive fields into one form model and renderer. Preserve drafts across search and tab changes, enforce readonly per field, and route breakpoint enable switches directly to override commands instead of creating boolean form fields.
+- Updated dependencies
+- Updated dependencies [05d0b2e]
+  - @moluoxixi/config-form-headless@0.3.2
+  - @moluoxixi/config-form-model@0.2.2
+
 ## 0.2.2
 
 ### Patch Changes
