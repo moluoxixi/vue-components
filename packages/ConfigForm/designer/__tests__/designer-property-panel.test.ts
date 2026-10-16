@@ -2,7 +2,7 @@ import type { ComponentContract, SurfaceGraph, SurfaceNode } from '@moluoxixi/co
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { SURFACE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
-import { mount } from '@vue/test-utils'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { ElInputNumber, ElOption, ElSelect } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
@@ -118,6 +118,41 @@ function fieldMaterial(
     createNode: ({ id }) => ({ id, field: id, kind: 'field', component: key }),
   }
 }
+
+function mountDatasetBindingPanel() {
+  const node = field('role', 'test.select', {
+    props: { options: [{ label: 'Inline', value: 'inline' }] },
+    datasetBindings: {
+      options: {
+        datasetId: 'roles',
+        projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
+        query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
+      },
+    },
+  })
+  return mount(DesignerPropertyPanel, {
+    props: {
+      renderer: ConfigFormRenderer,
+      graph: graph([node]),
+      node,
+      material: fieldMaterial('test.select', [
+        placeholderSetter,
+        { key: 'clearable', label: 'Clearable', path: ['props', 'clearable'], control: 'boolean' },
+      ]),
+      componentDefinition: contract('test.select', {
+        datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
+      }),
+      datasets: [{
+        id: 'roles',
+        name: 'Roles',
+        rows: [{ id: 1, rank: 1, meta: { label: 'Designer' } }],
+      }],
+      diagnostics: [],
+    },
+  })
+}
+
+enableAutoUnmount(afterEach)
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -620,37 +655,8 @@ describe('designer property panel lite Inspector', () => {
     expect(wrapper.emitted()).not.toHaveProperty('configureFlow')
   })
 
-  it('authors Dataset bindings, preserves query fields, and materializes options explicitly', async () => {
-    const node = field('role', 'test.select', {
-      props: { options: [{ label: 'Inline', value: 'inline' }] },
-      datasetBindings: {
-        options: {
-          datasetId: 'roles',
-          projection: { kind: 'options', labelPath: ['meta', 'label'], valuePath: ['id'] },
-          query: { sort: [{ path: ['rank'], direction: 'asc' }], page: { index: 0, size: 10 } },
-        },
-      },
-    })
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        renderer: ConfigFormRenderer,
-        graph: graph([node]),
-        node,
-        material: fieldMaterial('test.select', [
-          placeholderSetter,
-          { key: 'clearable', label: 'Clearable', path: ['props', 'clearable'], control: 'boolean' },
-        ]),
-        componentDefinition: contract('test.select', {
-          datasetBindings: [{ key: 'options', projectionKinds: ['options'] }],
-        }),
-        datasets: [{
-          id: 'roles',
-          name: 'Roles',
-          rows: [{ id: 1, rank: 1, meta: { label: 'Designer' } }],
-        }],
-        diagnostics: [],
-      },
-    })
+  it('preserves Dataset binding drafts across property search and tab changes', async () => {
+    const wrapper = mountDatasetBindingPanel()
 
     expect(wrapper.find('[data-data-binding-editor]').exists()).toBe(true)
     const bindingEditor = wrapper.get('[data-data-binding-editor]').element
@@ -667,6 +673,12 @@ describe('designer property panel lite Inspector', () => {
     await wrapper.get('[data-property-tab="validation"]').trigger('click')
     await wrapper.get('[data-property-tab="properties"]').trigger('click')
     expect((wrapper.get('textarea[aria-label="Filter expression JSON"]').element as HTMLTextAreaElement).value).toBe(filterDraft)
+  })
+
+  it('authors Dataset bindings, preserves query fields, and materializes options explicitly', async () => {
+    const wrapper = mountDatasetBindingPanel()
+
+    await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue('{ "unfinished": true }')
     await wrapper.get('textarea[aria-label="Filter expression JSON"]').setValue('')
     await wrapper.get('[data-apply-dataset-binding]').trigger('click')
     expect(wrapper.emitted('updateDatasetBinding')?.at(-1)).toEqual([

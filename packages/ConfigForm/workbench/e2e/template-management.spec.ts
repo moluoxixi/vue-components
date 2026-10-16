@@ -105,7 +105,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(workspace).toHaveAttribute('data-theme', 'dark')
   await expect(workspace).toHaveAttribute('data-palette', 'morandi')
   await expect(workspace.locator('.template-catalog-filters .el-select__wrapper').first())
-    .toHaveCSS('background-color', 'rgb(40, 44, 49)')
+    .toHaveCSS('background-color', 'rgb(48, 52, 59)')
   const lightResults = await new AxeBuilder({ page })
     .exclude(TEMPLATE_PREVIEW_FRAME)
     .withTags(['wcag2a', 'wcag2aa'])
