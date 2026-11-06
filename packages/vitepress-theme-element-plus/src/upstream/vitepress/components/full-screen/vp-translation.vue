@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useToggle } from '@vueuse/core'
 import { useTranslation } from '../../composables/translation'
 import ExpandIcon from '../icons/expand.vue'
@@ -13,6 +14,7 @@ const onSwitchLang = (lang: string) => {
   switchLang(lang)
   emit('close')
 }
+provideDocsUi()
 </script>
 
 <template>
@@ -21,7 +23,7 @@ const onSwitchLang = (lang: string) => {
       :aria-label="locale.language"
       :aria-expanded="show"
       aria-controls="translation-items"
-      style="width: 100%; color: var(--text-color)"
+      style="width: 100%; color: var(--ep-docs-text-color)"
       text
       @click="toggle()"
     >
@@ -52,7 +54,7 @@ const onSwitchLang = (lang: string) => {
 
 <style lang="scss" scoped>
 .full-screen-translation {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--ep-docs-border-color);
 }
 .translation-toggler {
   width: 100%;
@@ -61,7 +63,7 @@ const onSwitchLang = (lang: string) => {
   justify-content: space-between;
   line-height: 24px;
   .toggle-icon {
-    transition: transform var(--el-transition-duration);
+    transition: transform var(--epd-transition-duration);
     transform: rotate(180deg);
 
     &.expanded {
@@ -80,7 +82,7 @@ const onSwitchLang = (lang: string) => {
 
     &.active {
       font-weight: 500;
-      color: var(--brand-color);
+      color: var(--ep-docs-brand-color);
     }
 
     .link-item {

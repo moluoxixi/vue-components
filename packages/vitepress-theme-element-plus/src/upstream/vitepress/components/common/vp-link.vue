@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { withBase } from 'vitepress'
 import { ExternalLink } from '@lucide/vue'
 import { isExternal } from '../../utils'
@@ -7,6 +8,7 @@ defineProps<{
   href?: string
   noIcon?: boolean
 }>()
+provideDocsUi()
 </script>
 
 <template>
@@ -31,7 +33,7 @@ defineProps<{
   align-items: center;
 }
 
-.el-icon {
+.epd-icon {
   margin-left: 4px;
 }
 </style>

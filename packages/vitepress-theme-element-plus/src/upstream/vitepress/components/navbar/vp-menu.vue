@@ -10,3 +10,16 @@ const navs = useNav()
     <VPMenuLink v-for="(item, key) in navs" :key="key" :item="item" />
   </nav>
 </template>
+
+<style scoped lang="scss">
+@use '../../styles/mixins' as *;
+
+.navbar-menu {
+  display: none;
+
+  @include respond-to('lg') {
+    display: flex;
+  }
+}
+
+</style>

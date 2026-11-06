@@ -24,7 +24,7 @@ const locale = useNavbarLocale()
   justify-content: space-between;
   margin-top: 16px;
   font-size: 13px;
-  background-color: var(--bg-color-soft);
+  background-color: var(--ep-docs-bg-color-soft);
   border-radius: 8px;
 }
 </style>

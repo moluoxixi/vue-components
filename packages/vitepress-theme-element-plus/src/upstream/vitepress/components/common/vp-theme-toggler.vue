@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { nextTick, ref, watch } from 'vue'
 import { isDark, toggleDark } from '../../composables/dark'
 import DarkIcon from '../icons/dark.vue'
@@ -59,9 +60,9 @@ const beforeChange = () => {
     const transitionId = ++latestTransitionId
     const root = document.documentElement
     root.dataset.themeTransition = isDark.value ? 'to-light' : 'to-dark'
-    root.style.setProperty('--theme-transition-x', `${ratioX}%`)
-    root.style.setProperty('--theme-transition-y', `${ratioY}%`)
-    root.style.setProperty('--theme-transition-radius', `${ratioR}%`)
+    root.style.setProperty('--ep-docs-theme-transition-x', `${ratioX}%`)
+    root.style.setProperty('--ep-docs-theme-transition-y', `${ratioY}%`)
+    root.style.setProperty('--ep-docs-theme-transition-radius', `${ratioR}%`)
 
     const transition = document.startViewTransition(async () => {
       resolve(true)
@@ -72,12 +73,13 @@ const beforeChange = () => {
       if (transitionId !== latestTransitionId) return
 
       delete root.dataset.themeTransition
-      root.style.removeProperty('--theme-transition-x')
-      root.style.removeProperty('--theme-transition-y')
-      root.style.removeProperty('--theme-transition-radius')
+      root.style.removeProperty('--ep-docs-theme-transition-x')
+      root.style.removeProperty('--ep-docs-theme-transition-y')
+      root.style.removeProperty('--ep-docs-theme-transition-radius')
     })
   })
 }
+provideDocsUi()
 </script>
 
 <template>
@@ -94,12 +96,12 @@ const beforeChange = () => {
 </template>
 
 <style lang="scss" scoped>
-:deep(.el-switch__core) {
-  --el-switch-on-color: var(--bg-color-mute);
-  --el-switch-off-color: var(--bg-color-mute);
-  --el-switch-border-color: var(--border-color);
+:deep(.epd-switch__core) {
+  --epd-switch-on-color: var(--ep-docs-bg-color-mute);
+  --epd-switch-off-color: var(--ep-docs-bg-color-mute);
+  --epd-switch-border-color: var(--ep-docs-border-color);
 
-  .el-switch__action {
+  .epd-switch__action {
     width: 14px;
     height: 14px;
   }

@@ -36,7 +36,7 @@ const focusOnTargetAnchor = ({ target }: Event) => {
 <template>
   <span ref="anchorRef" tabindex="-1" />
   <a
-    href="#page-content"
+ data-docs-ui    href="#page-content"
     class="skip-link visually-hidden"
     @click="focusOnTargetAnchor"
   >
@@ -50,12 +50,12 @@ const focusOnTargetAnchor = ({ target }: Event) => {
   left: 12px;
   padding: 6px 12px;
   z-index: 999;
-  font-size: var(--el-font-size-base);
+  font-size: var(--epd-font-size-base);
   font-weight: bold;
   text-decoration: none;
-  color: var(--text-color);
-  background-color: var(--bg-color);
-  border-radius: var(--el-border-radius-base);
+  color: var(--ep-docs-text-color);
+  background-color: var(--ep-docs-bg-color);
+  border-radius: var(--epd-border-radius-base);
 
   &:focus {
     height: auto;

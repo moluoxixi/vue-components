@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import type { ElementPlusDocsContentMessages } from '../types'
 import type { ElementPlusDocsContributor } from './types'
 import { ElTooltip } from 'element-plus'
@@ -39,10 +40,11 @@ function contributorAriaLabel(contributor: ElementPlusDocsContributor): string {
     : contributor.name
   return `${identity}, ${contributionText(props.messages.contributors.contribution, props.name, contributor.contributions)}`
 }
+provideDocsUi()
 </script>
 
 <template>
-  <ul
+  <ul data-docs-ui
     v-if="contributors.length"
     class="doc-contributors"
     :aria-label="formatElementPlusDocsMessage(messages.contributors.aria, { name })"
@@ -94,3 +96,90 @@ function contributorAriaLabel(contributor: ElementPlusDocsContributor): string {
     {{ messages.contributors.empty }}
   </p>
 </template>
+
+<style scoped>
+
+.doc-contributors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 24px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.doc-contributors li {
+  width: 40px;
+  height: 40px;
+}
+
+.doc-contributor-link {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ep-docs-mx-border);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--ep-docs-mx-fill);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.doc-contributor-link:hover,
+.doc-contributor-link:focus-visible {
+  border-color: var(--ep-docs-brand-color);
+  box-shadow: 0 0 0 2px var(--ep-docs-link-active-bg-color);
+  text-decoration: none;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.doc-contributor-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.doc-contributor-initials {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--ep-docs-brand-color) 12%, var(--ep-docs-mx-fill));
+  color: var(--ep-docs-brand-color);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.doc-contributors-empty {
+  color: var(--ep-docs-text-color-lighter);
+  font-size: 12px;
+}
+
+:global(.epd-popper.doc-contributor-tooltip) {
+  max-width: min(260px, calc(100vw - 32px));
+}
+
+.doc-contributor-tooltip-content {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.doc-contributor-tooltip-content strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+</style>

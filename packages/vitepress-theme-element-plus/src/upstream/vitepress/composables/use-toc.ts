@@ -55,7 +55,7 @@ export function mapHeaders(headers: Headers): TocLinkItem[] {
 export function resolveDocumentHeaders(container: ParentNode): TocLinkItem[] {
   const headings = Array.from(
     container.querySelectorAll<HTMLHeadingElement>('h2, h3, h4, h5, h6'),
-  ).filter(heading => heading.id && heading.hasChildNodes())
+  ).filter(heading => heading.id && heading.hasChildNodes() && !heading.closest('.vp-raw'))
 
   const result: TocLinkItem[] = []
   const stack: DocumentHeaderStackItem[] = []

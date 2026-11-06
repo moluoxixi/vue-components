@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 
-import { Cloud, CodeXml, GitBranch, GitFork, HardDrive } from '@lucide/vue'
+import { Cloud, CodeXml, GitBranch, HardDrive } from '@lucide/vue'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import VPFooter from '../src/upstream/vitepress/components/globals/vp-footer.vue'
+import GitHubIcon from '../src/upstream/vitepress/components/icons/github.vue'
 import { resolveSocialLinks } from '../src/upstream/vitepress/composables/social-links'
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +19,7 @@ vi.mock('vitepress', () => ({
 describe('repository provider labels', () => {
   it('uses a distinct navigation icon for every supported provider', () => {
     const providers = [
-      ['github', GitFork],
+      ['github', GitHubIcon],
       ['gitlab', GitBranch],
       ['gitee', CodeXml],
       ['yunxiao', Cloud],

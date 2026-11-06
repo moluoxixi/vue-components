@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { ElAnchorLink } from 'element-plus'
 import type { TocLinkItem } from '../../types'
 
@@ -9,6 +10,7 @@ defineProps<{
 }>()
 
 const removeTag = (value: string) => value.replace(/<span.*<\/span>/g, '')
+provideDocsUi()
 </script>
 
 <template>

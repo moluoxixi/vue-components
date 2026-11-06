@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import { ElTooltip } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 
@@ -41,6 +42,7 @@ function handlePointerDown(event: PointerEvent): void {
     touchVisible.value = true
   }
 }
+provideDocsUi()
 </script>
 
 <template>
@@ -80,8 +82,8 @@ function handlePointerDown(event: PointerEvent): void {
   display: inline-flex;
   max-width: 100%;
   align-items: center;
-  color: var(--mx-type, var(--el-color-primary));
-  font-family: var(--font-family-mono);
+  color: var(--ep-docs-mx-type, var(--epd-color-primary));
+  font-family: var(--ep-docs-font-family-mono);
   font-size: 12px;
   line-height: 1.55;
   text-align: left;
@@ -98,7 +100,7 @@ function handlePointerDown(event: PointerEvent): void {
 
 .type-cell-trigger:focus-visible {
   border-radius: 2px;
-  outline: 2px solid var(--brand-color);
+  outline: 2px solid var(--ep-docs-brand-color);
   outline-offset: 3px;
 }
 
@@ -107,10 +109,10 @@ function handlePointerDown(event: PointerEvent): void {
 }
 </style>
 
-<style>
-.el-popper.mx-type-tooltip {
+<style scoped>
+:global(.epd-popper.mx-type-tooltip) {
   max-width: min(560px, calc(100vw - 32px));
-  font-family: var(--font-family-mono);
+  font-family: var(--ep-docs-font-family-mono);
   font-size: 12px;
   line-height: 1.6;
   user-select: text;
@@ -123,7 +125,7 @@ function handlePointerDown(event: PointerEvent): void {
   overflow-y: auto;
   overflow-wrap: anywhere;
   overscroll-behavior: contain;
-  scrollbar-color: var(--border-color) transparent;
+  scrollbar-color: var(--ep-docs-border-color) transparent;
   scrollbar-width: thin;
   white-space: pre-wrap;
 }

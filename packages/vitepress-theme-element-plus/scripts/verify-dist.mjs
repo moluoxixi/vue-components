@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import postcss from 'postcss'
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url))
 const distRoot = fileURLToPath(new URL('../dist/', import.meta.url))
@@ -55,6 +56,7 @@ const files = await collectFiles(distRoot)
 const jsFiles = files.filter(file => file.endsWith('.js'))
 const declarationFiles = files.filter(file => file.endsWith('.d.ts'))
 const cssFiles = files.filter(file => file.endsWith('.css'))
+const themeCss = await readFile(`${distRoot}/vitepress-theme-element-plus.css`, 'utf8')
 const js = (await Promise.all(jsFiles.map(file => readFile(file, 'utf8')))).join('\n')
 const browserJsFiles = jsFiles.filter(file => (
   !file.endsWith('/markdown.js')
@@ -112,6 +114,10 @@ if (nodeModuleSpecifier.test(browserArtifacts)) {
   failures.push('forbidden browser artifact reference: node: module import')
 }
 for (const forbidden of [
+  'vitepress/theme-without-fonts',
+  'normalize.css',
+  'element-plus/dist/index.css',
+  'element-plus/theme-chalk/dark/css-vars.css',
   '@moluoxixi/ai-doc-assistant',
   'packages/theme-chalk',
   'element-plus.gitee.io',
@@ -120,6 +126,25 @@ for (const forbidden of [
   if (browserArtifacts.includes(forbidden))
     failures.push(`forbidden browser artifact reference: ${forbidden}`)
 }
+if (/(?:\bfrom\s*|\bimport\s*\(\s*)["']vitepress\/theme["']/.test(browserArtifacts)) {
+  failures.push('default VitePress theme entry reintroduces global styles')
+}
+if (!themeCss.includes('.epdocs\\:flex') || /@(?:import|source|theme)\b/.test(themeCss)) {
+  failures.push('Tailwind utilities must be compiled and prefixed before publication')
+}
+postcss.parse(themeCss).walkRules((rule) => {
+  if (rule.parent?.type === 'atrule' && rule.parent.name.endsWith('keyframes'))
+    return
+  if (rule.selector === 'body') {
+    if (rule.nodes.some(node => node.type !== 'decl' || node.prop !== 'margin' || node.value !== '0'))
+      failures.push('body must not supply inherited typography or a theme reset')
+    return
+  }
+  if (/\.el-[\w-]+|^(?:html|:root|:host)(?:\s|$|,)/.test(rule.selector))
+    failures.push(`unscoped vendor styles: ${rule.selector.slice(0, 100)}`)
+  if (!rule.selector.includes('.vp-raw') && !rule.selector.includes('::view-transition') && !/^\.demo-preview\[data-v-/.test(rule.selector))
+    failures.push(`missing raw-preview boundary: ${rule.selector.slice(0, 100)}`)
+})
 if (/(?:\bfrom\s*|\bimport\s*\(\s*)["']@element-plus\//.test(browserArtifacts)) {
   failures.push('forbidden browser artifact import: @element-plus/ package')
 }

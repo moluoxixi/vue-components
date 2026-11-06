@@ -31,3 +31,18 @@ Husky `pre-commit` 不生成、不刷新也不暂存 metadata；ignored snapshot
 ## 维护边界
 
 主题包是布局、Element Plus 安装、基础样式、Demo/Playground/ApiDocs 内容运行时和通用交互的唯一来源；消费方负责站点身份、组件内容和项目数据。第一版固定复制自 Element Plus 文档主题的已记录 commit，后续修改直接在独立包中维护，不自动跟踪上游，也不在每个文档站复制一套主题源码。
+
+## 样式隔离
+
+主题由独立的 Vue 组件组成，导航、侧栏、目录、页脚、示例工具栏和元信息使用各自的 `<style scoped>`。不继承 VitePress 默认主题，不加载 normalize 或 Tailwind Preflight。
+
+- Tailwind 4 仅用于主题界面，类名使用 `epdocs:` 前缀，显式扫描主题源码。工具类预编译进主题 CSS，消费项目无需安装或配置 Tailwind，也不会扫描组件示例。
+- `body` 仅去除默认外边距。字体、行高和文字颜色只设置在主题自己的界面和 Markdown 正文上，不放到与示例共享的父容器。主题变量使用 `--ep-docs-*` 前缀。
+- 主题的 Element Plus 控件使用 `epd-*` 类名和 `--epd-*` 变量，浮层同样使用此命名空间。Demo 和轻量 Playground 恢复消费项目原有的 Element Plus namespace，保留语言配置。
+- 标题、段落、列表、表格、引用和代码样式限定在正文内，排除 `.vp-raw` 及其全部后代。构建时也为生成的工具类和第三方控件 CSS 加上相同边界。
+- Demo 和轻量 Playground 自动标记预览边界；直接嵌入 Markdown 的组件可用 `<div class="vp-raw"><MyComponent /></div>`。隔离区的标题不会进入文档目录。
+- 搜索单独复用 VitePress 搜索组件。兼容变量只提供给搜索控件和搜索弹窗，保留本地搜索、快捷键和 Algolia 配置。
+
+组件示例应像在真实业务项目中一样显式加载自身及其依赖的 CSS。本项目的 Element Plus 示例样式由文档站入口加载，独立于主题。示例中的 `<style scoped>` 仍推荐使用，避免示例自己写的全局 CSS 影响其他内容。
+
+这是同一文档中的样式边界，不是 iframe 或 Shadow DOM 沙箱。消费项目显式导入的全局 CSS、组件主动使用的主题变量，以及共享的 `html.dark` 明暗状态仍由消费项目控制。

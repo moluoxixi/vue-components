@@ -19,16 +19,11 @@ const locale = useNavbarLocale()
 @use '../../styles/mixins' as *;
 
 .theme-toggler-content {
-  @include with-bg;
-  background-color: transparent;
-  display: none;
-  border-radius: 50%;
-  height: 24px;
-  padding: 0 12px;
-
-  @include respond-to('md') {
-    display: flex;
-    align-items: center;
-  }
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 36px;
 }
 </style>

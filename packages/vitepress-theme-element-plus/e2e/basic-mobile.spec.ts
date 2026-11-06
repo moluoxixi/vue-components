@@ -41,7 +41,7 @@ test('mobile navigation stays accessible without horizontal overflow', async ({ 
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator(`#${controls}`)).toHaveCount(1)
-  await page.locator('#full-screen .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   const widths = await page.evaluate(() => ({
@@ -60,7 +60,7 @@ test('@visual built theme matches mobile baselines', async ({ page }) => {
 
   const toggle = page.getByRole('button', { name: 'Toggle navigation' })
   await toggle.click()
-  await page.locator('#full-screen .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(page).toHaveScreenshot('basic-mobile-dark.png', { animations: 'disabled', fullPage: true })
 })

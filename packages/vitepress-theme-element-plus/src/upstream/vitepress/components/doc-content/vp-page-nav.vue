@@ -6,7 +6,7 @@ const { hasLinks, prev, next } = usePageNav()
 </script>
 
 <template>
-  <div v-if="hasLinks" class="next-and-prev-link">
+  <div v-if="hasLinks" data-docs-ui class="next-and-prev-link">
     <div class="container">
       <div class="prev">
         <a v-if="prev" class="link" :href="withBase(prev.link)">
@@ -32,7 +32,7 @@ const { hasLinks, prev, next } = usePageNav()
 .container {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--ep-docs-border-color);
   padding-top: 1rem;
 }
 
@@ -71,11 +71,11 @@ const { hasLinks, prev, next } = usePageNav()
   text-overflow: ellipsis;
 }
 
-.el-icon {
+.epd-icon {
   display: inline-flex;
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--text-color);
+  color: var(--ep-docs-text-color);
   transform: translateY(1px);
 }
 

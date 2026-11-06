@@ -27,7 +27,7 @@ function permanentLinkLabel(section: string): string {
 </script>
 
 <template>
-  <div class="api-docs">
+  <div data-docs-ui class="api-docs">
     <section v-for="section in sections" :key="section.key" class="api-docs-section">
       <h3 :id="`${api.name}-${section.key}`" tabindex="-1">
         {{ section.label }}
@@ -48,3 +48,15 @@ function permanentLinkLabel(section: string): string {
     </p>
   </div>
 </template>
+
+<style scoped>
+
+.api-docs-section + .api-docs-section {
+  margin-top: 28px;
+}
+
+.api-docs-empty {
+  color: var(--ep-docs-text-color-lighter);
+}
+
+</style>

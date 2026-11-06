@@ -64,6 +64,8 @@ export interface ElementPlusDocsPlaygroundMessages {
   reset: string
   run: string
   running: string
+  /** Tooltip shown while compilation temporarily disables Run. */
+  runningHint?: string
   title: string
 }
 

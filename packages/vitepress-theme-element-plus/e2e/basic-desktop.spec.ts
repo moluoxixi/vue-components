@@ -2,6 +2,97 @@ import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
 import { coldStartTimeout, openBasicHome } from './page-readiness'
 
+test('examples preserve native and authored styles across search, dark mode and Playground', async ({ page, context }) => {
+  const browserProblems = collectBrowserProblems(page)
+  const defaultThemeStyles: string[] = []
+  page.on('request', (request) => {
+    if (/theme-default\/styles\/(?:base|utils|components\/vp-doc)\.css/.test(request.url()))
+      defaultThemeStyles.push(request.url())
+  })
+
+  const baseline = await context.newPage()
+  await baseline.goto('/native-baseline.html')
+  const readNativeStyles = (elements: Element[]) => elements.map((element) => {
+    const style = getComputedStyle(element)
+    const properties = [
+      'display',
+      'position',
+      'font-size',
+      'font-family',
+      'color',
+      'background-color',
+      'color-scheme',
+      'font-weight',
+      'line-height',
+      'box-sizing',
+      'margin-top',
+      'margin-bottom',
+      'padding-top',
+      'padding-left',
+      'border-top-width',
+      'border-radius',
+      'border-collapse',
+      'list-style-type',
+      'scrollbar-color',
+      'background-image',
+    ]
+    return {
+      probe: element.getAttribute('data-probe'),
+      styles: Object.fromEntries(properties.map(property => [property, style.getPropertyValue(property)])),
+    }
+  })
+  const nativeStyles = await baseline.locator('[data-probe]').evaluateAll(readNativeStyles)
+  await baseline.close()
+
+  await page.goto('/style-isolation.html')
+  const nativeElements = page.getByTestId('native-elements')
+  await expect(nativeElements).toBeVisible({ timeout: coldStartTimeout })
+  await expect(page.getByTestId('manual-ep-control')).toHaveClass(/\bel-button\b/)
+  await expect(page.getByTestId('manual-ep-control')).not.toHaveClass(/\bepd-button\b/)
+
+  const codeGroup = page.locator('.vp-code-group')
+  await expect(codeGroup.locator('.language-sh').filter({ hasText: 'pnpm add example' })).toBeVisible()
+  await codeGroup.locator('label').filter({ hasText: 'npm', hasNotText: 'pnpm' }).click()
+  await expect(codeGroup.locator('.language-sh').filter({ hasText: 'npm install example' })).toBeVisible()
+  await expect(codeGroup.locator('.language-sh').filter({ hasText: 'pnpm add example' })).toBeHidden()
+
+  for (const dark of [false, true]) {
+    if (dark) {
+      await page.locator('.theme-toggler-content .epd-switch__core').click()
+      await expect(page.locator('html')).toHaveClass(/dark/)
+    }
+    expect(await nativeElements.locator('[data-probe]').evaluateAll(readNativeStyles)).toEqual(nativeStyles)
+    await expect(page.getByTestId('authored-heading')).toHaveCSS('font-size', '18px')
+    await expect(page.getByTestId('authored-heading')).toHaveCSS('margin-top', '3px')
+    await expect(page.getByTestId('authored-heading')).toHaveCSS('display', 'block')
+    await expect(page.getByTestId('authored-paragraph')).toHaveCSS('margin-top', '5px')
+    await expect(page.getByTestId('manual-raw').locator('h2')).toHaveCSS('font-size', '24px')
+    await expect(page.locator('#document-heading')).toHaveCSS('font-size', '26.4px')
+    await expect(page.locator('.doc-content ul:not(:where(.vp-raw, .vp-raw *))').first()).toHaveCSS('list-style-type', 'disc')
+
+    await page.getByRole('button', { name: 'Toggle component overlay' }).click()
+    await expect(page.getByTestId('teleported-heading')).toHaveCSS('font-family', nativeStyles[0]!.styles['font-family']!)
+    await expect(page.getByTestId('teleported-heading')).toHaveCSS('color', nativeStyles[0]!.styles.color!)
+    await expect(page.getByTestId('teleported-heading')).toHaveCSS('font-size', '18px')
+    await expect(page.getByTestId('teleported-heading')).toHaveCSS('margin-top', '3px')
+    await expect(page.getByTestId('teleported-paragraph')).toHaveCSS('margin-top', '5px')
+    await page.getByRole('button', { name: 'Close component overlay' }).click()
+  }
+
+  // Lazy search loading must not reintroduce the default theme's reset.
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.getByRole('searchbox').fill('Style isolation')
+  await expect(page.getByRole('option').first()).toBeVisible()
+  await page.keyboard.press('Escape')
+  expect(await nativeElements.locator('[data-probe]').evaluateAll(readNativeStyles)).toEqual(nativeStyles)
+  expect(defaultThemeStyles).toEqual([])
+
+  await page.locator('.demo-block').first().getByRole('button', { name: 'Edit in lightweight playground' }).click()
+  await expect(page.getByTestId('playground-preview').getByTestId('native-elements')).toBeVisible()
+  expect(await page.getByTestId('playground-preview').locator('[data-probe]').evaluateAll(readNativeStyles)).toEqual(nativeStyles)
+  expect(browserProblems).toEqual([])
+})
+
 test('built theme renders and searches fixture content in light and dark modes', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
@@ -16,7 +107,7 @@ test('built theme renders and searches fixture content in light and dark modes',
   await result.click()
   await expect(page).toHaveURL(/#navigation$/)
 
-  await page.locator('.theme-toggler-content .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   await page.goto('/guide/')
@@ -54,7 +145,7 @@ test('@visual built theme matches desktop baselines', async ({ page }) => {
   await openBasicHome(page)
   await expect(page).toHaveScreenshot('basic-desktop-light.png', { animations: 'disabled', fullPage: true })
 
-  await page.locator('.theme-toggler-content .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(page).toHaveScreenshot('basic-desktop-dark.png', { animations: 'disabled', fullPage: true })
 })
@@ -76,10 +167,10 @@ test('renders nested table-of-content links recursively', async ({ page }) => {
   ])
   const tocDepths = await tocLinks.evaluateAll(links => links.map((link) => {
     let depth = 0
-    let item = link.closest('.el-anchor__item')
+    let item = link.closest('.epd-anchor__item')
     while (item) {
       depth += 1
-      item = item.parentElement?.closest('.el-anchor__item') ?? null
+      item = item.parentElement?.closest('.epd-anchor__item') ?? null
     }
     return depth
   }))

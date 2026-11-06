@@ -3,15 +3,15 @@
 @use './vars' as *;
 
 @mixin with-bg {
-  background-color: var(--bg-color);
-  color: var(--text-color);
+  background-color: var(--ep-docs-bg-color);
+  color: var(--ep-docs-text-color);
   transition:
-    border-color var(--el-transition-duration),
-    background-color var(--el-transition-duration-fast);
+    border-color var(--epd-transition-duration),
+    background-color var(--epd-transition-duration-fast);
 }
 
 @mixin with-border {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--ep-docs-border-color);
 }
 
 $breakpoints: (

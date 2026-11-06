@@ -1,13 +1,14 @@
 import type { DefaultTheme } from 'vitepress'
-import { Cloud, CodeXml, GitBranch, GitFork, HardDrive } from '@lucide/vue'
+import { Cloud, CodeXml, GitBranch, HardDrive } from '@lucide/vue'
 import { useData } from 'vitepress'
 import { computed } from 'vue'
+import GitHubIcon from '../components/icons/github.vue'
 
 type SocialLinksTheme = Pick<DefaultTheme.Config, 'socialLinks'>
 
 const repositoryIcons = {
   gitee: CodeXml,
-  github: GitFork,
+  github: GitHubIcon,
   gitlab: GitBranch,
   local: HardDrive,
   yunxiao: Cloud,

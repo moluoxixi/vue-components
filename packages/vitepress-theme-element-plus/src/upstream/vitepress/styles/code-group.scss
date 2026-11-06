@@ -1,0 +1,50 @@
+// VitePress provides the tab state; this theme owns its presentation.
+.doc-content .vp-code-group:not(:where(.vp-raw, .vp-raw *)) {
+  margin: 16px 0;
+}
+
+.vp-code-group .tabs:not(:where(.vp-raw, .vp-raw *)) {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ep-docs-border-color);
+  border-radius: 6px 6px 0 0;
+  background: var(--epd-fill-color-light);
+}
+
+.vp-code-group .tabs input:not(:where(.vp-raw, .vp-raw *)) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.vp-code-group .tabs label:not(:where(.vp-raw, .vp-raw *)) {
+  padding: 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--ep-docs-text-color-light);
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vp-code-group .tabs input:checked + label:not(:where(.vp-raw, .vp-raw *)) {
+  border-bottom-color: var(--ep-docs-brand-color);
+  color: var(--ep-docs-brand-color);
+}
+
+.vp-code-group .tabs input:focus-visible + label:not(:where(.vp-raw, .vp-raw *)) {
+  outline: 2px solid var(--ep-docs-brand-color);
+  outline-offset: -3px;
+}
+
+.doc-content .vp-code-group :is(div[class*='language-'], .vp-block):not(:where(.vp-raw, .vp-raw *)) {
+  display: none;
+  margin: 0;
+  border-radius: 0 0 6px 6px;
+
+  &.active {
+    display: block;
+  }
+}

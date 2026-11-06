@@ -5,6 +5,14 @@ import { expect } from '@playwright/test'
 export const coldStartTimeout = 30_000
 export const docsVisualStylePath = fileURLToPath(new URL('./docs-visual-snapshot.css', import.meta.url))
 
+export async function openDocsPage(page: Page, path: string): Promise<void> {
+  await page.goto(path)
+  // Production pages already contain SSR controls before their handlers are
+  // attached. The ClientOnly appearance switch marks a hydrated theme.
+  await expect(page.locator('.theme-toggler-content .epd-switch').first())
+    .toBeAttached({ timeout: coldStartTimeout })
+}
+
 export async function openBasicHome(page: Page): Promise<void> {
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' }))

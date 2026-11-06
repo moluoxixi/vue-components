@@ -16,7 +16,7 @@ export function useLockScreen() {
   const cleanup = () => {
     if (!isClient)
       return
-    removeClass(document.body, 'el-popup-parent--hidden')
+    removeClass(document.body, 'epd-popup-parent--hidden')
     if (withoutHiddenClass) {
       document.body.style.paddingRight = bodyPaddingRight
     }
@@ -29,7 +29,7 @@ export function useLockScreen() {
   const lock = () => {
     if (!isClient)
       return
-    withoutHiddenClass = !hasClass(document.body, 'el-popup-parent--hidden')
+    withoutHiddenClass = !hasClass(document.body, 'epd-popup-parent--hidden')
     if (withoutHiddenClass) {
       bodyPaddingRight = document.body.style.paddingRight
       computedBodyPaddingRight = Number.parseInt(
@@ -50,7 +50,7 @@ export function useLockScreen() {
         computedBodyPaddingRight + scrollBarWidth
       }px`
     }
-    addClass(document.body, 'el-popup-parent--hidden')
+    addClass(document.body, 'epd-popup-parent--hidden')
   }
 
   return {

@@ -9,13 +9,14 @@ const VPNotFound = defineAsyncComponent(() => import('../upstream/vitepress/comp
 const loadBuiltThemeStyles = () => Promise.resolve('__MOLUOXIXI_THEME_STYLES__')
 
 async function enhanceApp({ app, router }: Parameters<NonNullable<Theme['enhanceApp']>>[0]) {
-  app.use(ElementPlus)
+  // Initialize an application config so the theme's local ConfigProvider does
+  // not become Element Plus's module-global default (including services).
+  app.use(ElementPlus, {})
   app.provide(ID_INJECTION_KEY, { prefix: 1024, current: 0 })
   app.provide(ZINDEX_INJECTION_KEY, { current: 0 })
   await Promise.all([
-    import('normalize.css'),
-    import('element-plus/dist/index.css'),
-    import('element-plus/theme-chalk/dark/css-vars.css'),
+    import('../styles/element-plus.scss'),
+    import('../styles/tailwind.css'),
     import('../content/styles.css'),
     import('virtual:moluoxixi-element-plus-docs-consumer-styles'),
     import('../upstream/vitepress/styles/css-vars.scss'),

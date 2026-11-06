@@ -1,0 +1,29 @@
+// Documentation controls have their own Element Plus classes and variables.
+// Consumer demos retain their original namespace and supply their own styles.
+@forward 'element-plus/theme-chalk/src/mixins/config.scss' with (
+  $namespace: 'epd'
+);
+
+@use 'element-plus/theme-chalk/src/base.scss';
+@use 'element-plus/theme-chalk/src/anchor.scss';
+@use 'element-plus/theme-chalk/src/anchor-link.scss';
+@use 'element-plus/theme-chalk/src/button.scss';
+@use 'element-plus/theme-chalk/src/dialog.scss';
+@use 'element-plus/theme-chalk/src/divider.scss';
+@use 'element-plus/theme-chalk/src/dropdown.scss';
+@use 'element-plus/theme-chalk/src/dropdown-item.scss';
+@use 'element-plus/theme-chalk/src/dropdown-menu.scss';
+@use 'element-plus/theme-chalk/src/input.scss';
+@use 'element-plus/theme-chalk/src/overlay.scss';
+@use 'element-plus/theme-chalk/src/popover.scss';
+@use 'element-plus/theme-chalk/src/scrollbar.scss';
+@use 'element-plus/theme-chalk/src/segmented.scss';
+@use 'element-plus/theme-chalk/src/switch.scss';
+@use 'element-plus/theme-chalk/src/tag.scss';
+@use 'element-plus/theme-chalk/src/tooltip.scss';
+@use 'element-plus/theme-chalk/src/dark/css-vars.scss';
+
+@use 'element-plus/theme-chalk/src/badge.scss';
+@use 'element-plus/theme-chalk/src/empty.scss';
+@use 'element-plus/theme-chalk/src/icon.scss';
+@use 'element-plus/theme-chalk/src/result.scss';

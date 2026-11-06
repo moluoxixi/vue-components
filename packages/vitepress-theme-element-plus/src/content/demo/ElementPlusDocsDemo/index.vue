@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../runtime/provide-docs-ui'
 import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
@@ -21,6 +22,7 @@ import {
 } from 'vue'
 import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from '../types'
 import ElementPlusDocsDemoSource from './components/ElementPlusDocsDemoSource.vue'
+import ElementPlusDocsConsumerBoundary from '../../../runtime/ElementPlusDocsConsumerBoundary.vue'
 
 const props = defineProps<ElementPlusDocsDemoProps>()
 
@@ -214,26 +216,30 @@ async function collapseSource(): Promise<void> {
   await nextTick()
   sourceToggle.value?.focus()
 }
+provideDocsUi()
 </script>
 
 <template>
   <ClientOnly>
     <div class="demo-block">
-      <div class="demo-preview">
-        <component :is="demoComponent" v-if="demoComponent && !error" />
-        <div v-if="error" class="demo-error" role="alert">
+      <div class="demo-preview vp-raw">
+        <ElementPlusDocsConsumerBoundary v-if="demoComponent && !error">
+          <component :is="demoComponent" />
+        </ElementPlusDocsConsumerBoundary>
+
+      </div>
+        <div v-if="error" data-docs-ui class="demo-error" role="alert">
           <strong>{{ messages.compileError }}</strong><br>{{ error }}
         </div>
-        <div v-if="isLoading && !error" class="demo-loading" role="status">
+        <div v-if="isLoading && !error" data-docs-ui class="demo-loading" role="status">
           <span>{{ messages.loading }}</span>
         </div>
-      </div>
 
-      <div v-if="title" class="demo-description">
+      <div v-if="title" class="demo-description" data-docs-ui>
         {{ title }}
       </div>
 
-      <div class="demo-footer">
+      <div class="demo-footer" data-docs-ui>
         <ElSegmented
           v-if="hasJavaScriptSource"
           v-model="sourceLanguage"
@@ -326,7 +332,7 @@ async function collapseSource(): Promise<void> {
         </div>
       </div>
 
-      <div v-if="actionError" class="demo-action-error" role="alert">
+      <div v-if="actionError" class="demo-action-error" data-docs-ui role="alert">
         {{ messages.playgroundUnavailable }}: {{ actionError }}
       </div>
 
@@ -334,7 +340,7 @@ async function collapseSource(): Promise<void> {
         <div
           v-show="isExpanded"
           :id="sourceId"
-          class="demo-source"
+          class="demo-source" data-docs-ui
           :aria-hidden="!isExpanded"
         >
           <ElementPlusDocsDemoSource
@@ -345,7 +351,7 @@ async function collapseSource(): Promise<void> {
             :unfold-code-region="messages.unfoldCodeRegion"
           />
           <button
-            class="demo-collapse-control"
+            class="demo-collapse-control" data-docs-ui
             data-testid="demo-source-collapse"
             type="button"
             @click="collapseSource"
@@ -360,16 +366,22 @@ async function collapseSource(): Promise<void> {
 </template>
 
 <style scoped>
+
+.demo-block {
+  margin: 20px 0 28px;
+}
+
+
 .demo-block {
   overflow: hidden;
-  border: 1px solid var(--mx-border, var(--border-color));
+  border: 1px solid var(--ep-docs-mx-border, var(--ep-docs-border-color));
   border-radius: 6px;
-  background: var(--bg-color);
+  background: var(--ep-docs-bg-color);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .demo-block:hover {
-  border-color: color-mix(in srgb, var(--brand-color) 45%, var(--mx-border, var(--border-color)));
+  border-color: color-mix(in srgb, var(--ep-docs-brand-color) 45%, var(--ep-docs-mx-border, var(--ep-docs-border-color)));
   box-shadow: 0 2px 8px rgba(31, 35, 41, 0.05);
 }
 
@@ -377,14 +389,15 @@ async function collapseSource(): Promise<void> {
   min-height: 72px;
   padding: 28px 24px;
   overflow-x: auto;
-  background: var(--bg-color);
+  /* Match the consumer document's native canvas, including its color scheme. */
+  background: Canvas;
 }
 
 .demo-description {
   padding: 12px 16px;
-  border-top: 1px dashed var(--mx-border, var(--border-color));
-  background: var(--mx-fill-light, var(--bg-color-soft));
-  color: var(--text-color-light);
+  border-top: 1px dashed var(--ep-docs-mx-border, var(--ep-docs-border-color));
+  background: var(--ep-docs-mx-fill-light, var(--ep-docs-bg-color-soft));
+  color: var(--ep-docs-text-color-light);
   font-size: 13px;
   line-height: 1.65;
 }
@@ -395,8 +408,8 @@ async function collapseSource(): Promise<void> {
   align-items: center;
   justify-content: space-between;
   padding: 5px 10px;
-  border-top: 1px solid var(--mx-border-light, var(--border-color-lighter));
-  background: var(--mx-fill-light, var(--bg-color-soft));
+  border-top: 1px solid var(--ep-docs-mx-border-light, var(--ep-docs-border-color-lighter));
+  background: var(--ep-docs-mx-fill-light, var(--ep-docs-bg-color-soft));
 }
 
 .demo-source-languages {
@@ -419,21 +432,21 @@ async function collapseSource(): Promise<void> {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--text-color-light);
+  color: var(--ep-docs-text-color-light);
   cursor: pointer;
   transition: color 0.15s, background-color 0.15s;
 }
 
 .demo-action-btn:hover,
 .demo-action-btn:focus-visible {
-  background: var(--mx-hover, var(--el-color-primary-light-9));
-  color: var(--brand-color);
+  background: var(--ep-docs-mx-hover, var(--epd-color-primary-light-9));
+  color: var(--ep-docs-brand-color);
   outline: none;
 }
 
 .demo-source {
-  border-top: 1px solid var(--mx-border-light, var(--border-color-lighter));
-  background: var(--mx-fill, var(--bg-color-soft));
+  border-top: 1px solid var(--ep-docs-mx-border-light, var(--ep-docs-border-color-lighter));
+  background: var(--ep-docs-mx-fill, var(--ep-docs-bg-color-soft));
 }
 
 .demo-collapse-control {
@@ -445,9 +458,9 @@ async function collapseSource(): Promise<void> {
   gap: 8px;
   padding: 8px 16px;
   border: 0;
-  border-top: 1px solid var(--mx-border-light, var(--border-color-lighter));
-  background: var(--bg-color);
-  color: var(--text-color-light);
+  border-top: 1px solid var(--ep-docs-mx-border-light, var(--ep-docs-border-color-lighter));
+  background: var(--ep-docs-bg-color);
+  color: var(--ep-docs-text-color-light);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -456,34 +469,34 @@ async function collapseSource(): Promise<void> {
 
 .demo-collapse-control:hover,
 .demo-collapse-control:focus-visible {
-  background: var(--mx-hover, var(--el-color-primary-light-9));
-  color: var(--brand-color);
+  background: var(--ep-docs-mx-hover, var(--epd-color-primary-light-9));
+  color: var(--ep-docs-brand-color);
   outline: none;
 }
 
 .demo-error {
   padding: 12px 16px;
-  border: 1px solid color-mix(in srgb, var(--mx-danger, #f56c6c) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ep-docs-mx-danger, #f56c6c) 45%, transparent);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--mx-danger, #f56c6c) 8%, transparent);
-  color: var(--mx-danger, #f56c6c);
-  font-family: var(--font-family-mono);
+  background: color-mix(in srgb, var(--ep-docs-mx-danger, #f56c6c) 8%, transparent);
+  color: var(--ep-docs-mx-danger, #f56c6c);
+  font-family: var(--ep-docs-font-family-mono);
   font-size: 13px;
   white-space: pre-wrap;
 }
 
 .demo-loading {
   padding: 20px 0;
-  color: var(--text-color-lighter);
+  color: var(--ep-docs-text-color-lighter);
   font-size: 13px;
   text-align: center;
 }
 
 .demo-action-error {
   padding: 8px 12px;
-  border-top: 1px solid color-mix(in srgb, var(--mx-danger, #f56c6c) 35%, transparent);
-  background: color-mix(in srgb, var(--mx-danger, #f56c6c) 7%, transparent);
-  color: var(--mx-danger, #f56c6c);
+  border-top: 1px solid color-mix(in srgb, var(--ep-docs-mx-danger, #f56c6c) 35%, transparent);
+  background: color-mix(in srgb, var(--ep-docs-mx-danger, #f56c6c) 7%, transparent);
+  color: var(--ep-docs-mx-danger, #f56c6c);
   font-size: 12px;
 }
 

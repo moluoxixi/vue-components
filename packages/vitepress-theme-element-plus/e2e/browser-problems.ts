@@ -10,7 +10,7 @@ export function collectBrowserProblems(page: Page): string[] {
       return
     if (message.type() === 'warning' || message.type() === 'error') {
       const source = message.location().url
-      problems.push(`console ${message.type()}: ${message.text()}${source ? ` (${source})` : ''}`)
+      problems.push(`console ${message.type()}: ${message.text()}${source ? ` (${source})` : ''} on ${page.url()}`)
     }
   })
   page.on('pageerror', error => problems.push(`page error: ${error.message}`))

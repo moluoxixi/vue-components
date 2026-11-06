@@ -45,6 +45,21 @@ describe('elementPlusDocsPlayground', () => {
     window.sessionStorage.clear()
   })
 
+  it('explains the disabled run action on a focusable wrapper until compilation finishes', async () => {
+    const pending = deferred<{ component: ReturnType<typeof previewComponent>, dispose: () => void }>()
+    const wrapper = mountPlayground(vi.fn().mockReturnValue(pending.promise))
+    await flushPromises()
+    expect(wrapper.get('[data-testid="playground-run"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.playground-run-trigger').attributes('tabindex')).toBe('0')
+    expect(wrapper.findComponent({ name: 'ElTooltip' }).props('content')).toContain('when compilation finishes')
+
+    pending.resolve({ component: previewComponent('ready'), dispose: vi.fn() })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="playground-run"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.findComponent({ name: 'ElTooltip' }).props('disabled')).toBe(true)
+    wrapper.unmount()
+  })
+
   it('keeps the newest run and disposes a stale successful result', async () => {
     const first = deferred<{ component: ReturnType<typeof previewComponent>, dispose: () => void }>()
     const second = deferred<{ component: ReturnType<typeof previewComponent>, dispose: () => void }>()

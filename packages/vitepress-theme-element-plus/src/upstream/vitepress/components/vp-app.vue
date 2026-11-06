@@ -31,7 +31,7 @@ useEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <div class="App">
+  <div class="App ep-docs" :class="{ 'has-sidebar': hasSidebar }">
     <VPSkipLink />
     <VPOverlay
       class="overlay"
@@ -68,3 +68,10 @@ useEventListener('keydown', (e) => {
     </VPContent>
   </div>
 </template>
+
+<style scoped lang="scss">
+.ep-docs { min-width: 320px; min-height: 100vh; background: var(--ep-docs-bg-color); }
+@media (max-width: 959px) {
+  .ep-docs.has-sidebar { --ep-docs-docs-sticky-offset: calc(var(--ep-docs-header-height) + var(--ep-docs-sub-nav-height)); }
+}
+</style>

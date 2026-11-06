@@ -231,9 +231,6 @@ catalogs:
     monaco-editor:
       specifier: ^0.52.2
       version: 0.52.2
-    normalize.css:
-      specifier: ^8.0.1
-      version: 8.0.1
     nprogress:
       specifier: ^0.2.0
       version: 0.2.0
@@ -2055,9 +2052,6 @@ importers:
       markdown-it-container:
         specifier: 'catalog:'
         version: 3.0.0
-      normalize.css:
-        specifier: 'catalog:'
-        version: 8.0.1
       nprogress:
         specifier: 'catalog:'
         version: 0.2.0
@@ -2071,6 +2065,9 @@ importers:
       '@playwright/test':
         specifier: catalog:dev
         version: 1.60.0
+      '@tailwindcss/vite':
+        specifier: catalog:build
+        version: 4.3.3(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
       '@types/markdown-it':
         specifier: 'catalog:'
         version: 14.1.2
@@ -2092,9 +2089,18 @@ importers:
       happy-dom:
         specifier: catalog:dev
         version: 20.9.0
+      postcss:
+        specifier: catalog:build
+        version: 8.5.25
+      postcss-selector-parser:
+        specifier: catalog:build
+        version: 7.1.1
       sass:
         specifier: catalog:dev
         version: 1.99.0
+      tailwindcss:
+        specifier: catalog:build
+        version: 4.3.3
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
@@ -2103,7 +2109,7 @@ importers:
         version: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
       vitepress:
         specifier: 'catalog:'
-        version: 1.6.4(@algolia/client-search@5.56.0)(@types/node@25.6.0)(@types/react@18.3.31)(async-validator@4.2.5)(axios@1.19.0)(change-case@5.4.4)(lightningcss@1.32.0)(nprogress@0.2.0)(postcss@8.5.28)(react@18.3.1)(sass@1.99.0)(search-insights@2.17.3)(sortablejs@1.15.7)(terser@5.49.2)(typescript@5.9.3)
+        version: 1.6.4(@algolia/client-search@5.56.0)(@types/node@25.6.0)(@types/react@18.3.31)(async-validator@4.2.5)(axios@1.19.0)(change-case@5.4.4)(lightningcss@1.32.0)(nprogress@0.2.0)(postcss@8.5.25)(sass@1.99.0)(search-insights@2.17.3)(sortablejs@1.15.7)(terser@5.49.2)(typescript@5.9.3)
       vitest:
         specifier: catalog:dev
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
@@ -8759,9 +8765,6 @@ packages:
 
   normalize-wheel-es@1.2.0:
     resolution: {integrity: sha512-Wj7+EJQ8mSuXr2iWfnujrimU35R2W4FAErEyTmJoJ7ucwTn2hOUSsRehMb5RSYkxXGTM7Y9QpvPmp++w5ftoJw==}
-
-  normalize.css@8.0.1:
-    resolution: {integrity: sha512-qizSNPO93t1YUuUhP22btGOo3chcvDFqFaj2TRybP0DMxkHOCTYwp3n34fel4a31ORXy4m1Xq0Gyqpb5m33qIg==}
 
   nostics@1.2.0:
     resolution: {integrity: sha512-FGqEfhQjrvo1lL8KFifdTQiNwwQHJxC1jtYE1Rc54qF/jxONUNL+kC9gS1krX8Q65PgrQ5fCqH/I4NhWBvdSqg==}
@@ -17987,8 +17990,6 @@ snapshots:
 
   normalize-wheel-es@1.2.0: {}
 
-  normalize.css@8.0.1: {}
-
   nostics@1.2.0: {}
 
   npm-run-path@4.0.1:
@@ -19998,6 +19999,56 @@ snapshots:
       sass: 1.99.0
       terser: 5.49.2
       yaml: 2.9.0
+
+  vitepress@1.6.4(@algolia/client-search@5.56.0)(@types/node@25.6.0)(@types/react@18.3.31)(async-validator@4.2.5)(axios@1.19.0)(change-case@5.4.4)(lightningcss@1.32.0)(nprogress@0.2.0)(postcss@8.5.25)(sass@1.99.0)(search-insights@2.17.3)(sortablejs@1.15.7)(terser@5.49.2)(typescript@5.9.3):
+    dependencies:
+      '@docsearch/css': 3.8.2
+      '@docsearch/js': 3.8.2(@algolia/client-search@5.56.0)(@types/react@18.3.31)(react@18.3.1)(search-insights@2.17.3)
+      '@iconify-json/simple-icons': 1.2.93
+      '@shikijs/core': 2.5.0
+      '@shikijs/transformers': 2.5.0
+      '@shikijs/types': 2.5.0
+      '@types/markdown-it': 14.1.2
+      '@vitejs/plugin-vue': 5.2.4(vite@5.4.14(@types/node@25.6.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2))(vue@3.5.33(typescript@5.9.3))
+      '@vue/devtools-api': 7.7.10
+      '@vue/shared': 3.5.33
+      '@vueuse/core': 12.8.2(typescript@5.9.3)
+      '@vueuse/integrations': 12.8.2(async-validator@4.2.5)(axios@1.19.0)(change-case@5.4.4)(focus-trap@7.8.0)(nprogress@0.2.0)(sortablejs@1.15.7)(typescript@5.9.3)
+      focus-trap: 7.8.0
+      mark.js: 8.11.1
+      minisearch: 7.2.0
+      shiki: 2.5.0
+      vite: 5.4.14(@types/node@25.6.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)
+      vue: 3.5.33(typescript@5.9.3)
+    optionalDependencies:
+      postcss: 8.5.25
+    transitivePeerDependencies:
+      - '@algolia/client-search'
+      - '@types/node'
+      - '@types/react'
+      - async-validator
+      - axios
+      - change-case
+      - drauu
+      - fuse.js
+      - idb-keyval
+      - jwt-decode
+      - less
+      - lightningcss
+      - nprogress
+      - preact-render-to-string
+      - qrcode
+      - react
+      - react-dom
+      - sass
+      - sass-embedded
+      - search-insights
+      - sortablejs
+      - stylus
+      - sugarss
+      - terser
+      - typescript
+      - universal-cookie
 
   vitepress@1.6.4(@algolia/client-search@5.56.0)(@types/node@25.6.0)(@types/react@18.3.31)(async-validator@4.2.5)(axios@1.19.0)(change-case@5.4.4)(lightningcss@1.32.0)(nprogress@0.2.0)(postcss@8.5.28)(react@18.3.1)(sass@1.99.0)(search-insights@2.17.3)(sortablejs@1.15.7)(terser@5.49.2)(typescript@5.9.3):
     dependencies:

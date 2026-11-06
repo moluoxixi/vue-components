@@ -17,3 +17,44 @@ const { page } = useData()
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+@use '../styles/mixins' as *;
+
+.doc-content-wrapper {
+  --ep-docs-vp-content-width: 800px;
+
+  display: flex;
+  flex-direction: column;
+  padding: 32px 24px;
+
+  > .doc-content-container {
+    min-width: 0;
+    order: 1;
+
+    > .doc-content {
+      width: 100%;
+    }
+
+    @include respond-to('xxl') {
+      min-width: var(--ep-docs-vp-content-width);
+      width: 100%;
+    }
+  }
+
+  @include respond-to('md') {
+    padding: 48px 32px;
+  }
+  @include respond-to('lg') {
+    padding: 48px 32px;
+  }
+  @include respond-to('xxl') {
+    padding: 48px 0 48px 48px;
+    flex-direction: row;
+  }
+  @include respond-to('max') {
+    padding: 56px 0 48px 56px;
+  }
+}
+
+</style>

@@ -20,6 +20,7 @@ import { createComponentAutoLoadPlugins } from './site/plugins'
 import {
   docsRepository,
   docsRepositoryLabel,
+  docsRepositoryLinkProvider,
   resolveDocsRepositoryDefaultBranch,
 } from './site/repository/config'
 
@@ -79,7 +80,7 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<Eleme
     },
     socialLinks: [{
       ariaLabel: docsRepositoryLabel,
-      icon: docsRepository.provider,
+      icon: docsRepositoryLinkProvider,
       link: docsRepository.url!,
     }],
     repositoryLabel: docsRepositoryLabel,

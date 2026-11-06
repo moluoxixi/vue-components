@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { RichTextEditorBlockType, RichTextEditorCommandId, RichTextEditorCommands, RichTextEditorState } from '../../../types'
-import { AlignCenter, AlignLeft, AlignRight, Bold, Code2, Italic, Link2, List, ListOrdered, Minus, Quote, Redo2, RemoveFormatting, Strikethrough, Underline, Undo2 } from '@lucide/vue'
+import { AlignCenter, AlignLeft, AlignRight, Bold, ChevronDown, Code2, Italic, Link2, List, ListOrdered, Minus, Quote, Redo2, RemoveFormatting, Strikethrough, Underline, Undo2 } from '@lucide/vue'
 import { computed } from 'vue'
 import { richTextCommandIds } from '../../../services'
+import RichTextEditorControlHint from './RichTextEditorControlHint.vue'
 
 const props = defineProps<{
   commands: RichTextEditorCommands
@@ -35,6 +36,17 @@ const blocks: { type: RichTextEditorBlockType, label: string }[] = [
   { type: 'heading-2', label: '标题 2' },
   { type: 'heading-3', label: '标题 3' },
 ]
+const editingHint = '当前不可编辑；解除禁用或只读状态后可用。'
+
+function disabledHint(id: RichTextEditorCommandId | 'link'): string {
+  if (!props.state.editable)
+    return editingHint
+  if (id === 'undo')
+    return '暂无可撤销的操作；编辑内容后可用。'
+  if (id === 'redo')
+    return '暂无可重做的操作；撤销内容后可用。'
+  return '当前内容或选区不支持此操作；更换内容或选区后重试。'
+}
 function setBlockType(event: Event): void {
   const target = event.target as HTMLSelectElement
   if (!props.commands.setBlockType(target.value as RichTextEditorBlockType))
@@ -43,20 +55,32 @@ function setBlockType(event: Event): void {
 </script>
 
 <template>
-  <select class="mx-rich-text-editor__block-select" :value="state.blockType" :disabled="!state.editable" aria-label="文本样式" @change="setBlockType">
-    <option v-for="block in blocks" :key="block.type" :value="block.type" :disabled="!state.blocks[block.type]">{{ block.label }}</option>
-  </select>
-  <button
+  <RichTextEditorControlHint :disabled="!state.editable" :message="editingHint">
+    <span class="mx-rich-text-editor__block-control">
+      <select class="mx-rich-text-editor__block-select" :value="state.blockType" :disabled="!state.editable" aria-label="文本样式" @change="setBlockType">
+        <option v-for="block in blocks" :key="block.type" :value="block.type" :disabled="!state.blocks[block.type]">{{ block.label }}</option>
+      </select>
+      <ChevronDown class="mx-rich-text-editor__block-chevron" :size="14" aria-hidden="true" />
+    </span>
+  </RichTextEditorControlHint>
+  <RichTextEditorControlHint
     v-for="id in items"
     :key="id"
-    class="mx-rich-text-editor__tool"
-    :class="{ 'is-active': state.commands[id].active }"
-    type="button"
-    :title="appearance[id].label"
-    :aria-label="appearance[id].label"
-    :aria-pressed="state.commands[id].active"
     :disabled="!state.commands[id].enabled"
-    @click="commands.execute(id)"
-  ><component :is="appearance[id].icon" :size="17" aria-hidden="true" /></button>
-  <button class="mx-rich-text-editor__tool" :class="{ 'is-active': state.link.active }" type="button" title="链接" aria-label="链接" :aria-pressed="state.link.active" :disabled="!state.link.enabled" @click="emit('link', $event)"><Link2 :size="17" aria-hidden="true" /></button>
+    :message="disabledHint(id)"
+  >
+    <button
+      class="mx-rich-text-editor__tool"
+      :class="{ 'is-active': state.commands[id].active }"
+      type="button"
+      :title="state.commands[id].enabled ? appearance[id].label : undefined"
+      :aria-label="appearance[id].label"
+      :aria-pressed="state.commands[id].active"
+      :disabled="!state.commands[id].enabled"
+      @click="commands.execute(id)"
+    ><component :is="appearance[id].icon" :size="17" aria-hidden="true" /></button>
+  </RichTextEditorControlHint>
+  <RichTextEditorControlHint :disabled="!state.link.enabled" :message="disabledHint('link')">
+    <button class="mx-rich-text-editor__tool" :class="{ 'is-active': state.link.active }" type="button" :title="state.link.enabled ? '链接' : undefined" aria-label="链接" :aria-pressed="state.link.active" :disabled="!state.link.enabled" @click="emit('link', $event)"><Link2 :size="17" aria-hidden="true" /></button>
+  </RichTextEditorControlHint>
 </template>

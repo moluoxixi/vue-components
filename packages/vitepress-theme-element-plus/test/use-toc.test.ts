@@ -79,4 +79,18 @@ describe('resolveHeaders', () => {
       { text: 'Second Level 2', link: '#second-level-2' },
     ])
   })
+
+  it('excludes component headings without changing the document outline hierarchy', () => {
+    const container = document.createElement('article')
+    container.innerHTML = `
+      <h2 id="usage">Usage</h2>
+      <div class="vp-raw"><section><h2 id="component-heading">Component heading</h2></section></div>
+      <h3 id="usage-options">Options</h3>
+      <h2 id="api">API</h2>
+    `
+    expect(resolveDocumentHeaders(container)).toEqual([
+      { text: 'Usage', link: '#usage', children: [{ text: 'Options', link: '#usage-options' }] },
+      { text: 'API', link: '#api' },
+    ])
+  })
 })

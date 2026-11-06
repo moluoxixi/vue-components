@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useRoute } from 'vitepress'
 import { useStorage } from '@vueuse/core'
 import VPLink from '../common/vp-link.vue'
@@ -26,6 +27,7 @@ const onNavClick = (item: Link) => {
     isVisited.value = Date.now().toString()
   }
 }
+provideDocsUi()
 </script>
 
 <template>
@@ -53,19 +55,19 @@ const onNavClick = (item: Link) => {
 .is-menu-link {
   display: block;
   padding: 0 12px;
-  line-height: calc(var(--nav-height) - 3px);
+  line-height: calc(var(--ep-docs-nav-height) - 3px);
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-color);
-  transition: color var(--el-transition-duration);
+  color: var(--ep-docs-text-color);
+  transition: color var(--epd-transition-duration);
   border-bottom: 2px solid transparent;
 
   &.active {
-    border-bottom-color: var(--brand-color);
+    border-bottom-color: var(--ep-docs-brand-color);
   }
 
   &:hover {
-    color: var(--brand-color);
+    color: var(--ep-docs-brand-color);
   }
 
   .badge {

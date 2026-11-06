@@ -3,7 +3,7 @@ import VPEditLink from './vp-edit-link.vue'
 </script>
 
 <template>
-  <footer class="page-footer">
+  <footer data-docs-ui class="page-footer">
     <div class="edit">
       <VPEditLink />
     </div>

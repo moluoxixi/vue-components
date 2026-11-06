@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
-import { coldStartTimeout, docsVisualStylePath, waitForCompiledDemos } from './page-readiness'
+import { coldStartTimeout, docsVisualStylePath, openDocsPage, waitForCompiledDemos } from './page-readiness'
 
 test('current docs expose localized mobile controls and valid relationships', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/guide/documentation-theme.html')
+  await openDocsPage(page, '/guide/documentation-theme.html')
   const navigation = page.getByRole('button', { name: '切换导航' })
   await expect(navigation).toHaveAttribute('aria-controls', 'full-screen')
   await navigation.click()
@@ -13,10 +13,15 @@ test('current docs expose localized mobile controls and valid relationships', as
   await expect(page.locator('#full-screen')).toHaveCount(1)
 
   const language = page.getByRole('button', { name: '语言' })
-  await expect(language).toHaveAttribute('aria-controls', 'translation-items')
+  await expect(language).toBeVisible()
+  await expect(language).toHaveAttribute('aria-haspopup', 'menu')
   await language.click()
-  await expect(page.locator('#translation-items')).toHaveCount(1)
+  await expect(page.getByRole('menuitem', { name: 'English' })).toBeVisible()
   await expect(language).toHaveAttribute('aria-expanded', 'true')
+  await language.click()
+  await expect(language).toHaveAttribute('aria-expanded', 'false')
+  await navigation.click()
+  await expect(navigation).toHaveAttribute('aria-expanded', 'false')
   await expect(page.getByRole('button', { name: '菜单' })).toBeVisible()
 
   const widths = await page.evaluate(() => ({
@@ -32,7 +37,7 @@ test('current docs expose localized mobile controls and valid relationships', as
 test('current component page remains usable in light and dark mobile layouts', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/components/copy-text.html')
+  await openDocsPage(page, '/components/copy-text.html')
   await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
     .toBeVisible({ timeout: coldStartTimeout })
   await expect(page.locator('.component-doc-meta')).toHaveCSS('border-bottom-style', 'solid')
@@ -40,10 +45,10 @@ test('current component page remains usable in light and dark mobile layouts', a
 
   const navigation = page.getByRole('button', { name: '切换导航' })
   await navigation.click()
-  await page.locator('#full-screen .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.locator('#full-screen .full-screen-menu__item a').first().click()
-  await page.goto('/components/copy-text.html')
+  await openDocsPage(page, '/components/copy-text.html')
   await expect(navigation).toHaveAttribute('aria-expanded', 'false')
   await waitForCompiledDemos(page)
 
@@ -58,7 +63,7 @@ test('current component page remains usable in light and dark mobile layouts', a
 })
 
 test('@visual current component page matches mobile baselines', async ({ page }) => {
-  await page.goto('/components/copy-text.html')
+  await openDocsPage(page, '/components/copy-text.html')
   await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
     .toBeVisible({ timeout: coldStartTimeout })
   await waitForCompiledDemos(page)
@@ -69,10 +74,10 @@ test('@visual current component page matches mobile baselines', async ({ page })
 
   const navigation = page.getByRole('button', { name: '切换导航' })
   await navigation.click()
-  await page.locator('#full-screen .el-switch__core').click()
+  await page.locator('.theme-toggler-content .epd-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.locator('#full-screen .full-screen-menu__item a').first().click()
-  await page.goto('/components/copy-text.html')
+  await openDocsPage(page, '/components/copy-text.html')
   await expect(navigation).toHaveAttribute('aria-expanded', 'false')
   await waitForCompiledDemos(page)
   await expect(page).toHaveScreenshot('docs-component-mobile-dark.png', {
@@ -84,7 +89,7 @@ test('@visual current component page matches mobile baselines', async ({ page })
 test('English component pages expose the complete compact table of contents', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/en/components/headless-table.html')
+  await openDocsPage(page, '/en/components/headless-table.html')
   const toc = page.locator('.toc-wrapper')
   const trigger = toc.getByRole('button', { name: 'On this page', exact: true })
   await expect(trigger).toBeVisible()

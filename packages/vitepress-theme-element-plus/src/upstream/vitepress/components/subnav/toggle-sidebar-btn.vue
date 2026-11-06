@@ -1,34 +1,36 @@
 <script lang="ts" setup>
 import { useNavbarLocale } from '../../composables/navbar-locale'
-import ToggleButton from '../icons/toggle-button.vue'
+import { PanelLeft } from '@lucide/vue'
 
 const locale = useNavbarLocale()
 </script>
 
 <template>
-  <button class="reset-btn sidebar-button flex items-center">
-    <ElIcon :size="20" class="mr-2">
-      <ToggleButton />
-    </ElIcon>
-    <span class="leading-6">{{ locale.menu }}</span>
+  <button type="button" class="reset-btn sidebar-button" aria-controls="docs-sidebar">
+    <PanelLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
+    <span>{{ locale.menu }}</span>
   </button>
 </template>
 
-<style>
+<style scoped>
 .sidebar-button {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border-radius: 5px;
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--ep-docs-text-color-light);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
-.sidebar-button .icon {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
+.sidebar-button:hover,
+.sidebar-button[aria-expanded='true'] {
+  color: var(--ep-docs-brand-color);
+  background: var(--ep-docs-bg-color-mute);
 }
-
-/* @media screen and (max-width: 1044px) {
-  .sidebar-button {
-    display: block;
-  }
-} */
 </style>

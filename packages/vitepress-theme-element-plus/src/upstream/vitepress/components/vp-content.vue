@@ -27,3 +27,30 @@ const { hasSidebar } = useSidebar()
     <VPFooter v-if="!isHeroPost && !isNotFound" />
   </main>
 </template>
+
+<style scoped lang="scss">
+@use '../styles/mixins' as *;
+
+.page-content {
+  outline: none;
+  @include respond-to('lg') {
+    padding-top: var(--ep-docs-nav-height);
+
+    &.has-sidebar {
+      padding-left: calc(var(--ep-docs-sidebar-width-sm) + 10px);
+      @include respond-to('xlg') {
+        padding-left: calc(var(--ep-docs-vp-sidebar-width-small));
+      }
+      @include respond-to('xxl') {
+        padding-left: calc(var(--ep-docs-vp-sidebar-width-small) + 32px);
+      }
+      @include respond-to('max') {
+        padding-left: calc(var(--ep-docs-vp-sidebar-width-small) + 48px);
+      }
+    }
+  }
+
+}
+
+.page-content.docs-playground-page { padding: 0 !important; }
+</style>

@@ -40,6 +40,12 @@ export { elementPlusDocsTheme as default } from '@moluoxixi/vitepress-theme-elem
 
 需要注册站点插件时使用 `createElementPlusDocsTheme({ enhanceApp })`。
 
+## 样式边界
+
+主题布局和文档工具由 scoped Vue 组件组成。Tailwind 4 仅扫描主题源码，使用 `epdocs:` 前缀、关闭 Preflight，并预编译到发布 CSS，消费项目无需配置 Tailwind。主题变量使用 `--ep-docs-*`；主题 Element Plus 控件和浮层使用独立的 `epd-*` 命名空间，Demo 与 Playground 恢复消费项目原有的 namespace。
+
+正文及生成的工具类排除 `.vp-raw` 全部后代；字体和文字颜色不放在与示例共享的父容器。直接嵌入 Markdown 的组件也可用 `.vp-raw`。示例应显式加载自身依赖的 CSS，并优先使用 `<style scoped>`。此边界不是 DOM 沙箱；消费项目全局 CSS 和共享的 `html.dark` 状态仍按项目配置生效。
+
 ## 完整文档工程
 
 - `defineElementPlusDocsProject`：声明仓库、语言、组件 package profile 与组件目录。

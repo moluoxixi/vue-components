@@ -129,7 +129,7 @@ watch(() => props.source, async () => {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-color-lighter);
+  color: var(--ep-docs-text-color-lighter);
   cursor: pointer;
   opacity: 0;
   transform: translateY(-50%);
@@ -144,13 +144,13 @@ watch(() => props.source, async () => {
 
 .has-fold :deep(.code-fold-btn:hover),
 .has-fold :deep(.code-fold-btn:focus-visible) {
-  color: var(--brand-color);
+  color: var(--ep-docs-brand-color);
   outline: none;
 }
 
 .has-fold :deep(.code-fold-btn:focus-visible) {
   border-radius: 2px;
-  box-shadow: 0 0 0 1px var(--brand-color);
+  box-shadow: 0 0 0 1px var(--ep-docs-brand-color);
 }
 
 .has-fold :deep(.code-fold-btn svg) {
@@ -171,16 +171,16 @@ watch(() => props.source, async () => {
   padding: 0 6px;
   border: 0;
   border-radius: 4px;
-  background: var(--mx-fill-dark, var(--el-fill-color));
-  color: var(--text-color-light);
+  background: var(--ep-docs-mx-fill-dark, var(--epd-fill-color));
+  color: var(--ep-docs-text-color-light);
   cursor: pointer;
   font: inherit;
 }
 
 .has-fold :deep(.code-fold-placeholder:hover),
 .has-fold :deep(.code-fold-placeholder:focus-visible) {
-  background: var(--mx-hover, var(--el-fill-color-dark));
-  color: var(--brand-color);
+  background: var(--ep-docs-mx-hover, var(--epd-fill-color-dark));
+  color: var(--ep-docs-brand-color);
   outline: none;
 }
 </style>

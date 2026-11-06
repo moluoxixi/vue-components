@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { computed, ref, watch } from 'vue'
 import { useRoute, withBase } from 'vitepress'
 import { isActive } from '../../utils'
@@ -24,6 +25,7 @@ watch([activeLink, sidebarItem], ([active, el]) => {
     el.scrollIntoView?.({ block: 'nearest' })
   }
 })
+provideDocsUi()
 </script>
 
 <template>
@@ -65,17 +67,17 @@ watch([activeLink, sidebarItem], ([active, el]) => {
 }
 
 .link:hover .link-text {
-  color: var(--brand-color);
+  color: var(--ep-docs-brand-color);
   transition: color 0.25s;
 }
 
 .link.active {
-  background-color: var(--link-active-bg-color);
-  box-shadow: inset 2px 0 0 var(--brand-color);
+  background-color: var(--ep-docs-link-active-bg-color);
+  box-shadow: inset 2px 0 0 var(--ep-docs-brand-color);
 
   .link-text {
     font-weight: 600;
-    color: var(--brand-color);
+    color: var(--ep-docs-brand-color);
     transition: color 0.25s;
   }
 }
@@ -84,7 +86,7 @@ watch([activeLink, sidebarItem], ([active, el]) => {
   line-height: 20px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-color-light);
+  color: var(--ep-docs-text-color-light);
   transition: color 0.5s;
 }
 </style>

@@ -31,7 +31,41 @@
 }
 
 .mx-rich-text-editor__toolbar {
+  position: relative;
+  z-index: 1;
   flex-wrap: wrap;
+}
+
+.mx-rich-text-editor__control {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.mx-rich-text-editor__control.is-disabled {
+  cursor: not-allowed;
+}
+
+.mx-rich-text-editor__control.is-disabled > :not(.mx-rich-text-editor__control-hint) {
+  pointer-events: none;
+}
+
+.mx-rich-text-editor__control-hint {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  left: 8px;
+  box-sizing: border-box;
+  max-width: calc(100% - 16px);
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: var(--mx-rich-text-hint-bg, #172033);
+  color: var(--mx-rich-text-hint-color, #fff);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  pointer-events: none;
 }
 
 .mx-rich-text-editor__group {
@@ -75,6 +109,7 @@
 }
 
 .mx-rich-text-editor__tool:focus-visible,
+.mx-rich-text-editor__control:focus-visible,
 .mx-rich-text-editor__block-select:focus-visible,
 .mx-rich-text-editor__link-input:focus-visible {
   outline: 2px solid var(--mx-rich-text-focus-color, #0f766e);
@@ -86,16 +121,53 @@
   opacity: 0.38;
 }
 
+.mx-rich-text-editor__block-control {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 104px;
+  align-items: center;
+  margin-right: 4px;
+  color: var(--mx-rich-text-tool-color, #475569);
+}
+
 .mx-rich-text-editor__block-select {
-  width: 92px;
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
   height: 30px;
-  padding: 0 24px 0 8px;
-  border: 1px solid var(--mx-rich-text-border-color, #cbd5e1);
+  padding: 0 28px 0 9px;
+  border: 1px solid transparent;
   border-radius: 4px;
-  background: #fff;
+  background: transparent;
   color: inherit;
   font: inherit;
   font-size: 13px;
+  font-weight: 500;
+  line-height: 28px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mx-rich-text-editor__block-select:hover:not(:disabled) {
+  border-color: var(--mx-rich-text-border-color, #cbd5e1);
+  background: var(--mx-rich-text-tool-hover-bg, #e2e8f0);
+}
+
+.mx-rich-text-editor__block-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mx-rich-text-editor__block-select option {
+  background: var(--mx-rich-text-bg, #fff);
+  color: var(--mx-rich-text-color, #172033);
+}
+
+.mx-rich-text-editor__block-chevron {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
 }
 
 .mx-rich-text-editor__link-panel {

@@ -1,93 +1,117 @@
 @use './mixins' as *;
 
+// Search and reusable content use the same palette as the custom shell.
+// Higher specificity keeps VitePress utility tokens independent of load order.
+:where(.ep-docs, .epd-popper, .epd-overlay, .epd-message, .epd-notification, .VPLocalSearchBox, .VPNavBarSearch, .DocSearch-Container) {
+  --ep-docs-vp-font-family-base: var(--ep-docs-font-family);
+  --ep-docs-vp-font-family-mono: var(--ep-docs-font-family-mono);
+  --ep-docs-vp-c-brand-1: var(--epd-color-primary);
+  --ep-docs-vp-c-brand-2: var(--epd-color-primary-light-3);
+  --ep-docs-vp-c-brand-3: var(--epd-color-primary-light-5);
+  --ep-docs-vp-c-brand-soft: var(--epd-color-primary-light-9);
+  --ep-docs-vp-c-bg: var(--ep-docs-bg-color);
+  --ep-docs-vp-c-bg-alt: var(--ep-docs-bg-color-soft);
+  --ep-docs-vp-c-bg-soft: var(--ep-docs-bg-color-mute);
+  --ep-docs-vp-c-bg-elv: var(--epd-bg-color-overlay);
+  --ep-docs-vp-c-text-1: var(--ep-docs-text-color);
+  --ep-docs-vp-c-text-2: var(--ep-docs-text-color-light);
+  --ep-docs-vp-c-text-3: var(--ep-docs-text-color-lighter);
+  --ep-docs-vp-c-divider: var(--ep-docs-border-color-light);
+  --ep-docs-vp-c-border: var(--ep-docs-border-color);
+  --ep-docs-vp-code-block-bg: var(--epd-fill-color-light);
+  --ep-docs-vp-code-block-color: var(--ep-docs-text-color);
+}
+
 // css variables
-:root {
+:where(.ep-docs, .epd-popper, .epd-overlay, .epd-message, .epd-notification, .VPLocalSearchBox, .VPNavBarSearch, .DocSearch-Container) {
   // layouts
-  --vp-screen-max-width: 1376px;
+  --ep-docs-vp-screen-max-width: 1376px;
 
   // colors
-  --text-color: var(--el-text-color-primary);
-  --text-color-light: var(--el-text-color-regular);
-  --text-color-lighter: var(--el-text-color-secondary);
+  --ep-docs-text-color: var(--epd-text-color-primary);
+  --ep-docs-text-color-light: var(--epd-text-color-regular);
+  --ep-docs-text-color-lighter: var(--epd-text-color-secondary);
 
-  --brand-color: var(--el-color-primary);
-  --brand-color-light: var(--el-color-primary-light-1);
-  --bg-brand-color: var(--el-color-primary-light-9);
+  --ep-docs-brand-color: var(--epd-color-primary);
+  --ep-docs-brand-color-light: var(--epd-color-primary-light-1);
+  --ep-docs-bg-brand-color: var(--epd-color-primary-light-9);
 
-  --bg-color: var(--el-bg-color);
-  --bg-color-rgb: 255, 255, 255;
-  --bg-color-soft: #fafafa;
-  --bg-color-mute: #f2f2f2;
-  --border-color: var(--el-border-color);
-  --border-color-light: var(--el-border-color-lighter);
+  --ep-docs-bg-color: var(--epd-bg-color);
+  --ep-docs-bg-color-rgb: 255, 255, 255;
+  --ep-docs-bg-color-soft: #fafafa;
+  --ep-docs-bg-color-mute: #f2f2f2;
+  --ep-docs-border-color: var(--epd-border-color);
+  --ep-docs-border-color-light: var(--epd-border-color-lighter);
 
-  --font-family: var(--el-font-family);
-  --font-family-mono:
+  --ep-docs-font-family: var(--epd-font-family);
+  --ep-docs-font-family-mono:
     'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 
   // info
-  --success-color: var(--el-color-success);
-  --warning-color: var(--el-color-warning);
-  --danger-color: var(--el-color-danger);
-  --purple-color: #6222c2;
-  --purple-color-light: #9065db;
+  --ep-docs-success-color: var(--epd-color-success);
+  --ep-docs-warning-color: var(--epd-color-warning);
+  --ep-docs-danger-color: var(--epd-color-danger);
+  --ep-docs-purple-color: #6222c2;
+  --ep-docs-purple-color-light: #9065db;
 
   // header vars
-  --header-height: 55px;
-  --nav-height: 55px; // alias of --header-height
+  --ep-docs-header-height: 60px;
+  --ep-docs-nav-height: var(--ep-docs-header-height);
+  --ep-docs-sub-nav-height: 48px;
+  --ep-docs-docs-sticky-offset: var(--ep-docs-header-height);
 
   /* Screen Size */
-  --vp-screen-max-width: 1362px;
+  --ep-docs-vp-screen-max-width: 1362px;
 
   // sidebar
-  --vp-sidebar-width-mobile: 320px;
-  --vp-sidebar-width-small: 266px;
+  --ep-docs-vp-sidebar-width-mobile: 320px;
+  --ep-docs-vp-sidebar-width-small: 266px;
 
-  --sidebar-width-sm: 16rem;
-  --sidebar-width-xs: 20rem;
-  --content-min-width: 16rem;
-  --content-max-width: 48rem;
+  --ep-docs-sidebar-width-sm: 16rem;
+  --ep-docs-sidebar-width-xs: 20rem;
+  --ep-docs-content-min-width: 16rem;
+  --ep-docs-content-max-width: 48rem;
 
-  --nav-z-index: 12;
-  --sub-nav-z-index: 11;
-  --sidebar-z-index: 11;
-  --sidebar-z-index-mobile: 31;
-  --overlay-z-index: 30;
-  // --dropdown-z-index: 22;
+  --ep-docs-nav-z-index: 12;
+  --ep-docs-sub-nav-z-index: 11;
+  --ep-docs-sidebar-z-index: 11;
+  --ep-docs-sidebar-z-index-mobile: 31;
+  --ep-docs-overlay-z-index: 30;
+  // --ep-docs-dropdown-z-index: 22;
 
   // code block vars
-  --code-line-height: 1.4;
-  --code-font-size: var(--el-font-size-base);
-  --code-bg-color: var(--el-fill-color-light);
-  --code-text-color: var(--text-color);
-  --code-font-family: var(--font-family-mono);
-  --code-tooltip-bg-color: var(--code-bg-color);
-  --code-tooltip-color: #0c61c9;
+  --ep-docs-code-line-height: 1.4;
+  --ep-docs-code-font-size: var(--epd-font-size-base);
+  --ep-docs-code-bg-color: var(--epd-fill-color-light);
+  --ep-docs-code-text-color: var(--ep-docs-text-color);
+  --ep-docs-code-font-family: var(--ep-docs-font-family-mono);
+  --ep-docs-code-tooltip-bg-color: var(--ep-docs-code-bg-color);
+  --ep-docs-code-tooltip-color: #0c61c9;
 
   // tip block
-  --block-tip-bg-color: rgba(var(--el-color-primary-rgb), 0.1);
-  --block-warning-bg-color: rgba(var(--el-color-danger-rgb), 0.1);
+  --ep-docs-block-tip-bg-color: rgba(var(--epd-color-primary-rgb), 0.1);
+  --ep-docs-block-warning-bg-color: rgba(var(--epd-color-danger-rgb), 0.1);
 
   // link
-  --link-active-bg-color: rgba(var(--el-color-primary-rgb), 0.1);
+  --ep-docs-link-active-bg-color: rgba(var(--epd-color-primary-rgb), 0.1);
 
   @include respond-to('xxl') {
-    --vp-sidebar-width-small: 234px;
+    --ep-docs-vp-sidebar-width-small: 234px;
   }
 
   @include respond-to('max') {
-    --vp-screen-max-width: 1482px;
-    --vp-sidebar-width-small: 290px;
+    --ep-docs-vp-screen-max-width: 1482px;
+    --ep-docs-vp-sidebar-width-small: 290px;
   }
 }
 
-.dark {
-  --bg-color-rgb: 0, 0, 0;
-  --bg-color-soft: #242424;
-  --bg-color-mute: #2c2c2c;
-  --code-tooltip-bg-color: rgba(var(--el-color-primary-rgb), 0.1);
-  --code-tooltip-color: var(--brand-color);
-  --purple-color: #9065db;
-  --purple-color-light: #6222c2;
+.dark :where(.ep-docs, .epd-popper, .epd-overlay, .epd-message, .epd-notification, .VPLocalSearchBox, .VPNavBarSearch, .DocSearch-Container) {
+  --ep-docs-bg-color-rgb: 0, 0, 0;
+  --ep-docs-bg-color-soft: #242424;
+  --ep-docs-bg-color-mute: #2c2c2c;
+  --ep-docs-code-tooltip-bg-color: rgba(var(--epd-color-primary-rgb), 0.1);
+  --ep-docs-code-tooltip-color: var(--ep-docs-brand-color);
+  --ep-docs-purple-color: #9065db;
+  --ep-docs-purple-color-light: #6222c2;
 }

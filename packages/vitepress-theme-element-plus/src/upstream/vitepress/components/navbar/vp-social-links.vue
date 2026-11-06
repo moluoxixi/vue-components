@@ -13,7 +13,10 @@ const links = useSocialLinks()
 
 <style scoped lang="scss">
 .social-links {
-  height: 24px;
-  padding: 0 12px;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
 }
 </style>

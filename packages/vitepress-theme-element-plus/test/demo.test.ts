@@ -105,7 +105,7 @@ describe('elementPlusDocsDemo', () => {
     await flushPromises()
 
     expect(compile).toHaveBeenCalledWith(tsSource, expect.objectContaining({ id: 'demo-test' }))
-    const languageOptions = wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    const languageOptions = wrapper.get('[data-testid="demo-source-language"]').findAll('.epd-segmented__item')
     const jsOption = languageOptions.find(option => option.text() === 'JS')
     expect(jsOption).toBeDefined()
     await jsOption!.trigger('click')
@@ -172,7 +172,7 @@ describe('elementPlusDocsDemo', () => {
     })
     await flushPromises()
 
-    const languageOptions = wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    const languageOptions = wrapper.get('[data-testid="demo-source-language"]').findAll('.epd-segmented__item')
     await languageOptions.find(option => option.text() === 'JS')!.trigger('click')
     await wrapper.get('[data-testid="demo-stackblitz"]').trigger('click')
     await wrapper.get('[data-testid="demo-codesandbox"]').trigger('click')
@@ -232,7 +232,7 @@ describe('elementPlusDocsDemo', () => {
     })
     await flushPromises()
 
-    const firstOptions = first.wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    const firstOptions = first.wrapper.get('[data-testid="demo-source-language"]').findAll('.epd-segmented__item')
     await firstOptions.find(option => option.text() === 'JS')!.trigger('click')
     await first.wrapper.get('button[aria-label="Copy code"]').trigger('click')
     await second.wrapper.get('button[aria-label="Copy code"]').trigger('click')

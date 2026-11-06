@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -56,7 +56,8 @@ function collectTiptap(name, from = require) {
 }
 for (const name of Object.keys(manifest.peerDependencies).filter(name => name.startsWith('@tiptap/')))
   collectTiptap(name)
-const scratch = await mkdtemp(join(tmpdir(), 'rich-text-consumer-'))
+// macOS aliases /var to /private/var; Vite's root must match resolved inputs.
+const scratch = await realpath(await mkdtemp(join(tmpdir(), 'rich-text-consumer-')))
 const packed = JSON.parse(pnpm(['pack', '--pack-destination', scratch, '--json']))
 const tarball = resolve(scratch, packed.filename ?? packed[0]?.filename)
 if (!existsSync(tarball))
@@ -113,10 +114,17 @@ for (const version of versions) {
       const textbox = page.getByRole('textbox', { name: '文章内容', exact: true })
       const bold = page.getByRole('button', { name: '粗体', exact: true })
       await expect(textbox).toBeVisible()
+      await expect(page.getByRole('button', { name: '撤销', exact: true })).toBeDisabled()
+      const blockSelect = page.getByRole('combobox', { name: '文本样式' })
+      await expect(blockSelect).toHaveCSS('appearance', 'none')
+      await expect(blockSelect).toHaveCSS('height', '30px')
+      await expect(page.locator('.mx-rich-text-editor__block-chevron')).toBeVisible()
+      await blockSelect.selectOption('heading-1')
+      await expect(page.getByTestId('html')).toContainText('<h1')
+      await blockSelect.selectOption('paragraph')
       await expect(bold).toHaveCSS('width', '30px')
       await expect(bold).toHaveCSS('height', '30px')
       await expect(textbox).toHaveCSS('min-height', '240px')
-      await expect(page.getByRole('button', { name: '撤销', exact: true })).toBeDisabled()
       await textbox.click()
       await page.keyboard.press('ControlOrMeta+A')
       await page.keyboard.insertText('Production editor')
@@ -143,6 +151,8 @@ for (const version of versions) {
       await page.getByLabel('禁用', { exact: true }).check()
       await expect(textbox).toHaveAttribute('contenteditable', 'false')
       await expect(bold).toBeDisabled()
+      await page.locator('.mx-rich-text-editor__control').filter({ has: blockSelect }).hover()
+      await expect(page.getByRole('tooltip')).toHaveText('当前不可编辑；解除禁用或只读状态后可用。')
       expect(await page.evaluate(() => window.richTextFixture.editor.value.commands.toggleBold())).toBe(false)
       await page.getByLabel('禁用', { exact: true }).uncheck()
       await expect(bold).toBeEnabled()

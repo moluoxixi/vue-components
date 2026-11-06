@@ -18,6 +18,6 @@ defineEmits(['close'])
 <style lang="scss" scoped>
 .full-screen-menu__item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--ep-docs-border-color);
 }
 </style>

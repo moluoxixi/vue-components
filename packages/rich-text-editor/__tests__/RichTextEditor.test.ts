@@ -71,6 +71,25 @@ describe('rich text editor', () => {
     expect(readonlyWrapper.get('[role="textbox"]').attributes('contenteditable')).toBe('false')
   })
 
+  it('禁用控件通过外层悬停和键盘焦点解释原因，恢复后移除提示', async () => {
+    const wrapper = await mountEditor({ disabled: true, modelValue: '<p>disabled</p>' })
+    const control = wrapper.get('.mx-rich-text-editor__control')
+    expect(control.attributes('tabindex')).toBe('0')
+    await control.trigger('mouseenter')
+    expect(control.get('[role="tooltip"]').isVisible()).toBe(true)
+    expect(control.get('[role="tooltip"]').text()).toContain('解除禁用或只读状态后可用')
+    await control.trigger('keydown', { key: 'Escape' })
+    expect(control.find('[role="tooltip"]').exists()).toBe(false)
+    await control.trigger('focusin')
+    expect(control.get('[role="tooltip"]').isVisible()).toBe(true)
+
+    await wrapper.setProps({ disabled: false })
+    await flushPromises()
+    expect(control.attributes('tabindex')).toBeUndefined()
+    expect(control.find('[role="tooltip"]').exists()).toBe(false)
+    expect(wrapper.get('select[aria-label="文本样式"]').attributes('disabled')).toBeUndefined()
+  })
+
   it('允许使用作用域插槽替换内置工具栏', async () => {
     const wrapper = await mountEditor(
       { modelValue: '<p>slot toolbar</p>' },

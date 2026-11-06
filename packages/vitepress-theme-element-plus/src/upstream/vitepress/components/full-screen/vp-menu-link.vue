@@ -26,15 +26,15 @@ defineProps<{
   font-size: 13px;
   font-weight: 500;
   line-height: 24px;
-  color: var(--text-color);
-  transition: color var(--el-transition-duration);
+  color: var(--ep-docs-text-color);
+  transition: color var(--epd-transition-duration);
 
   &.active {
-    border-bottom: 2px solid var(--brand-color);
+    border-bottom: 2px solid var(--ep-docs-brand-color);
   }
 
   &:hover {
-    color: var(--brand-color);
+    color: var(--ep-docs-brand-color);
   }
 }
 </style>

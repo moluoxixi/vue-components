@@ -402,7 +402,7 @@ describe('reusable content modules', () => {
       },
     })
     await flushPromises()
-    const languageOptions = demo.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    const languageOptions = demo.get('[data-testid="demo-source-language"]').findAll('.epd-segmented__item')
     await languageOptions.find(option => option.text() === 'JS')!.trigger('click')
     await flushPromises()
     await demo.get('[data-testid="demo-stackblitz"]').trigger('click')

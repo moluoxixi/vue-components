@@ -1,0 +1,12 @@
+.doc-content a:not(:where(.vp-raw, .vp-raw *)) {
+    display: inline-flex;
+    align-items: center;
+    &.vp-link {
+      white-space: nowrap;
+    }
+    .link-icon {
+      margin-left: 0.25rem;
+      height: 1em;
+      width: 1em;
+    }
+  }

@@ -2,9 +2,11 @@ import type { OutputAsset, OutputChunk } from 'rollup'
 import type { Plugin } from 'vite'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import Vue from '@vitejs/plugin-vue'
 import dts from 'unplugin-dts/vite'
 import { configDefaults, defineConfig } from 'vitest/config'
+import { isolateThemeCss } from './build/style-boundary'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const themeStylesMarker = '__MOLUOXIXI_THEME_STYLES__'
@@ -19,6 +21,8 @@ function injectBuiltThemeStyles(): Plugin {
       ))
       if (!cssAsset)
         this.error('Theme CSS asset was not emitted')
+
+      cssAsset.source = isolateThemeCss(String(cssAsset.source))
 
       let replacements = 0
       for (const output of Object.values(bundle)) {
@@ -45,6 +49,7 @@ function injectBuiltThemeStyles(): Plugin {
 export default defineConfig({
   plugins: [
     Vue(),
+    tailwindcss(),
     injectBuiltThemeStyles(),
     dts({
       exclude: ['**/*.test.ts', '**/fixtures/**'],
@@ -92,7 +97,6 @@ export default defineConfig({
         /^@vue\/repl\//,
         '@vue/compiler-sfc',
         'nprogress',
-        'normalize.css',
         'markdown-it-container',
         'eslint',
         'eslint-plugin-format',

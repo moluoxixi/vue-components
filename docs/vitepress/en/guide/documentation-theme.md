@@ -31,3 +31,18 @@ API names, types, and descriptions remain owned by the extracted source contract
 ## Maintenance boundary
 
 The theme package is the single source of truth for layout, Element Plus installation, base styles, Demo/Playground/ApiDocs runtime, and shared interactions. Consumers own site identity, component content, and project data. Version one is a fixed copy of a recorded Element Plus documentation-theme commit; subsequent changes are maintained in the standalone package without automatic upstream tracking or per-site theme copies.
+
+## Style isolation
+
+The theme is composed of independent Vue components. Navigation, sidebar, outline, footer, demo tools and metadata own their `<style scoped>` rules. It does not load the default VitePress theme, normalize or Tailwind Preflight.
+
+- Tailwind 4 is limited to theme UI, with the `epdocs:` class prefix and explicit source directories. Utilities are compiled into the published CSS; consumers need no Tailwind setup, and example source is not scanned.
+- `body` only loses its default margin. Typography belongs to owned UI and Markdown prose, never ancestors shared with previews. Theme variables use `--ep-docs-*`.
+- Theme Element Plus controls and teleports use `epd-*` classes and `--epd-*` variables. Demo and the lightweight Playground restore the consumer's original Element Plus namespace while retaining locale configuration.
+- Prose and code selectors exclude `.vp-raw` and all descendants. The build applies the same boundary to generated utilities and vendor control CSS.
+- Demo and the lightweight Playground mark preview boundaries automatically. Wrap directly embedded Markdown components with `<div class="vp-raw"><MyComponent /></div>`. Preview headings do not enter the outline.
+- Search reuses the VitePress search component directly. Compatibility aliases are limited to search controls and dialogs; local search, shortcuts and Algolia configuration remain available.
+
+Examples explicitly load their own and their dependencies' CSS, as in a real application. This documentation site's Element Plus example CSS is loaded by its own entry, separately from the theme. Prefer `<style scoped>` in examples to avoid introducing global example styles.
+
+This is a boundary within one document, not an iframe or Shadow DOM sandbox. Explicit consumer global CSS, deliberate use of theme variables and the shared `html.dark` appearance state remain under the consumer's control.

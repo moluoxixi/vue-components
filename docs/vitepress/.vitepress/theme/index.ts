@@ -2,6 +2,9 @@ import { createElementPlusDocsTheme } from '@moluoxixi/vitepress-theme-element-p
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import { docsContent } from './integration'
 import '@moluoxixi/rich-text-editor/styles'
+// Dependencies of this site's examples; the reusable theme uses epd-* UI styles.
+import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 
 const theme = createElementPlusDocsTheme({
   enhanceApp({ app }) {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../runtime/provide-docs-ui'
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 import { resolveNavbarIdentity } from '../composables/navbar-identity'
@@ -21,11 +22,12 @@ const { homePath: currentLink } = useSiteLocales()
 
 const identity = computed(() => resolveNavbarIdentity(theme.value.logo, theme.value.siteTitle, site.value.title))
 const showVersion = computed(() => String(theme.value.version ?? ''))
+provideDocsUi()
 </script>
 
 <template>
   <div class="navbar-wrapper">
-    <div class="header-container">
+    <div class="header-container epdocs:flex epdocs:min-w-0 epdocs:items-center epdocs:justify-between">
       <div class="logo-container">
         <a :href="withBase(currentLink)">
           <img
@@ -41,7 +43,7 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
           <span>{{ showVersion }}</span>
         </el-tag>
       </div>
-      <div class="content">
+      <div class="content epdocs:flex epdocs:items-center epdocs:justify-end epdocs:gap-1">
         <VPNavbarMenu class="menu" />
         <VPNavbarSearch class="search" />
         <VPNavbarThemeToggler class="theme-toggler" />
@@ -58,21 +60,86 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
 </template>
 
 <style scoped lang="scss">
+@use '../styles/mixins' as *;
+
+// import components
+
+
+.navbar-wrapper {
+  position: relative;
+  border-bottom: 1px solid var(--ep-docs-border-color);
+  height: var(--ep-docs-header-height);
+  padding: 0 16px;
+  background-color: color-mix(in srgb, var(--ep-docs-bg-color) 96%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  top: 0;
+
+  @include respond-to('md') {
+    padding: 0 24px;
+  }
+
+  @include respond-to('xlg') {
+    padding: 0 32px;
+  }
+
+  @include respond-to('max') {
+    padding: 0 48px;
+  }
+
+  .header-container {
+    margin: 0 auto;
+
+    .content {
+      flex: none;
+
+      > :deep(.search) {
+        flex-grow: 0;
+        padding-left: 0;
+      }
+    }
+  }
+
+  @include respond-to('md') {
+    .content {
+      padding-top: 1px;
+    }
+  }
+}
+
+
+
+.menu + .appearance {
+  margin-left: 8px;
+}
+
+.menu + .social-links {
+  margin-left: 12px;
+}
+
+.appearance + .social-links {
+  margin-left: 12px;
+}
+
+
 .logo-container {
   display: flex;
   align-items: center;
-  height: var(--header-height);
+  min-width: 0;
+  margin-right: 16px;
+  height: var(--ep-docs-header-height);
   > a {
     display: flex;
     align-items: center;
-    height: 28px;
-    width: 128px;
-    color: var(--text-color);
+    min-width: 0;
+    height: 34px;
+    color: var(--ep-docs-text-color);
     text-decoration: none;
   }
   .logo {
-    position: relative;
-    height: 100%;
+    width: 34px;
+    height: 34px;
+    flex: none;
   }
   .site-title {
     overflow: hidden;
@@ -80,11 +147,6 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-}
-.dark {
-  .logo {
-    filter: drop-shadow(2px 2px 6px #409eff);
   }
 }
 </style>

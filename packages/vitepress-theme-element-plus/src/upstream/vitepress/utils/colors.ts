@@ -3,7 +3,7 @@ import { getCurrentInstance, ref, watch } from 'vue'
 import { isDark } from '../composables/dark'
 
 export function getCssVarName(namespace: string, type: string) {
-  return type ? `--el-${namespace}-${type}` : `--el-${namespace}`
+  return type ? `--epd-${namespace}-${type}` : `--epd-${namespace}`
 }
 
 /**
@@ -13,13 +13,13 @@ export function getCssVarName(namespace: string, type: string) {
  */
 export function getCssVarValue(name: string) {
   const val = ref(
-    getComputedStyle(document.documentElement).getPropertyValue(name),
+    getComputedStyle(document.querySelector('.ep-docs') ?? document.documentElement).getPropertyValue(name),
   )
   watch(
     () => isDark.value,
     () => {
       setTimeout(() => {
-        val.value = getComputedStyle(document.documentElement).getPropertyValue(
+        val.value = getComputedStyle(document.querySelector('.ep-docs') ?? document.documentElement).getPropertyValue(
           name,
         )
       }, 100)
@@ -29,8 +29,8 @@ export function getCssVarValue(name: string) {
 }
 
 export function getColorValue(type: string) {
-  const color = getComputedStyle(document.documentElement).getPropertyValue(
-    `--el-color-${type}`,
+  const color = getComputedStyle(document.querySelector('.ep-docs') ?? document.documentElement).getPropertyValue(
+    `--epd-color-${type}`,
   )
   return color
 }
@@ -51,7 +51,7 @@ export function useCopyColor() {
     }
     try {
       await copy()
-      $message.success(`--el-color-${colorType}: ${source.value}`)
+      $message.success(`--epd-color-${colorType}: ${source.value}`)
     }
     catch (e: any) {
       $message.error(e.message)

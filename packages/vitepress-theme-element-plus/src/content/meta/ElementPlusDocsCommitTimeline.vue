@@ -45,7 +45,7 @@ function formatDate(date: string): string {
   >
     <li v-for="commit in commits" :key="commit.sha" class="component-commit">
       <span class="component-commit-marker" aria-hidden="true" />
-      <div class="component-commit-content">
+      <div data-docs-ui class="component-commit-content">
         <a class="component-commit-message" :href="commit.url" target="_blank" rel="noreferrer">
           {{ commit.message }}
         </a>
@@ -84,3 +84,119 @@ function formatDate(date: string): string {
     {{ messages.changelog.empty }}
   </p>
 </template>
+
+<style scoped>
+
+.component-commit-timeline {
+  margin: 16px 0 28px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.component-commit {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 0 18px;
+}
+
+.component-commit:last-child {
+  padding-bottom: 0;
+}
+
+.component-commit::before {
+  position: absolute;
+  top: 8px;
+  bottom: -8px;
+  left: 6px;
+  width: 1px;
+  background: var(--ep-docs-mx-border-light);
+  content: '';
+}
+
+.component-commit:last-child::before {
+  display: none;
+}
+
+.component-commit-marker {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  margin: 7px 0 0 3px;
+  border: 2px solid var(--epd-bg-color, var(--ep-docs-bg-color));
+  border-radius: 50%;
+  background: var(--ep-docs-brand-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ep-docs-brand-color) 45%, var(--ep-docs-mx-border));
+}
+
+.component-commit-content {
+  min-width: 0;
+}
+
+.component-commit-message {
+  display: inline;
+  color: var(--ep-docs-text-color);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.component-commit-message:hover,
+.component-commit-message:focus-visible {
+  color: var(--ep-docs-brand-color);
+  text-decoration: none;
+}
+
+.component-commit-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 4px;
+  color: var(--ep-docs-text-color-lighter);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.component-commit-author {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--ep-docs-text-color-light);
+  text-decoration: none;
+}
+
+.component-commit-author img {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.component-commit-sha {
+  color: var(--ep-docs-text-color-lighter);
+  font-family: var(--ep-docs-font-family-mono);
+  text-decoration: none;
+}
+
+.component-commit-author:hover,
+.component-commit-author:focus-visible,
+.component-commit-sha:hover,
+.component-commit-sha:focus-visible {
+  color: var(--ep-docs-brand-color);
+  text-decoration: none;
+}
+
+.component-commit-empty {
+  color: var(--ep-docs-text-color-lighter);
+  font-size: 13px;
+}
+
+</style>

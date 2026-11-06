@@ -1,9 +1,6 @@
-@use './common';
 @use './base';
 @use './code';
-@use './navbar';
+@use './code-group';
+@use './prose-links';
 @use './scrollbar';
-@use './subnav';
-@use './overlay';
-@use './sidebar';
-@use './content';
+@use './content/tag-content';

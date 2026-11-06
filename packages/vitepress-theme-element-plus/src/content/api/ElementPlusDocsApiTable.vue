@@ -80,7 +80,7 @@ function typeDetailsLabel(type: string): string {
   margin: 12px 0 18px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  border: 1px solid var(--mx-border, var(--border-color));
+  border: 1px solid var(--ep-docs-mx-border, var(--ep-docs-border-color));
   border-radius: 6px;
 }
 
@@ -98,9 +98,9 @@ function typeDetailsLabel(type: string): string {
 .api-table th {
   padding: 10px 14px;
   border: 0;
-  border-bottom: 1px solid var(--mx-border, var(--border-color));
-  background: var(--mx-fill, var(--bg-color-soft));
-  color: var(--text-color);
+  border-bottom: 1px solid var(--ep-docs-mx-border, var(--ep-docs-border-color));
+  background: var(--ep-docs-mx-fill, var(--ep-docs-bg-color-soft));
+  color: var(--ep-docs-text-color);
   font-size: 13px;
   font-weight: 600;
   text-align: left;
@@ -110,8 +110,8 @@ function typeDetailsLabel(type: string): string {
 .api-table td {
   padding: 10px 14px;
   border: 0;
-  border-bottom: 1px solid var(--mx-border-light, var(--border-color-lighter));
-  color: var(--text-color);
+  border-bottom: 1px solid var(--ep-docs-mx-border-light, var(--ep-docs-border-color-lighter));
+  color: var(--ep-docs-text-color);
   vertical-align: top;
 }
 
@@ -120,34 +120,34 @@ function typeDetailsLabel(type: string): string {
 }
 
 .api-table tbody tr:hover td {
-  background: var(--mx-fill-light, var(--bg-color-soft));
+  background: var(--ep-docs-mx-fill-light, var(--ep-docs-bg-color-soft));
 }
 
 .prop-name,
 .prop-default {
-  font-family: var(--font-family-mono);
+  font-family: var(--ep-docs-font-family-mono);
 }
 
 .prop-name {
-  color: var(--brand-color);
+  color: var(--ep-docs-brand-color);
   font-size: 13px;
   font-weight: 500;
 }
 
 .prop-default,
 .prop-empty {
-  color: var(--text-color-light);
+  color: var(--ep-docs-text-color-light);
   font-size: 12px;
 }
 
 .prop-required {
-  color: var(--mx-danger, #f56c6c);
+  color: var(--ep-docs-mx-danger, #f56c6c);
   font-size: 12px;
   font-weight: 600;
 }
 
 .prop-desc {
-  color: var(--text-color-light);
+  color: var(--ep-docs-text-color-light);
   font-size: 13px;
   line-height: 1.6;
 }

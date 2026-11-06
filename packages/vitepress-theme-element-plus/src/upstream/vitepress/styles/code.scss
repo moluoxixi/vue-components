@@ -1,71 +1,77 @@
 :root {
-  --vp-code-block-bg: var(--el-fill-color-light);
-  --vp-code-line-height: 1.6;
-}
-pre,
-code,
-kbd,
-samp {
-  font-family: var(--code-font-family);
+  --ep-docs-vp-code-block-bg: var(--epd-fill-color-light);
+  --ep-docs-vp-code-line-height: 1.6;
 }
 
-:not(pre) > code {
+.dark .vp-code span:not(:where(.vp-raw, .vp-raw *)) {
+  color: var(--shiki-dark, inherit);
+}
+
+html:not(.dark) .vp-code span:not(:where(.vp-raw, .vp-raw *)) {
+  color: var(--shiki-light, inherit);
+}
+.ep-docs :where(pre, code, kbd, samp):not(:where(.vp-raw, .vp-raw *)) {
+  font-family: var(--ep-docs-code-font-family);
+}
+
+:where(.doc-content) :not(pre) > code:not(:where(.vp-raw, .vp-raw *)) {
+  overflow-wrap: anywhere;
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
-  background-color: var(--el-fill-color-light);
+  background-color: var(--epd-fill-color-light);
   transition:
     color 0.25s,
     background-color 0.5s;
   font-size: 14px;
 }
 
-.doc-content a > code {
-  color: var(--vp-code-link-color);
+.doc-content a > code:not(:where(.vp-raw, .vp-raw *)) {
+  color: var(--ep-docs-vp-code-link-color);
 }
 
-.doc-content a:hover > code {
-  color: var(--vp-code-link-hover-color);
+.doc-content a:hover > code:not(:where(.vp-raw, .vp-raw *)) {
+  color: var(--ep-docs-vp-code-link-hover-color);
 }
 
-.doc-content h1 > code,
-.doc-content h2 > code,
-.doc-content h3 > code {
+.doc-content h1 > code:not(:where(.vp-raw, .vp-raw *)),
+.doc-content h2 > code:not(:where(.vp-raw, .vp-raw *)),
+.doc-content h3 > code:not(:where(.vp-raw, .vp-raw *)) {
   font-size: 0.9em;
 }
 
-.doc-content div[class*='language-'],
-.vp-block {
+.doc-content div[class*='language-']:not(:where(.vp-raw, .vp-raw *)),
+.doc-content .vp-block:not(:where(.vp-raw, .vp-raw *)) {
   position: relative;
   margin: 16px 0;
-  background-color: var(--vp-code-block-bg);
+  background-color: var(--ep-docs-vp-code-block-bg);
   overflow-x: auto;
   transition: background-color 0.5s;
 }
 
 @media (min-width: 640px) {
-  .doc-content div[class*='language-'],
-  .vp-block {
+  .doc-content div[class*='language-']:not(:where(.vp-raw, .vp-raw *)),
+  .doc-content .vp-block:not(:where(.vp-raw, .vp-raw *)) {
     border-radius: 8px;
   }
 }
 
 @media (max-width: 639px) {
-  .doc-content li div[class*='language-'] {
+  .doc-content li div[class*='language-']:not(:where(.vp-raw, .vp-raw *)) {
     border-radius: 8px 0 0 8px;
   }
 }
 
-.doc-content div[class*='language-'] + div[class*='language-'],
-.doc-content div[class$='-api'] + div[class*='language-'],
+.doc-content div[class*='language-'] + div[class*='language-']:not(:where(.vp-raw, .vp-raw *)),
+.doc-content div[class$='-api'] + div[class*='language-']:not(:where(.vp-raw, .vp-raw *)),
 .doc-content
   div[class*='language-']
   + div[class$='-api']
-  > div[class*='language-'] {
+  > div[class*='language-']:not(:where(.vp-raw, .vp-raw *)) {
   margin-top: -8px;
 }
 
-.doc-content [class*='language-'] pre,
-.doc-content [class*='language-'] code {
+.doc-content [class*='language-'] pre:not(:where(.vp-raw, .vp-raw *)),
+.doc-content [class*='language-'] code:not(:where(.vp-raw, .vp-raw *)) {
   /*rtl:ignore*/
   direction: ltr;
   /*rtl:ignore*/
@@ -83,7 +89,7 @@ samp {
   hyphens: none;
 }
 
-.doc-content [class*='language-'] pre {
+.doc-content [class*='language-'] pre:not(:where(.vp-raw, .vp-raw *)) {
   position: relative;
   z-index: 1;
   margin: 0;
@@ -92,19 +98,19 @@ samp {
   overflow-x: auto;
 }
 
-.doc-content [class*='language-'] code {
+.doc-content [class*='language-'] code:not(:where(.vp-raw, .vp-raw *)) {
   display: block;
   padding: 0 24px;
   width: fit-content;
   min-width: 100%;
-  line-height: var(--vp-code-line-height);
-  font-size: var(--vp-code-font-size);
-  color: var(--vp-code-block-color);
+  line-height: var(--ep-docs-vp-code-line-height);
+  font-size: var(--ep-docs-vp-code-font-size);
+  color: var(--ep-docs-vp-code-block-color);
   transition: color 0.5s;
 }
 
-.doc-content [class*='language-'] code .highlighted {
-  background-color: var(--vp-code-line-highlight-color);
+.doc-content [class*='language-'] code .highlighted:not(:where(.vp-raw, .vp-raw *)) {
+  background-color: var(--ep-docs-vp-code-line-highlight-color);
   transition: background-color 0.5s;
   margin: 0 -24px;
   padding: 0 24px;
@@ -112,15 +118,15 @@ samp {
   display: inline-block;
 }
 
-.doc-content [class*='language-'] code .highlighted.error {
-  background-color: var(--vp-code-line-error-color);
+.doc-content [class*='language-'] code .highlighted.error:not(:where(.vp-raw, .vp-raw *)) {
+  background-color: var(--ep-docs-vp-code-line-error-color);
 }
 
-.doc-content [class*='language-'] code .highlighted.warning {
-  background-color: var(--vp-code-line-warning-color);
+.doc-content [class*='language-'] code .highlighted.warning:not(:where(.vp-raw, .vp-raw *)) {
+  background-color: var(--ep-docs-vp-code-line-warning-color);
 }
 
-.doc-content [class*='language-'] code .diff {
+.doc-content [class*='language-'] code .diff:not(:where(.vp-raw, .vp-raw *)) {
   transition: background-color 0.5s;
   margin: 0 -24px;
   padding: 0 24px;
@@ -128,12 +134,12 @@ samp {
   display: inline-block;
 }
 
-.doc-content [class*='language-'] code .diff::before {
+.doc-content [class*='language-'] code .diff:not(:where(.vp-raw, .vp-raw *))::before {
   position: absolute;
   left: 10px;
 }
 
-.doc-content [class*='language-'] .has-focused-lines .line:not(.has-focus) {
+.doc-content [class*='language-'] .has-focused-lines .line:not(.has-focus):not(:where(.vp-raw, .vp-raw *)) {
   filter: blur(0.095rem);
   opacity: 0.4;
   transition:
@@ -141,7 +147,7 @@ samp {
     opacity 0.35s;
 }
 
-.doc-content [class*='language-'] .has-focused-lines .line:not(.has-focus) {
+.doc-content [class*='language-'] .has-focused-lines .line:not(.has-focus):not(:where(.vp-raw, .vp-raw *)) {
   opacity: 0.7;
   transition:
     filter 0.35s,
@@ -151,36 +157,36 @@ samp {
 .doc-content
   [class*='language-']:hover
   .has-focused-lines
-  .line:not(.has-focus) {
+  .line:not(.has-focus):not(:where(.vp-raw, .vp-raw *)) {
   filter: blur(0);
   opacity: 1;
 }
 
-.doc-content [class*='language-'] code .diff.remove {
-  background-color: var(--vp-code-line-diff-remove-color);
+.doc-content [class*='language-'] code .diff.remove:not(:where(.vp-raw, .vp-raw *)) {
+  background-color: var(--ep-docs-vp-code-line-diff-remove-color);
   opacity: 0.7;
 }
 
-.doc-content [class*='language-'] code .diff.remove::before {
+.doc-content [class*='language-'] code .diff.remove:not(:where(.vp-raw, .vp-raw *))::before {
   content: '-';
-  color: var(--vp-code-line-diff-remove-symbol-color);
+  color: var(--ep-docs-vp-code-line-diff-remove-symbol-color);
 }
 
-.doc-content [class*='language-'] code .diff.add {
-  background-color: var(--vp-code-line-diff-add-color);
+.doc-content [class*='language-'] code .diff.add:not(:where(.vp-raw, .vp-raw *)) {
+  background-color: var(--ep-docs-vp-code-line-diff-add-color);
 }
 
-.doc-content [class*='language-'] code .diff.add::before {
+.doc-content [class*='language-'] code .diff.add:not(:where(.vp-raw, .vp-raw *))::before {
   content: '+';
-  color: var(--vp-code-line-diff-add-symbol-color);
+  color: var(--ep-docs-vp-code-line-diff-add-symbol-color);
 }
 
-.doc-content div[class*='language-'].line-numbers-mode {
+.doc-content div[class*='language-'].line-numbers-mode:not(:where(.vp-raw, .vp-raw *)) {
   /*rtl:ignore*/
   padding-left: 32px;
 }
 
-.doc-content .line-numbers-wrapper {
+.doc-content .line-numbers-wrapper:not(:where(.vp-raw, .vp-raw *)) {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -188,20 +194,20 @@ samp {
   left: 0;
   z-index: 3;
   /*rtl:ignore*/
-  border-right: 1px solid var(--vp-code-block-divider-color);
+  border-right: 1px solid var(--ep-docs-vp-code-block-divider-color);
   padding-top: 20px;
   width: 32px;
   text-align: center;
-  font-family: var(--vp-font-family-mono);
-  line-height: var(--vp-code-line-height);
-  font-size: var(--vp-code-font-size);
-  color: var(--vp-code-line-number-color);
+  font-family: var(--ep-docs-vp-font-family-mono);
+  line-height: var(--ep-docs-vp-code-line-height);
+  font-size: var(--ep-docs-vp-code-font-size);
+  color: var(--ep-docs-vp-code-line-number-color);
   transition:
     border-color 0.5s,
     color 0.5s;
 }
 
-.doc-content [class*='language-'] > button.copy {
+.doc-content [class*='language-'] > button.copy:not(:where(.vp-raw, .vp-raw *)) {
   /*rtl:ignore*/
   direction: ltr;
   position: absolute;
@@ -209,14 +215,14 @@ samp {
   /*rtl:ignore*/
   right: 12px;
   z-index: 3;
-  border: 1px solid var(--vp-code-copy-code-border-color);
+  border: 1px solid var(--ep-docs-vp-code-copy-code-border-color);
   border-radius: 4px;
   width: 40px;
   height: 40px;
-  background-color: var(--vp-code-copy-code-bg);
+  background-color: var(--ep-docs-vp-code-copy-code-bg);
   opacity: 0;
   cursor: pointer;
-  background-image: var(--vp-icon-copy);
+  background-image: var(--ep-docs-vp-icon-copy);
   background-position: 50%;
   background-size: 20px;
   background-repeat: no-repeat;
@@ -226,27 +232,27 @@ samp {
     opacity 0.25s;
 }
 
-.doc-content [class*='language-']:hover > button.copy,
-.doc-content [class*='language-'] > button.copy:focus {
+.doc-content [class*='language-']:hover > button.copy:not(:where(.vp-raw, .vp-raw *)),
+.doc-content [class*='language-'] > button.copy:focus:not(:where(.vp-raw, .vp-raw *)) {
   opacity: 1;
 }
 
-.doc-content [class*='language-'] > button.copy:hover,
-.doc-content [class*='language-'] > button.copy.copied {
-  border-color: var(--vp-code-copy-code-hover-border-color);
-  background-color: var(--vp-code-copy-code-hover-bg);
+.doc-content [class*='language-'] > button.copy:hover:not(:where(.vp-raw, .vp-raw *)),
+.doc-content [class*='language-'] > button.copy.copied:not(:where(.vp-raw, .vp-raw *)) {
+  border-color: var(--ep-docs-vp-code-copy-code-hover-border-color);
+  background-color: var(--ep-docs-vp-code-copy-code-hover-bg);
 }
 
-.doc-content [class*='language-'] > button.copy.copied,
-.doc-content [class*='language-'] > button.copy:hover.copied {
+.doc-content [class*='language-'] > button.copy.copied:not(:where(.vp-raw, .vp-raw *)),
+.doc-content [class*='language-'] > button.copy:hover.copied:not(:where(.vp-raw, .vp-raw *)) {
   /*rtl:ignore*/
   border-radius: 0 4px 4px 0;
-  background-color: var(--vp-code-copy-code-hover-bg);
-  background-image: var(--vp-icon-copied);
+  background-color: var(--ep-docs-vp-code-copy-code-hover-bg);
+  background-image: var(--ep-docs-vp-icon-copied);
 }
 
-.doc-content [class*='language-'] > button.copy.copied::before,
-.doc-content [class*='language-'] > button.copy:hover.copied::before {
+.doc-content [class*='language-'] > button.copy.copied:not(:where(.vp-raw, .vp-raw *))::before,
+.doc-content [class*='language-'] > button.copy:hover.copied:not(:where(.vp-raw, .vp-raw *))::before {
   position: absolute;
   top: -1px;
   /*rtl:ignore*/
@@ -254,7 +260,7 @@ samp {
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1px solid var(--vp-code-copy-code-hover-border-color);
+  border: 1px solid var(--ep-docs-vp-code-copy-code-hover-border-color);
   /*rtl:ignore*/
   border-right: 0;
   border-radius: 4px 0 0 4px;
@@ -264,13 +270,13 @@ samp {
   text-align: center;
   font-size: 12px;
   font-weight: 500;
-  color: var(--vp-code-copy-code-active-text);
-  background-color: var(--vp-code-copy-code-hover-bg);
+  color: var(--ep-docs-vp-code-copy-code-active-text);
+  background-color: var(--ep-docs-vp-code-copy-code-hover-bg);
   white-space: nowrap;
-  content: var(--vp-code-copy-copied-text-content);
+  content: var(--ep-docs-vp-code-copy-copied-text-content);
 }
 
-.doc-content [class*='language-'] > span.lang {
+.doc-content [class*='language-'] > span.lang:not(:where(.vp-raw, .vp-raw *)) {
   position: absolute;
   top: 2px;
   /*rtl:ignore*/
@@ -278,13 +284,13 @@ samp {
   z-index: 2;
   font-size: 12px;
   font-weight: 500;
-  color: var(--vp-code-lang-color);
+  color: var(--ep-docs-vp-code-lang-color);
   transition:
     color 0.4s,
     opacity 0.4s;
 }
 
-.doc-content [class*='language-']:hover > button.copy + span.lang,
-.doc-content [class*='language-'] > button.copy:focus + span.lang {
+.doc-content [class*='language-']:hover > button.copy + span.lang:not(:where(.vp-raw, .vp-raw *)),
+.doc-content [class*='language-'] > button.copy:focus + span.lang:not(:where(.vp-raw, .vp-raw *)) {
   opacity: 0;
 }

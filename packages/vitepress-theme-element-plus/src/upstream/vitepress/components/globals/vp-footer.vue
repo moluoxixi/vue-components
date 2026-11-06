@@ -12,7 +12,7 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
 </script>
 
 <template>
-  <footer class="footer" :class="{ 'is-home': isHome }">
+  <footer data-docs-ui class="footer" :class="{ 'is-home': isHome }">
     <div class="footer-main">
       <h4>Documentation</h4>
       <a
@@ -87,9 +87,9 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
   </footer>
 </template>
 
-<style lang="scss">
+<style scoped lang="scss">
 .dark .footer {
-  background-color: var(--el-fill-color-lighter);
+  background-color: var(--epd-fill-color-lighter);
 }
 .footer {
   background-color: #f5f7fa;
@@ -97,7 +97,7 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
   padding: 42px 64px 64px;
 
   &.is-home {
-    background-color: var(--bg-color);
+    background-color: var(--ep-docs-bg-color);
     max-width: 1200px;
     margin: 0 auto;
     padding: 40px 0;
@@ -119,7 +119,7 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
       line-height: 1;
       margin: 0 0 15px;
       font-weight: 400;
-      color: var(--el-text-color-primary);
+      color: var(--epd-text-color-primary);
     }
 
     .footer-main-link {
@@ -127,10 +127,10 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
       margin: 0;
       line-height: 2;
       font-size: 14px;
-      color: var(--text-color-light);
+      color: var(--ep-docs-text-color-light);
 
       &:hover {
-        color: var(--text-color);
+        color: var(--ep-docs-text-color);
       }
     }
   }

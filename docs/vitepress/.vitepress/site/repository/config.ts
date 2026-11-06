@@ -23,7 +23,11 @@ export const docsRepository = resolveElementPlusDocsProjectRepository(
   docsSite.metadataProvider,
 )
 export const docsRepositoryProvider = repositoryMetadataProviders.get(docsRepository.provider)
-export const docsRepositoryLabel = providerLabels[docsRepository.provider] ?? docsRepositoryProvider.platform
+// Local snapshots change metadata collection, not the repository's public identity.
+export const docsRepositoryLinkProvider = docsRepository.provider === 'local'
+  ? docsProject.repository.provider
+  : docsRepository.provider
+export const docsRepositoryLabel = providerLabels[docsRepositoryLinkProvider] ?? docsRepositoryProvider.platform
 export { elementPlusDocsRepositorySnapshotId }
 
 function repositoryDefaultBranchEnvironment(): string | undefined {

@@ -1,18 +1,20 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { Languages } from '@lucide/vue'
 import { useTranslation } from '../../composables/translation'
 
 const { switchLang, languageMap, langs, locale } =
   useTranslation()
+provideDocsUi()
 </script>
 
 <template>
   <div class="translation-container">
     <ClientOnly>
-      <ElDropdown popper-class="translation-popup" role="navigation">
-        <ElIcon :size="24" :aria-label="locale.language">
-          <Languages />
-        </ElIcon>
+      <ElDropdown popper-class="translation-popup" trigger="click" placement="bottom-end">
+        <button type="button" class="translation-trigger" :aria-label="locale.language" :title="locale.selectLanguage">
+          <Languages :size="20" :stroke-width="1.75" aria-hidden="true" />
+        </button>
         <template #dropdown>
           <ElDropdownMenu>
             <ElDropdownItem
@@ -34,35 +36,48 @@ const { switchLang, languageMap, langs, locale } =
 @use '../../styles/mixins' as *;
 
 .translation-container {
-  display: none;
-  height: 24px;
-  padding: 0 12px;
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 36px;
+}
+
+.translation-trigger {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ep-docs-text-color-light);
   cursor: pointer;
 
-  @include respond-to('md') {
-    display: block;
+  &:hover {
+    background: var(--ep-docs-bg-color-mute);
+    color: var(--ep-docs-brand-color);
   }
 }
 </style>
 
-<style lang="scss">
-.el-dropdown__popper.translation-popup {
-  --el-bg-color-overlay: var(--bg-color);
-  --el-popper-border-radius: 8px;
-  --el-border-color-light: transparent;
+<style lang="scss" scoped>
+:global(.epd-dropdown__popper.translation-popup) {
+  --epd-bg-color-overlay: var(--ep-docs-bg-color);
+  --epd-popper-border-radius: 8px;
+  --epd-border-color-light: transparent;
 
   padding: 7px 0;
   min-width: 192px;
   transition: background-color 0.5s;
 
-  .el-popper__arrow {
-    display: none;
-  }
 
-  .language {
-    padding: 0 16px;
-    line-height: 28px;
+}
 
-  }
+:global(.epd-dropdown__popper.translation-popup .epd-popper__arrow) {
+  display: none;
+}
+
+:global(.epd-dropdown__popper.translation-popup .language) {
+  padding: 0 16px;
+  line-height: 28px;
 }
 </style>

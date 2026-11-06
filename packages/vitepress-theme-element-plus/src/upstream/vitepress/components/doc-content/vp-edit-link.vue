@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { ExternalLink } from '@lucide/vue'
 import { useEditLink } from '../../composables/edit-link'
 
 const { url, text } = useEditLink()
+provideDocsUi()
 </script>
 
 <template>
@@ -30,6 +32,6 @@ const { url, text } = useEditLink()
 
 .link:hover {
   text-decoration: none;
-  color: var(--brand-color);
+  color: var(--ep-docs-brand-color);
 }
 </style>
