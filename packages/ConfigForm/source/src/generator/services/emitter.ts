@@ -271,7 +271,7 @@ function activate(row: DatasetItem, index: number): void {
         </thead>
         <tbody>
           <tr
-            v-for="(row, rowIndex) in rows"
+            v-for="(row, rowIndex) in props.rows"
             :key="rowKey(row, rowIndex)"
             class="${classes.row}"
             :class="selectedKey === rowKey(row, rowIndex) ? '${classes.selected}' : ''"
@@ -288,7 +288,7 @@ function activate(row: DatasetItem, index: number): void {
         </tbody>
       </table>
     </div>
-    <small class="${classes.summary}" role="status">{{ rows.length }} / {{ total }}</small>
+    <small class="${classes.summary}" role="status">{{ props.rows.length }} / {{ total }}</small>
   </section>
 </template>${scopedStyle}
 `
@@ -357,7 +357,7 @@ function activate(item: DatasetItem, index: number): void {
   <section class="${classes.root}">
     <div class="${classes.items}" role="list">
       <button
-        v-for="(item, itemIndex) in items"
+        v-for="(item, itemIndex) in props.items"
         :key="itemKey(item, itemIndex)"
         type="button"
         class="${classes.item}"
@@ -371,7 +371,7 @@ function activate(item: DatasetItem, index: number): void {
         </span>
       </button>
     </div>
-    <small class="${classes.summary}" role="status">{{ items.length }} / {{ total }}</small>
+    <small class="${classes.summary}" role="status">{{ props.items.length }} / {{ total }}</small>
   </section>
 </template>${scopedStyle}
 `
@@ -398,7 +398,7 @@ ${lines.join('\n')}
  */
 function configFormItemComponentSource(): string {
   return `<script setup lang="ts">
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   label?: string
   description?: string
   help?: string
@@ -415,10 +415,10 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-y-1.5" :class="label && labelPosition === 'left' ? 'grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] gap-x-4' : ''" data-config-form-item>
-    <label v-if="label" class="grid min-w-0 gap-y-1.5" :class="labelPosition === 'left' ? 'col-span-2 grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] items-start gap-x-4' : ''" data-config-form-label :data-required="required || undefined">
+  <div class="grid min-w-0 gap-y-1.5" :class="props.label && props.labelPosition === 'left' ? 'grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] gap-x-4' : ''" data-config-form-item>
+    <label v-if="props.label" class="grid min-w-0 gap-y-1.5" :class="props.labelPosition === 'left' ? 'col-span-2 grid-cols-[var(--field-label-width,max-content)_minmax(0,1fr)] items-start gap-x-4' : ''" data-config-form-label :data-required="props.required || undefined">
       <span class="text-[13px] font-semibold">
-        {{ label }}<span v-if="required" class="ml-1 text-[var(--demo-color-danger,#dc2626)]" aria-hidden="true">*</span>
+        {{ props.label }}<span v-if="props.required" class="ml-1 text-[var(--demo-color-danger,#dc2626)]" aria-hidden="true">*</span>
       </span>
       <span class="min-w-0" data-config-form-control data-config-form-item-control>
         <slot />
@@ -427,12 +427,12 @@ withDefaults(defineProps<{
     <div v-else class="min-w-0" data-config-form-control data-config-form-item-control>
       <slot />
     </div>
-    <div v-if="description || help || warning" :id="helpId" class="grid gap-y-1.5" :class="label && labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-supporting>
-      <p v-if="description" class="m-0 text-xs text-slate-600" data-config-form-description>{{ description }}</p>
-      <p v-if="help" class="m-0 text-xs text-slate-600" data-config-form-help>{{ help }}</p>
-      <p v-if="warning" class="m-0 text-xs text-amber-700" data-config-form-warning>{{ warning }}</p>
+    <div v-if="props.description || props.help || props.warning" :id="props.helpId" class="grid gap-y-1.5" :class="props.label && props.labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-supporting>
+      <p v-if="props.description" class="m-0 text-xs text-slate-600" data-config-form-description>{{ props.description }}</p>
+      <p v-if="props.help" class="m-0 text-xs text-slate-600" data-config-form-help>{{ props.help }}</p>
+      <p v-if="props.warning" class="m-0 text-xs text-amber-700" data-config-form-warning>{{ props.warning }}</p>
     </div>
-    <p v-for="(message, index) in errors" :id="index === 0 ? errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" :class="label && labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-error role="alert">
+    <p v-for="(message, index) in props.errors" :id="index === 0 ? props.errorId : undefined" :key="index + '-' + message" class="m-0 text-xs text-[var(--demo-color-danger,#dc2626)]" :class="props.label && props.labelPosition === 'left' ? 'col-start-2' : ''" data-config-form-error role="alert">
       {{ message }}
     </p>
   </div>
@@ -1645,10 +1645,10 @@ function demoArray(value: unknown, nodeId: string): Record<string, unknown>[] {
     : ''
   const parametersScript = needsParameters
     ? `
-const surfaceProps = defineProps<{ demoParameters?: Readonly<Record<string, unknown>> }>()
+const props = defineProps<{ demoParameters?: Readonly<Record<string, unknown>> }>()
 const parameters = computed<Record<string, unknown>>(() => ({
   ...${sourceJson(surfaceParameterDefaults(surface))},
-  ...(surfaceProps.demoParameters ?? {}),
+  ...(props.demoParameters ?? {}),
 }))
 `
     : ''
@@ -2010,12 +2010,12 @@ import { ${context.binding.component.importName} } from ${sourceString(context.b
 import { ${context.binding.model.importName} } from ${sourceString(context.binding.model.moduleSpecifier)}
 import { ${stateRules.length > 0 ? 'createReactionProjection, ' : ''}createFields, formConfig, initialModel } from './config.ts'
 
-const surfaceProps = defineProps<{
+const props = defineProps<{
   demoParameters?: Readonly<Record<string, unknown>>
   ${interactions.length > 0 ? 'actions: ConfigBindingActions\n  ' : ''}}>()
 const parameters = computed<Record<string, unknown>>(() => ({
   ...${sourceJson(surfaceParameterDefaults(surface))},
-  ...(surfaceProps.demoParameters ?? {}),
+  ...(props.demoParameters ?? {}),
 }))
 
 const values = shallowRef<Record<string, unknown>>(structuredClone(initialModel))
@@ -2058,7 +2058,7 @@ const validation: ConfigBindingValidation = {
 
 `
     : ''
-}const fields = createFields(${hasContext ? `{ ${interactions.length > 0 ? 'actions: surfaceProps.actions, validation, ' : ''}parameters, values }` : ''})
+}const fields = createFields(${hasContext ? `{ ${interactions.length > 0 ? 'actions: props.actions, validation, ' : ''}parameters, values }` : ''})
 ${stateRules.length > 0 ? 'const reactionProjection = computed(() => createReactionProjection(values.value, parameters.value))\n' : ''}
 </script>
 

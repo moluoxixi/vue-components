@@ -343,8 +343,7 @@ describe('workbench theme contract', () => {
     ])
       expect(selectorBlock(selector, exportDialogStylesheet)).not.toBe('')
 
-    const responsiveStart = exportDialogStylesheet.indexOf('@media (max-width: 700px)')
-    expect(exportDialogComponent).toContain('source-workspace__heading flex min-w-0 items-center justify-between gap-4')
+    const responsiveStart = exportDialogStylesheet.indexOf('@container source-workspace (max-width: 43.75rem)')
     expect(exportDialogComponent).toContain(
       'source-workspace__statusbar flex min-w-0 items-center justify-between gap-4',
     )

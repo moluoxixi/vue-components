@@ -330,8 +330,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
 </script>
 
 <template>
-  <section v-if="mode" class="source-workspace" :data-mode="mode">
-    <header class="source-workspace__heading flex min-w-0 items-center justify-between gap-4">
+  <section v-if="props.mode" class="source-workspace" :data-mode="props.mode">
+    <header class="source-workspace__heading">
       <div class="source-workspace__identity">
         <span class="source-workspace__mark text-wb-accent-text"><Code2 :size="20" aria-hidden="true" /></span>
         <div class="source-workspace__heading-copy">
@@ -351,7 +351,7 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
         <ControlHint :reason="busyReason">
           <ElSegmented
             class="source-workspace__mode"
-            :model-value="mode"
+            :model-value="props.mode"
             :options="[
               { label: locale.t('export.vueMode', 'Vue source'), value: 'source' },
               { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
@@ -409,7 +409,7 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             >
               <Download :size="15" aria-hidden="true" />
               {{
-                mode === 'config'
+                props.mode === 'config'
                   ? locale.t('export.bindingsZip', 'Download binding code')
                   : locale.t('export.projectZip', 'Download project')
               }}
@@ -435,22 +435,22 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
               </ElButton>
               <template #dropdown>
                 <ElDropdownMenu class="source-export-menu">
-                  <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId">
+                  <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !props.surfaceId">
                     <ControlHint
                       :reason="
                         sourceUnavailableReason
-                          || (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                          || (!props.surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
                       "
                     >
                       <Code2 :size="15" aria-hidden="true" />
                       {{ locale.t('export.surfaceSource', 'Page source') }}
                     </ControlHint>
                   </ElDropdownItem>
-                  <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId">
+                  <ElDropdownItem command="surface-json" :disabled="!snapshot || !props.surfaceId">
                     <ControlHint
                       :reason="
                         designUnavailableReason
-                          || (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                          || (!props.surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
                       "
                     >
                       <FileJson2 :size="15" aria-hidden="true" />
@@ -532,7 +532,7 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
         v-model:selected-path="selectedPath"
         class="source-workspace__viewer"
         :files="structuredFileSet"
-        :theme="theme"
+        :theme="props.theme"
         :wrap-lines="wrapLines"
         :labels="{
           files: locale.t('export.files', 'Files'),

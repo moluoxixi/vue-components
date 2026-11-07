@@ -9,6 +9,7 @@ const phones = [
   { width: 390, height: 844 },
   { width: 414, height: 896 },
   { width: 430, height: 932 },
+  { width: 678, height: 827 },
   { width: 844, height: 390 },
 ]
 
@@ -136,6 +137,16 @@ test('preview and source use the remaining phone space without shrinking the run
     await fits(source)
     await fits(source.getByRole('button', { name: 'Download project', exact: true }))
     await fits(source.locator('.source-workspace__statusbar'))
+    const heading = source.locator('.source-workspace__heading h2')
+    await fits(heading)
+    expect((await heading.boundingBox())!.width).toBeGreaterThan(100)
+    if (viewport.width === 678) {
+      const text = await heading.evaluate(node => ({ content: node.scrollWidth, visible: node.clientWidth }))
+      expect(text.content).toBeLessThanOrEqual(text.visible)
+      const toolbar = await source.getByRole('toolbar', { name: 'Source shape' }).boundingBox()
+      const identity = await source.locator('.source-workspace__identity').boundingBox()
+      expect(toolbar!.y).toBeGreaterThanOrEqual(identity!.y + identity!.height)
+    }
     const code = source.getByRole('region', { name: 'Read-only source: src/main.ts', exact: true })
     await expect(code).toBeVisible()
     expect((await code.boundingBox())!.height).toBeGreaterThan(80)

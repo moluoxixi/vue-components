@@ -120,8 +120,12 @@ export function assertGeneratedVueFilesCompile(fileSet: SourceFileSetV1): void {
     if (descriptor.script || descriptor.scriptSetup) {
       const compiledScript = compileScript(descriptor, {
         id: `generated-${file.path.replace(/[^a-z0-9]/gi, '-')}`,
+        propsDestructure: 'error',
       })
-      bindingMetadata = compiledScript.bindings
+      bindingMetadata = compiledScript.bindings ?? {}
+      const bindingKinds: readonly unknown[] = Object.values(bindingMetadata)
+      if (bindingKinds.includes('props') && !['setup-reactive-const', 'setup-const'].includes(bindingMetadata.props ?? ''))
+        throw new Error(`${file.path} must keep component inputs in a props object.`)
     }
     if (descriptor.template) {
       const compiledTemplate = compileTemplate({
@@ -135,6 +139,8 @@ export function assertGeneratedVueFilesCompile(fileSet: SourceFileSetV1): void {
           `${file.path} failed template compilation:\n${formatCompilerErrors(compiledTemplate.errors)}`,
         )
       }
+      if (/\$props(?:\.|\[)/u.test(compiledTemplate.code))
+        throw new Error(`${file.path} must use props.xxx for component inputs in its template.`)
     }
   }
 }

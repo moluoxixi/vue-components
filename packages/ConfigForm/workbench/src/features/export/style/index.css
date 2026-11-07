@@ -1,4 +1,5 @@
 .source-workspace {
+  container: source-workspace / inline-size;
   display: flex;
   width: 100%;
   height: 100%;
@@ -13,9 +14,7 @@
 .source-workspace__heading {
   min-height: 52px;
   flex: 0 0 auto;
-  @apply py-2 px-4;
-  flex-wrap: wrap;
-  @apply gap-3;
+  @apply flex min-w-0 flex-wrap items-center justify-between gap-3 py-2 px-4;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -30,7 +29,7 @@
 }
 
 .source-workspace__identity {
-  @apply gap-3;
+  @apply flex-1 gap-3;
 }
 
 .source-workspace__mark {
@@ -45,7 +44,7 @@
 }
 
 .source-workspace__heading-copy {
-  min-width: 0;
+  @apply min-w-0 flex-1;
 }
 .source-workspace__heading h2 {
   overflow: hidden;
@@ -317,12 +316,16 @@
   }
 }
 
-@media (max-width: 700px) {
+@container source-workspace (max-width: 64rem) {
+  .source-workspace__heading { @apply gap-x-3 gap-y-2; }
+  .source-workspace__toolbar { @apply order-1 basis-full flex-wrap justify-start m-0 p-0; }
+}
+
+@container source-workspace (max-width: 43.75rem) {
   .source-workspace__guidance { justify-content: space-between; @apply pt-4 pr-3 pb-0 pl-3 gap-2; }
   .source-workspace__guidance .source-workspace__guide-copy { display: none; }
   .source-workspace__guide-trigger { display: inline-flex; }
   .source-workspace__heading {
-    min-height: 66px;
     @apply py-2 px-3 gap-2;
   }
   .source-workspace__identity {
@@ -354,8 +357,6 @@
     display: none;
   }
   .source-workspace__toolbar {
-    @apply py-2 px-3;
-    flex-wrap: wrap;
     @apply gap-2;
   }
   .source-workspace__mode {
@@ -365,7 +366,7 @@
     @apply px-2;
   }
   .source-workspace__style {
-    @apply ml-auto;
+    @apply m-0;
   }
   .source-workspace__style > svg {
     display: none;
@@ -382,13 +383,9 @@
   }
 }
 
-@media (max-width: 480px) {
+@container source-workspace (max-width: 30rem) {
   .source-workspace__toolbar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    flex-basis: 100%;
-    order: 1;
-    @apply p-0;
+    @apply justify-between;
   }
   .source-workspace__mode {
     flex: none;
@@ -413,7 +410,7 @@
   }
 }
 
-@media (max-width: 360px) {
+@container source-workspace (max-width: 22.5rem) {
   .source-workspace__mark { display: none; }
 }
 
@@ -431,6 +428,10 @@
   .source-workspace__mode-full { @apply sr-only; }
   .source-workspace__mode-compact { display: inline; }
   .source-workspace__mode .el-segmented__item { @apply px-2; }
+
+  @container source-workspace (min-width: 48rem) {
+    .source-workspace__toolbar { @apply order-none basis-auto; }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

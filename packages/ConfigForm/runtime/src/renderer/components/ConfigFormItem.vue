@@ -6,7 +6,7 @@ defineOptions({
   inheritAttrs: false,
 })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     label?: string
     required?: boolean
@@ -37,48 +37,48 @@ withDefaults(
 <template>
   <div v-bind="$attrs" data-config-form-item>
     <label
-      v-if="label"
-      :class="labelClass"
+      v-if="props.label"
+      :class="props.labelClass"
       data-config-form-label
-      :data-required="required || undefined"
-      :for="controlId"
+      :data-required="props.required || undefined"
+      :for="props.controlId"
     >
-      {{ label }}
+      {{ props.label }}
     </label>
-    <div :class="controlClass" data-config-form-control :style="controlStyle">
+    <div :class="props.controlClass" data-config-form-control :style="props.controlStyle">
       <slot />
     </div>
     <div
-      v-if="description || help || warning || loading || validating || $slots.help"
-      :id="helpId"
+      v-if="props.description || props.help || props.warning || props.loading || props.validating || $slots.help"
+      :id="props.helpId"
       data-config-form-supporting
-      :style="supportingStyle"
+      :style="props.supportingStyle"
     >
-      <p v-if="description" data-config-form-description>
-        {{ description }}
+      <p v-if="props.description" data-config-form-description>
+        {{ props.description }}
       </p>
       <slot name="help">
-        <p v-if="help" data-config-form-help>
-          {{ help }}
+        <p v-if="props.help" data-config-form-help>
+          {{ props.help }}
         </p>
       </slot>
-      <p v-if="warning" data-config-form-warning>
-        {{ warning }}
+      <p v-if="props.warning" data-config-form-warning>
+        {{ props.warning }}
       </p>
-      <span v-if="loading || validating" role="status" data-config-form-status>
-        <slot name="status" :loading="loading" :validating="validating">{{
-          loading ? (loadingText ?? 'Loading…') : (validatingText ?? 'Validating…')
+      <span v-if="props.loading || props.validating" role="status" data-config-form-status>
+        <slot name="status" :loading="props.loading" :validating="props.validating">{{
+          props.loading ? (props.loadingText ?? 'Loading…') : (props.validatingText ?? 'Validating…')
         }}</slot>
       </span>
     </div>
     <p
-      v-for="(message, index) in errors"
-      :id="index === 0 ? errorId : undefined"
+      v-for="(message, index) in props.errors"
+      :id="index === 0 ? props.errorId : undefined"
       :key="`${message}-${index}`"
-      :class="errorClass"
+      :class="props.errorClass"
       data-config-form-error
       role="alert"
-      :style="errorStyle"
+      :style="props.errorStyle"
     >
       {{ message }}
     </p>
