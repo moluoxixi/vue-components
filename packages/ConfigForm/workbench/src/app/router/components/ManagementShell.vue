@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FolderKanban, Languages, LibraryBig, PanelsTopLeft, Settings2 } from '@lucide/vue'
 import { WorkbenchAppearancePopover, WorkspaceStatus } from '../..'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
 import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import { projectsPath, templatesPath } from '../../navigation'
 
@@ -22,15 +23,21 @@ const ui = useWorkbenchUiStore()
       <RouterLink :to="templatesPath()" :class="{ 'is-active': $route.path.startsWith('/templates') }" :aria-current="$route.path.startsWith('/templates') ? 'page' : undefined" :aria-label="controller.workbenchLocale.value.t('management.templates', 'Template management')">
         <LibraryBig :size="17" aria-hidden="true" /><span class="management-navigation__label">{{ controller.workbenchLocale.value.t('management.templates', 'Template management') }}</span><span class="management-navigation__compact">{{ controller.workbenchLocale.value.t('management.templatesShort', 'Templates') }}</span>
       </RouterLink>
-      <WorkspaceStatus v-if="controller.storageInfo" :storage="controller.storageInfo.value" :locale="ui.localeId.value" />
-      <div v-if="$route.name === 'templates' || $route.name === 'project-data'" class="management-navigation__tools">
-        <ElButton text circle :title="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" :aria-label="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" @click="ui.toggleLocale">
-          <Languages :size="17" aria-hidden="true" />
-        </ElButton>
-        <WorkbenchAppearancePopover trigger-class="management-navigation__appearance-desktop" :locale="controller.localeOptions.value" :palette-family="ui.paletteFamily.value" :theme-preference="ui.themePreference.value" @set-palette-family="ui.setPaletteFamily" @set-theme-preference="ui.setThemePreference" />
-        <ElButton class="management-navigation__appearance-mobile" text circle :title="controller.workbenchLocale.value.t('appearance.open', 'Open appearance settings')" :aria-label="controller.workbenchLocale.value.t('appearance.open', 'Open appearance settings')" @click="ui.openAppearanceDrawer">
-          <Settings2 :size="17" aria-hidden="true" />
-        </ElButton>
+      <div class="management-navigation__tools">
+        <WorkspaceStatus v-if="controller.storageInfo" :storage="controller.storageInfo.value" :locale="ui.localeId.value" />
+        <template v-if="$route.name === 'templates' || $route.name === 'project-data'">
+          <WorkbenchCommandHint detached :label="controller.workbenchLocale.value.t('locale.switch', 'Switch language')">
+            <ElButton text :aria-label="controller.workbenchLocale.value.t('locale.switch', 'Switch language')" @click="ui.toggleLocale">
+              <Languages :size="16" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchAppearancePopover trigger-class="management-navigation__appearance-desktop" :locale="controller.localeOptions.value" :palette-family="ui.paletteFamily.value" :theme-preference="ui.themePreference.value" @set-palette-family="ui.setPaletteFamily" @set-theme-preference="ui.setThemePreference" />
+          <WorkbenchCommandHint detached anchor-class="management-navigation__appearance-mobile" :label="controller.workbenchLocale.value.t('appearance.open', 'Open appearance settings')">
+            <ElButton text :aria-label="controller.workbenchLocale.value.t('appearance.open', 'Open appearance settings')" @click="ui.openAppearanceDrawer">
+              <Settings2 :size="16" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
+        </template>
       </div>
     </nav>
     <div class="management-shell__content flex min-w-0 min-h-0 overflow-hidden">

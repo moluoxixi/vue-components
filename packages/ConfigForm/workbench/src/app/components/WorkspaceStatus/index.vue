@@ -61,14 +61,14 @@ function openDetails(event: MouseEvent): void {
       @click="openDetails"
       @keydown.esc.stop="storageTooltip?.hide()"
     >
-      <Unplug v-if="!props.storage.connected" :size="14" aria-hidden="true" />
-      <Folder v-else-if="props.storage.mode === 'local'" :size="14" aria-hidden="true" />
-      <Monitor v-else :size="14" aria-hidden="true" />
-      <span role="status" aria-live="polite">{{ label }}</span>
+      <Unplug v-if="!props.storage.connected" :size="16" aria-hidden="true" />
+      <Folder v-else-if="props.storage.mode === 'local'" :size="16" aria-hidden="true" />
+      <Monitor v-else :size="16" aria-hidden="true" />
+      <span class="sr-only" role="status" aria-live="polite">{{ label }}</span>
     </button>
     <template #content>
       <div class="workspace-storage-tooltip__content">
-        <strong>{{ chinese ? '存储位置' : 'Storage location' }}</strong>
+        <strong>{{ label }}</strong>
         <p v-for="detail in details" :key="detail">
           {{ detail }}
         </p>

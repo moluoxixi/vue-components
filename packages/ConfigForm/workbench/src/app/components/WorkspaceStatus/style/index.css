@@ -1,19 +1,17 @@
 @reference "../../../../styles/tailwind.css";
 
 .workspace-status {
-  @apply inline-flex min-w-0 max-w-48 shrink-0 items-center gap-1 rounded-lg border-0 px-1 py-2 text-xs leading-4 whitespace-nowrap;
+  @apply inline-flex size-8 shrink-0 items-center justify-center rounded-md border-0 p-0 text-xs leading-4;
   color: var(--wb-muted);
   background: transparent;
   font-family: inherit;
   cursor: pointer;
 }
 .workspace-status > svg { @apply shrink-0; }
-.workspace-status > span { @apply truncate; }
 .workspace-status:hover { background: var(--wb-hover); }
 .workspace-status:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
 .workspace-status.is-disconnected { color: var(--wb-danger); }
-.management-navigation > .workspace-status { @apply ml-auto; }
-.workspace-context .workspace-status { @apply max-w-32 ml-1 pl-2; border-left: 1px solid var(--wb-separator); }
+.workspace-context .workspace-status { @apply ml-1; }
 .workspace-context .workspace-status.is-disconnected { @apply inline-flex; }
 .workspace-storage-tooltip.el-popper {
   @apply p-3;
@@ -24,9 +22,4 @@
 .workspace-storage-tooltip__content > p { @apply m-0; color: var(--wb-muted); }
 @media (max-width: 62.5rem) {
   .workspace-context .workspace-status:not(.is-disconnected) { @apply hidden; }
-}
-@media (max-width: 23.75rem) {
-  .management-navigation > .workspace-status { @apply px-0; }
-  .management-navigation:has(.management-navigation__tools) > .workspace-status { @apply size-8 justify-center p-0; }
-  .management-navigation:has(.management-navigation__tools) > .workspace-status > span { @apply sr-only; }
 }
