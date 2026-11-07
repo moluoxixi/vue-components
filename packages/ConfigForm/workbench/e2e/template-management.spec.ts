@@ -77,7 +77,7 @@ test('keeps project creation separate from the page template workspace', async (
   await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages$/)
   await expect(page.locator('.page-manager')).toBeVisible()
   await expect(page.locator('.page-manager__row')).toHaveCount(0)
-  await page.locator('.page-manager__create-actions').getByRole('button', { name: 'New page', exact: true }).click()
+  await page.locator('[data-create-trigger="page-manager-new-surface"]').click()
   await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
   await expect(page.locator('.template-creation-workspace')).toHaveCount(0)
   await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages\/[^/]+\/design$/)
@@ -330,7 +330,7 @@ test('requires a chosen project and scopes page browsing to that project', async
   await expect(page.locator('.page-manager')).toHaveCount(0)
 })
 
-test('keeps page cards compact and their previews, names, and actions usable across viewport sizes', async ({ page }) => {
+test('keeps page previews, names, and design actions usable across viewport sizes', async ({ page }) => {
   await createProject(page, 'element')
   await openPageManagement(page)
   const pages = page.getByRole('main', { name: 'Page management', exact: true })
@@ -343,11 +343,11 @@ test('keeps page cards compact and their previews, names, and actions usable acr
   }
 
   for (const { width, height, visibleCards } of [
-    { width: 1366, height: 768, visibleCards: 10 },
-    { width: 1024, height: 600, visibleCards: 6 },
-    { width: 800, height: 700, visibleCards: 6 },
-    { width: 390, height: 844, visibleCards: 2 },
-    { width: 320, height: 844, visibleCards: 2 },
+    { width: 1366, height: 768, visibleCards: 4 },
+    { width: 1024, height: 600, visibleCards: 3 },
+    { width: 800, height: 700, visibleCards: 2 },
+    { width: 390, height: 844, visibleCards: 1 },
+    { width: 320, height: 844, visibleCards: 1 },
   ]) {
     await page.setViewportSize({ width, height })
     await pages.locator('.page-manager__table').evaluate(table => table.scrollTop = 0)
@@ -379,8 +379,7 @@ test('keeps page cards compact and their previews, names, and actions usable acr
             previewBottom: preview.bottom,
             nameTop: name.top,
             titleBottom: title.bottom,
-            routeRight: route.right,
-            actionsLeft: actions.left,
+            routeBottom: route.bottom,
             actionsTop: actions.top,
             actionsBottom: actions.bottom,
             cardHeight: bounds.height,
@@ -396,10 +395,10 @@ test('keeps page cards compact and their previews, names, and actions usable acr
     expect(geometry.visibleCards).toBeGreaterThanOrEqual(visibleCards)
     for (const card of geometry.cards) {
       expect(card.previewHeight).toBeGreaterThanOrEqual(120)
-      expect(card.cardHeight).toBeLessThanOrEqual(220)
+      expect(card.cardHeight).toBeLessThanOrEqual(300)
       expect(card.previewBottom).toBeLessThanOrEqual(card.nameTop + 1)
       expect(card.titleBottom).toBeLessThanOrEqual(card.actionsTop + 1)
-      expect(card.routeRight).toBeLessThanOrEqual(card.actionsLeft)
+      expect(card.routeBottom).toBeLessThanOrEqual(card.actionsTop)
       expect(card.actionsBottom).toBeLessThanOrEqual(card.cardBottom)
       if (card.nextTop !== undefined && card.nextTop > card.cardTop)
         expect(card.cardBottom).toBeLessThanOrEqual(card.nextTop)

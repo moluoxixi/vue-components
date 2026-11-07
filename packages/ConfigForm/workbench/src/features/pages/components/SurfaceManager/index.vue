@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  ArrowUpRight,
   Check,
   ChevronDown,
   Code2,
@@ -22,6 +23,7 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, watch } from 'vue'
+import WorkbenchCommandHint from '../../../../app/components/WorkbenchCommandHint/index.vue'
 import BrowseViewToggle from '../../../../components/BrowseViewToggle.vue'
 import { useBrowseView } from '../../../../components/composables/use-browse-view'
 import { createPagePreviewDataUrl } from '../../services'
@@ -40,6 +42,7 @@ const editingPresentationId = ref<string>()
 const editingId = ref<string>()
 const nameInputRefs = new Map<string, { focus?: () => void }>()
 const locale = computed(() => createDesignerLocale(props.locale))
+const busyReason = computed(() => props.busy ? locale.value.t('pageManager.busyReason', 'A project operation is in progress. Try again when it finishes.') : undefined)
 
 const surfaces = computed(() => props.project.surfaceOrder.map(id => props.project.surfacesById[id]!).filter(Boolean))
 
@@ -155,7 +158,7 @@ function confirmDelete(): void {
 }
 
 function previewImage(page: typeof surfaces.value[number]): string {
-  return createPagePreviewDataUrl(page)
+  return createPagePreviewDataUrl(page, { emptyLabel: locale.value.t('pageManager.blankPreview', 'Blank page') })
 }
 
 function exportPage(surfaceId: string): void {
@@ -197,6 +200,22 @@ function runPageAction(command: string, surfaceId: string): void {
       break
   }
 }
+
+function pageActions(page: typeof surfaces.value[number]) {
+  const t = locale.value.t
+  const unavailable = (reason?: string) => busyReason.value || reason
+  return [
+    ...(page.kind === 'page' ? [{ command: 'home', icon: Home, label: t('pageManager.setHome', 'Set as home page'), reason: unavailable(props.project.homeSurfaceId === page.id ? t('pageManager.alreadyHome', 'This is already the home page.') : undefined) }] : []),
+    { command: 'duplicate', icon: Copy, label: t('pageManager.duplicate', 'Duplicate page'), reason: unavailable() },
+    { command: 'export', icon: Download, label: t('pageManager.export', 'Export page'), reason: unavailable() },
+    { command: 'source', icon: Code2, label: t('pageManager.exportSource', 'Export page source'), reason: unavailable() },
+    ...(page.kind !== 'page' ? [{ command: 'presentation', icon: SlidersHorizontal, label: t('surface.presentation', 'Overlay appearance'), reason: unavailable() }] : []),
+    { command: 'template', icon: LibraryBig, label: t('pages.saveTemplate', 'Save as template'), reason: unavailable() },
+    { command: 'up', icon: ArrowUp, label: t('pageManager.moveUp', 'Move page up'), reason: unavailable(props.project.surfaceOrder[0] === page.id ? t('pageManager.firstPage', 'This is the first page; move it down before moving it up.') : undefined) },
+    { command: 'down', icon: ArrowDown, label: t('pageManager.moveDown', 'Move page down'), reason: unavailable(props.project.surfaceOrder.at(-1) === page.id ? t('pageManager.lastPage', 'This is the last page; add another page or move this one up first.') : undefined) },
+    { command: 'delete', icon: Trash2, label: t('pageManager.delete', 'Delete page'), reason: unavailable(props.project.surfaceOrder.length === 1 ? t('pageManager.onlyPage', 'Keep at least one page in the project. Create another page before deleting this one.') : undefined), divided: true },
+  ]
+}
 </script>
 
 <template>
@@ -223,51 +242,55 @@ function runPageAction(command: string, surfaceId: string): void {
     </slot>
 
     <div class="page-manager__toolbar">
-      <h2 class="page-manager__list-title">
-        {{ locale.t('pageManager.projectSurfaces', 'Project pages') }}
-        <span>{{ pageStats.total }}</span>
-      </h2>
-      <label class="page-manager__search">
-        <span class="sr-only">{{ locale.t('pageManager.search', 'Search pages') }}</span>
-        <ElInput v-model="search" type="search" clearable :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
-          <template #prefix>
-            <Search :size="15" aria-hidden="true" />
-          </template>
-        </ElInput>
-      </label>
-      <div class="page-manager__create-actions">
-        <BrowseViewToggle v-model="browseView" :locale="props.locale" />
-        <ElButton data-create-trigger="page-manager-import-surface" native-type="button" :disabled="busy" @click="emit('importSurface')">
-          <FileJson2 :size="16" aria-hidden="true" />
-          {{ locale.t('pages.import', 'Import page') }}
-        </ElButton>
-        <ElButton data-create-trigger="page-manager-template" native-type="button" :disabled="busy" @click="emit('useTemplate')">
-          <LibraryBig :size="16" aria-hidden="true" />{{ locale.t('pages.fromTemplate', 'From template') }}
-        </ElButton>
-        <ElButtonGroup class="page-manager__new-group">
-          <ElButton data-create-trigger="page-manager-new-surface" native-type="button" type="primary" :disabled="busy" @click="emit('createSurface', 'page')">
-            <FilePlus2 :size="16" aria-hidden="true" />
-            {{ locale.t('pages.new', 'New page') }}
-          </ElButton>
-          <ElDropdown trigger="click" placement="bottom-end" append-to="#workbench-overlays" @command="emit('createSurface', $event)">
-            <ElButton type="primary" :disabled="busy" :aria-label="locale.t('pages.newType', 'Choose page type')">
-              <ChevronDown :size="15" aria-hidden="true" />
+      <div class="page-manager__toolbar-heading">
+        <h2 class="page-manager__list-title">
+          {{ locale.t('pageManager.projectSurfaces', 'Project pages') }}
+          <span>{{ pageStats.total }}</span>
+        </h2>
+        <div class="page-manager__new-group" role="group" :aria-label="locale.t('pages.new', 'New page')">
+          <WorkbenchCommandHint detached :label="locale.t('pages.new', 'New page')" :disabled-reason="busyReason">
+            <ElButton data-create-trigger="page-manager-new-surface" native-type="button" type="primary" :disabled="busy" @click="emit('createSurface', 'page')">
+              <FilePlus2 :size="16" aria-hidden="true" />{{ locale.t('pages.new', 'New page') }}
             </ElButton>
-            <template #dropdown>
-              <ElDropdownMenu>
-                <ElDropdownItem command="page" :disabled="busy">
-                  {{ locale.t('pages.new', 'New page') }}
-                </ElDropdownItem>
-                <ElDropdownItem command="dialog" :disabled="busy">
-                  {{ locale.t('pages.newDialog', 'New dialog') }}
-                </ElDropdownItem>
-                <ElDropdownItem command="drawer" :disabled="busy">
-                  {{ locale.t('pages.newDrawer', 'New drawer') }}
-                </ElDropdownItem>
-              </ElDropdownMenu>
-            </template>
-          </ElDropdown>
-        </ElButtonGroup>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('pages.newType', 'Choose page type')" :disabled-reason="busyReason">
+            <ElDropdown trigger="click" placement="bottom-end" :persistent="false" append-to="#workbench-overlays" @command="emit('createSurface', $event)">
+              <ElButton type="primary" :disabled="busy" :aria-label="locale.t('pages.newType', 'Choose page type')">
+                <ChevronDown :size="15" aria-hidden="true" />
+              </ElButton>
+              <template #dropdown>
+                <ElDropdownMenu>
+                  <ElDropdownItem v-for="kind in (['page', 'dialog', 'drawer'] as const)" :key="kind" :command="kind" :disabled="busy">
+                    <WorkbenchCommandHint :label="kind === 'page' ? locale.t('pages.new', 'New page') : kind === 'dialog' ? locale.t('pages.newDialog', 'New dialog') : locale.t('pages.newDrawer', 'New drawer')" :disabled-reason="busyReason">
+                      <span class="menu-command-content">{{ kind === 'page' ? locale.t('pages.new', 'New page') : kind === 'dialog' ? locale.t('pages.newDialog', 'New dialog') : locale.t('pages.newDrawer', 'New drawer') }}</span>
+                    </WorkbenchCommandHint>
+                  </ElDropdownItem>
+                </ElDropdownMenu>
+              </template>
+            </ElDropdown>
+          </WorkbenchCommandHint>
+        </div>
+      </div>
+      <div class="page-manager__filters">
+        <label class="page-manager__search">
+          <span class="sr-only">{{ locale.t('pageManager.search', 'Search pages') }}</span>
+          <ElInput v-model="search" type="search" clearable :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
+            <template #prefix><Search :size="15" aria-hidden="true" /></template>
+          </ElInput>
+        </label>
+        <div class="page-manager__create-actions">
+          <WorkbenchCommandHint detached :label="locale.t('pages.import', 'Import page')" :disabled-reason="busyReason">
+            <ElButton data-create-trigger="page-manager-import-surface" native-type="button" :disabled="busy" :aria-label="locale.t('pages.import', 'Import page')" @click="emit('importSurface')">
+              <FileJson2 :size="16" aria-hidden="true" /><span class="page-manager__secondary-label">{{ locale.t('pages.import', 'Import page') }}</span>
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('pages.fromTemplate', 'From template')" :disabled-reason="busyReason">
+            <ElButton data-create-trigger="page-manager-template" native-type="button" :disabled="busy" :aria-label="locale.t('pages.fromTemplate', 'From template')" @click="emit('useTemplate')">
+              <LibraryBig :size="16" aria-hidden="true" /><span class="page-manager__secondary-label">{{ locale.t('pages.fromTemplate', 'From template') }}</span>
+            </ElButton>
+          </WorkbenchCommandHint>
+        </div>
+        <BrowseViewToggle v-model="browseView" :locale="props.locale" />
       </div>
     </div>
 
@@ -288,40 +311,43 @@ function runPageAction(command: string, surfaceId: string): void {
           <div class="page-manager__name-content">
             <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
             <template v-if="editingId === page.id">
-              <ElInput
-                :ref="(instance: unknown) => setNameInputRef(page.id, instance)"
-                v-model="names[page.id]"
-                size="small"
-                :disabled="busy"
-                :aria-label="locale.t('pageManager.pageNameAria', 'Page name for {name}', { name: page.name })"
-                @blur="commitName(page.id)"
-                @keydown.enter="handleTextKeydown"
-                @keydown.esc="cancelEdit"
-              />
-              <ElInput
-                v-if="page.kind === 'page'"
-                v-model="routes[page.id]"
-                class="page-manager__route-input"
-                size="small"
-                :disabled="busy"
-                :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
-                @blur="commitRoute(page.id)"
-                @keydown.enter="handleTextKeydown"
-                @keydown.esc="cancelEdit"
-              />
+              <WorkbenchCommandHint detached anchor-class="page-manager__field-hint" :label="locale.t('pageManager.pageName', 'Page name')" :disabled-reason="busyReason">
+                <ElInput
+                  :ref="(instance: unknown) => setNameInputRef(page.id, instance)"
+                  v-model="names[page.id]"
+                  size="small"
+                  :disabled="busy"
+                  :aria-label="locale.t('pageManager.pageNameAria', 'Page name for {name}', { name: page.name })"
+                  @blur="commitName(page.id)"
+                  @keydown.enter="handleTextKeydown"
+                  @keydown.esc="cancelEdit"
+                />
+              </WorkbenchCommandHint>
+              <WorkbenchCommandHint v-if="page.kind === 'page'" detached anchor-class="page-manager__field-hint" :label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })" :disabled-reason="busyReason">
+                <ElInput
+                  v-model="routes[page.id]"
+                  class="page-manager__route-input"
+                  size="small"
+                  :disabled="busy"
+                  :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
+                  @blur="commitRoute(page.id)"
+                  @keydown.enter="handleTextKeydown"
+                  @keydown.esc="cancelEdit"
+                />
+              </WorkbenchCommandHint>
             </template>
-            <ElButton
-              v-else
-              link
-              type="primary"
-              class="page-manager__link"
-              :title="page.kind === 'page' ? `${page.name} · ${page.route}` : page.name"
-              :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
-              :disabled="busy"
-              @click="emit('openPage', page.id)"
-            >
-              <span class="page-manager__link-label">{{ page.name }}</span>
-            </ElButton>
+            <WorkbenchCommandHint v-else detached anchor-class="page-manager__title-hint" :label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })" :disabled-reason="busyReason">
+              <ElButton
+                link
+                type="primary"
+                class="page-manager__link"
+                :aria-label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })"
+                :disabled="busy"
+                @click="emit('openPage', page.id)"
+              >
+                <span class="page-manager__link-label">{{ page.name }}</span>
+              </ElButton>
+            </WorkbenchCommandHint>
             <div class="page-manager__meta">
               <span v-if="project.homeSurfaceId === page.id" class="page-manager__home-marker"><Home :size="12" aria-hidden="true" />{{ locale.t('pageManager.home', 'Home page') }}</span><span class="page-manager__kind"><Files :size="12" aria-hidden="true" />{{ surfaceKindLabel(page.kind) }}</span>
               <code v-if="page.kind === 'page'" :title="page.route">{{ page.route }}</code>
@@ -329,32 +355,37 @@ function runPageAction(command: string, surfaceId: string): void {
           </div>
         </div>
         <footer class="page-manager__actions">
-          <ElButton v-if="editingId !== page.id" native-type="button" text circle :title="locale.t('pageManager.edit', 'Edit page')" :aria-label="locale.t('pageManager.editAria', 'Edit {name}', { name: page.name })" :disabled="busy" @click="beginEdit(page.id)">
-            <Pencil :size="15" aria-hidden="true" />
-          </ElButton>
-          <ElButton v-else native-type="button" text circle :aria-label="locale.t('pageManager.finishAria', 'Finish editing {name}', { name: page.name })" :disabled="busy" @click="finishEdit()">
-            <Check :size="15" aria-hidden="true" />
-          </ElButton>
-          <ElDropdown trigger="click" placement="bottom-end" append-to="#workbench-overlays" @command="(command: string) => runPageAction(command, page.id)">
-            <ElButton native-type="button" text circle :disabled="busy" :aria-label="locale.t('pageManager.more', 'More page actions')" :title="locale.t('pageManager.more', 'More page actions')">
-              <MoreHorizontal :size="16" aria-hidden="true" />
+          <WorkbenchCommandHint v-if="editingId !== page.id" detached :label="locale.t('pageManager.editDetails', 'Edit name and route')" :disabled-reason="busyReason">
+            <ElButton native-type="button" text :aria-label="locale.t('pageManager.editAria', 'Edit {name}', { name: page.name })" :disabled="busy" @click="beginEdit(page.id)">
+              <Pencil :size="15" aria-hidden="true" />
             </ElButton>
-            <template #dropdown>
-              <ElDropdownMenu>
-                <ElDropdownItem v-if="page.kind === 'page'" command="home" :disabled="busy || project.homeSurfaceId === page.id">
-                  <Home :size="15" aria-hidden="true" />{{ project.homeSurfaceId === page.id ? locale.t('pageManager.home', 'Home page') : locale.t('pageManager.setHome', 'Set as home page') }}
-                </ElDropdownItem>
-                <ElDropdownItem command="duplicate" :disabled="busy"><Copy :size="15" aria-hidden="true" />{{ locale.t('pageManager.duplicate', 'Duplicate page') }}</ElDropdownItem>
-                <ElDropdownItem command="export" :disabled="busy"><Download :size="15" aria-hidden="true" />{{ locale.t('pageManager.export', 'Export page') }}</ElDropdownItem>
-                <ElDropdownItem command="source" :disabled="busy"><Code2 :size="15" aria-hidden="true" />{{ locale.t('pageManager.exportSource', 'Export page source') }}</ElDropdownItem>
-                <ElDropdownItem v-if="page.kind !== 'page'" command="presentation" :disabled="busy"><SlidersHorizontal :size="15" aria-hidden="true" />{{ locale.t('surface.presentation', 'Overlay appearance') }}</ElDropdownItem>
-                <ElDropdownItem command="template" :disabled="busy"><LibraryBig :size="15" aria-hidden="true" />{{ locale.t('pages.saveTemplate', 'Save as template') }}</ElDropdownItem>
-                <ElDropdownItem command="up" :disabled="busy || project.surfaceOrder[0] === page.id"><ArrowUp :size="15" aria-hidden="true" />{{ locale.t('pageManager.moveUp', 'Move page up') }}</ElDropdownItem>
-                <ElDropdownItem command="down" :disabled="busy || project.surfaceOrder.at(-1) === page.id"><ArrowDown :size="15" aria-hidden="true" />{{ locale.t('pageManager.moveDown', 'Move page down') }}</ElDropdownItem>
-                <ElDropdownItem command="delete" divided :disabled="busy || project.surfaceOrder.length === 1"><Trash2 :size="15" aria-hidden="true" />{{ locale.t('pageManager.delete', 'Delete page') }}</ElDropdownItem>
-              </ElDropdownMenu>
-            </template>
-          </ElDropdown>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint v-else detached :label="locale.t('pageManager.finish', 'Done')" :disabled-reason="busyReason">
+            <ElButton native-type="button" text :aria-label="locale.t('pageManager.finishAria', 'Finish editing {name}', { name: page.name })" :disabled="busy" @click="finishEdit()">
+              <Check :size="15" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('pageManager.more', 'More page actions')" :disabled-reason="busyReason">
+            <ElDropdown trigger="click" placement="bottom-end" :persistent="false" append-to="#workbench-overlays" @command="(command: string) => runPageAction(command, page.id)">
+              <ElButton native-type="button" text :disabled="busy" :aria-label="locale.t('pageManager.more', 'More page actions')">
+                <MoreHorizontal :size="16" aria-hidden="true" />
+              </ElButton>
+              <template #dropdown>
+                <ElDropdownMenu>
+                  <ElDropdownItem v-for="action in pageActions(page)" :key="action.command" :command="action.command" :divided="action.divided" :disabled="!!action.reason">
+                    <WorkbenchCommandHint :label="action.label" :disabled-reason="action.reason">
+                      <span class="menu-command-content"><component :is="action.icon" :size="15" aria-hidden="true" />{{ action.label }}</span>
+                    </WorkbenchCommandHint>
+                  </ElDropdownItem>
+                </ElDropdownMenu>
+              </template>
+            </ElDropdown>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint v-if="editingId !== page.id" detached anchor-class="page-manager__design-hint" :label="locale.t('pageManager.openAria', 'Open {name} in the designer', { name: page.name })" :disabled-reason="busyReason">
+            <ElButton class="page-manager__design" native-type="button" :disabled="busy" @click="emit('openPage', page.id)">
+              {{ locale.t('pageManager.design', 'Open design') }}<ArrowUpRight :size="15" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
         </footer>
         <SurfacePresentationEditor
           v-if="page.kind !== 'page' && editingPresentationId === page.id"
@@ -368,9 +399,14 @@ function runPageAction(command: string, surfaceId: string): void {
       <div v-if="filteredSurfaces.length === 0" class="page-manager__empty">
         <Files :size="30" aria-hidden="true" />
         <strong>{{ search ? locale.t('pageManager.noMatch', 'No pages match this search.') : locale.t('pageManager.empty', 'No pages yet') }}</strong>
-        <ElButton v-if="!search" native-type="button" :disabled="busy" @click="emit('createSurface')">
-          <FilePlus2 :size="15" aria-hidden="true" />{{ locale.t('pages.new', 'New page') }}
+        <ElButton v-if="search" @click="search = ''">
+          {{ locale.t('pageManager.clearSearch', 'Clear search') }}
         </ElButton>
+        <WorkbenchCommandHint v-else detached :label="locale.t('pages.new', 'New page')" :disabled-reason="busyReason">
+          <ElButton native-type="button" :disabled="busy" @click="emit('createSurface')">
+            <FilePlus2 :size="15" aria-hidden="true" />{{ locale.t('pages.new', 'New page') }}
+          </ElButton>
+        </WorkbenchCommandHint>
       </div>
     </div>
 

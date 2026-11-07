@@ -277,15 +277,12 @@ test('remembers manager display preferences and keeps the current search when sw
   await page.reload()
   await expect(pages.getByRole('button', { name: 'Card view', exact: true })).toHaveAttribute('aria-pressed', 'true')
   const card = pages.getByRole('listitem').first()
-  const cardBounds = (await card.boundingBox())!
-  await card.click({ position: { x: 18, y: cardBounds.height - 18 } })
+  await card.click({ position: { x: 18, y: 18 } })
   await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
   await page.goto(pagesUrl)
   await pages.getByRole('button', { name: 'List view', exact: true }).click()
-  await expect(pages.locator('.page-manager__preview')).not.toBeVisible()
   const row = pages.getByRole('listitem').first()
-  const rowBounds = (await row.boundingBox())!
-  await row.click({ position: { x: 18, y: rowBounds.height - 18 } })
+  await row.getByRole('button', { name: 'Open design', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
   await page.goto(pagesUrl)
 

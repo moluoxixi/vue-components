@@ -3,8 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref } from '
 
 defineOptions({ name: 'WorkbenchCommandHint' })
 
-const COMMAND_HINT_SHOWN_EVENT = 'workbench-command-hint-shown'
-
 const props = defineProps<{
   anchorClass?: string
   detached?: boolean
@@ -12,6 +10,8 @@ const props = defineProps<{
   label: string
   shortcut?: string
 }>()
+
+const COMMAND_HINT_SHOWN_EVENT = 'workbench-command-hint-shown'
 
 const content = computed(() => [props.label, props.shortcut, props.disabledReason]
   .filter(Boolean)
@@ -111,6 +111,7 @@ onBeforeUnmount(() => {
     :content="content"
     :disabled="suppressed"
     effect="light"
+    transition=""
     :trigger="['hover', 'focus']"
     placement="bottom"
     :fallback-placements="['top', 'right', 'left']"
