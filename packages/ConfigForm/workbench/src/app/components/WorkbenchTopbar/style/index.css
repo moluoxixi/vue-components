@@ -296,6 +296,21 @@
   background: var(--wb-hover);
 }
 
+.topbar-actions button.topbar-more-trigger {
+  border-radius: 6px;
+}
+
+.topbar-actions button.topbar-more-trigger:hover {
+  border-color: transparent;
+}
+
+.topbar-actions button.topbar-more-trigger:active,
+.topbar-actions button.topbar-more-trigger[aria-expanded='true'] {
+  color: var(--wb-accent-text);
+  border-color: transparent;
+  background: var(--wb-accent-soft);
+}
+
 .topbar-actions > button.is-active {
   color: var(--wb-accent-text);
   background: var(--wb-accent-soft);

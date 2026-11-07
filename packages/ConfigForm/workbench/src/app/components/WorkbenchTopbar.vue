@@ -285,9 +285,9 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           <ElButton
             ref="mobileMenuTrigger"
             native-type="button"
+            class="topbar-more-trigger"
             :aria-label="locale.t('workbench.moreActions', 'More actions')"
             data-create-trigger="topbar-mobile-menu"
-            circle
           >
             <MoreHorizontal :size="18" aria-hidden="true" />
           </ElButton>
