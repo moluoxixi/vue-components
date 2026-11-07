@@ -76,3 +76,31 @@ function handleSelect(row: WarehouseRow): void {
 ```
 
 :::
+
+## 输入与选择契约
+
+| 接口                         | 行为                                                          |
+| ---------------------------- | ------------------------------------------------------------- |
+| `v-model:inputValue`         | 输入显示文本；选中对象或业务 ID 由调用方独立保存。            |
+| `popType`                    | default 使用外部触发元素，input 使用内置输入框。              |
+| `virtualRef` / 默认插槽      | 可指定外部触发元素或组合默认触发区域。                        |
+| `columns` / `data`           | 表格列与当前展示数据；列支持具名表头和单元格插槽。            |
+| `selectTrigger`              | click、dblclick、none，控制鼠标选择方式。                     |
+| `select(row)` / `enter(row)` | 选择或键盘确认的完整行；在处理器中更新 inputValue 与业务 ID。 |
+| `input(value)` / `clear`     | 输入变化 / 清空；清空输入时也应清空业务选择。                 |
+| `focus` / `blur`             | 输入焦点变化。                                                |
+| `footer`                     | 自定义弹层底部内容。                                          |
+
+单元格插槽包含 row、column、rowIndex、columnIndex、value；表头没有 row/rowIndex/value。默认插槽用于触发区域，不是表格行内容。
+
+## 远程分页与加载更多
+
+query 接收展开后的 params、currentPage、pageSize，返回 `{ data, total }`。使用前安装 VueQueryPlugin。默认缓存按实例隔离；显式 cacheKey 可共享同一资源。分页通过 currentPage/pageSize 双向绑定，pageChange 返回两项页参数；params 改变时默认回第一页。
+
+输入变化不会自动拼接为接口查询参数，应把 inputValue 映射到业务 params。可用 debounce 或 throttle 调度输入处理；避免同时设置相互冲突的策略。loaded/error 分别通知请求结果和失败，业务需提供可见错误反馈。
+
+enableLoadMore 配合 hasMore/loading 控制底部触发，loadMore 只是加载通知；业务负责追加数据、去重和更新 hasMore。远程分页与无限加载请选择清晰的一种数据合并策略，组件不会自动把全部远程页合并。
+
+## 回显、清空和禁用
+
+显示文本不等于业务 ID。编辑页面应先准备已选对象的显示文本；重新输入、清空或切换上游条件时，同步清理失效 ID。禁用内置输入框可使用 inputProps.disabled，并在外层 tooltip 说明原因及恢复条件。width="auto" 跟随触发区域；固定高度和列宽应结合弹层空间验收。

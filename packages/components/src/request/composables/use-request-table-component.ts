@@ -7,6 +7,8 @@ import type { Ref } from 'vue'
 import { useRequestTable } from '@moluoxixi/hooks'
 import { computed, watch } from 'vue'
 
+let requestTableInstance = 0
+
 export interface RequestTableComponentProps<TRow extends Record<string, any>> {
   data?: TRow[]
   query?: RequestTableQuery<TRow>
@@ -38,7 +40,7 @@ export function useRequestTableComponent<TRow extends Record<string, any>>(
   const { fallbackCacheKey, models, props } = options
   const requestTable = props.query
     ? useRequestTable<TRow>({
-        queryKey: props.cacheKey ?? fallbackCacheKey,
+        queryKey: props.cacheKey ?? [fallbackCacheKey, ++requestTableInstance],
         query: props.query,
         params: computed(() => props.params ?? {}),
         currentPage: models.currentPage,

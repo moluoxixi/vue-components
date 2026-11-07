@@ -17,6 +17,7 @@ import {
 } from '#components/HeadlessTable'
 import {
   getConfigTableColumnId,
+  getConfigTableColumnMinWidth,
   getConfigTableColumnWidth,
 } from '../../utils'
 
@@ -37,14 +38,22 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  apply: [value: ConfigTableColumnSettingChange]
+  apply: [value: ConfigTableColumnSettingChange, reset?: boolean]
 }>()
 
 const dialogVisible = ref(false)
 const draftItems = ref<ColumnSettingItem[]>([])
+const resetRequested = ref(false)
 const listRef = useTemplateRef<HTMLElement>('listRef')
 const visibleCount = computed(() => draftItems.value.filter(item => item.visible).length)
-const canApply = computed(() => draftItems.value.length === 0 || visibleCount.value > 0)
+const applyDisabledReason = computed(() => {
+  if (draftItems.value.length > 0 && visibleCount.value === 0)
+    return '至少显示一列，勾选需要显示的列后即可确定。'
+  if (draftItems.value.some(item => !Number.isFinite(item.width) || item.width < getMinWidth(item) || item.width > (getMaxWidth(item) ?? Infinity)))
+    return '列宽必须是范围内的有效数字，修正或重置列宽后即可确定。'
+  return ''
+})
+const canApply = computed(() => !applyDisabledReason.value)
 let sortable: Sortable | null = null
 let sortableSetupVersion = 0
 
@@ -74,7 +83,25 @@ function createDraft(): ColumnSettingItem[] {
 }
 
 function resetSettings(): void {
+  resetRequested.value = true
   draftItems.value = createDraftFromSource()
+}
+
+function getMinWidth(item: ColumnSettingItem): number {
+  const column = props.columns.find((column, index) => getConfigTableColumnId(column, index) === item.id)
+  return Math.max(1, props.pane.minColumnWidth ?? 1, column ? getConfigTableColumnMinWidth(column) ?? 1 : 1)
+}
+
+function getMaxWidth(item: ColumnSettingItem): number | undefined {
+  return props.pane.maxColumnWidth == null ? undefined : Math.max(getMinWidth(item), props.pane.maxColumnWidth)
+}
+
+function widthLimitReason(item: ColumnSettingItem): string {
+  if (item.width <= getMinWidth(item))
+    return `已达到最小列宽 ${getMinWidth(item)}px，增大列宽后可继续减小。`
+  if (item.width >= (getMaxWidth(item) ?? Infinity))
+    return `已达到最大列宽 ${getMaxWidth(item)}px，减小列宽后可继续增大。`
+  return ''
 }
 
 function createDraftFromSource(): ColumnSettingItem[] {
@@ -102,6 +129,7 @@ function createDraftFromSource(): ColumnSettingItem[] {
 }
 
 function openSettings(): void {
+  resetRequested.value = false
   draftItems.value = createDraft()
   dialogVisible.value = true
 }
@@ -149,9 +177,15 @@ async function setupSortable(): Promise<void> {
     chosenClass: 'mx-config-table-column-settings__item--chosen',
     ghostClass: 'mx-config-table-column-settings__item--ghost',
     handle: '.mx-config-table-column-settings__drag',
-    onEnd: ({ oldIndex, newIndex }) => {
-      if (oldIndex != null && newIndex != null)
+    onEnd: ({ oldIndex, newIndex, item, from }) => {
+      if (oldIndex != null && newIndex != null) {
+        // Sortable mutates DOM first. Restore it so Vue applies the keyed move exactly once.
+        if (item && from) {
+          item.remove()
+          from.insertBefore(item, from.children[oldIndex] ?? null)
+        }
         moveItem(oldIndex, newIndex)
+      }
     },
   })
 }
@@ -172,7 +206,7 @@ function applySettings(): void {
     columnOrder: draftItems.value.map(item => item.id),
     columnVisibility: Object.fromEntries(draftItems.value.map(item => [item.id, item.visible])),
     columnWidths: Object.fromEntries(draftItems.value.map(item => [item.id, item.width])),
-  })
+  }, resetRequested.value && JSON.stringify(draftItems.value) === JSON.stringify(createDraftFromSource()))
   dialogVisible.value = false
 }
 
@@ -206,6 +240,9 @@ onBeforeUnmount(destroySortable)
       append-to-body
       destroy-on-close
     >
+      <p class="mx-config-table-column-settings__hint">
+        已显示 {{ visibleCount }} / {{ draftItems.length }} 列 · 列宽单位为 px
+      </p>
       <div ref="listRef" class="mx-config-table-column-settings__list">
         <div
           v-for="(item, index) in draftItems"
@@ -223,45 +260,56 @@ onBeforeUnmount(destroySortable)
           >
             <GripVertical :size="18" aria-hidden="true" />
           </button>
-          <ElCheckbox
-            class="mx-config-table-column-settings__checkbox"
-            :disabled="item.visible && visibleCount <= 1"
-            :model-value="item.visible"
-            @change="setVisible(index, Boolean($event))"
-          >
-            {{ item.label }}
-          </ElCheckbox>
-          <ElInputNumber
-            v-model="item.width"
-            class="mx-config-table-column-settings__width"
-            :aria-label="`${item.label} 宽度`"
-            :min="props.pane.minColumnWidth"
-            :max="props.pane.maxColumnWidth"
-            :step="props.pane.columnWidthStep ?? 10"
-            controls-position="right"
-          />
+          <ElTooltip :disabled="!(item.visible && visibleCount <= 1)" content="至少保留一列，显示其他列后即可隐藏此列。">
+            <span class="mx-config-table-column-settings__checkbox">
+              <ElCheckbox
+                :disabled="item.visible && visibleCount <= 1"
+                :model-value="item.visible"
+                @change="setVisible(index, Boolean($event))"
+              >
+                {{ item.label }}
+              </ElCheckbox>
+            </span>
+          </ElTooltip>
+          <ElTooltip :disabled="!widthLimitReason(item)" :content="widthLimitReason(item)">
+            <span class="mx-config-table-column-settings__width">
+              <ElInputNumber
+                v-model="item.width"
+                class="mx-config-table-column-settings__width"
+                :aria-label="`${item.label} 宽度`"
+                :min="getMinWidth(item)"
+                :max="getMaxWidth(item)"
+                :step="props.pane.columnWidthStep ?? 10"
+                controls-position="right"
+              />
+            </span>
+          </ElTooltip>
           <div class="mx-config-table-column-settings__moves">
-            <ElTooltip content="上移" placement="top">
-              <ElButton
-                text
-                circle
-                :aria-label="`上移 ${item.label}`"
-                :disabled="index === 0"
-                @click="moveItem(index, index - 1)"
-              >
-                <ChevronUp :size="16" aria-hidden="true" />
-              </ElButton>
+            <ElTooltip :content="index === 0 ? '已位于首位，下移后可再次上移。' : '上移'" placement="top">
+              <span>
+                <ElButton
+                  text
+                  circle
+                  :aria-label="`上移 ${item.label}`"
+                  :disabled="index === 0"
+                  @click="moveItem(index, index - 1)"
+                >
+                  <ChevronUp :size="16" aria-hidden="true" />
+                </ElButton>
+              </span>
             </ElTooltip>
-            <ElTooltip content="下移" placement="top">
-              <ElButton
-                text
-                circle
-                :aria-label="`下移 ${item.label}`"
-                :disabled="index === draftItems.length - 1"
-                @click="moveItem(index, index + 1)"
-              >
-                <ChevronDown :size="16" aria-hidden="true" />
-              </ElButton>
+            <ElTooltip :content="index === draftItems.length - 1 ? '已位于末位，上移后可再次下移。' : '下移'" placement="top">
+              <span>
+                <ElButton
+                  text
+                  circle
+                  :aria-label="`下移 ${item.label}`"
+                  :disabled="index === draftItems.length - 1"
+                  @click="moveItem(index, index + 1)"
+                >
+                  <ChevronDown :size="16" aria-hidden="true" />
+                </ElButton>
+              </span>
             </ElTooltip>
           </div>
         </div>
@@ -275,9 +323,13 @@ onBeforeUnmount(destroySortable)
         <ElButton @click="dialogVisible = false">
           取消
         </ElButton>
-        <ElButton type="primary" :disabled="!canApply" @click="applySettings">
-          确定
-        </ElButton>
+        <ElTooltip :disabled="canApply" :content="applyDisabledReason">
+          <span>
+            <ElButton type="primary" :disabled="!canApply" @click="applySettings">
+              确定
+            </ElButton>
+          </span>
+        </ElTooltip>
       </template>
     </ElDialog>
   </div>
@@ -291,6 +343,11 @@ onBeforeUnmount(destroySortable)
 
 .mx-config-table-column-settings__trigger {
   gap: 6px;
+}
+
+.mx-config-table-column-settings__hint {
+  margin: 0 0 16px;
+  color: var(--el-text-color-secondary);
 }
 
 .mx-config-table-column-settings__list {

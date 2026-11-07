@@ -157,13 +157,14 @@ app.use(createHeadlessTableRendererPlugin(registry))
 
 ## State
 
-`useHeadlessTable` 是独立、可选的状态层，支持过滤、排序、分页、选择、列显隐和列顺序：
+`useHeadlessTable` 是独立、可选的状态层，支持过滤、排序、分页、选择、列显隐、列顺序和列宽：
 
 ```ts
 const table = useHeadlessTable({
   columns,
   data: rows,
   getRowId: row => row.id,
+  persistence: { key: 'orders:tenant-1:user-2', version: 1 },
   initialState: {
     pagination: { currentPage: 1, pageSize: 20 },
     columnVisibility: { internalCode: false },
@@ -173,10 +174,16 @@ const table = useHeadlessTable({
 table.setFilter('status', 'active')
 table.toggleSorting('createdAt')
 table.toggleRowSelected(row, rowIndex)
+table.setColumnWidth('createdAt', 240)
 ```
 
 `columns` 和 `rows` 是处理后的 adapter 输入，`allColumns`、`allRows`、`filteredRows`、`sortedRows`
 保留各阶段数据。所有状态都可以通过 `state` 传入外部 `Ref` 进行受控管理。
+
+`persistence` 按稳定列 ID 保存显隐、顺序和列宽，默认使用 localStorage；外部受控状态优先于缓存。
+可通过 `storage: 'session'` 切换为 sessionStorage，或提供同步存储适配器。SSR 在 mounted 后恢复。
+adapter 需要把 `columnWidths` 映射为实际列宽；`resetColumnSettings()` 恢复初始列设置并删除偏好缓存。
+存储异常通过 `onPersistenceError` 回调报告，不阻止表格使用。完整示例与边界说明见组件文档。
 
 服务端模式设置 `manualFiltering`、`manualSorting`、`manualPagination`。此时 composable 仍更新状态，
 但不会重复处理服务端已返回的数据；`manualPagination` 下通过 `total` 提供服务端总记录数。

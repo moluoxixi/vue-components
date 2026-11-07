@@ -1,4 +1,4 @@
-export { useHeadlessTable, useHeadlessTableMode } from './composables'
+export { normalizeHeadlessTableColumnPreferences, useHeadlessTable, useHeadlessTableColumnPreferences, useHeadlessTableMode } from './composables'
 export {
   createHeadlessTableRenderer,
   createHeadlessTableRendererPlugin,

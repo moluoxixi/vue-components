@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import { computed, ref, toValue, watch } from 'vue'
 import { getHeadlessTableColumnId, getHeadlessTableRawValue, projectHeadlessTableColumns } from '../utils'
+import { useHeadlessTableColumnPreferences } from './use-column-preferences'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 10
@@ -38,7 +39,7 @@ function positiveInteger(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value) || value <= 0)
     return fallback
 
-  return Math.trunc(value)
+  return Math.max(1, Math.trunc(value))
 }
 
 function nonNegativeNumber(value: number): number {
@@ -99,11 +100,24 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
     { ...initialColumnVisibility },
   )
   const columnOrder = controlledRef(options.state?.columnOrder, [...initialColumnOrder])
+  const columnWidths = controlledRef(options.state?.columnWidths, { ...initialState.columnWidths })
 
   const sourceColumns = computed<HeadlessTableColumn<TRow>[]>(() => [
     ...toValue(options.columns),
   ])
   const allRows = computed<TRow[]>(() => [...toValue(options.data)])
+  const { resetColumnSettings } = useHeadlessTableColumnPreferences({
+    columnIds: () => sourceColumns.value.map(getHeadlessTableColumnId),
+    state: { columnOrder, columnVisibility, columnWidths },
+    initialState,
+    controlled: () => ({
+      columnOrder: Boolean(options.state?.columnOrder),
+      columnVisibility: Boolean(options.state?.columnVisibility),
+      columnWidths: Boolean(options.state?.columnWidths),
+    }),
+    persistence: options.persistence,
+    onPersistenceError: options.onPersistenceError,
+  })
 
   const columnProjection = computed(() => projectHeadlessTableColumns(
     sourceColumns.value,
@@ -184,7 +198,7 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
     return Math.ceil(total.value / pageSize)
   })
 
-  watch(pageCount, (count) => {
+  watch([pageCount, () => pagination.value.currentPage, () => pagination.value.pageSize], ([count]) => {
     const maximum = Math.max(DEFAULT_PAGE, count)
     const currentPage = positiveInteger(pagination.value.currentPage, DEFAULT_PAGE)
     const pageSize = positiveInteger(pagination.value.pageSize, DEFAULT_PAGE_SIZE)
@@ -196,7 +210,7 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
         pageSize,
       }
     }
-  }, { flush: 'sync' })
+  }, { flush: 'sync', immediate: true })
 
   const rows = computed<TRow[]>(() => {
     if (options.manualPagination)
@@ -253,7 +267,7 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
   }
 
   function resetFilters(): void {
-    filters.value = { ...initialFilters }
+    filters.value = cloneState(initialFilters)
     pagination.value = { ...pagination.value, currentPage: DEFAULT_PAGE }
   }
 
@@ -319,13 +333,19 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
     columnOrder.value = [...new Set(columnIds)]
   }
 
+  function setColumnWidth(columnId: string, width: number): void {
+    if (!Number.isFinite(width) || width <= 0)
+      throw new RangeError('[HeadlessTable] Column width must be a finite positive number')
+    if (sourceColumns.value.some((column, index) => getHeadlessTableColumnId(column, index) === columnId))
+      columnWidths.value = { ...columnWidths.value, [columnId]: width }
+  }
+
   function reset(): void {
     sorting.value = cloneState(initialSorting)
     filters.value = cloneState(initialFilters)
     pagination.value = cloneState(initialPagination)
     selectedKeys.value = [...initialSelectedKeys]
-    columnVisibility.value = { ...initialColumnVisibility }
-    columnOrder.value = [...initialColumnOrder]
+    resetColumnSettings()
   }
 
   return {
@@ -343,6 +363,7 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
     selectedKeys,
     columnVisibility,
     columnOrder,
+    columnWidths,
     selectedCount,
     hasSelection,
     setSorting,
@@ -358,6 +379,8 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
     setColumnVisible,
     toggleColumnVisible,
     setColumnOrder,
+    setColumnWidth,
+    resetColumnSettings,
     reset,
   }
 }

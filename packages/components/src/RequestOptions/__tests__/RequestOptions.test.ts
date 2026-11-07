@@ -218,4 +218,25 @@ describe('request option components', () => {
     expect(error).toHaveBeenCalledWith(failure)
     expect(JSON.parse(wrapper.get('[data-testid="select-v2-stub"]').attributes('data-options')!)).toEqual([])
   })
+  it.each([
+    [RequestSelectV2, 'select-v2-stub', 'data-options'],
+    [RequestCascader, 'cascader-stub', 'data-options'],
+    [RequestTreeSelect, 'tree-select-stub', 'data-data'],
+  ] as const)('isolates default caches for %s', async (component, testId, attribute) => {
+    const queryA = vi.fn(async () => [{ value: 'a', label: 'A' }])
+    const queryB = vi.fn(async () => [{ value: 'b', label: 'B' }])
+    const wrapper = mount(defineComponent({
+      setup: () => () => h('div', [queryA, queryB].map(query => h(component as any, { query, staleTime: 60000 }))),
+    }), {
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: { ElSelectV2: ElSelectV2Stub, ElCascader: ElCascaderStub, ElTreeSelect: ElTreeSelectStub },
+      },
+    })
+    await waitFor(() => wrapper.findAll(`[data-testid="${testId}"]`)[1]?.attributes(attribute)?.includes('"b"') === true)
+    expect(wrapper.findAll(`[data-testid="${testId}"]`)[0].attributes(attribute)).toContain('"a"')
+    expect(queryA).toHaveBeenCalledOnce()
+    expect(queryB).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
 })

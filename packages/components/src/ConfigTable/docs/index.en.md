@@ -93,7 +93,7 @@ Default column content resolves in this order: an inline renderer or named slot,
 
 ## Column Configuration Pane
 
-Use `pane` to enable the built-in column configuration pane. Users can drag columns into a new order, toggle visibility, and edit widths. `pane.width` controls the pane width, while `pane.draggable` disables or enables drag sorting. Column settings are managed internally by default; pass `columnOrder`, `columnVisibility`, `columnWidths`, or their matching `v-model` bindings only when persistence or external control is needed. The previous `columnConfig` prop remains available as a compatibility alias.
+Use `pane` to enable the built-in column configuration pane. Users can drag columns into a new order, toggle visibility, and edit widths. `pane.width` controls the pane width, while `pane.draggable` disables or enables drag sorting. Column settings are managed internally by default. Enable local persistence with `persistence`; pass `columnOrder`, `columnVisibility`, `columnWidths`, or their matching `v-model` bindings when external control is needed. The previous `columnConfig` prop remains available as a compatibility alias.
 
 :::demo Manage column order, visibility, and widths with a configured pane.
 
@@ -343,3 +343,92 @@ const data = shallowRef<ScoreRow[]>([
 ```
 
 :::
+
+## Persistent column preferences
+
+`persistence` is optional and independent of `pane`. It stores visibility, order and widths by stable column ID, without serializing rows, renderers, selection or edit drafts.
+
+:::demo Confirm column changes and reload the page to restore them. Reset followed by confirmation removes the stored overrides.
+
+```vue
+<script setup lang="ts">
+import type { ConfigTableColumn, HeadlessTablePersistenceError } from '@moluoxixi/components'
+import { ConfigTable } from '@moluoxixi/components'
+import { ref } from 'vue'
+
+const error = ref('')
+const columns: ConfigTableColumn[] = [
+  { id: 'warehouse', field: 'name', title: 'Warehouse', width: 180 },
+  { id: 'stock', field: 'stock', title: 'Stock', width: 120 },
+  { id: 'status', field: 'status', title: 'Status', width: 140 },
+]
+const rows = [{ id: 'WH-01', name: 'Warehouse A', stock: 120, status: 'Active' }]
+const persistence = { key: 'docs:config-table:en', version: 1, storage: 'local' as const }
+function handleStorageError(detail: HeadlessTablePersistenceError): void {
+  error.value = `${detail.operation}: ${detail.error.message}`
+}
+</script>
+
+<template>
+  <ConfigTable
+    :columns="columns"
+    :data="rows"
+    :persistence="persistence"
+    :pane="{ minColumnWidth: 80, maxColumnWidth: 600 }"
+    row-key="id"
+    width="100%"
+    :height="180"
+    @persistence-error="handleStorageError"
+  />
+  <p v-if="error" role="alert">{{ error }}</p>
+</template>
+```
+
+:::
+
+| Option    | Contract                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `key`     | Required business table identity. Include tenant/user identity for personal preferences. Storage keys are prefixed with `mx-table:`. |
+| `version` | Defaults to `1`. Mismatched versions are ignored; increment it for incompatible column ID changes.                                   |
+| `storage` | Defaults to `'local'`; accepts `'session'` or a synchronous `getItem/setItem/removeItem` adapter.                                    |
+
+- Each explicit `columnOrder`, `columnVisibility` or `columnWidths` prop takes priority over its stored slice. Omit a prop to restore that slice automatically; use its `v-model` for two-way external state.
+- Identity defaults to `field`. Columns sharing a field must have different IDs. The adapter owns `columnProps.key` and uses the stable ID.
+- New columns use source defaults, removed columns stay removed, and asynchronously loaded schemas restore after columns arrive. Do not change IDs when translating labels.
+- Confirm commits a draft; cancel/close does not save it. Reset changes the draft first. Confirming an unchanged reset removes storage; further edits save the final draft instead.
+- Changing `persistence.key` switches preference scopes. Invalid JSON, unavailable storage and quota errors do not stop table rendering; they emit `persistenceError`.
+- Browser storage is read after mount for SSR. Live cross-tab synchronization and asynchronous remote storage are not built in. Use controlled state and `columnSettingChange` for remote synchronization.
+
+## Requests, refresh and pagination
+
+Install `VueQueryPlugin` with a `QueryClient` in the host application before using `query`. The function receives flattened `params`, `currentPage` and `pageSize`, and returns `{ data, total }`. Reject its Promise to report failures.
+
+```ts
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+
+app.use(VueQueryPlugin, { queryClient: new QueryClient() })
+```
+
+Default caches are isolated by component instance. Explicitly equal `cacheKey` values opt into sharing and must describe the same resource and response contract. Keep keys stable during an instance lifetime and pass changing filters through reactive `params`.
+
+Fetching displays a status and temporarily disables pagination. A refresh failure retains previous rows and shows a retry action; a component ref also exposes `reload()`. Request `error` and storage `persistenceError` are distinct events.
+
+Query mode shows pagination by default. Static `data` is not automatically sliced: with `pagination=true`, handle `pageChange` and supply the current page yourself, or use `useHeadlessTable` for client pagination. `pagination=false` hides the pager but query still receives page parameters.
+
+## Events, slots and exposed methods
+
+| Interface                                            | Purpose                                                                                         |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `update:columnOrder/columnVisibility/columnWidths`   | Two-way column preference updates.                                                              |
+| `columnSettingChange`                                | All three preference slices after confirmation; excludes column definitions.                    |
+| `loaded` / `error`                                   | Request result `{ data, total }` / request exception.                                           |
+| `pageChange`                                         | `{ currentPage, pageSize }`; changing filters or page size resets the page by default.          |
+| `cellClick` / `cellDblClick`                         | Row, column, raw value and both source/visible indices; `columnIndex` remains the source index. |
+| `modeChange`                                         | Table, row or cell rendering mode changes.                                                      |
+| `empty`                                              | Empty-state slot; a `slots.empty` render function takes priority.                               |
+| Column `slots.header/default/edit`                   | Named slots or render functions; `edit` is preferred in edit mode.                              |
+| `reload()`                                           | Refetch current query parameters; a no-op for static data.                                      |
+| `resetColumnSettings()`                              | Immediately restore source defaults, remove stored preferences and emit column updates.         |
+| `setMode/setRowMode/setCellMode` and related methods | HeadlessTable mode API; row/cell operations require a stable `rowKey` or `getRowId`.            |
+
+Edit mode only selects rendering behavior. Business validation, draft saving and rollback belong to the application. ConfigTable reads `field` as a direct object property; use a formatter/slot for nested or computed values, or use HeadlessTable accessors.

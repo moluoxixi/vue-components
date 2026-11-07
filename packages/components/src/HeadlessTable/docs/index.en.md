@@ -250,7 +250,7 @@ function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'des
 </script>
 
 <template>
-  <div style="display:flex;gap:8px;margin-bottom:10px;">
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
     <ElInput
       :model-value="filterValue"
       placeholder="Search products"
@@ -276,10 +276,56 @@ function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'des
     :page-size="table.pagination.value.pageSize"
     :total="table.total.value"
     layout="prev,pager,next"
-    style="margin-top:10px;"
+    style="margin-top:16px;"
     @current-change="table.setPage"
   />
 </template>
 ```
 
 :::
+
+## Column widths and persistent preferences
+
+`HeadlessTable` provides the rendering protocol; the optional `useHeadlessTable` hook owns state and persistence. Pass width state to an adapter using the same stable column IDs.
+
+```ts
+const table = useHeadlessTable({
+  columns,
+  data: rows,
+  getRowId: row => row.id,
+  persistence: { key: 'products:tenant-1:user-2', version: 1, storage: 'local' },
+  onPersistenceError: detail => console.error(detail.operation, detail.error),
+})
+
+table.setColumnWidth('name', 240)
+// Adapter: width = table.columnWidths.value[columnId] ?? column.width
+// Restore source/default preferences and clear storage:
+table.resetColumnSettings()
+```
+
+- `columnWidths` maps column IDs to pixel numbers. `setColumnWidth(id, width)` rejects non-finite and non-positive values. The adapter owns layout and resize interactions.
+- `initialState.columnWidths` supplies defaults; `state.columnWidths` supplies an external Ref that wins over storage. Order and visibility follow the same rule.
+- Reactive persistence configuration, local/session storage and synchronous adapters are supported. Schema changes, versioning and storage errors follow the ConfigTable contract. SSR restores after mount.
+- `resetColumnSettings()` resets only the three column slices. `reset()` also restores sorting, filters, pagination and selection. Stored preferences exclude rows, filters and selected keys.
+
+## Server mode and selection
+
+| Option or state                                          | Contract                                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `manualFiltering` / `manualSorting` / `manualPagination` | Keep state but skip the corresponding local processing stage. Remote tables normally enable all three.      |
+| `total`                                                  | Server total, not the number of rows on the current page.                                                   |
+| `getRowId`                                               | Required stable identity; avoid array indices that change after sorting/filtering.                          |
+| `selectedKeys`                                           | Stores IDs and preserves them across pages. The application decides when deleted records should be removed. |
+| `setSelectedKeys` / `clearSelection`                     | Set or clear selection. Select-all scope belongs to the adapter/application.                                |
+| `setFilter(id, undefined)`                               | Remove a filter; `resetFilters()` restores an independent initial snapshot.                                 |
+| `setSorting` / `toggleSorting`                           | Support multi-column sorting and reset pagination after sorting/filtering.                                  |
+
+The local pipeline is `allRows → filteredRows → sortedRows → rows`. Initial and external pagination values are normalized and clamped. Keep the last valid server total while loading to avoid resetting the page due to a temporary zero.
+
+## Rendering, events and boundaries
+
+Value resolution is `accessor → accessorKey → field`; key accessors support dot paths. Computed/display columns need stable IDs. Render priority is column slot, named renderer, formatter and raw value, with `slots.edit` preferred in edit mode. Slot/renderer `value` and `rawValue` are both unformatted values.
+
+The default slot exposes `Cell`, `Header`, `Empty`, columns, rows and resolution helpers. Adapters must pass `columnIndex` explicitly. The `empty` slot customizes empty content and `modeChange` reports mode updates. HeadlessTable creates no table DOM and supplies no loading, sorting, pagination or selection UI.
+
+Renderer resolution checks the local map, registry, app injection and global registry in order. For SSR/multiple apps, use an isolated `createHeadlessTableRendererPlugin`. See the packaged README for the full rendering protocol and registration examples.

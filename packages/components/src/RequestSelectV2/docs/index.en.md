@@ -80,3 +80,26 @@ async function queryItems(): Promise<ItemOption[]> {
 ```
 
 :::
+
+## Request and cache contract
+
+Install `VueQueryPlugin` and a `QueryClient` in the application. query receives params and must return an option array. Unwrap `{ data: [...] }` responses inside query. The wrapper manages loading and emits error for rejected requests.
+
+| Option                             | Default and behavior                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `query(params)`                    | Required asynchronous function returning an array, not a pagination envelope.                                       |
+| `params`                           | Empty object by default; reactive changes trigger a query.                                                          |
+| `enabled`                          | True by default. False pauses automatic fetching without disabling the control.                                     |
+| `cacheKey`                         | Instance-isolated by default. Explicitly equal keys share a resource; never share a key across unrelated resources. |
+| `staleTime`                        | Vue Query freshness duration; choose it for the business refresh policy.                                            |
+| `v-model`                          | Uses the underlying control's single/multiple selection contract; does not automatically return full objects.       |
+| `loaded(options)` / `error(error)` | Successful option array / request exception.                                                                        |
+| `refetch()`                        | Exposed on a component ref for retries or refreshing after a business change.                                       |
+
+Keep cacheKey and query stable during an instance lifetime; update filters through params. Shared caches must have matching queries, parameter semantics and response shapes. Refresh/invalidate caches after permission changes.
+
+## Field mapping and interaction boundaries
+
+The underlying control is `ElSelectV2` and the response array is bound to `options`. Typical fields are `value/label`; map custom fields through the underlying props option. Undeclared attributes such as clearable, filterable, multiple and placeholder, plus underlying events, are forwarded through attrs. Custom slots are not forwarded by this wrapper.
+
+For server search, update params from input events; filterable alone is not server search. When a parent condition is cleared, also clear the selected value and pause fetching. Explain disabled business controls using an outer tooltip; enabled=false only affects requests.

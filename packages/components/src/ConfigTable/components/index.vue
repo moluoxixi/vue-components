@@ -7,7 +7,7 @@ import type {
   ConfigTableRow,
   ConfigTableSlots,
 } from '../types'
-import { ElPagination, ElTableV2 } from 'element-plus'
+import { ElButton, ElPagination, ElTableV2, ElTooltip } from 'element-plus'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useHeadlessTableMode } from '#components/HeadlessTable'
 import {
@@ -22,9 +22,6 @@ defineOptions({ name: 'ConfigTable' })
 const props = withDefaults(defineProps<ConfigTableProps>(), {
   columns: () => [],
   columnConfig: false,
-  columnOrder: () => [],
-  columnVisibility: () => ({}),
-  columnWidths: () => ({}),
   data: () => [],
   diagnostics: true,
   tableProps: () => ({}),
@@ -63,6 +60,9 @@ const {
   handlePageSizeUpdate,
   paginationProps,
   requestTotal,
+  requestLoading,
+  requestError,
+  reload,
   shouldShowPagination,
   tableData,
   virtualRows,
@@ -70,6 +70,7 @@ const {
 
 const {
   applyColumnSettings,
+  resetColumnSettings,
   paneEnabled,
   columnOrderState,
   columnVisibilityState,
@@ -110,6 +111,19 @@ const resolvedTableWidth = computed(() => (
 const tableShellStyle = computed(() => ({
   width: typeof props.width === 'number' ? undefined : props.width,
 }))
+const paginationDisabledReason = computed(() => {
+  if (requestLoading.value)
+    return '数据正在加载，请等待加载完成后翻页。'
+  if (paginationProps.value.disabled)
+    return '分页已禁用，启用分页后可切换页面。'
+  if (requestTotal.value <= pageSize.value)
+    return '当前只有一页，没有其他页面可切换。'
+  if (currentPage.value <= 1)
+    return '已是第一页，向后翻页后可返回上一页。'
+  if (currentPage.value >= Math.ceil(requestTotal.value / pageSize.value))
+    return '已是最后一页，向前翻页后可返回下一页。'
+  return ''
+})
 
 onMounted(() => {
   measureTableWidth()
@@ -159,11 +173,14 @@ const {
   modeApi,
 })
 
-defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeApi })
+defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn> & {
+  reload: () => Promise<void>
+  resetColumnSettings: () => void
+}>({ ...modeApi, reload, resetColumnSettings })
 </script>
 
 <template>
-  <div ref="tableShellRef" class="mx-config-table-shell" :style="tableShellStyle">
+  <div ref="tableShellRef" class="mx-config-table-shell" :style="tableShellStyle" :aria-busy="requestLoading">
     <ConfigTableColumnSettings
       v-if="paneEnabled"
       class="mx-config-table__toolbar"
@@ -175,6 +192,15 @@ defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeA
       :pane="normalizedPaneConfig"
       @apply="applyColumnSettings"
     />
+    <div v-if="requestLoading" class="mx-config-table__status" role="status" aria-live="polite">
+      {{ tableData.length ? '正在刷新数据…' : '正在加载数据…' }}
+    </div>
+    <div v-else-if="requestError" class="mx-config-table__status mx-config-table__status--error" role="alert">
+      <span>{{ tableData.length ? '刷新失败，当前显示上次加载的数据。' : '加载失败，请重试。' }}</span>
+      <ElButton link type="primary" @click="reload">
+        重试
+      </ElButton>
+    </div>
     <ElTableV2
       v-bind="virtualTableProps"
       :columns="virtualColumns"
@@ -226,14 +252,19 @@ defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeA
       v-if="shouldShowPagination"
       class="mx-config-table__pagination-shell"
     >
-      <ElPagination
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :total="requestTotal"
-        v-bind="paginationProps"
-        @update:current-page="handleCurrentPageUpdate"
-        @update:page-size="handlePageSizeUpdate"
-      />
+      <ElTooltip :disabled="!paginationDisabledReason" :content="paginationDisabledReason">
+        <span>
+          <ElPagination
+            :current-page="currentPage"
+            :page-size="pageSize"
+            :total="requestTotal"
+            v-bind="paginationProps"
+            :disabled="requestLoading || paginationProps.disabled"
+            @update:current-page="handleCurrentPageUpdate"
+            @update:page-size="handlePageSizeUpdate"
+          />
+        </span>
+      </ElTooltip>
     </div>
   </div>
 </template>
@@ -245,7 +276,19 @@ defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeA
 }
 
 .mx-config-table__toolbar {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
+}
+
+.mx-config-table__status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: var(--el-text-color-secondary);
+}
+
+.mx-config-table__status--error {
+  color: var(--el-color-danger);
 }
 
 .mx-config-table__cell {

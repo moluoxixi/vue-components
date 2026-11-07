@@ -232,7 +232,7 @@ const ElDialogStub = defineComponent({
 
 const ElTooltipStub = defineComponent({
   name: 'ElTooltip',
-  props: { content: String, placement: String },
+  props: { content: String, placement: String, disabled: Boolean },
   setup(_, { slots }) {
     return () => slots.default?.()
   },
@@ -1368,5 +1368,97 @@ describe('config table', () => {
 
     expect(wrapper.emitted('update:currentPage')?.at(-1)).toEqual([1])
     expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/99')
+  })
+  it('persists confirmed settings, cancels drafts, restores after remount and clears storage on reset', async () => {
+    const saved = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => { saved.set(key, value) },
+      removeItem: (key: string) => { saved.delete(key) },
+    }
+    const props = {
+      columns: [{ field: 'name', label: 'Name', width: 120 }, { field: 'status', label: 'Status', width: 180 }],
+      data: [{ name: 'A', status: 'active' }],
+      pane: true,
+      persistence: { key: 'settings', storage },
+    }
+    const first = mount(ConfigTable, { props, global: { stubs: elementStubs } })
+    await first.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await first.get('[aria-label="Name 宽度"]').setValue('280')
+    await first.get('[aria-label="下移 Name"]').trigger('click')
+    await first.findAll('button').find(button => button.text() === '确定')!.trigger('click')
+    await nextTick()
+    expect(saved.get('mx-table:settings')).toContain('280')
+    first.unmount()
+    const second = mount(ConfigTable, { props, global: { stubs: elementStubs } })
+    await nextTick()
+    expect(second.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('280')
+    expect(second.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-status', 'virtual-column-name'])
+    await second.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await second.get('[aria-label="Name 宽度"]').setValue('320')
+    await second.findAll('button').find(button => button.text() === '取消')!.trigger('click')
+    expect(saved.get('mx-table:settings')).not.toContain('320')
+    await second.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await second.findAll('button').find(button => button.text() === '重置')!.trigger('click')
+    await second.findAll('button').find(button => button.text() === '确定')!.trigger('click')
+    await nextTick()
+    expect(saved.has('mx-table:settings')).toBe(false)
+    expect(second.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('120')
+    second.unmount()
+  })
+
+  it('uses stable column IDs as virtual keys and rejects invalid draft widths', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ id: 'short', field: 'name', label: 'Short', width: 100 }, { id: 'long', field: 'name', label: 'Long', width: 260 }],
+        data: [{ name: 'A' }],
+        pane: true,
+      },
+      global: { stubs: elementStubs },
+    })
+    const columns = wrapper.findComponent(ElTableV2Stub).props('columns') as Array<{ key: string, width: number }>
+    expect(columns.map(column => [column.key, column.width])).toEqual([['short', 100], ['long', 260]])
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await wrapper.get('[aria-label="Short 宽度"]').setValue('-20')
+    expect(wrapper.findAll('button').find(button => button.text() === '确定')!.attributes('disabled')).toBeDefined()
+    expect(wrapper.emitted('columnSettingChange')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('isolates different queries sharing default props on the same page', async () => {
+    const queryA = vi.fn(async () => ({ data: [{ name: 'Warehouse A' }], total: 1 }))
+    const queryB = vi.fn(async () => ({ data: [{ name: 'Order B' }], total: 1 }))
+    const wrapper = mount(defineComponent({
+      setup: () => () => h('div', [queryA, queryB].map(query => h(ConfigTable, {
+        columns: [{ field: 'name' }],
+        query,
+        staleTime: 60000,
+      }))),
+    }), { global: { stubs: elementStubs, plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]] } })
+    await waitFor(() => wrapper.text().includes('Warehouse A') && wrapper.text().includes('Order B'))
+    expect(queryA).toHaveBeenCalledOnce()
+    expect(queryB).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('shows refresh failure above retained data and retries through the public reload API', async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ data: [{ name: 'Previous' }], total: 1 })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ data: [{ name: 'Latest' }], total: 1 })
+    const wrapper = mount(ConfigTable, {
+      props: { columns: [{ field: 'name' }], query },
+      global: { stubs: elementStubs, plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]] },
+    })
+    await waitFor(() => wrapper.text().includes('Previous'))
+    await (wrapper.vm as any).reload()
+    await waitFor(() => wrapper.find('[role="alert"]').exists())
+    expect(wrapper.get('[role="alert"]').text()).toContain('当前显示上次加载的数据')
+    expect(wrapper.text()).toContain('Previous')
+    await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('click')
+    await waitFor(() => wrapper.text().includes('Latest'))
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 })

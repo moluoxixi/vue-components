@@ -7,6 +7,8 @@ import type {
 import { useRequestOptions } from '@moluoxixi/hooks'
 import { computed, watch } from 'vue'
 
+let requestOptionsInstance = 0
+
 export function useRequestOptionsComponent<
   TOption extends RequestOptionRecord = RequestOptionRecord,
   TParams extends RequestParamsRecord = RequestParamsRecord,
@@ -16,7 +18,7 @@ export function useRequestOptionsComponent<
   fallbackCacheKey: string,
 ) {
   const request = useRequestOptions<TOption, TParams>({
-    queryKey: props.cacheKey ?? fallbackCacheKey,
+    queryKey: props.cacheKey ?? [fallbackCacheKey, ++requestOptionsInstance],
     query: props.query,
     params: computed(() => props.params ?? ({} as TParams)),
     enabled: computed(() => props.enabled ?? true),

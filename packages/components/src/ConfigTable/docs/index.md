@@ -129,7 +129,7 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 
 ## 列配置面板
 
-`pane` 开启内置列配置面板。面板支持拖拽调整顺序、切换列的显示状态和修改列宽；`pane.width` 控制面板宽度，`pane.draggable` 可关闭拖拽。默认由组件内部维护列设置；只有需要持久化或外部控制时，才传入 `columnOrder`、`columnVisibility`、`columnWidths` 或对应的 `v-model`。旧的 `columnConfig` 仍作为兼容别名保留。
+`pane` 开启内置列配置面板。面板支持拖拽调整顺序、切换列的显示状态和修改列宽；`pane.width` 控制面板宽度，`pane.draggable` 可关闭拖拽。默认由组件内部维护列设置；通过 `persistence` 开启本地持久化，需要外部控制时再传入 `columnOrder`、`columnVisibility`、`columnWidths` 或对应的 `v-model`。旧的 `columnConfig` 仍作为兼容别名保留。
 
 :::demo 使用配置化 pane 管理列顺序、显隐与宽度。
 
@@ -380,3 +380,92 @@ const data = shallowRef<ScoreRow[]>([
 ```
 
 :::
+
+## 列设置持久化
+
+`persistence` 是可选能力，与 `pane` 独立。按稳定列 ID 保存显隐、顺序和列宽；不保存业务行数据、renderer、选择结果或编辑草稿。
+
+:::demo 调整列设置并确认后刷新页面，配置会自动恢复。点击重置并确认会清除缓存。
+
+```vue
+<script setup lang="ts">
+import type { ConfigTableColumn, HeadlessTablePersistenceError } from '@moluoxixi/components'
+import { ConfigTable } from '@moluoxixi/components'
+import { ref } from 'vue'
+
+const error = ref('')
+const columns: ConfigTableColumn[] = [
+  { id: 'warehouse', field: 'name', title: 'Warehouse', width: 180 },
+  { id: 'stock', field: 'stock', title: 'Stock', width: 120 },
+  { id: 'status', field: 'status', title: 'Status', width: 140 },
+]
+const rows = [{ id: 'WH-01', name: 'Warehouse A', stock: 120, status: 'Active' }]
+const persistence = { key: 'docs:config-table:zh', version: 1, storage: 'local' as const }
+function handleStorageError(detail: HeadlessTablePersistenceError): void {
+  error.value = `${detail.operation}: ${detail.error.message}`
+}
+</script>
+
+<template>
+  <ConfigTable
+    :columns="columns"
+    :data="rows"
+    :persistence="persistence"
+    :pane="{ minColumnWidth: 80, maxColumnWidth: 600 }"
+    row-key="id"
+    width="100%"
+    :height="180"
+    @persistence-error="handleStorageError"
+  />
+  <p v-if="error" role="alert">{{ error }}</p>
+</template>
+```
+
+:::
+
+| 配置      | 说明                                                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------- |
+| `key`     | 必填业务表格标识；个人偏好建议拼接租户和用户 ID，例如 `orders:tenant-1:user-2`。实际存储键带 `mx-table:` 前缀。 |
+| `version` | 默认 `1`；版本不匹配时忽略旧配置。列 ID 重命名等不兼容变更应升级版本。                                          |
+| `storage` | 默认 `'local'`，可选 `'session'`，或实现同步 `getItem/setItem/removeItem` 的适配器。                            |
+
+- 外部提供的 `columnOrder`、`columnVisibility`、`columnWidths` 分别优先于对应缓存；省略它们才能自动恢复该项。需要双向控制时使用对应的 `v-model`。
+- 未指定 `id` 时使用 `field`。相同字段展示成多列时，每列必须提供不同 `id`。`columnProps.key` 由稳定列 ID 接管。
+- 新列按源配置追加，删除的列不会重新出现；异步加载列配置时等待列到达后恢复。保留的列 ID 不随标题翻译而改变。
+- 仅“确定”提交草稿；“取消”和关闭弹窗不保存。“重置”先重置草稿，确认后恢复源列配置并删除缓存；重置后又修改则按最终草稿保存。
+- 修改 `persistence.key` 会切换偏好空间。浏览器存储不可用、缓存损坏、配额不足时表格仍可使用，并触发 `persistenceError`。
+- SSR 在挂载后读取浏览器存储。当前不提供跨标签页实时同步或异步远程存储；远程同步可由受控状态和 `columnSettingChange` 对接。
+
+## 请求、刷新与分页契约
+
+使用 `query` 前，宿主应用需要安装 `VueQueryPlugin` 和独立的 `QueryClient`。`query` 接收展开后的 `params`、`currentPage`、`pageSize`，返回 `{ data, total }`，错误应通过抛出异常或 rejected Promise 上报。
+
+```ts
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+
+app.use(VueQueryPlugin, { queryClient: new QueryClient() })
+```
+
+默认缓存按组件实例隔离；只有显式设置相同 `cacheKey` 的实例才共享缓存。共享时必须确保 query、参数和返回结构代表同一资源。缓存键应在实例生命周期内保持稳定；业务查询条件通过响应式 `params` 传入。
+
+加载时显示状态并暂时禁止翻页；刷新失败会保留旧数据并显示提示，可点击“重试”，也可通过组件 ref 调用 `reload()`。`error` 是请求失败，`persistenceError` 是偏好存储失败，二者互不替代。
+
+`query` 模式默认显示分页。静态 `data` 模式不会自动切片：`pagination=true` 只显示分页栏，调用方根据 `pageChange` 提供当前页数据，或使用 `useHeadlessTable` 做客户端分页。`pagination=false` 隐藏分页栏，不会移除 query 的分页参数。
+
+## 事件、插槽与实例方法
+
+| 接口                                               | 用途                                                                        |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| `update:columnOrder/columnVisibility/columnWidths` | 对应列设置的双向绑定更新。                                                  |
+| `columnSettingChange`                              | 一次确认后的完整列设置，包含三个状态字段；不包含业务列定义。                |
+| `loaded` / `error`                                 | 请求结果 `{ data, total }` / 请求异常。                                     |
+| `pageChange`                                       | `{ currentPage, pageSize }`；查询参数或页大小改变时默认回第一页。           |
+| `cellClick` / `cellDblClick`                       | 行、列、原值、源列索引和可见列索引；`columnIndex` 保持源索引语义。          |
+| `modeChange`                                       | 表格、行或单元格渲染模式变化。                                              |
+| `empty`                                            | 空数据展示；也可使用 `slots.empty` 渲染函数，后者优先。                     |
+| 列内 `slots.header/default/edit`                   | 具名插槽或渲染函数；`edit` 仅在编辑模式优先使用。                           |
+| `reload()`                                         | 重新请求当前参数；静态数据模式无操作。                                      |
+| `resetColumnSettings()`                            | 立即清除列偏好并恢复源默认值，同时发出列设置更新。                          |
+| `setMode/setRowMode/setCellMode` 等                | 复用 HeadlessTable 模式 API；行/单元格操作需要稳定 `rowKey` 或 `getRowId`。 |
+
+编辑模式只切换渲染方式，不负责业务保存、校验或回滚。建议在业务层维护编辑草稿，保存成功后再替换行数据。`field` 在 ConfigTable 中按对象直接字段读取；嵌套取值或计算值可通过 formatter/slot 处理，或使用 HeadlessTable 的 accessor。

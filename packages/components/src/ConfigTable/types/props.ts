@@ -4,6 +4,7 @@ import type {
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
   HeadlessTableMode,
+  HeadlessTablePersistence,
   HeadlessTableRendererMap,
   HeadlessTableRendererRegistry,
   HeadlessTableRowKey,
@@ -43,6 +44,8 @@ export interface ConfigTableProps {
   columnVisibility?: HeadlessTableColumnVisibilityState
   /** 受控列宽，按 column.id 或 field 映射到像素值。 */
   columnWidths?: ConfigTableColumnWidthState
+  /** Opt-in column order, visibility and width persistence; independent of pane. */
+  persistence?: HeadlessTablePersistence | false
   /** 内置列配置面板，可调整列宽、顺序和显隐。 */
   pane?: boolean | ConfigTablePaneConfig
   /** @deprecated Use pane instead. */

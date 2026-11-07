@@ -73,14 +73,37 @@ import { CopyText } from '@moluoxixi/components'
 ```vue
 <script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
+import { ElTooltip } from 'element-plus'
 </script>
 
 <template>
   <div style="display:flex;gap:16px;">
     <CopyText text="Available" />
-    <CopyText text="Disabled" :disabled="true" />
+    <ElTooltip content="Copying is disabled in this example. Enable the control to copy.">
+      <span>
+        <CopyText text="Disabled" :disabled="true" />
+      </span>
+    </ElTooltip>
   </div>
 </template>
 ```
 
 :::
+
+## State, events and methods
+
+| Interface                         | Behavior                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `text`                            | Required plain text written to the clipboard. Custom display content does not change it.                   |
+| `disabled`                        | Defaults to false. Explain business restrictions and recovery conditions in an outer tooltip.              |
+| `resetDelay`                      | Defaults to 2000ms. Zero retains success state until the next command or manual reset.                     |
+| `copyLabel` / `copiedLabel`       | Accessible button names/tooltips, defaulting to “复制” / “已复制”.                                         |
+| `copy` / `error` events           | Successful text / Error.                                                                                   |
+| `copy(text?)` / `reset()` methods | Available on a component ref. Catch the Promise returned by copy; reset only clears feedback.              |
+| Default / `icon` slots            | Default receives text; icon receives copied, copying, error, copy, reset and the remaining headless state. |
+
+## Errors and usage boundaries
+
+Clipboard access depends on browser security, permissions and a user gesture. Do not copy automatically on mount. The built-in button catches rejection and emits error; handle `@error` for application feedback. Calls through a ref still need a catch handler. Empty text is a valid clipboard value.
+
+Preserve an accessible name when replacing icons. Explain pending copies and prevent repeated commands. Use HeadlessCopyText when the default visual layout does not fit your application.

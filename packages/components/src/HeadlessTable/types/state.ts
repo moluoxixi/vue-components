@@ -1,4 +1,5 @@
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import type { HeadlessTableColumnWidthsState, HeadlessTablePersistence, HeadlessTablePersistenceError } from './preferences'
 import type { HeadlessTableColumn, HeadlessTableRow, HeadlessTableRowKey } from './table'
 
 export type HeadlessTableSortDirection = 'asc' | 'desc'
@@ -25,6 +26,7 @@ export interface HeadlessTableControlledState {
   selectedKeys: Ref<HeadlessTableRowKey[]>
   columnVisibility: Ref<HeadlessTableColumnVisibilityState>
   columnOrder: Ref<HeadlessTableColumnOrderState>
+  columnWidths: Ref<HeadlessTableColumnWidthsState>
 }
 
 export interface HeadlessTableInitialState {
@@ -34,6 +36,7 @@ export interface HeadlessTableInitialState {
   selectedKeys?: HeadlessTableRowKey[]
   columnVisibility?: HeadlessTableColumnVisibilityState
   columnOrder?: HeadlessTableColumnOrderState
+  columnWidths?: HeadlessTableColumnWidthsState
 }
 
 export interface UseHeadlessTableOptions<TRow extends HeadlessTableRow = HeadlessTableRow> {
@@ -42,6 +45,8 @@ export interface UseHeadlessTableOptions<TRow extends HeadlessTableRow = Headles
   getRowId: (row: TRow, rowIndex: number) => HeadlessTableRowKey
   state?: Partial<HeadlessTableControlledState>
   initialState?: HeadlessTableInitialState
+  persistence?: MaybeRefOrGetter<HeadlessTablePersistence | false | undefined>
+  onPersistenceError?: (event: HeadlessTablePersistenceError) => void
   manualFiltering?: boolean
   manualSorting?: boolean
   manualPagination?: boolean
@@ -74,5 +79,7 @@ export interface UseHeadlessTableReturn<TRow extends HeadlessTableRow = Headless
   setColumnVisible: (columnId: string, visible: boolean) => void
   toggleColumnVisible: (columnId: string) => void
   setColumnOrder: (columnIds: string[]) => void
+  setColumnWidth: (columnId: string, width: number) => void
+  resetColumnSettings: () => void
   reset: () => void
 }

@@ -3,6 +3,7 @@ import type {
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
   HeadlessTableModeChange,
+  HeadlessTablePersistenceError,
 } from '../../HeadlessTable'
 import type { ConfigTablePageChangeParams } from './pagination'
 import type {
@@ -17,6 +18,7 @@ export interface ConfigTableEmits {
   (event: 'cellDblClick', params: ConfigTableCellParams): void
   (event: 'loaded', result: RequestTableResult<ConfigTableRow>): void
   (event: 'error', error: Error): void
+  (event: 'persistenceError', detail: HeadlessTablePersistenceError): void
   (event: 'pageChange', params: ConfigTablePageChangeParams): void
   (event: 'modeChange', change: HeadlessTableModeChange): void
   (event: 'update:columnOrder', value: HeadlessTableColumnOrderState): void

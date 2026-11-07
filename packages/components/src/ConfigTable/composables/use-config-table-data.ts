@@ -52,6 +52,10 @@ export function useConfigTableData(
       return '加载失败'
     return props.emptyText ?? '暂无数据'
   })
+  const requestError = computed(() => requestTable?.error.value ?? null)
+  async function reload(): Promise<void> {
+    await requestTable?.refetch()
+  }
 
   const shouldShowPagination = computed<boolean>(() => {
     return props.pagination !== false && (Boolean(props.pagination) || Boolean(requestTable))
@@ -83,6 +87,9 @@ export function useConfigTableData(
     handlePageSizeUpdate,
     paginationProps,
     requestTable,
+    requestLoading,
+    requestError,
+    reload,
     requestTotal,
     shouldShowPagination,
     tableData,

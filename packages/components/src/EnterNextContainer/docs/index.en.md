@@ -48,3 +48,21 @@ import { ElInput } from 'element-plus'
 ```
 
 :::
+
+## Focus and event contract
+
+| Interface                | Description                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Default slot             | The input region to observe.                                                                                 |
+| `virtualRef`             | Optional external DOM/Vue component reference; replaces the slot container as the observed region.           |
+| `focusNum`               | Initial one-based focus position. Omit it to avoid taking focus on mount.                                    |
+| `autoNext`               | Defaults to true; initial focus counts enabled controls only. False counts all candidates for initial focus. |
+| `allowSelectNextInEmpty` | Defaults to false; an expanded select without an active option pauses navigation.                            |
+| `noNextInput(element)`   | The last enabled input; the application may submit, notify or append a row.                                  |
+| `noSelectValue(element)` | An expanded dropdown needs a selection first.                                                                |
+
+The component observes input/select/textarea elements and moves focus in DOM order on Enter keyup. MutationObserver refreshes dynamic controls; switching virtualRef or unmounting cleans up listeners. It does not submit or validate forms.
+
+## Integration boundaries
+
+Wrap a focused entry region instead of an entire page. Disabled controls are skipped during navigation; verify hidden/read-only control ordering in the application. Textareas are candidates too, so exclude regions where Enter must insert a newline. Dropdown behavior relies on aria-expanded / aria-activedescendant and needs verification when adapting another UI library.

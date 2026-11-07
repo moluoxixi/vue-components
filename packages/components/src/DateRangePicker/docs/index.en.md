@@ -102,3 +102,46 @@ const range = ref<string[]>([])
 ```
 
 :::
+
+## Values, formats and initialization
+
+| Option                                | Contract                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `v-model`                             | Scalar or range input; output is always a string or string array.                                |
+| `format`                              | Display format only.                                                                             |
+| `valueFormat`                         | Input string parsing format; defaults to `YYYY-MM-DD HH:mm:ss`.                                  |
+| `outputFormat`                        | Output format, optionally different for range endpoints. Use `YYYY-MM-DD` for date-only results. |
+| `defaultToday`                        | Defaults to true. Set false for an initially empty form.                                         |
+| `dateRange`                           | Initial relative offsets, preferred over defaultToday; does not restrict selectable dates.       |
+| `dateRangeType` / `dateRangeBaseDate` | Offset unit/base, defaulting to day/current date.                                                |
+
+Date mode defaults to start-of-day `00:00:00` and end-of-day `23:59:59`; datetime mode preserves selected time. `change` and `update:modelValue` use the same output format. Existing values win over initialization; define any business refill policy explicitly.
+
+## Boundaries and forwarding
+
+`disabledDateRange=[min,max]` overrides minDate/maxDate. `datetimeDisableTypes` selects hour/minute/second boundary restrictions. shortcuts=true uses built-in shortcuts; an array supplies custom entries. Validate final ranges again when submitting business data.
+
+Undeclared attributes such as clearable, editable and disabled are forwarded to ElDatePicker. There is no custom slot API. Explain disabled controls with an outer tooltip. Dates use local semantics; this component performs no timezone conversion.
+
+:::demo Configure empty initialization, date-only output and selectable bounds independently.
+
+```vue
+<script setup lang="ts">
+import { DateRangePicker } from '@moluoxixi/components'
+import { ref } from 'vue'
+const range = ref<string[]>([])
+</script>
+<template>
+  <DateRangePicker
+    v-model="range"
+    type="daterange"
+    :default-today="false"
+    value-format="YYYY-MM-DD"
+    output-format="YYYY-MM-DD"
+    :disabled-date-range="['2026-01-01', '2026-12-31']"
+  />
+  <p>{{ range }}</p>
+</template>
+```
+
+:::

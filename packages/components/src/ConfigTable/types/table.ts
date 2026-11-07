@@ -4,12 +4,13 @@ import type {
   HeadlessTableCellModeActions,
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
+  HeadlessTableColumnWidthsState,
   HeadlessTableMode,
   HeadlessTableRendererConfig,
 } from '../../HeadlessTable'
 
 export type ConfigTableRow = Record<string, any>
-export type ConfigTableColumnWidthState = Record<string, number>
+export type ConfigTableColumnWidthState = HeadlessTableColumnWidthsState
 
 export interface ConfigTableColumn {
   /** 稳定列标识，用于列排序与显示隐藏；默认使用 field。 */

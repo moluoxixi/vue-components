@@ -42,6 +42,11 @@ export function getConfigTableColumnWidth(
   columnWidths: ConfigTableColumnWidthState = {},
   options: ConfigTableColumnWidthOptions,
 ): number {
+  const minWidth = Math.max(
+    parseConfigTableColumnWidth(options.minColumnWidth) ?? 0,
+    getConfigTableColumnMinWidth(column) ?? 0,
+  )
+  const bounds = { ...options, minColumnWidth: minWidth || undefined }
   const columnId = getConfigTableColumnId(column, columnIndex)
   const candidates: unknown[] = [
     columnWidths[columnId],
@@ -55,8 +60,8 @@ export function getConfigTableColumnWidth(
   for (const candidate of candidates) {
     const width = parseConfigTableColumnWidth(candidate)
     if (width != null)
-      return clampColumnWidth(width, options)
+      return clampColumnWidth(width, bounds)
   }
 
-  return clampColumnWidth(160, options)
+  return clampColumnWidth(160, bounds)
 }

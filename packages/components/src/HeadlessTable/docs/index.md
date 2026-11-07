@@ -234,7 +234,7 @@ function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'des
 </script>
 
 <template>
-  <div style="display:flex;gap:8px;margin-bottom:10px;">
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
     <ElInput
       :model-value="filterValue"
       placeholder="搜索商品"
@@ -260,7 +260,7 @@ function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'des
     :page-size="table.pagination.value.pageSize"
     :total="table.total.value"
     layout="prev,pager,next"
-    style="margin-top:10px;"
+    style="margin-top:16px;"
     @current-change="table.setPage"
   />
 </template>
@@ -271,3 +271,49 @@ function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'des
 ## useHeadlessTable
 
 `useHeadlessTable(options)` 返回响应式的 `rows`、`filteredRows`、`total`、`pageCount`、`pagination`、`sorting` 和 `selectedKeys`，并提供 `setPage`、`setPageSize`、`toggleSorting`、`setFilter`、`resetFilters`、`toggleRowSelected`、`setSelectedKeys`、`clearSelection` 与 `reset` 等操作方法。完整类型以包内导出的 `UseHeadlessTableReturn` 为准。
+
+## 列宽与偏好持久化
+
+`HeadlessTable` 负责渲染协议；状态和持久化由可独立使用的 `useHeadlessTable` 提供。下面使用同一份列 ID 把列宽状态传给 Element Plus adapter。
+
+```ts
+const table = useHeadlessTable({
+  columns,
+  data: rows,
+  getRowId: row => row.id,
+  persistence: { key: 'products:tenant-1:user-2', version: 1, storage: 'local' },
+  onPersistenceError: detail => console.error(detail.operation, detail.error),
+})
+
+table.setColumnWidth('name', 240)
+// Adapter: width = table.columnWidths.value[columnId] ?? column.width
+// Restore source/default preferences and clear storage:
+table.resetColumnSettings()
+```
+
+- `columnWidths` 是按列 ID 索引的像素数值；`setColumnWidth(id, width)` 拒绝非有限值和非正数。适配器负责实际渲染及拖动交互。
+- `initialState.columnWidths` 设置默认宽度状态，`state.columnWidths` 接收外部 Ref；外部受控状态优先于缓存。显隐与顺序遵循同样规则。
+- `persistence` 支持响应式配置、local/session 存储及同步适配器，列增删、版本和异常行为与 ConfigTable 相同。SSR 在 mounted 后读取。
+- `resetColumnSettings()` 只重置三项列状态；`reset()` 还恢复排序、筛选、分页和选择。列偏好存储不包含行数据、筛选条件或选中行。
+
+## 服务端模式与选择
+
+| 选项或状态                                               | 契约                                                             |
+| -------------------------------------------------------- | ---------------------------------------------------------------- |
+| `manualFiltering` / `manualSorting` / `manualPagination` | 仍维护状态，但跳过对应的本地数据处理；远程模式通常三项同时启用。 |
+| `total`                                                  | 服务端总数；不要用当前页行数代替。                               |
+| `getRowId`                                               | 必填稳定行标识；不要用会随排序、过滤变化的数组下标。             |
+| `selectedKeys`                                           | 只保存 ID，跨页保留；数据删除后由业务决定是否清理。              |
+| `setSelectedKeys` / `clearSelection`                     | 批量设置或清空选择；全选范围由 adapter/业务决定。                |
+| `setFilter(id, undefined)`                               | 移除一项筛选；`resetFilters()` 恢复初始筛选快照。                |
+| `setSorting` / `toggleSorting`                           | 支持多列排序；排序、筛选变化会回到第一页。                       |
+
+客户端数据流是 `allRows → filteredRows → sortedRows → rows`。分页初始值和外部更新都会归一化，并收敛到有效页码；远程加载时应保留上次有效 total，避免临时清零导致页码回退。
+
+## 渲染、事件与边界
+
+列值解析为 `accessor → accessorKey → field`，后两者支持点路径。计算列和展示列应提供稳定 `id`。渲染优先级为列 slot、命名 renderer、formatter、原值；编辑模式先尝试 `slots.edit`。slot/renderer 接收的 `value` 与 `rawValue` 都是原值。
+
+默认插槽提供 `Cell`、`Header`、`Empty`、列与数据及解析辅助方法。adapter 必须显式传入 `columnIndex`。`empty` 插槽自定义空态；`modeChange` 通知模式更新。HeadlessTable 不创建 table DOM，也不自动渲染 loading、排序按钮、分页或选择控件。
+
+renderer 可按单表、registry、应用注入和全局依次解析。SSR/多应用建议使用 `createHeadlessTableRendererPlugin` 创建隔离 registry。完整渲染协议和注册示例见组件随包 README。

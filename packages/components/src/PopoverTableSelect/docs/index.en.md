@@ -60,3 +60,31 @@ function handleSelect(row: WarehouseRow): void {
 ```
 
 :::
+
+## Input and selection contract
+
+| Interface                    | Behavior                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| `v-model:inputValue`         | Display text; keep the selected object/business ID separately.                |
+| `popType`                    | default uses an external trigger; input uses a built-in input.                |
+| `virtualRef` / default slot  | External anchor or custom trigger region.                                     |
+| `columns` / `data`           | Columns and current rows, with named header/cell slots.                       |
+| `selectTrigger`              | click, dblclick or none for mouse selection.                                  |
+| `select(row)` / `enter(row)` | Full selected/keyboard-confirmed row; update both text and business identity. |
+| `input(value)` / `clear`     | Input change / clear; clear the business selection too.                       |
+| `focus` / `blur`             | Input focus events.                                                           |
+| `footer`                     | Custom popover footer.                                                        |
+
+Cell slots receive row, column, rowIndex, columnIndex and value. Header slots omit row/rowIndex/value. The default slot is the trigger region, not a row renderer.
+
+## Remote pagination and loading more
+
+query receives flattened params, currentPage and pageSize, and returns `{ data, total }`. Install VueQueryPlugin first. Default caches are instance-isolated; an explicit cacheKey can share the same resource. Bind currentPage/pageSize and handle pageChange for page parameters. Changing params resets the page by default.
+
+Input does not automatically become a query parameter: map inputValue into business params. debounce/throttle can schedule input processing; avoid conflicting strategies. loaded/error report request results/failures; provide visible application error feedback.
+
+enableLoadMore with hasMore/loading controls bottom-boundary notifications. loadMore only signals demand; the application appends/deduplicates rows and updates hasMore. Choose an explicit pagination or infinite-loading merge strategy; this wrapper does not merge all remote pages automatically.
+
+## Display, clearing and disabled input
+
+Display text is separate from the business ID. Prepare existing labels for edit forms and clear stale IDs when input, upstream conditions or selection changes. Use inputProps.disabled for the built-in input and explain the reason/recovery condition in an outer tooltip. width="auto" follows the anchor; verify fixed heights and column widths against available popover space.

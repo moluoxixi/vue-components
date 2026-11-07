@@ -13,8 +13,9 @@ import type {
   ConfigTableRowClassParams,
 } from '../types'
 import { computed, ref, watch } from 'vue'
-import { projectHeadlessTableColumns } from '#components/HeadlessTable'
+import { normalizeHeadlessTableColumnPreferences, projectHeadlessTableColumns, useHeadlessTableColumnPreferences } from '#components/HeadlessTable'
 import {
+  getConfigTableColumnId,
   getConfigTableColumnMinWidth,
   getConfigTableColumnWidth,
 } from '../utils'
@@ -38,6 +39,23 @@ export function useConfigTableColumns(
   const columnOrderState = ref<string[]>([...(props.columnOrder ?? [])])
   const columnVisibilityState = ref<Record<string, boolean>>({ ...(props.columnVisibility ?? {}) })
   const columnWidthsState = ref<ConfigTableColumnWidthState>({ ...(props.columnWidths ?? {}) })
+  const { resetColumnSettings: resetPreferences } = useHeadlessTableColumnPreferences({
+    columnIds: () => (props.columns ?? []).map(getConfigTableColumnId),
+    state: { columnOrder: columnOrderState, columnVisibility: columnVisibilityState, columnWidths: columnWidthsState },
+    controlled: () => ({
+      columnOrder: props.columnOrder !== undefined,
+      columnVisibility: props.columnVisibility !== undefined,
+      columnWidths: props.columnWidths !== undefined,
+    }),
+    persistence: () => props.persistence,
+    onPersistenceError: event => emit('persistenceError', event),
+  })
+
+  watch(() => (props.columns ?? []).map(getConfigTableColumnId).join('\u0000'), () => {
+    const ids = (props.columns ?? []).map(getConfigTableColumnId)
+    if (import.meta.env.DEV && props.diagnostics !== false && new Set(ids).size !== ids.length)
+      console.warn('[ConfigTable] Duplicate column identity. Supply a unique id for every column, including columns sharing a field.')
+  }, { immediate: true })
 
   const paneOption = computed(() => props.pane ?? props.columnConfig ?? false)
 
@@ -93,7 +111,7 @@ export function useConfigTableColumns(
         configColumnIndex: sourceIndex,
         columnId,
         dataKey: columnProps.dataKey ?? column.field,
-        key: columnProps.key ?? column.field,
+        key: columnId,
         minWidth: getConfigTableColumnMinWidth(column),
         title: getConfigTableColumnLabel(column),
         width: getConfigTableColumnWidth(
@@ -147,7 +165,24 @@ export function useConfigTableColumns(
     return (column as ConfigTableVirtualColumn).visibleColumnIndex ?? columnIndex
   }
 
-  function applyColumnSettings(value: ConfigTableColumnSettingChange): void {
+  function applyColumnSettings(next: ConfigTableColumnSettingChange, reset = false): void {
+    const value = normalizeHeadlessTableColumnPreferences(next, (props.columns ?? []).map(getConfigTableColumnId))
+    for (const [index, column] of (props.columns ?? []).entries()) {
+      const id = getConfigTableColumnId(column, index)
+      if (Object.hasOwn(value.columnWidths, id)) {
+        value.columnWidths[id] = getConfigTableColumnWidth(column, index, value.columnWidths, {
+          defaultColumnWidth: props.defaultColumnWidth ?? 160,
+          minColumnWidth: normalizedPaneConfig.value.minColumnWidth,
+          maxColumnWidth: normalizedPaneConfig.value.maxColumnWidth,
+        })
+      }
+    }
+    if (reset) {
+      resetPreferences()
+      value.columnOrder = []
+      value.columnVisibility = {}
+      value.columnWidths = {}
+    }
     columnOrderState.value = [...value.columnOrder]
     columnVisibilityState.value = { ...value.columnVisibility }
     columnWidthsState.value = { ...value.columnWidths }
@@ -159,6 +194,10 @@ export function useConfigTableColumns(
       columnVisibility: { ...value.columnVisibility },
       columnWidths: { ...value.columnWidths },
     })
+  }
+
+  function resetColumnSettings(): void {
+    applyColumnSettings({ columnOrder: [], columnVisibility: {}, columnWidths: {} }, true)
   }
 
   function resolveRowClass(params: {
@@ -188,6 +227,7 @@ export function useConfigTableColumns(
 
   return {
     applyColumnSettings,
+    resetColumnSettings,
     paneEnabled,
     columnOrderState,
     columnVisibilityState,

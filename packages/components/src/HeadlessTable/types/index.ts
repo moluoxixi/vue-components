@@ -1,5 +1,6 @@
 export type * from './emits'
 export type * from './mode'
+export type * from './preferences'
 export type * from './props'
 export type * from './renderer'
 export type * from './slots'

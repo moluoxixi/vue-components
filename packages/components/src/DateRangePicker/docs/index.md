@@ -102,3 +102,46 @@ const range = ref<string[]>([])
 ```
 
 :::
+
+## 输入、输出与初始化
+
+| 配置                                  | 契约                                                                |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `v-model`                             | 单值或范围数组；输出统一为字符串或字符串数组。                      |
+| `format`                              | 输入框展示格式，不决定提交给业务的格式。                            |
+| `valueFormat`                         | 外部字符串的解析格式，默认 `YYYY-MM-DD HH:mm:ss`。                  |
+| `outputFormat`                        | 输出格式；范围可分别指定起止格式。只需要日期时显式传 `YYYY-MM-DD`。 |
+| `defaultToday`                        | 默认 true；首次无值时初始化今天。需要空表单时设为 false。           |
+| `dateRange`                           | 初次无值时的相对偏移，优先于 defaultToday；不是可选日期边界。       |
+| `dateRangeType` / `dateRangeBaseDate` | 偏移单位与基准日期，默认 day / 当前日期。                           |
+
+日期模式默认输出起始日 `00:00:00` 和结束日 `23:59:59`；日期时间模式保留实际时分秒。`change` 和 `update:modelValue` 使用相同输出格式。已有外部值优先于默认初始化；清空后的回填策略应由业务显式决定。
+
+## 可选边界与透传
+
+`disabledDateRange=[min,max]` 优先于 minDate/maxDate。日期时间模式可用 `datetimeDisableTypes` 控制时、分、秒边界。shortcuts=true 使用默认快捷项；数组提供自定义快捷项。业务仍应在提交时校验最终区间。
+
+未声明属性透传到 ElDatePicker，例如 clearable、editable、disabled；当前没有自定义 slot API。禁用整个控件时，应使用外层 tooltip 说明原因。该组件按本地日期语义处理，不执行时区转换。
+
+:::demo 空初始化、日期输出与可选边界分开配置。
+
+```vue
+<script setup lang="ts">
+import { DateRangePicker } from '@moluoxixi/components'
+import { ref } from 'vue'
+const range = ref<string[]>([])
+</script>
+<template>
+  <DateRangePicker
+    v-model="range"
+    type="daterange"
+    :default-today="false"
+    value-format="YYYY-MM-DD"
+    output-format="YYYY-MM-DD"
+    :disabled-date-range="['2026-01-01', '2026-12-31']"
+  />
+  <p>{{ range }}</p>
+</template>
+```
+
+:::
