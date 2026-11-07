@@ -251,7 +251,7 @@
 }
 
 @media (max-width: 720px) {
-  .workbench-app {
+  .workbench-app:has(> .mobile-studio-dock) {
     grid-template-rows: 48px minmax(0, 1fr) 54px;
   }
   .mobile-studio-dock {

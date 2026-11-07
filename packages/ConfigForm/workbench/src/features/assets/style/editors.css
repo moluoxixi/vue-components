@@ -299,7 +299,7 @@
   flex: none;
   color: var(--wb-muted);
 }
-@container (max-width: 620px) {
+@container (max-width: 720px) {
   .dataset-table-toolbar .el-popover__reference {
     width: 30px;
     flex: none;
@@ -310,6 +310,8 @@
     flex: none;
     padding: 0;
   }
+}
+@container (max-width: 620px) {
   .dataset-table-toolbar .dataset-table-help {
     display: none;
   }
@@ -803,7 +805,7 @@
   }
 }
 
-@container (max-width: 620px) {
+@container (max-width: 720px) {
   .dataset-table-toolbar {
     flex-wrap: nowrap;
     gap: 6px;
@@ -841,6 +843,9 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 6px 4px;
+  }
+  .dataset-table-footer:not(:has(.dataset-table-pagination, .dataset-table-status)) {
+    display: flex;
   }
   .dataset-table-range {
     grid-column: 1 / 3;

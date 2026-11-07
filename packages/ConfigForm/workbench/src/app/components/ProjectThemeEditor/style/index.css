@@ -74,7 +74,7 @@
 .project-theme-groups {
   display: grid;
   min-width: 0;
-  gap: 24px;
+  gap: 20px;
 }
 
 .project-theme-group h3 {
@@ -102,8 +102,8 @@
 .project-theme-color {
   display: flex;
   min-width: 0;
-  min-height: 56px;
-  padding: 8px 0;
+  min-height: 42px;
+  padding: 4px 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -111,14 +111,18 @@
 }
 
 .project-theme-color-copy {
-  display: grid;
+  display: flex;
   min-width: 0;
-  gap: 4px;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 12px;
   line-height: 1.35;
 }
 
 .project-theme-color-copy code {
+  min-width: 0;
   overflow: hidden;
   color: var(--wb-muted);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -126,6 +130,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.project-theme-color-copy > span { flex-shrink: 0; }
 
 .project-theme-editor .el-color-picker {
   flex: none;

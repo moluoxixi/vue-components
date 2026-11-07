@@ -697,7 +697,7 @@ watch(
     </section>
 
     <nav
-      v-if="currentProject"
+      v-if="currentProject && !previewOpen && !exportPreviewMode"
       ref="mobileDock"
       class="mobile-studio-dock"
       role="tablist"

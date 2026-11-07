@@ -81,7 +81,7 @@ test('keeps long version content scrollable and restoration reachable on desktop
 })
 
 for (const locale of ['en-US', 'zh-CN'] as const) {
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 540 }, { width: 1024, height: 600 }, { width: 320, height: 568 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 540 }, { width: 1024, height: 600 }, { width: 667, height: 827 }, { width: 320, height: 568 }]) {
     test(`${locale} management keeps content, navigation and save actions reachable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       test.setTimeout(90_000)
       const labels = copy[locale]
@@ -114,7 +114,7 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       const headerSize = await compactHeader.boundingBox()
       expect(headerSize!.height).toBeLessThanOrEqual(viewport.width > 700 ? 48 : 80)
       const pageList = await page.locator('.page-manager__table').boundingBox()
-      expect(pageList!.y).toBeLessThanOrEqual(viewport.width > 700 ? 230 : 310)
+      expect(pageList!.y).toBeLessThanOrEqual(viewport.width > 1000 ? 180 : 260)
       expect(pageList!.height).toBeGreaterThan(viewport.height * (viewport.width > 700 ? 0.55 : 0.45))
       await page.locator('.page-manager__table').focus()
       await page.keyboard.press('End')
@@ -134,10 +134,15 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       await expectFitsViewport(save)
       await expect(save).toBeDisabled()
       const tableBounds = await page.locator('[data-asset-dataset-table]').boundingBox()
-      // Preserve a usable scroll area after the editor title, view tabs and tools.
-      // The former fixed Y offset assumed those controls shared one compact strip.
+      // The table keeps the remaining height; its header never pushes saving off screen.
       expect(tableBounds!.height).toBeGreaterThanOrEqual(viewport.width > 700 ? 144 : 112)
       const editorHeader = await page.locator('.asset-manager__editor-header').boundingBox()
+      expect(editorHeader!.height).toBeLessThanOrEqual(60)
+      const nameBounds = (await page.locator('.asset-manager__editor-title').boundingBox())!
+      const statusBounds = (await page.locator('.asset-manager__save-state').boundingBox())!
+      const actionsBounds = (await page.locator('.asset-manager__editor-actions').boundingBox())!
+      for (const bounds of [statusBounds, actionsBounds])
+        expect(Math.abs(bounds.y + bounds.height / 2 - nameBounds.y - nameBounds.height / 2)).toBeLessThanOrEqual(1)
       const viewTabs = await page.locator('.asset-manager__tabs > .el-tabs__header').boundingBox()
       expect(viewTabs!.y - (editorHeader!.y + editorHeader!.height)).toBeGreaterThanOrEqual(16)
       await expectSingleTableScroll(page)
@@ -161,7 +166,7 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       await expectFitsViewport(page.getByRole('button', { name: labels.export, exact: true }))
       if (viewport.width > 700)
         await expectFitsViewport(page.getByRole('button', { name: labels.help, exact: true }))
-      if (viewport.width <= 700)
+      if (await page.locator('[data-asset-dataset-table]').getAttribute('data-view') === 'records')
         await page.getByRole('button', { name: locale === 'zh-CN' ? '表格视图' : 'Table view', exact: true }).click()
       await page.getByRole('button', { name: '1 / id', exact: true }).click()
       await expect(page.locator('[data-dataset-cell-detail]')).toBeVisible()
@@ -215,7 +220,16 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       await page.getByRole('link', { name: labels.templates, exact: true }).click()
       await expect(page.locator('.template-card')).toHaveCount(12)
       const templates = await page.locator('.template-manager__grid').boundingBox()
-      expect(templates!.y).toBeLessThanOrEqual(viewport.width > 700 ? 250 : 330)
+      expect(templates!.y).toBeLessThanOrEqual(viewport.width >= 1200 ? 210 : viewport.width > 700 ? 250 : 330)
+      const templateSearch = page.locator('.template-manager').getByRole('searchbox')
+      await templateSearch.fill('profile')
+      const clearFilters = page.locator('.template-manager__controls').getByRole('button', { name: locale === 'zh-CN' ? '清除筛选' : 'Clear filters', exact: true })
+      await expectFitsViewport(clearFilters)
+      await expectFitsViewport(templateSearch)
+      for (const filter of await page.locator('.template-manager__filters').getByRole('combobox').all())
+        await expectFitsViewport(filter)
+      await clearFilters.click()
+      await expect(page.locator('.template-card')).toHaveCount(12)
       const lastTemplateAction = page.locator('.template-card__edit').last()
       await lastTemplateAction.focus()
       await expectFitsViewport(lastTemplateAction)
@@ -452,6 +466,12 @@ test('focuses the canvas, restores panels and uses the full workspace for experi
   await expect(preview.locator('.experience-inspector')).toHaveCount(0)
   await preview.getByRole('button', { name: 'Experience state', exact: true }).click()
   await expect(preview.locator('.experience-inspector')).toBeVisible()
+  await expectNoPageOverflow(page)
+  await page.setViewportSize({ width: 320, height: 568 })
+  await expect(page.getByRole('tablist', { name: 'Designer navigation', exact: true })).not.toBeVisible()
+  expect((await preview.boundingBox())!.height).toBeGreaterThan(500)
+  await page.getByRole('button', { name: 'Design', exact: true }).click()
+  await expect(page.getByRole('tablist', { name: 'Designer navigation', exact: true })).toBeVisible()
   await expectNoPageOverflow(page)
 })
 

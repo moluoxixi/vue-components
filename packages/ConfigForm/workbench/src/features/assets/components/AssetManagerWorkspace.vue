@@ -123,10 +123,6 @@ const assetQuery = ref('')
 const matchingDatasets = computed(() => datasets.value.filter(dataset => !assetQuery.value.trim() || dataset.name.toLocaleLowerCase().includes(assetQuery.value.trim().toLocaleLowerCase())))
 const matchingResources = computed(() => resources.value.filter(resource => !assetQuery.value.trim() || `${resource.name} ${resource.kind}`.toLocaleLowerCase().includes(assetQuery.value.trim().toLocaleLowerCase())))
 const totalAssets = computed(() => datasets.value.length + resources.value.length)
-const selectedAssetLabel = computed(() => kind.value === 'dataset'
-  ? locale.value.t('assets.dataset', 'Dataset')
-  : locale.value.t('assets.resource', 'Resource'),
-)
 
 watch(
   [() => props.initialId, () => props.initialKind, () => props.active],
@@ -865,18 +861,19 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           data-asset-dataset-editor
         >
           <header class="asset-manager__editor-header">
-            <div class="asset-manager__editor-meta">
-              <Database :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span>
-              <span class="asset-manager__save-state" :class="{ 'is-dirty': datasetDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(datasetDirty) }}</span>
-            </div>
             <div class="asset-manager__editor-title">
               <ElInput
                 ref="dataset-name"
                 v-model="datasetName"
                 :aria-label="locale.t('assets.datasetName', 'Dataset name')"
                 @change="renameDataset"
-              />
+              >
+                <template #prefix>
+                  <Database :size="15" aria-hidden="true" />
+                </template>
+              </ElInput>
             </div>
+            <span class="asset-manager__save-state" :class="{ 'is-dirty': datasetDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(datasetDirty) }}</span>
             <div class="asset-manager__editor-actions">
               <WorkbenchCommandHint detached :label="locale.t('assets.export', 'Export')" :disabled-reason="busyReason || ((datasetDirty || saveFailed) ? locale.t('data.saveBeforeExport', 'Save or discard draft changes before exporting.') : undefined)">
                 <ElButton data-asset-dataset-export :disabled="datasetDirty || saveFailed || persisting" :aria-label="locale.t('assets.export', 'Export')" @click="exportDataset">
@@ -973,17 +970,18 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           data-asset-resource-editor
         >
           <header class="asset-manager__editor-header">
-            <div class="asset-manager__editor-meta">
-              <Link2 v-if="selectedResource.kind === 'url'" :size="14" aria-hidden="true" /><FileText v-else :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span>
-              <span class="asset-manager__save-state" :class="{ 'is-dirty': resourceDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(resourceDirty) }}</span>
-            </div>
             <div class="asset-manager__editor-title">
               <ElInput
                 v-model="resourceName"
                 :aria-label="locale.t('assets.resourceName', 'Resource name')"
                 @change="renameResource"
-              />
+              >
+                <template #prefix>
+                  <Link2 v-if="selectedResource.kind === 'url'" :size="15" aria-hidden="true" /><FileText v-else :size="15" aria-hidden="true" />
+                </template>
+              </ElInput>
             </div>
+            <span class="asset-manager__save-state" :class="{ 'is-dirty': resourceDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(resourceDirty) }}</span>
             <div class="asset-manager__editor-actions">
               <WorkbenchCommandHint detached :label="locale.t('assets.export', 'Export')" :disabled-reason="busyReason || ((resourceDirty || saveFailed) ? locale.t('data.saveBeforeExport', 'Save or discard draft changes before exporting.') : undefined)">
                 <ElButton data-asset-resource-export :aria-label="locale.t('assets.export', 'Export')" :disabled="assetBusy || resourceDirty || saveFailed || persisting" @click="exportResource">

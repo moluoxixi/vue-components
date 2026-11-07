@@ -6,6 +6,8 @@ defineProps<{ reason?: string, label?: string }>()
   <ElTooltip
     :content="reason || label || ''"
     :disabled="!reason && !label"
+    effect="light"
+    transition="none"
     :trigger="['hover', 'focus']"
     :trigger-keys="[]"
     :show-after="250"
@@ -13,6 +15,7 @@ defineProps<{ reason?: string, label?: string }>()
     :enterable="false"
     :persistent="false"
     append-to="#workbench-overlays"
+    popper-class="workbench-passive-tooltip"
   >
     <span class="control-hint" :class="{ 'has-disabled-reason': reason }" :tabindex="reason ? 0 : undefined" :aria-label="reason">
       <slot />

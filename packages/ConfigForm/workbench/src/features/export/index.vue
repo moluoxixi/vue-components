@@ -362,7 +362,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             <template #default="{ item }">
               <span class="source-workspace__mode-label">
                 <component :is="item.value === 'source' ? Code2 : Braces" :size="14" aria-hidden="true" />
-                {{ item.label }}
+                <span class="source-workspace__mode-full">{{ item.label }}</span>
+                <span class="source-workspace__mode-compact" aria-hidden="true">{{ item.value === 'source' ? 'Vue' : 'ConfigForm' }}</span>
               </span>
             </template>
           </ElSegmented>
@@ -437,8 +438,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
                   <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId">
                     <ControlHint
                       :reason="
-                        sourceUnavailableReason ||
-                        (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                        sourceUnavailableReason
+                          || (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
                       "
                     >
                       <Code2 :size="15" aria-hidden="true" />
@@ -448,8 +449,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
                   <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId">
                     <ControlHint
                       :reason="
-                        designUnavailableReason ||
-                        (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                        designUnavailableReason
+                          || (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
                       "
                     >
                       <FileJson2 :size="15" aria-hidden="true" />
@@ -566,12 +567,12 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             <ControlHint
               :label="locale.t('action.copy', 'Copy')"
               :reason="
-                busyReason ||
-                (exportText === undefined
-                  ? selectedFile?.kind === 'binary'
-                    ? locale.t('export.binaryCopyUnavailable', 'Binary files cannot be copied as text.')
-                    : locale.t('export.selectFile', 'Select a generated text file first.')
-                  : undefined)
+                busyReason
+                  || (exportText === undefined
+                    ? selectedFile?.kind === 'binary'
+                      ? locale.t('export.binaryCopyUnavailable', 'Binary files cannot be copied as text.')
+                      : locale.t('export.selectFile', 'Select a generated text file first.')
+                    : undefined)
               "
             >
               <ElButton
@@ -614,8 +615,8 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
             snapshotError
               ? locale.t('export.sourceUnavailable', 'Source export unavailable')
               : snapshotStale
-              ? locale.t('export.stale', 'Stale')
-              : locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', {
+                ? locale.t('export.stale', 'Stale')
+                : locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', {
                   revision: snapshotEditVersion,
                 })
           }}

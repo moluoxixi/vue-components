@@ -657,6 +657,7 @@ test('creates a drawer directly, persists it, and edits its presentation in a co
   await mask.locator('..').click()
   await expect(mask).toBeChecked()
   await expect(closeFromMask).toBeEnabled()
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
   for (const width of [1366, 320]) {
     await page.setViewportSize({ width, height: 768 })
     const controlsFit = await presentation.evaluate((editor) => {

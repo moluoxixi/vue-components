@@ -6,6 +6,7 @@ import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import BrowseViewToggle from '../../../../../../components/BrowseViewToggle.vue'
 import { useBrowseView } from '../../../../../../components/composables/use-browse-view'
+import WorkbenchCommandHint from '../../../../../../components/WorkbenchCommandHint/index.vue'
 import { createPagePreviewDataUrl } from '../../../../../../features/pages'
 
 const props = defineProps<{
@@ -24,6 +25,8 @@ const emit = defineEmits<{
   retry: []
 }>()
 const locale = computed(() => createDesignerLocale(props.locale))
+const busyReason = computed(() => props.busy ? locale.value.t('library.busyReason', 'A template operation is in progress. Try again when it finishes.') : undefined)
+const createDisabledReason = computed(() => props.loading ? locale.value.t('library.loadingReason', 'Templates are loading. You can create a template when loading finishes.') : busyReason.value)
 const query = ref('')
 const browseView = useBrowseView('templates', 'cards')
 const adapter = ref('all')
@@ -89,9 +92,11 @@ function clearFilters(): void {
         <div>
           <h1>{{ locale.t('library.title', 'Template library') }}</h1>
         </div>
-        <ElButton type="primary" :disabled="busy || loading" @click="emit('create')">
-          <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}
-        </ElButton>
+        <WorkbenchCommandHint detached :label="locale.t('library.new', 'New template')" :disabled-reason="createDisabledReason">
+          <ElButton type="primary" :disabled="busy || loading" @click="emit('create')">
+            <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}
+          </ElButton>
+        </WorkbenchCommandHint>
       </header>
       <div class="template-manager__controls">
         <div class="template-manager__filters">
@@ -142,21 +147,33 @@ function clearFilters(): void {
             <div class="template-card__tags">
               <span>{{ entry.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }}</span><span :data-source="entry.providerId">{{ entry.providerId === 'personal' ? locale.t('library.personal', 'My templates') : locale.t('library.builtIn', 'Built-in templates') }}</span>
             </div>
-            <h2 :title="cardName(entry)">{{ cardName(entry) }}</h2>
-            <p :title="templateDescription(entry)">{{ templateDescription(entry) }}</p>
+            <h2 :title="cardName(entry)">
+              {{ cardName(entry) }}
+            </h2>
+            <p :title="templateDescription(entry)">
+              {{ templateDescription(entry) }}
+            </p>
           </div>
           <footer>
-            <ElButton v-if="browseView === 'list'" size="small" text circle :aria-label="locale.t('library.previewFor', 'Preview {name}', { name: templateName(entry) })" @click="emit('preview', entry)"><Eye :size="15" aria-hidden="true" /></ElButton>
-            <ElButton class="template-card__edit" :disabled="busy" @click="emit('edit', entry)">
-              <Pencil :size="14" aria-hidden="true" />{{ entry.providerId === 'personal' ? locale.t('library.edit', 'Edit template') : locale.t('library.customize', 'Customize') }}
-              <ArrowRight :size="14" aria-hidden="true" />
+            <ElButton v-if="browseView === 'list'" size="small" text circle :aria-label="locale.t('library.previewFor', 'Preview {name}', { name: templateName(entry) })" @click="emit('preview', entry)">
+              <Eye :size="15" aria-hidden="true" />
             </ElButton>
-            <ElButton size="small" text circle :disabled="busy" :aria-label="locale.t('library.copyFor', 'Duplicate {name}', { name: templateName(entry) })" :title="locale.t('action.copy', 'Copy')" @click="emit('duplicate', entry)">
-              <Copy :size="15" aria-hidden="true" />
-            </ElButton>
-            <ElButton v-if="entry.providerId === 'personal'" size="small" text circle type="danger" :disabled="busy" :aria-label="locale.t('library.deleteFor', 'Delete {name}', { name: templateName(entry) })" :title="locale.t('action.delete', 'Delete')" @click="emit('delete', entry)">
-              <Trash2 :size="15" aria-hidden="true" />
-            </ElButton>
+            <WorkbenchCommandHint detached anchor-class="template-card__edit-hint" :label="entry.providerId === 'personal' ? locale.t('library.edit', 'Edit template') : locale.t('library.customize', 'Customize')" :disabled-reason="busyReason">
+              <ElButton class="template-card__edit" :disabled="busy" @click="emit('edit', entry)">
+                <Pencil :size="14" aria-hidden="true" />{{ entry.providerId === 'personal' ? locale.t('library.edit', 'Edit template') : locale.t('library.customize', 'Customize') }}
+                <ArrowRight :size="14" aria-hidden="true" />
+              </ElButton>
+            </WorkbenchCommandHint>
+            <WorkbenchCommandHint detached :label="locale.t('library.copyFor', 'Duplicate {name}', { name: templateName(entry) })" :disabled-reason="busyReason">
+              <ElButton size="small" text circle :disabled="busy" :aria-label="locale.t('library.copyFor', 'Duplicate {name}', { name: templateName(entry) })" @click="emit('duplicate', entry)">
+                <Copy :size="15" aria-hidden="true" />
+              </ElButton>
+            </WorkbenchCommandHint>
+            <WorkbenchCommandHint v-if="entry.providerId === 'personal'" detached :label="locale.t('library.deleteFor', 'Delete {name}', { name: templateName(entry) })" :disabled-reason="busyReason">
+              <ElButton size="small" text circle type="danger" :disabled="busy" :aria-label="locale.t('library.deleteFor', 'Delete {name}', { name: templateName(entry) })" @click="emit('delete', entry)">
+                <Trash2 :size="15" aria-hidden="true" />
+              </ElButton>
+            </WorkbenchCommandHint>
           </footer>
         </article>
       </div>

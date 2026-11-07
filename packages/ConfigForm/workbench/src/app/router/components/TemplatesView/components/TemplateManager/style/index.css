@@ -6,7 +6,7 @@
   overscroll-behavior: contain;
 }
 .template-manager__content {
-  width: calc(100% - 40px);
+  width: calc(100% - 48px);
   margin: 0 auto;
   padding: 16px 0 32px;
 }
@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .template-manager__heading h1 {
   margin: 0;
@@ -25,7 +25,8 @@
   font-weight: 650;
   line-height: 28px;
 }
-.template-manager__heading > .el-button {
+.template-manager__heading :deep(.workbench-command-hint-anchor) { flex-shrink: 0; }
+.template-manager__heading .el-button {
   flex-shrink: 0;
   height: 32px;
   padding: 0 12px;
@@ -38,23 +39,24 @@
   top: 0;
   z-index: 2;
   margin-bottom: 16px;
-  padding: 0;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-bg);
 }
 .template-manager__filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 200px 172px;
+  grid-template-columns: minmax(160px, 360px) 180px 160px;
   gap: 12px;
   align-items: center;
 }
 .template-manager__filters :deep(.el-input__wrapper),
 .template-manager__filters :deep(.el-select__wrapper) {
-  min-height: 38px;
-  border-radius: 7px;
+  min-height: 32px;
+  border-radius: 6px;
 }
 .template-manager__filters > .el-input {
   --el-input-placeholder-color: var(--wb-muted);
-  max-width: 480px;
+  max-width: 360px;
 }
 .template-manager__filters :deep(.el-input__prefix) {
   color: var(--wb-muted);
@@ -66,8 +68,6 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--wb-separator);
 }
 .template-manager__browse .el-segmented {
   --el-segmented-bg-color: transparent;
@@ -79,8 +79,8 @@
 .template-manager__browse :deep(.el-segmented__item) {
   flex: 0 0 auto;
   min-width: 58px;
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: 28px;
+  padding: 0 10px;
 }
 .template-manager__results {
   display: flex;
@@ -93,6 +93,25 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+@media (min-width: 1200px) {
+  .template-manager__controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .template-manager__filters {
+    min-width: 0;
+    flex: 1;
+    grid-template-columns: minmax(160px, 360px) 160px 144px;
+    gap: 8px;
+  }
+  .template-manager__browse {
+    flex: none;
+    margin-top: 0;
+    gap: 16px;
+  }
+  .template-manager__results { gap: 8px; }
 }
 .template-manager__grid {
   display: grid;
@@ -206,7 +225,6 @@
 }
 .template-card .template-card__edit {
   height: 32px;
-  margin-right: auto;
   padding: 0 10px;
   border-color: transparent;
   border-radius: 6px;
@@ -215,6 +233,7 @@
   font-size: 12px;
   font-weight: 550;
 }
+.template-card :deep(.template-card__edit-hint) { margin-right: auto; }
 .template-card .template-card__edit:hover {
   border-color: var(--wb-accent-line);
 }
@@ -263,7 +282,7 @@
 }
 @media (max-width: 640px) {
   .template-manager__content {
-    width: calc(100% - 32px);
+    width: calc(100% - 24px);
     padding-top: 12px;
   }
   .template-manager__heading {
@@ -273,13 +292,13 @@
     font-size: 18px;
     white-space: nowrap;
   }
-  .template-manager__heading > .el-button {
+  .template-manager__heading .el-button {
     padding-inline: 8px;
     font-size: 12px;
   }
   .template-manager__filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
   .template-manager__filters > .el-input {
     max-width: none;
@@ -289,7 +308,7 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 8px;
   }
   .template-manager__browse :deep(.el-segmented__item) {
     min-width: 0;
@@ -304,8 +323,13 @@
   }
   .template-manager__grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
+    gap: 16px;
   }
+}
+@media (pointer: coarse) {
+  .template-manager__filters :deep(.el-input__wrapper),
+  .template-manager__filters :deep(.el-select__wrapper),
+  .template-manager__browse :deep(.el-segmented__item) { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .template-card {

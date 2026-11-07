@@ -163,8 +163,12 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(sourcePane.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
     await expect(sourcePane.getByRole('radio', { name: 'ConfigForm bindings', exact: true })).toBeEnabled()
     await expectNoAccessibilityViolations(page, `${adapter} mobile source workspace`)
-    await page.getByRole('tab', { name: 'Canvas', exact: true }).click()
+    await expect(page.getByRole('tablist', { name: 'Designer navigation', exact: true })).not.toBeVisible()
+    await page.getByRole('button', { name: 'Design', exact: true }).click()
     await expect(sourcePane).toHaveCount(0)
+    await expect(inspectorTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('[data-workspace-panel="properties"]')).toBeVisible()
+    await page.getByRole('tab', { name: 'Canvas', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   })
 }
