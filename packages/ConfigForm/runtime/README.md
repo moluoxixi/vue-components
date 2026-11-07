@@ -10,8 +10,9 @@ Renderer 及两个 UI adapter 支持 `errorSummary`、`errorSummaryLabel`、`foc
 （默认开启）、`loadingText`、`validatingText` 和 `stickyActions`。首次错误定位按实例寻址，
 适用于重复字段；expose 的 `scrollToFirstError()` 也可由宿主主动调用。
 
-`actions` 插槽提供 `values`、`submitting`、`validating`、`submit()` 和无参
+`actions` 插槽提供 `model`、`meta`、`validating`、`submit()` 和无参
 `resetFields()`，可以直接接按钮事件；开启 `stickyActions` 后操作区随长表单保持可见。
+业务请求的提交中状态由宿主管理，`validating` 仅表示字段校验正在进行。
 
 ```vue
 <script setup lang="ts">

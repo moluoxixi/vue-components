@@ -100,10 +100,11 @@ AI 与可视化编辑共用事务、revision、CAS 和幂等提交规则。文�
 
 - 相同文档与选项产生相同文件，不写随机 ID 或生成时间；失败返回可定位诊断。
 - 嵌入资源按 metadata 与内容分离，缺失内容不能生成缺图工程；URL 资源不由生成器下载。
-- 默认原生工程的运行依赖与裸包 import 只允许 Vue、Vue Router 和目标 UI 库。
+- 默认 CSS 原生工程的运行依赖与裸包 import 只允许 Vue、Vue Router 和目标 UI 库。
   Vite、TypeScript 等构建工具属于 `devDependencies`。
-- 原生工程不依赖 ConfigForm、Zod、`@moluoxixi/*`、`@config-form/*`，不复制解释器或
+- 原生工程不依赖 ConfigForm、`@moluoxixi/*`、`@config-form/*`，不复制解释器或
   Prototype Runtime。Required 与 RuleSet 生成可读的工程内代码。
+  CSS 产物不依赖 Zod；Tailwind v4 的部分校验使用 Zod，以生成器实际产物为准。
 - ConfigForm 绑定产物使用公开包，是另一种明确产物。两种模式独立生成和失败。
 - 生成器不产生业务函数桩、HTTP 占位、字符串 action ref 或待绑定事件元数据。
 
@@ -124,5 +125,5 @@ Preview transport 或源码生成。Dataset 查询由共享服务负责，物料
 
 Reader 只接受精确当前合同，旧、未来、缺失或混合版本均拒绝。改变持久化结构时必须同时
 审查 Reader、Writer、编译、预览、生成与测试，不增加双读或历史合同适配层。
-本轮不升模型版本；未来源码导入本轮只记录 [边界提案](./source-import.md)，不添加来源或
-能力字段。未来实施时再设计和版本化相关合同，并同步调整读取、保存、预览与生成链路。
+本轮不升模型版本。源码导入的 [历史研究](./source-import.md)不纳入当前实施范围，
+不添加来源或能力字段；若有真实需求重启，需要独立设计、版本化和验证完整合同。

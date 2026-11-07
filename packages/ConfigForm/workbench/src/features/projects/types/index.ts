@@ -40,5 +40,6 @@ export interface ProjectManagerProps {
 
 export interface ProjectManagerEmits {
   create: [mode: 'json' | 'template']
+  quickCreate: []
   open: []
 }

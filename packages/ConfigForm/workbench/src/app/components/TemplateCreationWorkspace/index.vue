@@ -22,6 +22,7 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { loadWorkbenchAdapter } from '../../../adapters'
+import ControlHint from '../../../components/ControlHint.vue'
 import {
   analyzeTemplateEligibility,
   builtInTemplateCatalogProvider,
@@ -113,10 +114,14 @@ const filteredTemplates = computed(() => {
   })
 })
 
-const creationTitle = computed(() => props.target === 'project'
+const creationTitle = computed(() => props.quickStart
+  ? locale.value.t('projects.quickForm', 'Create a form')
+  : props.target === 'project'
   ? locale.value.t('template.createProject', 'Create project')
   : locale.value.t('pages.fromTemplate', 'From template'))
-const createLabel = computed(() => props.target === 'project'
+const createLabel = computed(() => props.quickStart
+  ? locale.value.t('projects.startDesigning', 'Start designing')
+  : props.target === 'project'
   ? locale.value.t('template.createProjectAction', 'Create project')
   : creationSurfaceKind.value === 'dialog'
     ? locale.value.t('pages.createDialogAction', 'Create dialog')
@@ -496,7 +501,15 @@ onBeforeUnmount(() => {
         ]"
       />
       <div class="template-workspace-actions">
-        <ElButton class="template-desktop-action" native-type="button" text circle :title="locale.t('locale.switch', 'Switch language')" :aria-label="locale.t('locale.switch', 'Switch language')" @click="emit('toggleLocale')">
+        <ElButton
+          class="template-desktop-action"
+          native-type="button"
+          text
+          circle
+          :title="locale.t('locale.switch', 'Switch language')"
+          :aria-label="locale.t('locale.switch', 'Switch language')"
+          @click="emit('toggleLocale')"
+        >
           <Languages :size="17" aria-hidden="true" />
         </ElButton>
         <WorkbenchAppearancePopover
@@ -516,16 +529,25 @@ onBeforeUnmount(() => {
           append-to="#workbench-overlays"
           @command="chooseMobileAction"
         >
-          <ElButton ref="mobileActionsTrigger" native-type="button" text circle :title="locale.t('workbench.moreActions', 'More actions')" :aria-label="locale.t('workbench.moreActions', 'More actions')">
+          <ElButton
+            ref="mobileActionsTrigger"
+            native-type="button"
+            text
+            circle
+            :title="locale.t('workbench.moreActions', 'More actions')"
+            :aria-label="locale.t('workbench.moreActions', 'More actions')"
+          >
             <MoreHorizontal :size="18" aria-hidden="true" />
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="template-mobile-action-popover" data-template-mobile-action-menu>
               <ElDropdownItem command="toggleLocale">
-                <Languages :size="15" aria-hidden="true" /><span>{{ locale.t('locale.switch', 'Switch language') }}</span>
+                <Languages :size="15" aria-hidden="true" />
+                <span>{{ locale.t('locale.switch', 'Switch language') }}</span>
               </ElDropdownItem>
               <ElDropdownItem command="openAppearance">
-                <Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span>
+                <Settings2 :size="15" aria-hidden="true" />
+                <span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span>
               </ElDropdownItem>
             </ElDropdownMenu>
           </template>
@@ -619,15 +641,19 @@ onBeforeUnmount(() => {
           <header class="template-detail-header">
             <div>
               <button type="button" class="template-mobile-back" @click="showCatalog">
-                <ArrowLeft :size="16" aria-hidden="true" />{{ locale.t('template.catalog', 'Catalog') }}
+                <ArrowLeft :size="16" aria-hidden="true" />
+                {{ locale.t('template.catalog', 'Catalog') }}
               </button>
               <h2 :title="templateName(selectedTemplate)">{{ templateName(selectedTemplate) }}</h2>
               <p :title="templateDescription(selectedTemplate)">{{ templateDescription(selectedTemplate) }}</p>
             </div>
-
           </header>
 
-          <div v-if="eligibility && !eligibility.eligible" class="template-eligibility" :class="{ 'is-blocked': eligibility && !eligibility.eligible }">
+          <div
+            v-if="eligibility && !eligibility.eligible"
+            class="template-eligibility"
+            :class="{ 'is-blocked': eligibility && !eligibility.eligible }"
+          >
             <template v-if="eligibility">
               <AlertTriangle :size="16" aria-hidden="true" />
               <div role="alert">
@@ -684,15 +710,36 @@ onBeforeUnmount(() => {
               {{ createUnavailableReason }}
             </p>
             <span v-else>{{ locale.t('template.ready', 'Create a copy and continue in the designer.') }}</span>
-            <ElButton native-type="button" type="primary" :loading="submitting" :disabled="Boolean(createUnavailableReason) || controller.busy.value" @click="createSelected">
-              {{ createLabel }}
-            </ElButton>
+            <ControlHint
+              :reason="
+                submitting || controller.busy.value
+                  ? locale.t('action.busyUnavailable', 'Wait for the current operation to finish')
+                  : createUnavailableReason
+              "
+            >
+              <ElButton
+                native-type="button"
+                type="primary"
+                :loading="submitting"
+                :disabled="Boolean(createUnavailableReason) || controller.busy.value"
+                @click="createSelected"
+              >
+                {{ createLabel }}
+              </ElButton>
+            </ControlHint>
           </footer>
         </template>
         <div v-else class="template-no-selection" role="status">
           <LibraryBig :size="22" aria-hidden="true" />
           <strong>{{ locale.t('template.noSelection', 'No template selected') }}</strong>
-          <span>{{ locale.t('template.noSelectionHint', 'Browse the catalog and choose a template to inspect its Registry requirements and Runtime preview.') }}</span>
+          <span>
+            {{
+              locale.t(
+                'template.noSelectionHint',
+                'Browse the catalog and choose a template to inspect its Registry requirements and Runtime preview.',
+              )
+            }}
+          </span>
           <ElButton native-type="button" @click="showCatalog">
             <PanelLeftOpen :size="16" aria-hidden="true" />
             {{ locale.t('template.browse', 'Browse templates') }}

@@ -12,7 +12,7 @@
     "dev:components": "pnpm build && pnpm -C playgrounds/components-playground dev",
     "dev:ai-doc": "pnpm --filter @moluoxixi/ai-doc-assistant build && node packages/ai-doc-assistant/dist/cli.js serve --root D:/project-new/vue-component --entries packages/components/index.ts --host 127.0.0.1 --port 5173",
     "dev:config-form": "pnpm build && pnpm -C packages/ConfigForm/playground dev",
-    "dev:config-form-workbench": "pnpm --filter @config-form/workbench dev",
+    "dev:config-form-workbench": "pnpm --filter @moluoxixi/indexed-db --filter @moluoxixi/zod3-to-rule build && pnpm --filter @config-form/workbench dev",
     "dev:i18n-tool": "pnpm --filter @moluoxixi/i18n-tool build && node packages/i18n-tool/dist/cli.js --config packages/i18n-tool/test/fixtures/cli-project/i18n-tool.config.mjs",
     "dev:vue-playground": "pnpm -C playgrounds/vue-playground dev",
     "build": "turbo run build --filter=\"./packages/**\" --filter=!@config-form/playground --filter=!@config-form/workbench",

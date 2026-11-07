@@ -35,6 +35,7 @@ interface UserForm {
 const { defineField } = defineFields<UserForm>()
 const fields = [
   defineField({
+    id: 'name',
     component: 'input',
     extensions: { 'acme.designer': { setter: 'text' } },
     field: 'name',
@@ -78,4 +79,11 @@ const components = createConfigFormComponentRegistry(modules)
 
 ## 本版边界
 
-本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、异步 reaction、任意脚本表达式或远程 DSL。同步 reaction 的条件、effect 和纯 reducer 由 `@moluoxixi/config-form-core` 提供；Headless 负责把它接入模型、校验和渲染投影。跨字段校验仍可通过字段 `validator(value, values)` 完成；Zod `schema` 的解析结果用于后续 validator，提交值转换需显式配置 `transform`。
+字段的 `field` 指向所属作用域的键。容器可用 `valueScope: { kind: 'object', field: 'profile' }`
+或 `valueScope: { kind: 'array', field: 'items', itemKey: 'id' }` 管理嵌套对象和数组；子节点通过
+`slots` 配置。`listRows`、`insertRow`、`removeRow`、`moveRow` 及实例级值与校验 API 使用稳定
+行身份，不能把数组索引当作节点身份。每个配置节点仍需唯一、稳定的 `id`。
+
+不包含异步 reaction、任意脚本表达式或远程 DSL。同步 reaction 的条件、effect 和纯 reducer
+由 Core 提供，Headless 接入模型、校验和渲染投影。跨字段校验使用
+`validator(value, values)`；Zod 解析结果用于后续 validator，提交值转换需显式配置 `transform`。

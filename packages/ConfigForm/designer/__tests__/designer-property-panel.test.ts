@@ -422,7 +422,7 @@ describe('designer property panel lite Inspector', () => {
 
     const search = wrapper.get('[data-property-search]')
     expect(wrapper.findAll('[data-property-group]').map(group => group.attributes('data-property-group')))
-      .toEqual(['essentials', 'layout', 'data', 'guidance', 'advanced'])
+      .toEqual(['essentials', 'data', 'layout', 'guidance', 'advanced'])
     await search.setValue('placeholder')
     expect(wrapper.find('input[aria-label="Placeholder"]').exists()).toBe(true)
     expect(wrapper.find('input[aria-label="Autocomplete"]').exists()).toBe(false)

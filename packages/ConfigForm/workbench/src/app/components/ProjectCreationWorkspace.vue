@@ -5,6 +5,7 @@ import type { WorkbenchAdapterId } from '../../adapters'
 import { ArrowLeft, Boxes, FolderKanban, Languages, PanelsTopLeft } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import ControlHint from '../../components/ControlHint.vue'
 import { useWorkbenchController, useWorkbenchUiStore } from '../composables'
 import WorkbenchAppearancePopover from './WorkbenchAppearancePopover.vue'
 
@@ -37,6 +38,7 @@ const adapterOptions = [
 const normalizedName = computed(() => projectName.value.trim())
 const pending = computed(() => submitting.value || controller.busy.value)
 const canCreate = computed(() => Boolean(normalizedName.value) && !pending.value)
+const pendingReason = computed(() => pending.value ? locale.value.t('action.busyUnavailable', 'Wait for the current operation to finish') : undefined)
 
 function focusName(): void {
   nameInput.value?.focus()
@@ -81,16 +83,36 @@ defineExpose({ focusName })
   >
     <header v-if="!props.embedded" class="project-creation-header">
       <div class="project-creation-header__heading">
-        <ElButton v-if="canClose" native-type="button" text circle :disabled="pending" :title="locale.t('projects.back', 'Back to projects')" :aria-label="locale.t('projects.back', 'Back to projects')" @click="emit('close')">
-          <ArrowLeft :size="18" aria-hidden="true" />
-        </ElButton>
+        <ControlHint v-if="canClose" :reason="pendingReason">
+          <ElButton
+            native-type="button"
+            text
+            circle
+            :disabled="pending"
+            :title="locale.t('projects.back', 'Back to projects')"
+            :aria-label="locale.t('projects.back', 'Back to projects')"
+            @click="emit('close')"
+          >
+            <ArrowLeft :size="18" aria-hidden="true" />
+          </ElButton>
+        </ControlHint>
         <FolderKanban :size="20" aria-hidden="true" />
         <h1>{{ locale.t('projectCreate.title', 'Create project') }}</h1>
       </div>
       <div class="project-creation-header__actions">
-        <ElButton native-type="button" text circle :disabled="pending" :title="locale.t('locale.switch', 'Switch language')" :aria-label="locale.t('locale.switch', 'Switch language')" @click="emit('toggleLocale')">
-          <Languages :size="17" aria-hidden="true" />
-        </ElButton>
+        <ControlHint :reason="pendingReason">
+          <ElButton
+            native-type="button"
+            text
+            circle
+            :disabled="pending"
+            :title="locale.t('locale.switch', 'Switch language')"
+            :aria-label="locale.t('locale.switch', 'Switch language')"
+            @click="emit('toggleLocale')"
+          >
+            <Languages :size="17" aria-hidden="true" />
+          </ElButton>
+        </ControlHint>
         <WorkbenchAppearancePopover
           trigger-class="project-creation-appearance"
           :locale="locale"
@@ -105,35 +127,53 @@ defineExpose({ focusName })
     <form class="project-creation-form" @submit.prevent="createProject">
       <div class="project-creation-field">
         <label for="project-create-name">{{ locale.t('projects.name', 'Project name') }}</label>
-        <ElInput
-          id="project-create-name"
-          ref="nameInput"
-          v-model="projectName"
-          maxlength="160"
-          :disabled="pending"
-          :placeholder="locale.t('projectCreate.namePlaceholder', 'For example: Operations console')"
-          :aria-label="locale.t('projects.name', 'Project name')"
-        />
+        <ControlHint :reason="pendingReason">
+          <ElInput
+            id="project-create-name"
+            ref="nameInput"
+            v-model="projectName"
+            maxlength="160"
+            :disabled="pending"
+            :placeholder="locale.t('projectCreate.namePlaceholder', 'For example: Operations console')"
+            :aria-label="locale.t('projects.name', 'Project name')"
+          />
+        </ControlHint>
       </div>
 
       <div class="project-creation-field">
         <span id="project-create-adapter-label">{{ locale.t('projectCreate.adapterTitle', 'UI framework') }}</span>
-        <ElRadioGroup v-model="selectedAdapter" class="project-creation-adapters" :disabled="pending" aria-labelledby="project-create-adapter-label">
-          <ElRadio v-for="option in adapterOptions" :key="option.id" class="project-creation-adapter" border :value="option.id">
-            <component :is="option.icon" :size="18" aria-hidden="true" />
-            <span>{{ option.label }}</span>
-          </ElRadio>
-        </ElRadioGroup>
+        <ControlHint :reason="pendingReason">
+          <ElRadioGroup
+            v-model="selectedAdapter"
+            class="project-creation-adapters"
+            :disabled="pending"
+            aria-labelledby="project-create-adapter-label"
+          >
+            <ElRadio v-for="option in adapterOptions" :key="option.id" class="project-creation-adapter" border :value="option.id">
+              <component :is="option.icon" :size="18" aria-hidden="true" />
+              <span>{{ option.label }}</span>
+            </ElRadio>
+          </ElRadioGroup>
+        </ControlHint>
       </div>
 
       <ElAlert v-if="ui.message.value" :title="ui.message.value" type="error" show-icon closable @close="ui.clearMessage" />
 
       <footer class="project-creation-footer">
-        <ElButton v-if="canClose && props.embedded" native-type="button" :disabled="pending" @click="emit('close')">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
-        <ElButton native-type="submit" type="primary" data-project-create-submit :loading="submitting" :disabled="!canCreate">
-          <FolderKanban :size="16" aria-hidden="true" />
-          {{ locale.t('projectCreate.action', 'Create project') }}
-        </ElButton>
+        <ControlHint v-if="canClose && props.embedded" :reason="pendingReason">
+          <ElButton native-type="button" :disabled="pending" @click="emit('close')">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
+        </ControlHint>
+        <ControlHint
+          :reason="
+            pendingReason ||
+            (!normalizedName ? locale.t('projectCreate.nameRequired', 'Enter a project name to create the project.') : undefined)
+          "
+        >
+          <ElButton native-type="submit" type="primary" data-project-create-submit :loading="submitting" :disabled="!canCreate">
+            <FolderKanban :size="16" aria-hidden="true" />
+            {{ locale.t('projectCreate.action', 'Create project') }}
+          </ElButton>
+        </ControlHint>
       </footer>
     </form>
   </component>

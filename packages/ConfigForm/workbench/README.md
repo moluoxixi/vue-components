@@ -1,7 +1,9 @@
 # @config-form/workbench
 
 Workbench 是仓库内部的 ConfigForm Studio UI 设计应用与集成验证入口，不应被业务应用
-作为运行时依赖导入。项目配置持续保存设计决定，设计、体验预览与源码交付共享同一模型。
+作为运行时依赖导入。首页“创建表单”从模板直接进入设计并自动创建项目；“新建项目”用于
+先组织多页面工程。代码态表单开发直接使用 [Runtime adapters](../README.md)，不经过此工作台。
+项目配置持续保存设计决定，设计、体验预览与源码交付共享同一模型。
 源码生成和只读查看由独立 `@moluoxixi/config-form-source` 包提供。
 
 ## 当前实现
@@ -39,9 +41,10 @@ Workbench 是仓库内部的 ConfigForm Studio UI 设计应用与集成验证入
   readonly 行为，不复现未注入的宿主函数。
 - 动态 Runtime Data Source 属于生产 Runtime 的代码态能力，不进入 Studio 设计文档。
 - 默认导出直接使用 Vue、Vue Router 与目标 UI 组件的原始工程源码，Required 与
-  RuleSet v2 是工程内可读校验代码；它不依赖 ConfigForm、Zod、`@moluoxixi/*`、
+  RuleSet v2 是工程内可读校验代码；它不依赖 ConfigForm、`@moluoxixi/*`、
   `@config-form/*` 或内部 Runtime。第二种导出只组合公开 ConfigForm adapter、
-  Headless model 与绑定配置。两者都不生成 `src/runtime/**`，也不复制 Compiler、
+  Headless model 与绑定配置。Tailwind v4 原生工程的部分校验使用 Zod。绑定产物是集成代码包，
+  不是独立应用；默认打开当前页面配置，使用方法随 `README.md` 导出。两者都不生成 `src/runtime/**`，也不复制 Compiler、
   Prototype Runtime、事件注册表或业务函数桩。
 - Raw 与 ConfigForm binding 使用同一 pinned compilation 独立生成、独立失败；弹窗按
   mode 展示文件或 diagnostics，仅禁用失败 mode 的复制和下载，另一个 mode 仍可用。

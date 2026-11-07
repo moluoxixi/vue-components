@@ -20,6 +20,7 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { ConfigFormSourceViewer } from '@moluoxixi/config-form-source/viewer'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import ControlHint from '../../components/ControlHint.vue'
 import {
   createExportSession,
   downloadProjectTransfer,
@@ -40,14 +41,19 @@ const props = defineProps<SourceWorkspaceProps>()
 const emit = defineEmits<SourceWorkspaceEmits>()
 
 const locale = computed(() => createDesignerLocale(props.locale))
+const deliveryPurpose = computed(() => props.mode === 'config'
+  ? locale.value.t('export.bindingPurpose', 'For an existing Vue project using ConfigForm: start with the page config and its Vue component; the bindings export is not a standalone app.')
+  : locale.value.t('export.sourcePurpose', 'Standalone Vue source: install dependencies, run the project, or integrate its components into your app. No ConfigForm runtime is required.'))
+const designBoundary = computed(() => locale.value.t('export.designBoundary', 'Keep the design JSON to continue editing here. Source edits cannot be imported back or merged automatically on the next export.'))
 const rawSelectedPath = ref('')
-const bindingSelectedPath = ref('src/bindings.ts')
+const bindingSelectedPath = ref('')
 const styleTarget = ref<SourceStyleTarget>('tailwind-v4')
 const refreshing = ref(false)
 const downloading = ref(false)
 const copying = ref(false)
 const wrapLines = ref(true)
 const actionsBusy = computed(() => refreshing.value || downloading.value || copying.value)
+const busyReason = computed(() => actionsBusy.value ? locale.value.t('action.busyUnavailable', 'Wait for the current operation to finish') : undefined)
 const styleTargetOptions = computed(
   () =>
     [
@@ -96,6 +102,12 @@ const snapshotError = computed(() => {
 const activeFileSet = computed<SourceFileSetV1 | undefined>(() =>
   activeArtifact.value?.status === 'ready' ? activeArtifact.value.fileSet : undefined,
 )
+const sourceUnavailableReason = computed(() => busyReason.value || (!activeFileSet.value
+  ? locale.value.t('export.generateFirst', 'Source is unavailable. Resolve the reported issues, then refresh the snapshot.')
+  : undefined))
+const designUnavailableReason = computed(() => busyReason.value || (!snapshot.value
+  ? locale.value.t('export.snapshotRequired', 'Wait for the design snapshot to load, then try again.')
+  : undefined))
 const structuredFileSet = computed<SourceFileSetV1 | undefined>(() => {
   const fileSet = activeFileSet.value
   const current = snapshot.value
@@ -137,7 +149,7 @@ function resolveStructuredSelection(fileSet: SourceFileSetV1, preferred: string)
     = props.surfaceId && snapshot.value
       ? sourceSurfaceDirectory(fileSet.files, props.surfaceId, snapshot.value.compilation.ir.surfaceOrder)
       : undefined
-  const pagePath = directory ? `src/surfaces/${directory}/Surface.vue` : undefined
+  const pagePath = directory ? `src/surfaces/${directory}/${fileSet.kind === 'config-bindings' ? 'config.ts' : 'Surface.vue'}` : undefined
   const sourcePreferred
     = fileSet.files.find(file => projectStructuredSourcePath(file.path) === preferred)?.path ?? pagePath
   const resolved = resolveExportSnapshotPath(fileSet, sourcePreferred) ?? fileSet.entry
@@ -329,54 +341,49 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
           <span class="source-workspace__project" :title="projectName">
             <FolderTree :size="12" aria-hidden="true" />
             <span>{{ projectName || locale.t('projects.untitled', 'Untitled project') }}</span>
-            <span class="source-workspace__file-count">{{
-              locale.t('export.fileCount', '{count} files', { count: generatedFileCount })
-            }}</span>
+            <span class="source-workspace__file-count">
+              {{ locale.t('export.fileCount', '{count} files', { count: generatedFileCount }) }}
+            </span>
           </span>
         </div>
       </div>
-    <div class="source-workspace__toolbar" role="toolbar" :aria-label="locale.t('export.sourceShape', 'Source shape')">
-      <ElSegmented
-        class="source-workspace__mode"
-        :model-value="mode"
-        :options="[
-          { label: locale.t('export.vueMode', 'Vue source'), value: 'source' },
-          { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
-        ]"
-        :disabled="actionsBusy"
-        @update:model-value="(value) => (value === 'source' || value === 'config') && emit('update:mode', value)"
-      >
-        <template #default="{ item }">
-          <span class="source-workspace__mode-label">
-            <component :is="item.value === 'source' ? Code2 : Braces" :size="14" aria-hidden="true" />
-            {{ item.label }}
-          </span>
-        </template>
-      </ElSegmented>
-      <div class="source-workspace__style">
-        <Wind :size="14" aria-hidden="true" />
-        <ElSegmented
-          class="source-workspace__style-target"
-          :model-value="styleTarget"
-          :options="styleTargetOptions"
-          :disabled="actionsBusy"
-          :aria-label="locale.t('export.style.label', 'Project styling')"
-          @update:model-value="setStyleTarget"
-        />
+      <div class="source-workspace__toolbar" role="toolbar" :aria-label="locale.t('export.sourceShape', 'Source shape')">
+        <ControlHint :reason="busyReason">
+          <ElSegmented
+            class="source-workspace__mode"
+            :model-value="mode"
+            :options="[
+              { label: locale.t('export.vueMode', 'Vue source'), value: 'source' },
+              { label: locale.t('export.bindingsMode', 'ConfigForm bindings'), value: 'config' },
+            ]"
+            :disabled="actionsBusy"
+            @update:model-value="value => (value === 'source' || value === 'config') && emit('update:mode', value)"
+          >
+            <template #default="{ item }">
+              <span class="source-workspace__mode-label">
+                <component :is="item.value === 'source' ? Code2 : Braces" :size="14" aria-hidden="true" />
+                {{ item.label }}
+              </span>
+            </template>
+          </ElSegmented>
+        </ControlHint>
+        <div class="source-workspace__style">
+          <Wind :size="14" aria-hidden="true" />
+          <ControlHint :reason="busyReason">
+            <ElSegmented
+              class="source-workspace__style-target"
+              :model-value="styleTarget"
+              :options="styleTargetOptions"
+              :disabled="actionsBusy"
+              :aria-label="locale.t('export.style.label', 'Project styling')"
+              @update:model-value="setStyleTarget"
+            />
+          </ControlHint>
+        </div>
       </div>
-    </div>
 
       <div class="source-workspace__commands">
-        <ElTooltip
-          :content="locale.t('export.refresh', 'Refresh snapshot')"
-          :trigger="['hover', 'focus']"
-          :show-after="350"
-          :hide-after="0"
-          :enterable="false"
-          :persistent="false"
-          placement="bottom"
-          append-to="#workbench-overlays"
-        >
+        <ControlHint :reason="busyReason" :label="locale.t('export.refresh', 'Refresh snapshot')">
           <ElButton
             native-type="button"
             text
@@ -388,55 +395,101 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
           >
             <RefreshCw :size="16" aria-hidden="true" />
           </ElButton>
-        </ElTooltip>
+        </ControlHint>
         <div class="source-workspace__download">
-          <ElButton
-            native-type="button"
-            type="primary"
-            class="source-workspace__download-project"
-            :disabled="!activeFileSet || actionsBusy"
-            :loading="downloading"
-            @click="downloadBundle()"
-          >
-            <Download :size="15" aria-hidden="true" />
-            {{ locale.t('export.projectZip', 'Download project') }}
-          </ElButton>
-          <ElDropdown
-            trigger="click"
-            placement="bottom-end"
-            :disabled="actionsBusy"
-            append-to="#workbench-overlays"
-            @command="chooseDownload"
-          >
+          <ControlHint :reason="sourceUnavailableReason">
             <ElButton
               native-type="button"
               type="primary"
-              class="source-workspace__download-options"
-              :disabled="actionsBusy"
-              :title="locale.t('export.downloadOptions', 'Download options')"
-              :aria-label="locale.t('export.downloadOptions', 'Download options')"
+              class="source-workspace__download-project"
+              :disabled="!activeFileSet || actionsBusy"
+              :loading="downloading"
+              @click="downloadBundle()"
             >
-              <ChevronDown :size="14" aria-hidden="true" />
+              <Download :size="15" aria-hidden="true" />
+              {{
+                mode === 'config'
+                  ? locale.t('export.bindingsZip', 'Download binding code')
+                  : locale.t('export.projectZip', 'Download project')
+              }}
             </ElButton>
-            <template #dropdown>
-              <ElDropdownMenu class="source-export-menu">
-                <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId">
-                  <Code2 :size="15" aria-hidden="true" />{{ locale.t('export.surfaceSource', 'Page source') }}
-                </ElDropdownItem>
-                <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId">
-                  <FileJson2 :size="15" aria-hidden="true" />{{ locale.t('export.surfaceJson', 'Page JSON') }}
-                </ElDropdownItem>
-                <ElDropdownItem command="project-json" :disabled="!snapshot" divided>
-                  <Layers :size="15" aria-hidden="true" />{{ locale.t('export.projectJson', 'Project JSON') }}
-                </ElDropdownItem>
-              </ElDropdownMenu>
-            </template>
-          </ElDropdown>
+          </ControlHint>
+          <ControlHint :reason="busyReason">
+            <ElDropdown
+              trigger="click"
+              placement="bottom-end"
+              :disabled="actionsBusy"
+              append-to="#workbench-overlays"
+              @command="chooseDownload"
+            >
+              <ElButton
+                native-type="button"
+                type="primary"
+                class="source-workspace__download-options"
+                :disabled="actionsBusy"
+                :title="locale.t('export.downloadOptions', 'Download options')"
+                :aria-label="locale.t('export.downloadOptions', 'Download options')"
+              >
+                <ChevronDown :size="14" aria-hidden="true" />
+              </ElButton>
+              <template #dropdown>
+                <ElDropdownMenu class="source-export-menu">
+                  <ElDropdownItem command="surface-source" :disabled="!activeFileSet || !surfaceId">
+                    <ControlHint
+                      :reason="
+                        sourceUnavailableReason ||
+                        (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                      "
+                    >
+                      <Code2 :size="15" aria-hidden="true" />
+                      {{ locale.t('export.surfaceSource', 'Page source') }}
+                    </ControlHint>
+                  </ElDropdownItem>
+                  <ElDropdownItem command="surface-json" :disabled="!snapshot || !surfaceId">
+                    <ControlHint
+                      :reason="
+                        designUnavailableReason ||
+                        (!surfaceId ? locale.t('export.pageRequired', 'Open a page to export its files.') : undefined)
+                      "
+                    >
+                      <FileJson2 :size="15" aria-hidden="true" />
+                      {{ locale.t('export.surfaceJson', 'Page JSON') }}
+                    </ControlHint>
+                  </ElDropdownItem>
+                  <ElDropdownItem command="project-json" :disabled="!snapshot" divided>
+                    <ControlHint :reason="designUnavailableReason">
+                      <Layers :size="15" aria-hidden="true" />
+                      {{ locale.t('export.projectJson', 'Project JSON') }}
+                    </ControlHint>
+                  </ElDropdownItem>
+                </ElDropdownMenu>
+              </template>
+            </ElDropdown>
+          </ControlHint>
         </div>
       </div>
     </header>
-
-
+    <div class="source-workspace__guidance">
+      <div class="source-workspace__guide-copy">
+        <p>{{ deliveryPurpose }}</p>
+        <p>{{ designBoundary }}</p>
+      </div>
+      <ElPopover trigger="click" :width="280" append-to="#workbench-overlays" :title="locale.t('export.guide', 'Handoff guide')">
+        <template #reference>
+          <ElButton class="source-workspace__guide-trigger" native-type="button" text>
+            {{ locale.t('export.guide', 'Handoff guide') }}
+          </ElButton>
+        </template>
+        <p>{{ deliveryPurpose }}</p>
+        <p>{{ designBoundary }}</p>
+      </ElPopover>
+      <ControlHint :reason="designUnavailableReason">
+        <ElButton native-type="button" :disabled="!!designUnavailableReason" @click="chooseDownload('project-json')">
+          <FileJson2 :size="15" aria-hidden="true" />
+          {{ locale.t('export.designJson', 'Save design JSON') }}
+        </ElButton>
+      </ControlHint>
+    </div>
     <div
       class="source-workspace__body relative flex min-h-0 min-w-0 w-full flex-auto flex-col overflow-hidden bg-wb-editor-surface"
       :aria-busy="refreshing"
@@ -451,25 +504,23 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
       >
         <template #title>
           <span>{{ locale.t('export.sourceUnavailable', 'Source export unavailable') }}</span>
-          <ElButton
-            native-type="button"
-            text
-            class="source-workspace__retry"
-            :disabled="actionsBusy"
-            @click="refreshSnapshot()"
-          >
-            <RefreshCw :size="14" aria-hidden="true" />
-            {{ locale.t('export.refresh', 'Refresh snapshot') }}
-          </ElButton>
+          <ControlHint :reason="busyReason">
+            <ElButton native-type="button" text class="source-workspace__retry" :disabled="actionsBusy" @click="refreshSnapshot()">
+              <RefreshCw :size="14" aria-hidden="true" />
+              {{ locale.t('export.refresh', 'Refresh snapshot') }}
+            </ElButton>
+          </ControlHint>
         </template>
       </ElAlert>
       <ElAlert v-if="snapshotStale" class="source-workspace__stale" type="warning" :closable="false" show-icon>
         <template #title>
           <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>
-          <ElButton native-type="button" text :disabled="actionsBusy" @click="refreshSnapshot()">
-            <RefreshCw :size="14" aria-hidden="true" />
-            {{ locale.t('export.refresh', 'Refresh snapshot') }}
-          </ElButton>
+          <ControlHint :reason="busyReason">
+            <ElButton native-type="button" text :disabled="actionsBusy" @click="refreshSnapshot()">
+              <RefreshCw :size="14" aria-hidden="true" />
+              {{ locale.t('export.refresh', 'Refresh snapshot') }}
+            </ElButton>
+          </ControlHint>
         </template>
       </ElAlert>
       <div v-if="refreshing" class="source-workspace__loading" role="status" aria-live="polite">
@@ -512,15 +563,16 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
                 <WrapText :size="15" aria-hidden="true" />
               </ElButton>
             </ElTooltip>
-            <ElTooltip
-              :content="locale.t('action.copy', 'Copy')"
-              :trigger="['hover', 'focus']"
-              :show-after="350"
-              :hide-after="0"
-              :enterable="false"
-              :persistent="false"
-              placement="bottom"
-              append-to="#workbench-overlays"
+            <ControlHint
+              :label="locale.t('action.copy', 'Copy')"
+              :reason="
+                busyReason ||
+                (exportText === undefined
+                  ? selectedFile?.kind === 'binary'
+                    ? locale.t('export.binaryCopyUnavailable', 'Binary files cannot be copied as text.')
+                    : locale.t('export.selectFile', 'Select a generated text file first.')
+                  : undefined)
+              "
             >
               <ElButton
                 native-type="button"
@@ -533,16 +585,10 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
               >
                 <Clipboard :size="15" aria-hidden="true" />
               </ElButton>
-            </ElTooltip>
-            <ElTooltip
-              :content="locale.t('action.download', 'Download')"
-              :trigger="['hover', 'focus']"
-              :show-after="350"
-              :hide-after="0"
-              :enterable="false"
-              :persistent="false"
-              placement="bottom"
-              append-to="#workbench-overlays"
+            </ControlHint>
+            <ControlHint
+              :label="locale.t('action.download', 'Download')"
+              :reason="busyReason || (!selectedFile ? locale.t('export.selectFile', 'Select a generated text file first.') : undefined)"
             >
               <ElButton
                 native-type="button"
@@ -554,33 +600,34 @@ async function downloadBundle(scope: 'project' | 'surface' = 'project'): Promise
               >
                 <Download :size="15" aria-hidden="true" />
               </ElButton>
-            </ElTooltip>
+            </ControlHint>
           </div>
         </template>
       </ConfigFormSourceViewer>
     </div>
 
-    <footer
-      class="source-workspace__statusbar flex min-w-0 items-center justify-between gap-4 text-[11px] text-wb-muted"
-    >
+    <footer class="source-workspace__statusbar flex min-w-0 items-center justify-between gap-4 text-[11px] text-wb-muted">
       <span class="source-workspace__status" :class="{ 'is-stale': snapshotStale, 'is-error': snapshotError }">
         <component :is="snapshotError || snapshotStale ? RefreshCw : CircleCheck" :size="12" aria-hidden="true" />
-        <span>{{
-          snapshotError
-            ? locale.t('export.sourceUnavailable', 'Source export unavailable')
-            : snapshotStale
+        <span>
+          {{
+            snapshotError
+              ? locale.t('export.sourceUnavailable', 'Source export unavailable')
+              : snapshotStale
               ? locale.t('export.stale', 'Stale')
               : locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', {
-                revision: snapshotEditVersion,
-              })
-        }}</span>
+                  revision: snapshotEditVersion,
+                })
+          }}
+        </span>
       </span>
       <span class="source-workspace__file-meta">
-        <span v-if="selectedLineCount">{{
-          locale.t('export.lineCount', '{count} lines', { count: selectedLineCount })
-        }}</span>
+        <span v-if="selectedLineCount">{{ locale.t('export.lineCount', '{count} lines', { count: selectedLineCount }) }}</span>
         <span>UTF-8</span>
-        <span class="source-workspace__readonly"><LockKeyhole :size="10" aria-hidden="true" />{{ locale.t('export.readOnly', 'Read only') }}</span>
+        <span class="source-workspace__readonly">
+          <LockKeyhole :size="10" aria-hidden="true" />
+          {{ locale.t('export.readOnly', 'Read only') }}
+        </span>
       </span>
     </footer>
   </section>

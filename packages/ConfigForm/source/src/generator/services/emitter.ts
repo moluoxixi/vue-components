@@ -20,6 +20,7 @@ import type {
 import { readProjectImageResourceId } from '@moluoxixi/config-form-model'
 import { readSourceFileSet } from '../validation'
 import { sourceDatasetViewKey as datasetViewKey } from './datasets'
+import { sourceHandoffReadme } from './handoff'
 import { createSourceInitialValues } from './initial-values'
 import { rawFormCellClass, rawFormCellCssClass, rawFormContentClass, rawFormLayoutCss } from './raw-form-layout'
 import { rawValidationModuleSource, rawValidatorNames } from './raw-validation'
@@ -2801,6 +2802,7 @@ export function emitRawProject(
     ]
   })
   return assemble('raw-source', 'src/main.ts', [
+    textFile('README.md', 'text', sourceHandoffReadme('raw-source', style.target)),
     ...rawCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,
@@ -2855,6 +2857,7 @@ export function emitBindingProject(
     ]
   })
   return assemble('config-bindings', 'src/bindings.ts', [
+    textFile('README.md', 'text', sourceHandoffReadme('config-bindings', style.target)),
     ...bindingCommonFiles(context),
     ...surfaceFiles,
     ...resources.files,

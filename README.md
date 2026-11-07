@@ -7,7 +7,7 @@
 - [组件文档](https://moluoxixi.github.io/vue-components/)
 - [ConfigForm 可视化设计器](https://moluoxixi.github.io/vue-components/config-form-playground/designer.html)
 
-ConfigForm Studio 使用真实 Vue 组件创作可以持续在线编辑的 UI 设计项目。配置是设计源文档，人工与 AI 共用编辑事务，设计、体验预览和 Vue 源码交付围绕同一项目工作。当前已提供页面、弹窗、抽屉、示例数据、资源、校验、本地交互、源码 SDK、文件工作区与 MCP。源码交付是单向的，生产 Runtime 继续独立支持工程师的代码态配置与业务逻辑。产品定位、架构与实施计划见 [ConfigForm 文档](./packages/ConfigForm/docs/README.md)，各包用法见 [ConfigForm 入口](./packages/ConfigForm/README.md)。
+ConfigForm 提供两条独立路径：开发者用 Runtime 编写 TypeScript 表单配置；用 Studio 可视化搭建真实组件界面并导出 Vue 源码。Studio 默认交付独立 Vue 工程，也可导出接入已有项目的 ConfigForm 绑定代码。设计 JSON 用于保存和继续设计，源码交付保持单向。人工与 AI 可通过 SDK/MCP 共用设计事务。产品定位与验证见 [ConfigForm 文档](./packages/ConfigForm/docs/README.md)，两种场景的用法见 [ConfigForm 入口](./packages/ConfigForm/README.md)。
 
 ## 包
 

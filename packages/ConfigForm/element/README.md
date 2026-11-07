@@ -1,6 +1,11 @@
 # ElementConfigForm
 
 `@moluoxixi/config-form-element` 是面向 Element Plus 输入组件的轻量配置表单。
+用于开发者直接编写 TypeScript 配置，不需要设计器、项目 JSON 或编译器。
+
+```sh
+pnpm add @moluoxixi/config-form-element @moluoxixi/config-form-headless vue element-plus zod@^3
+```
 
 - 根节点使用原生 `<form>`，字段使用包内自有 label/control/error 壳；
 - inline 布局使用原生 Flex，grid 布局使用原生 CSS Grid；
@@ -15,6 +20,7 @@ import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-head
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
 import '@moluoxixi/config-form-element/styles'
 import { ElInput, ElTag } from 'element-plus'
+import 'element-plus/dist/index.css'
 import { h, shallowRef } from 'vue'
 import { z } from 'zod'
 
@@ -27,6 +33,7 @@ const model = shallowRef<UserForm>({ locked: false, name: '' })
 const { defineField } = defineFields<UserForm>()
 const fields = [
   defineField({
+    id: 'name',
     component: ElInput,
     field: 'name',
     label: '姓名',
@@ -59,10 +66,30 @@ const modelPort = createConfigFormModel(model)
 内置别名分别定义在 `src/materials/<name>.ts`，由构建期文件扫描生成 `ELEMENT_CONFIG_FORM_COMPONENTS`。`ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY` 可用于检查物料来源与确定性顺序；业务扩展仍通过 `components` prop 注册，不依赖扫描器。
 
 ```ts
-const fields = [defineField({ component: 'text', field: 'name', label: '姓名' })]
+const fields = [defineField({ id: 'name', component: 'text', field: 'name', label: '姓名' })]
 ```
 
 节点的 `extensions` 供设计器和业务插件读取，不会透传给 Element Plus 组件或 DOM。
+
+## 提交与业务接入
+
+每个节点必须有稳定且唯一的 `id`；字段的 `field` 是模型中的键，两者职责不同。
+上例的 `modelPort` 是唯一模型端口，更新 `model.value` 即可回显服务端数据。
+提交先校验，通过后触发 `submit` 事件；接口请求、保存中状态和服务端错误由宿主管理。
+`actions` 插槽提供 `model`、`meta`、`validating`、`submit()` 和 `resetFields()`：
+
+```vue
+<ElementConfigForm :model="modelPort" :fields="fields" @submit="saveUser">
+  <template #actions="{ resetFields }">
+    <ElButton native-type="submit" type="primary">保存</ElButton>
+    <ElButton native-type="button" @click="resetFields">重置</ElButton>
+  </template>
+</ElementConfigForm>
+```
+
+`saveUser(values)` 使用校验后的提交值调用业务服务；`ElButton` 由宿主导入或注册。
+字段条件可直接写 `visible: values => ...`，组件事件写在 `props.onX`，异步校验使用
+`validator(value, values)`。这些都是普通代码，不需要转换成设计器 JSON。
 
 ## 节点与布局
 

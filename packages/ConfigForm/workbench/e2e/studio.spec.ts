@@ -10,6 +10,11 @@ for (const adapter of ['element', 'antd'] as const) {
     page.on('pageerror', error => errors.push(error.message))
     await page.goto('/')
     await createProject(page, adapter)
+    const binaryControl = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
+      .locator(adapter === 'element' ? '.el-switch' : '.ant-switch')
+      .first()
+    await expect(binaryControl).toBeVisible()
+    expect((await binaryControl.boundingBox())!.width).toBeLessThan(100)
     const selectName = async () => {
       await page.getByRole('tab', { name: 'Layers', exact: true }).click()
       await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()

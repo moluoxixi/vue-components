@@ -12,9 +12,10 @@
   line-height: $label-line-height;
 }
 
-[data-config-form-label][data-required]::after {
+[data-config-form-label][data-required]::before {
+  margin-inline-end: 4px;
   color: $error-color;
-  content: ' *';
+  content: '*';
 }
 
 [data-config-form-control] {
@@ -25,10 +26,13 @@
  * Field widgets follow their grid cell instead of their intrinsic size, so a
  * 24-span field really spans the row: el-input-number, the date/time pickers,
  * cascaders and the a-* counterparts all default to fixed or fit-content
- * widths otherwise. Inline rows carry no responsive-layout hook and keep the
- * intrinsic widths.
+ * widths otherwise. Binary controls keep their intrinsic width, whether the
+ * semantic input is the root (Ant Design Vue) or inside a wrapper (Element
+ * Plus). Inline rows carry no responsive-layout hook and keep natural widths.
  */
-[data-config-form-responsive-layout] [data-config-form-control] > :first-child {
+[data-config-form-responsive-layout] [data-config-form-control] > :first-child:not(
+  :where([role='switch'], [role='checkbox'], [role='radio'], input[type='checkbox'], input[type='radio'], :has(input[type='checkbox'], input[type='radio']))
+) {
   width: 100%;
 }
 

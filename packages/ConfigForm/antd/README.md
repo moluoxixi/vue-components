@@ -1,6 +1,12 @@
 # AntdConfigForm
 
 `@moluoxixi/config-form-antd-vue` 是面向 Ant Design Vue 输入组件的轻量配置表单。
+用于直接编写业务配置；提交、重置与模型接入方式见 [Element Plus 示例](../element/README.md#提交与业务接入)，
+将组件换成 `AntdConfigForm`，按钮使用 Ant Design Vue 的 `html-type="submit"`。
+
+```sh
+pnpm add @moluoxixi/config-form-antd-vue @moluoxixi/config-form-headless vue ant-design-vue zod@^3
+```
 
 根节点使用原生 `<form>`，字段使用共享 label/control/error 壳；inline 布局使用原生 Flex，grid 布局使用原生 CSS Grid。组件不使用 `AForm`、`AFormItem`、`ARow`、`ACol` 或 Ant Design Vue rules。
 
@@ -8,9 +14,14 @@
 
 `formAttrs` 只接收原生 form attributes，不能传 `labelCol` / `wrapperCol`。`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 
-```ts
+```vue
+<script setup lang="ts">
 import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-headless'
+import { AntdConfigForm } from '@moluoxixi/config-form-antd-vue'
+import '@moluoxixi/config-form-antd-vue/styles'
 import { Input as AInput } from 'ant-design-vue'
+import 'ant-design-vue/dist/reset.css'
+import { shallowRef } from 'vue'
 import { z } from 'zod'
 
 interface ProjectForm {
@@ -19,8 +30,11 @@ interface ProjectForm {
 }
 
 const { defineField } = defineFields<ProjectForm>()
+const model = shallowRef<ProjectForm>({ name: '', published: false })
+const modelPort = createConfigFormModel(model)
 const fields = [
   defineField({
+    id: 'name',
     component: AInput,
     field: 'name',
     label: '项目名称',
@@ -30,6 +44,11 @@ const fields = [
     readonly: values => values.published,
   }),
 ]
+</script>
+
+<template>
+  <AntdConfigForm :model="modelPort" :fields="fields" :columns="12" gap="16px" />
+</template>
 ```
 
 ## 语义组件注册
@@ -40,8 +59,8 @@ const fields = [
 
 ```ts
 const fields = [
-  defineField({ component: 'text', field: 'name' }),
-  defineField({ component: 'boolean', field: 'published' }),
+  defineField({ id: 'name', component: 'text', field: 'name' }),
+  defineField({ id: 'published', component: 'boolean', field: 'published' }),
 ]
 ```
 

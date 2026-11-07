@@ -239,9 +239,12 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
           <FileJson2 :size="16" aria-hidden="true" />
           {{ locale.t('projects.import', 'Import JSON') }}
         </ElButton>
-        <ElButton native-type="button" type="primary" data-project-create data-create-trigger="project-manager-create" @click="emit('create', 'template')">
+        <ElButton native-type="button" data-project-create data-create-trigger="project-manager-create" @click="emit('create', 'template')">
           <Plus :size="16" aria-hidden="true" />
           {{ locale.t('projects.create', 'New project') }}
+        </ElButton>
+        <ElButton native-type="button" type="primary" data-quick-form-create @click="emit('quickCreate')">
+          <Plus :size="16" aria-hidden="true" />{{ locale.t('projects.quickForm', 'Create a form') }}
         </ElButton>
       </div>
     </header>
@@ -344,7 +347,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         </div>
         <div>
           <strong>{{ hasQuery ? locale.t('projects.noResults', 'No matching projects') : locale.t('projects.empty', 'Create your first project') }}</strong>
-          <p>{{ hasQuery ? locale.t('projects.noResultsHint', 'Try a project name or component library, or clear the search.') : locale.t('projects.emptyBody', 'Create a project, then start with a blank page or a template.') }}</p>
+          <p>{{ hasQuery ? locale.t('projects.noResultsHint', 'Try a project name or component library, or clear the search.') : locale.t('projects.quickFormHint', 'Choose a form template and start designing. A project is created for you; export Vue source when ready.') }}</p>
         </div>
         <ElButton v-if="hasQuery" native-type="button" @click="clearSearch">
           {{ locale.t('projects.clearSearch', 'Clear search') }}
@@ -353,8 +356,8 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
           <ElButton native-type="button" @click="emit('create', 'json')">
             <FileJson2 :size="15" aria-hidden="true" />{{ locale.t('projects.import', 'Import JSON') }}
           </ElButton>
-          <ElButton native-type="button" type="primary" @click="emit('create', 'template')">
-            <Plus :size="16" aria-hidden="true" />{{ locale.t('projects.create', 'New project') }}
+          <ElButton native-type="button" type="primary" @click="emit('quickCreate')">
+            <Plus :size="16" aria-hidden="true" />{{ locale.t('projects.quickForm', 'Create a form') }}
           </ElButton>
         </div>
       </div>

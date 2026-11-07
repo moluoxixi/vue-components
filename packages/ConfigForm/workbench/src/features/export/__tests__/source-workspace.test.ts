@@ -91,7 +91,7 @@ describe('source workspace', () => {
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
     expect(root.get('.source-workspace__heading h2').text()).toBe('ConfigForm binding source')
-    expect(viewer.props('selectedPath')).toBe('src/bindings.ts')
+    expect(viewer.props('selectedPath')).toBe('src/views/home/utils/config.ts')
     expect(root.get('[role="tree"]').text()).toContain('config.ts')
     expect(root.get('[role="tree"]').text()).toContain('package.json')
     expect(root.find('.config-json-view').exists()).toBe(false)

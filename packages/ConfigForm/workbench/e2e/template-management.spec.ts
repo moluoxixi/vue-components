@@ -31,6 +31,33 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
+for (const framework of ['Element Plus', 'Ant Design Vue']) {
+  test(`quick-starts and restores a ${framework} form without project setup`, async ({ page }) => {
+    await page.locator('[data-quick-form-create]').first().click()
+    const dialog = page.locator('.quick-form-dialog:visible')
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('option', { name: new RegExp(`${framework} approval`) }).click()
+    await dialog.getByRole('button', { name: 'Start designing', exact: true }).click()
+    await expect(page).toHaveURL(/#\/projects\/[^/]+\/pages\/[^/]+\/design$/)
+    const designUrl = page.url()
+    const runtime = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
+    const requiredLabel = runtime.locator('[data-config-form-label][data-required]').first()
+    await expect(requiredLabel).toBeVisible()
+    const markers = await requiredLabel.evaluate(node => ['::before', '::after']
+      .map(pseudo => getComputedStyle(node, pseudo).content)
+      .filter(content => content.includes('*')))
+    expect(markers).toHaveLength(1)
+
+    await page.reload()
+    await expect(page).toHaveURL(designUrl)
+    await expect(page.getByRole('region', { name: 'Design editor', exact: true })).toBeVisible()
+    await expect(requiredLabel).toBeVisible()
+    await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+    await expect(page.locator('.project-card')).toHaveCount(1)
+    await expect(page.locator('.project-card')).toContainText(framework)
+  })
+}
+
 test('keeps project creation separate from the page template workspace', async ({ page }) => {
   const trigger = page.locator('[data-project-create]').first()
   await expect(trigger).toBeVisible()

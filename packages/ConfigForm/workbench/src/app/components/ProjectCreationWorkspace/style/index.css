@@ -107,6 +107,8 @@
   gap: 10px;
   border-top: 1px solid var(--wb-separator);
 }
+.project-creation-field > .control-hint,
+.project-creation-field > .control-hint > .el-radio-group { width: 100%; }
 
 .project-creation-footer .el-button + .el-button {
   margin-left: 0;

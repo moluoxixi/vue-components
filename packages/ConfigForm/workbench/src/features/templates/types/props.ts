@@ -9,6 +9,7 @@ export interface JsonImportPaneProps {
 export interface TemplateCreationWorkspaceProps {
   canClose: boolean
   initialMode?: 'json' | 'template'
+  quickStart?: boolean
   locale?: DesignerLocaleOptions
   /** User-facing page kind filter; `page` is presented as a Form. */
   surfaceKind?: 'page' | 'dialog' | 'drawer'

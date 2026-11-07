@@ -918,6 +918,8 @@ describe('source generators', () => {
       return
 
     expect(first.data.kind).toBe('raw-source')
+    expect(textAt(first.data, 'README.md')).toContain('pnpm dev')
+    expect(textAt(first.data, 'README.md')).toContain('Save the design JSON separately')
     expect(first.data.entry).toBe('src/main.ts')
     expect(first.data.files.map(file => file.path)).toEqual([...first.data.files.map(file => file.path)].sort((left, right) => left.localeCompare(right)))
     expect(first.data.files.map(file => file.path)).toEqual(expect.arrayContaining([
@@ -1063,6 +1065,8 @@ describe('source generators', () => {
       return
 
     expect(result.data.kind).toBe('config-bindings')
+    expect(textAt(result.data, 'README.md')).toContain('no app entry or standalone preview page')
+    expect(textAt(result.data, 'README.md')).not.toContain('pnpm dev')
     expect(result.data.entry).toBe('src/bindings.ts')
     expect(result.data.files.map(file => file.path)).toEqual(expect.arrayContaining([
       'package.json',

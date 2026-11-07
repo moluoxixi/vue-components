@@ -1956,6 +1956,13 @@ test('exports pinned source and config files through the readonly workspace', as
   expect(mobileLayout.footerDirection).toBe('row')
   expect(mobileLayout.actionsWidth).toBeLessThanOrEqual(mobileLayout.footerWidth)
   expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.clientWidth)
+  await page.setViewportSize({ width: 320, height: 568 })
+  await expect(sourcePane.getByRole('button', { name: 'Save design JSON', exact: true })).toBeInViewport()
+  const editor = sourcePane.getByRole('region', { name: 'Read-only source: src/main.ts' })
+  expect((await editor.boundingBox())!.height).toBeGreaterThan(80)
+  await sourcePane.getByRole('button', { name: 'Handoff guide', exact: true }).click()
+  await expect(page.getByRole('tooltip')).toContainText('Source edits cannot be imported back')
+  await sourcePane.getByRole('button', { name: 'Handoff guide', exact: true }).click()
   await page.setViewportSize({ width: 1440, height: 1000 })
   const [sourceDownload] = await Promise.all([
     page.waitForEvent('download'),

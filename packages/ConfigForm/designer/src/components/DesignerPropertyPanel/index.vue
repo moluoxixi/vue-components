@@ -124,7 +124,7 @@ const propertyGroups = computed(() => {
     entries.push(entry)
     entriesByGroup.set(id, entries)
   }
-  return (['essentials', 'layout', 'appearance', 'data', 'guidance', 'advanced'] as const)
+  return (['essentials', 'data', 'layout', 'guidance', 'appearance', 'advanced'] as const)
     .filter(id => entriesByGroup.has(id))
     .map(id => ({
       id,
@@ -274,7 +274,6 @@ const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.
     }
   }
   else {
-    content.push(...visual.layout(field))
     for (const group of propertyGroups.value) {
       const groupId = `${propertyTabPanelId('properties')}-group-${group.id}`
       content.push({
@@ -291,8 +290,9 @@ const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.
               'class': 'mx-config-form-designer__property-group-trigger',
               'aria-controls': `${groupId}-content`,
               'aria-expanded': !isPropertyGroupCollapsed(group.id),
-              'disabled': hasPropertyQuery.value,
-              'onClick': () => togglePropertyGroup(group.id),
+              'aria-disabled': hasPropertyQuery.value || undefined,
+              'title': hasPropertyQuery.value ? locale.t('property.searchExpanded', 'Groups stay expanded during search. Clear the search to collapse them.') : undefined,
+              'onClick': () => !hasPropertyQuery.value && togglePropertyGroup(group.id),
             },
             slots: { default: () => [
               h(ChevronRight, { size: 14, 'aria-hidden': true }),
@@ -315,6 +315,7 @@ const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.
         ] },
       })
     }
+    content.push(...visual.layout(field))
     if (hasPropertyQuery.value && propertyGroups.value.length === 0 && visibleVisualPropertyCount.value === 0) {
       content.push({
         id: 'empty-property-search',
