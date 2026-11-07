@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test'
+import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { createProject, openPageManagement, selectDatasetView } from './helpers'
@@ -311,6 +312,73 @@ async function createReviewDataset(page: Page): Promise<void> {
   await page.locator('[data-asset-dataset-save]').click()
   await selectDatasetView(page, 'Table')
 }
+
+test('keeps compact project cards accessible across phone widths and preserves image and menu actions', async ({ page }) => {
+  await createManagementProject(page)
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click()
+  const projects = page.locator('.project-manager')
+  await projects.getByRole('button', { name: 'Card view', exact: true }).click()
+  const card = projects.locator('.project-card').first()
+  const more = card.getByRole('button', { name: 'Project actions', exact: true })
+  await more.hover()
+  await expect(page.getByRole('tooltip')).toHaveText('Project actions')
+  expect(await more.evaluate(node => node.matches(':focus-visible'))).toBe(false)
+  await more.click()
+  await expect(page.getByRole('menuitem', { name: 'Rename', exact: true })).toBeVisible()
+  await expect(page.getByRole('tooltip')).not.toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menuitem', { name: 'Rename', exact: true })).not.toBeVisible()
+  await expect(more).toBeFocused()
+  await more.click()
+  await page.getByRole('menuitem', { name: 'Rename', exact: true }).click()
+  const rename = page.getByRole('dialog', { name: 'Rename project', exact: true })
+  await rename.getByRole('textbox').fill('')
+  const save = rename.getByRole('button', { name: 'Save', exact: true })
+  await expect(save).toBeDisabled()
+  await save.locator('..').hover()
+  await expect(page.getByRole('tooltip')).toHaveText('Enter a project name to save.')
+  const name = 'Product operations / 产品研发与业务审批工作区'
+  await rename.getByRole('textbox').fill(name)
+  await save.click()
+  await expect(rename).not.toBeVisible()
+  await expect(card.getByRole('button', { name, exact: true })).toBeEnabled()
+
+  await card.locator('input[type="file"]').setInputFiles({
+    name: 'project-cover.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#27665b"/></svg>'),
+  })
+  await expect(card.locator('.project-card__preview img')).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Replace image', exact: true })).toBeEnabled()
+  await page.reload()
+  await expect(card.locator('.project-card__preview img')).toBeVisible()
+
+  for (const width of [1440, 678, 430, 390, 360, 320]) {
+    await page.setViewportSize({ width, height: 827 })
+    await expectFitsViewport(card)
+    await expectFitsViewport(more)
+    await expectFitsViewport(card.locator('.project-card__counts'))
+    expect((await card.boundingBox())!.height).toBeLessThan(200)
+    await expectNoPageOverflow(page)
+  }
+
+  await card.getByRole('button', { name: 'Replace image', exact: true }).focus()
+  await page.keyboard.press('Tab')
+  await expect(more).toBeFocused()
+  expect(await more.evaluate(node => node.matches(':focus-visible'))).toBe(true)
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menuitem', { name: 'Remove image', exact: true })).toBeVisible()
+  await expect(page.getByRole('tooltip')).not.toBeVisible()
+  await page.getByRole('menuitem', { name: 'Remove image', exact: true }).click()
+  await expect(card.locator('.project-card__preview img')).toHaveCount(0)
+  await expect(card.getByRole('button', { name: 'Upload image', exact: true })).toBeEnabled()
+  await projects.getByRole('button', { name: 'List view', exact: true }).click()
+  expect((await card.boundingBox())!.height).toBeLessThanOrEqual(100)
+  await expectNoPageOverflow(page)
+  expect((await new AxeBuilder({ page }).include('.project-manager').analyze()).violations).toEqual([])
+  await card.getByRole('button', { name, exact: true }).click()
+  await expect(page.locator('.page-manager')).toBeVisible()
+})
 
 test('remembers manager display preferences and keeps the current search when switching views', async ({ page }) => {
   await createManagementProject(page)

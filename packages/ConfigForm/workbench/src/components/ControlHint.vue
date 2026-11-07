@@ -1,11 +1,12 @@
 <script setup lang="ts">
-defineProps<{ reason?: string, label?: string }>()
+defineOptions({ inheritAttrs: false })
+const props = defineProps<{ reason?: string, label?: string }>()
 </script>
 
 <template>
   <ElTooltip
-    :content="reason || label || ''"
-    :disabled="!reason && !label"
+    :content="props.reason || props.label || ''"
+    :disabled="!props.reason && !props.label"
     effect="light"
     transition="none"
     :trigger="['hover', 'focus']"
@@ -17,7 +18,7 @@ defineProps<{ reason?: string, label?: string }>()
     append-to="#workbench-overlays"
     popper-class="workbench-passive-tooltip"
   >
-    <span class="control-hint" :class="{ 'has-disabled-reason': reason }" :tabindex="reason ? 0 : undefined" :aria-label="reason">
+    <span v-bind="$attrs" class="control-hint" :class="{ 'has-disabled-reason': props.reason }" :tabindex="props.reason ? 0 : undefined" :aria-label="props.reason">
       <slot />
     </span>
   </ElTooltip>

@@ -522,7 +522,7 @@ describe('workbench theme contract', () => {
       ),
     ).toContain('box-shadow: var(--el-box-shadow-light);')
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__interaction-rule-toggle:hover')
-    expect(selectorBlock('.project-row:focus-within')).toContain('box-shadow: 0 6px 20px rgb(15 23 42 / 6%);')
+    expect(selectorBlock('.project-card__main:focus-visible')).toContain('outline: 2px solid var(--wb-focus);')
     expect(selectorBlock('.page-manager__row:focus-within', pageManagerStylesheet)).toContain(
       'box-shadow: 0 2px 8px rgb(0 0 0 / 4%);',
     )

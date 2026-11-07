@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProjectSummary } from '@moluoxixi/config-form-model'
-import type { UploadFile } from 'element-plus'
+import type { DropdownInstance, UploadFile } from 'element-plus'
 import type { ProjectImageInput, ProjectManagerEmits, ProjectManagerProps } from './types'
 import {
   Code2,
@@ -23,16 +23,21 @@ import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import BrowseViewToggle from '../../components/BrowseViewToggle.vue'
 import { useBrowseView } from '../../components/composables/use-browse-view'
+import ControlHint from '../../components/ControlHint.vue'
 
 const props = defineProps<ProjectManagerProps>()
 const emit = defineEmits<ProjectManagerEmits>()
-const { controller, ui } = props
-const locale = computed(() => createDesignerLocale(controller.localeOptions.value))
+const locale = computed(() => createDesignerLocale(props.controller.localeOptions.value))
 const query = ref('')
 const browseView = useBrowseView('projects')
 const sort = ref<'updated' | 'name'>('updated')
 const openingId = ref<string>()
+const activeMenuId = ref<string>()
+const busyReason = computed(() => props.controller.busy.value || openingId.value
+  ? locale.value.t('action.busyUnavailable', 'Wait for the current operation to finish')
+  : undefined)
 const projectSearch = useTemplateRef<{ focus: () => void }>('projectSearch')
+const projectMenus = useTemplateRef<DropdownInstance[]>('projectMenus')
 const hasQuery = computed(() => query.value.trim().length > 0)
 const renameOpen = ref(false)
 const renameValue = ref('')
@@ -47,7 +52,7 @@ let imageSyncToken = 0
 const filteredProjects = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase()
   const collator = new Intl.Collator(locale.value.locale, { numeric: true, sensitivity: 'base' })
-  return controller.projects.value.filter(project => !normalized
+  return props.controller.projects.value.filter(project => !normalized
     || `${project.name} ${project.registryLock.adapter} ${adapterLabel(project.registryLock.adapter)}`.toLocaleLowerCase().includes(normalized))
     .sort((a, b) => {
       if (sort.value === 'updated') {
@@ -96,7 +101,7 @@ async function syncProjectImages(projects: readonly ProjectSummary[]): Promise<v
       projectImageSources.value[project.id] = image.url
       return
     }
-    const bytes = await controller.readEmbeddedResource({
+    const bytes = await props.controller.readEmbeddedResource({
       projectId: project.id,
       resourceId: image.id,
       contentHash: image.contentHash,
@@ -111,7 +116,7 @@ async function syncProjectImages(projects: readonly ProjectSummary[]): Promise<v
   }))
 }
 
-watch(() => controller.projects.value, (projects) => {
+watch(() => props.controller.projects.value, (projects) => {
   void syncProjectImages(projects)
 }, { immediate: true })
 
@@ -141,12 +146,12 @@ function adapterLabel(adapter: string): string {
 }
 
 async function openProject(project: ProjectSummary): Promise<void> {
-  if (controller.busy.value || openingId.value)
+  if (props.controller.busy.value || openingId.value)
     return
   openingId.value = project.id
   try {
-    await controller.requestOpenProject(project.id)
-    if (controller.currentProject.value?.id === project.id)
+    await props.controller.requestOpenProject(project.id)
+    if (props.controller.currentProject.value?.id === project.id)
       emit('open')
   }
   finally {
@@ -163,9 +168,9 @@ function showRename(project: ProjectSummary): void {
 
 async function confirmRename(): Promise<void> {
   const project = renameTarget.value
-  if (!project)
+  if (!project || busyReason.value || !renameValue.value.trim())
     return
-  if (await controller.renameProject(project.id, renameValue.value))
+  if (await props.controller.renameProject(project.id, renameValue.value))
     renameOpen.value = false
 }
 
@@ -176,50 +181,63 @@ function showDelete(project: ProjectSummary): void {
 
 async function confirmDelete(): Promise<void> {
   const project = deleteTarget.value
-  if (!project)
+  if (!project || busyReason.value)
     return
-  if (await controller.deleteProject(project.id)) {
+  if (await props.controller.deleteProject(project.id)) {
     deleteOpen.value = false
     deleteTarget.value = undefined
   }
 }
 
 async function runAction(command: string, project: ProjectSummary): Promise<void> {
+  if (busyReason.value)
+    return
   if (command === 'rename') {
     showRename(project)
     return
   }
   if (command === 'duplicate') {
-    if (await controller.duplicateProject(project.id))
+    if (await props.controller.duplicateProject(project.id))
       emit('open')
     return
   }
   if (command === 'export') {
-    await controller.exportProject(project.id)
+    await props.controller.exportProject(project.id)
     return
   }
   if (command === 'export-source') {
-    await controller.exportProjectSource(project.id)
+    await props.controller.exportProjectSource(project.id)
     return
   }
   if (command === 'remove-image') {
-    await controller.removeProjectImage(project.id)
+    await props.controller.removeProjectImage(project.id)
     return
   }
   if (command === 'delete')
     showDelete(project)
 }
 
+function setMenuVisible(projectId: string, visible: boolean): void {
+  if (visible)
+    activeMenuId.value = projectId
+  else if (activeMenuId.value === projectId)
+    activeMenuId.value = undefined
+}
+
+function closeProjectMenus(): void {
+  projectMenus.value?.forEach(menu => menu.handleClose())
+}
+
 async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFile): Promise<void> {
   const file = uploadFile.raw
-  if (!file)
+  if (!file || busyReason.value)
     return
   const mediaType = file.type.toLocaleLowerCase().startsWith('image/')
     ? file.type
     : ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml' } as Record<string, string>)[file.name.split('.').at(-1)?.toLocaleLowerCase() ?? '']
   if (!mediaType)
     return
-  await controller.setProjectImage(project.id, {
+  await props.controller.setProjectImage(project.id, {
     name: file.name,
     fileName: file.name,
     mediaType,
@@ -229,13 +247,13 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
 </script>
 
 <template>
-  <main class="project-manager" :data-theme="ui.resolvedTheme.value" :data-palette="ui.paletteFamily.value">
+  <main class="project-manager" :data-theme="props.ui.resolvedTheme.value" :data-palette="props.ui.paletteFamily.value">
     <header class="project-manager__topbar">
       <div class="project-manager__topbar-context">
         <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
       </div>
       <div class="project-manager__commands">
-        <ElButton v-if="controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
+        <ElButton v-if="props.controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
           <FileJson2 :size="16" aria-hidden="true" />
           {{ locale.t('projects.import', 'Import JSON') }}
         </ElButton>
@@ -250,94 +268,101 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
     </header>
 
     <section class="project-manager__content" :aria-label="locale.t('projects.title', 'Projects')">
-      <div v-if="controller.projects.value.length" class="project-manager__list-heading">
+      <div v-if="props.controller.projects.value.length" class="project-manager__list-heading">
         <ElInput ref="projectSearch" v-model="query" type="search" class="project-manager__search" clearable :placeholder="locale.t('projects.search', 'Search projects')" :aria-label="locale.t('projects.search', 'Search projects')">
           <template #prefix>
             <Search :size="16" aria-hidden="true" />
           </template>
         </ElInput>
         <div class="project-manager__list-summary">
-          <span role="status" aria-live="polite">{{ hasQuery ? locale.t('projects.filteredCount', '{count} of {total} projects', { count: filteredProjects.length, total: controller.projects.value.length }) : locale.t('projects.listCount', '{count} projects', { count: filteredProjects.length }) }}</span>
+          <span role="status" aria-live="polite">{{ hasQuery ? locale.t('projects.filteredCount', '{count} of {total} projects', { count: filteredProjects.length, total: props.controller.projects.value.length }) : locale.t('projects.listCount', '{count} projects', { count: filteredProjects.length }) }}</span>
         </div>
         <ElSelect v-model="sort" class="project-manager__sort" :aria-label="locale.t('projects.sort', 'Sort projects')" append-to="#workbench-overlays">
           <ElOption value="updated" :label="locale.t('projects.sortUpdated', 'Recently updated')" />
           <ElOption value="name" :label="locale.t('projects.sortName', 'Project name')" />
         </ElSelect>
-        <BrowseViewToggle v-model="browseView" :locale="controller.localeOptions.value" />
+        <BrowseViewToggle v-model="browseView" :locale="props.controller.localeOptions.value" />
       </div>
 
-      <p v-if="!controller.initialized.value" class="project-manager__state" role="status">
+      <p v-if="!props.controller.initialized.value" class="project-manager__state" role="status">
         {{ locale.t('status.loading', 'Loading') }}
       </p>
       <div v-else-if="filteredProjects.length" class="project-manager__list" :data-view="browseView">
         <article v-for="project in filteredProjects" :key="project.id" class="project-row project-card" :class="{ 'is-opening': openingId === project.id }" :data-project-id="project.id">
-          <button type="button" class="project-row__main project-card__main" :aria-label="project.name" :aria-busy="openingId === project.id" :disabled="controller.busy.value || !!openingId" data-project-open @click="openProject(project)">
-            <span class="project-card__preview" aria-hidden="true">
-              <img v-if="projectImageSource(project)" :src="projectImageSource(project)" alt="">
-              <span v-else class="project-card__preview-placeholder">
-                <FolderOpen :size="21" />
-                <strong>{{ project.name.trim().slice(0, 2).toUpperCase() }}</strong>
-                <small>{{ adapterLabel(project.registryLock.adapter) }}</small>
+          <ControlHint class="project-card__open" :reason="busyReason">
+            <button type="button" class="project-row__main project-card__main" :aria-label="project.name" :aria-busy="openingId === project.id" :disabled="!!busyReason" data-project-open @click="openProject(project)">
+              <span class="project-card__identity">
+                <span class="project-card__preview" aria-hidden="true">
+                  <img v-if="projectImageSource(project)" :src="projectImageSource(project)" alt="">
+                  <FolderOpen v-else :size="20" />
+                </span>
+                <span class="project-card__heading">
+                  <small class="project-card__adapter">{{ adapterLabel(project.registryLock.adapter) }}</small>
+                  <strong :title="project.name">{{ project.name }}</strong>
+                </span>
               </span>
-            </span>
-            <span class="project-card__body">
-              <span class="project-card__title-row">
-                <strong :title="project.name">{{ project.name }}</strong>
-                <span v-if="project.homeSurfaceId" class="project-card__status">{{ locale.t('projects.ready', 'Ready') }}</span>
-              </span>
-              <small class="project-card__meta">{{ locale.t('projects.updated', 'Updated {date}', { date: formatUpdatedAt(project.updatedAt) }) }}</small>
               <span class="project-row__counts project-card__counts">
-                <span><Layers3 :size="13" aria-hidden="true" />{{ project.surfaceCount }} {{ locale.t('projects.surfaces', 'pages') }}</span>
-                <span><Database :size="13" aria-hidden="true" />{{ project.datasetCount }} {{ locale.t('projects.datasets', 'datasets') }}</span>
-                <span><Image :size="13" aria-hidden="true" />{{ project.resourceCount }} {{ locale.t('projects.resources', 'resources') }}</span>
+                <span><Layers3 :size="14" aria-hidden="true" /><b>{{ project.surfaceCount }}</b> {{ locale.t('projects.surfaces', 'pages') }}</span>
+                <span><Database :size="14" aria-hidden="true" /><b>{{ project.datasetCount }}</b> {{ locale.t('projects.datasets', 'datasets') }}</span>
+                <span><Image :size="14" aria-hidden="true" /><b>{{ project.resourceCount }}</b> {{ locale.t('projects.resources', 'resources') }}</span>
               </span>
               <span v-if="openingId === project.id" class="project-card__open-state" role="status">
                 <LoaderCircle :size="15" class="is-loading" aria-hidden="true" />
                 {{ locale.t('projects.opening', 'Opening…') }}
               </span>
-            </span>
-          </button>
+            </button>
+          </ControlHint>
           <footer class="project-card__footer">
-            <ElUpload
-              class="project-card__upload"
-              data-project-image-upload
-              accept="image/*"
-              :auto-upload="false"
-              :show-file-list="false"
-              :on-change="(file: UploadFile) => uploadProjectImage(project, file)"
-            >
-              <span class="project-card__upload-trigger">
-                <Upload :size="14" aria-hidden="true" />
-                {{ project.projectImage ? locale.t('projects.replaceImage', 'Replace image') : locale.t('projects.uploadImage', 'Upload image') }}
-              </span>
-            </ElUpload>
-            <ElDropdown trigger="click" placement="bottom-end" append-to="#workbench-overlays" @command="runAction($event, project)">
-              <ElButton native-type="button" size="small" text circle :aria-label="locale.t('projects.moreActions', 'Project actions')">
-                <MoreHorizontal :size="17" aria-hidden="true" />
-              </ElButton>
-              <template #dropdown>
-                <ElDropdownMenu>
-                  <ElDropdownItem command="rename">
-                    <Pencil :size="15" aria-hidden="true" />{{ locale.t('projects.rename', 'Rename') }}
-                  </ElDropdownItem>
-                  <ElDropdownItem command="duplicate">
-                    <Copy :size="15" aria-hidden="true" />{{ locale.t('projects.duplicate', 'Duplicate') }}
-                  </ElDropdownItem>
-                  <ElDropdownItem command="export">
-                    <Download :size="15" aria-hidden="true" />{{ locale.t('projects.export', 'Export project') }}
-                  </ElDropdownItem>
-                  <ElDropdownItem command="export-source">
-                    <Code2 :size="15" aria-hidden="true" />{{ locale.t('projects.exportSource', 'Export project source') }}
-                  </ElDropdownItem>
-                  <ElDropdownItem v-if="project.projectImage" command="remove-image">
-                    <Image :size="15" aria-hidden="true" />{{ locale.t('projects.removeImage', 'Remove image') }}
-                  </ElDropdownItem>
-                  <ElDropdownItem command="delete" divided>
-                    <Trash2 :size="15" aria-hidden="true" />{{ locale.t('projects.delete', 'Delete') }}
-                  </ElDropdownItem>
-                </ElDropdownMenu>
-              </template>
-            </ElDropdown>
+            <small class="project-card__meta" :title="formatUpdatedAt(project.updatedAt)">
+              {{ locale.t('projects.updated', 'Updated {date}', { date: formatUpdatedAt(project.updatedAt) }) }}
+            </small>
+            <div class="project-card__actions">
+              <ControlHint :reason="busyReason" :label="project.projectImage ? locale.t('projects.replaceImage', 'Replace image') : locale.t('projects.uploadImage', 'Upload image')">
+                <ElUpload
+                  class="project-card__upload"
+                  data-project-image-upload
+                  accept="image/*"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :disabled="!!busyReason"
+                  :on-change="(file: UploadFile) => uploadProjectImage(project, file)"
+                >
+                  <span class="project-card__upload-trigger">
+                    <Upload :size="16" aria-hidden="true" />
+                    <span class="sr-only">{{ project.projectImage ? locale.t('projects.replaceImage', 'Replace image') : locale.t('projects.uploadImage', 'Upload image') }}</span>
+                  </span>
+                </ElUpload>
+              </ControlHint>
+              <ControlHint :reason="busyReason" :label="activeMenuId === project.id ? undefined : locale.t('projects.moreActions', 'Project actions')">
+                <ElDropdown ref="projectMenus" trigger="click" placement="bottom-end" :disabled="!!busyReason" append-to="#workbench-overlays" @command="runAction($event, project)" @visible-change="setMenuVisible(project.id, $event)">
+                  <ElButton native-type="button" text class="project-card__more" :disabled="!!busyReason" :aria-label="locale.t('projects.moreActions', 'Project actions')" @keydown.esc.stop="closeProjectMenus">
+                    <MoreHorizontal :size="18" aria-hidden="true" />
+                  </ElButton>
+                  <template #dropdown>
+                    <ElDropdownMenu class="project-card__menu">
+                      <ElDropdownItem command="rename">
+                        <Pencil :size="15" aria-hidden="true" />{{ locale.t('projects.rename', 'Rename') }}
+                      </ElDropdownItem>
+                      <ElDropdownItem command="duplicate">
+                        <Copy :size="15" aria-hidden="true" />{{ locale.t('projects.duplicate', 'Duplicate') }}
+                      </ElDropdownItem>
+                      <ElDropdownItem command="export">
+                        <Download :size="15" aria-hidden="true" />{{ locale.t('projects.export', 'Export project') }}
+                      </ElDropdownItem>
+                      <ElDropdownItem command="export-source">
+                        <Code2 :size="15" aria-hidden="true" />{{ locale.t('projects.exportSource', 'Export project source') }}
+                      </ElDropdownItem>
+                      <ElDropdownItem v-if="project.projectImage" command="remove-image">
+                        <Image :size="15" aria-hidden="true" />{{ locale.t('projects.removeImage', 'Remove image') }}
+                      </ElDropdownItem>
+                      <ElDropdownItem command="delete" divided class="project-card__delete">
+                        <Trash2 :size="15" aria-hidden="true" />{{ locale.t('projects.delete', 'Delete') }}
+                      </ElDropdownItem>
+                    </ElDropdownMenu>
+                  </template>
+                </ElDropdown>
+              </ControlHint>
+            </div>
           </footer>
         </article>
       </div>
@@ -369,9 +394,11 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         <ElButton native-type="button" @click="renameOpen = false">
           {{ locale.t('action.cancel', 'Cancel') }}
         </ElButton>
-        <ElButton native-type="button" type="primary" :loading="controller.busy.value" :disabled="!renameValue.trim()" @click="confirmRename">
-          {{ locale.t('action.save', 'Save') }}
-        </ElButton>
+        <ControlHint :reason="busyReason || (!renameValue.trim() ? locale.t('projects.nameRequired', 'Enter a project name to save.') : undefined)">
+          <ElButton native-type="button" type="primary" :loading="props.controller.busy.value" :disabled="!!busyReason || !renameValue.trim()" @click="confirmRename">
+            {{ locale.t('action.save', 'Save') }}
+          </ElButton>
+        </ControlHint>
       </template>
     </ElDialog>
 
@@ -381,12 +408,14 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         <ElButton native-type="button" @click="deleteOpen = false">
           {{ locale.t('action.cancel', 'Cancel') }}
         </ElButton>
-        <ElButton native-type="button" type="danger" :loading="controller.busy.value" @click="confirmDelete">
-          {{ locale.t('projects.delete', 'Delete') }}
-        </ElButton>
+        <ControlHint :reason="busyReason">
+          <ElButton native-type="button" type="danger" :loading="props.controller.busy.value" :disabled="!!busyReason" @click="confirmDelete">
+            {{ locale.t('projects.delete', 'Delete') }}
+          </ElButton>
+        </ControlHint>
       </template>
     </ElDialog>
 
-    <ElAlert v-if="ui.message.value" class="project-manager__message" :title="ui.message.value" type="error" show-icon closable @close="ui.clearMessage" />
+    <ElAlert v-if="props.ui.message.value" class="project-manager__message" :title="props.ui.message.value" type="error" show-icon closable @close="props.ui.clearMessage" />
   </main>
 </template>

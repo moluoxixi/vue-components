@@ -4,7 +4,7 @@ import type { ProjectSummary } from '@moluoxixi/config-form-model'
 import type { VueWrapper } from '@vue/test-utils'
 import type { ProjectManagerController } from '../types'
 import { mount } from '@vue/test-utils'
-import { ElSelect } from 'element-plus'
+import { ElDropdown, ElSelect, ElUpload } from 'element-plus'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
 import ProjectManager from '../index.vue'
@@ -91,6 +91,13 @@ describe('project discovery and opening', () => {
     expect(open.attributes('aria-busy')).toBe('true')
     expect(open.attributes('disabled')).toBeDefined()
     expect(wrapper.get('.project-card__open-state').text()).toBe('Opening…')
+    const reason = 'Wait for the current operation to finish'
+    expect(wrapper.get('.project-card__open').attributes('aria-label')).toBe(reason)
+    expect(wrapper.get('.project-card__more').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.project-card__more').element.closest('.control-hint')?.getAttribute('aria-label')).toBe(reason)
+    expect(wrapper.getComponent(ElUpload).props('disabled')).toBe(true)
+    wrapper.getComponent(ElDropdown).vm.$emit('command', 'duplicate')
+    expect(controller.duplicateProject).not.toHaveBeenCalled()
     await open.trigger('click')
     expect(controller.requestOpenProject).toHaveBeenCalledOnce()
     controller.currentProject.value = { id: 'Profile' }
@@ -99,5 +106,8 @@ describe('project discovery and opening', () => {
     await nextTick()
     expect(wrapper.emitted('open')).toEqual([[]])
     expect(open.attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.project-card__open').attributes('aria-label')).toBeUndefined()
+    expect(wrapper.get('.project-card__more').attributes('disabled')).toBeUndefined()
+    expect(wrapper.getComponent(ElUpload).props('disabled')).toBe(false)
   })
 })
