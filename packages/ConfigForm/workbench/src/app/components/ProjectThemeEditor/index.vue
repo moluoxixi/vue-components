@@ -4,9 +4,9 @@ import type { ProjectThemeEditorEmits, ProjectThemeEditorProps } from './types'
 import { Check, RotateCcw } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, ref, watch } from 'vue'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
 import { DEFAULT_PROJECT_THEME, expandProjectTheme } from '../../../features/theme'
 import { cloneWorkbenchJson } from '../../../utils'
-import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import './style/index.css'
 
 type ThemeColorKey = keyof NonNullable<ProjectTheme['colors']>

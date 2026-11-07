@@ -2,7 +2,7 @@
 import type { DatasetProjection, DeepReadonly, ProjectDataset, SafeExpression } from '@moluoxixi/config-form-model'
 import { projectDatasetSchema, queryDatasetView } from '@moluoxixi/config-form-model'
 import { computed, ref } from 'vue'
-import WorkbenchCommandHint from '../../../../../app/components/WorkbenchCommandHint/index.vue'
+import WorkbenchCommandHint from '../../../../../components/WorkbenchCommandHint/index.vue'
 import { collectDatasetPaths } from '../../../services/ingest'
 
 const props = defineProps<{ json: string, dataset: DeepReadonly<ProjectDataset>, locale: string }>()

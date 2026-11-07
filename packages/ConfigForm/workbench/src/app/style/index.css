@@ -142,6 +142,7 @@
 }
 
 .workbench-message {
+  pointer-events: none;
   position: fixed;
   z-index: 3100;
   right: 14px;
@@ -162,6 +163,12 @@
   max-width: min(440px, calc(100% - 28px));
   border: 1px solid var(--wb-positive);
   box-shadow: var(--wb-shadow-toast);
+}
+@media (max-width: 700px) {
+  .workbench-message,
+  .workbench-toast {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .workbench-toast .el-alert__content {

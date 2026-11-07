@@ -3,7 +3,7 @@ import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import { Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
-import WorkbenchCommandHint from '../../../../../app/components/WorkbenchCommandHint/index.vue'
+import WorkbenchCommandHint from '../../../../../components/WorkbenchCommandHint/index.vue'
 import { parseDatasetIngest } from '../../../services/ingest'
 
 const props = defineProps<{ locale: string }>()

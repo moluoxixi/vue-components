@@ -24,6 +24,7 @@ function setup() {
     resources: { logo: { id: 'logo', name: 'Logo', kind: 'url', url: '/logo.svg' } },
   }))
   const commands = {
+    saveProject: vi.fn().mockResolvedValue(true),
     replaceDatasetRows: vi.fn((id: string, rows) => {
       project.value = {
         ...project.value,
@@ -40,7 +41,7 @@ function setup() {
     }),
   } as unknown as AssetManagerCommands
   const wrapper = mount(defineComponent({
-    setup: () => () => h(AssetManagerWorkspace, { commands, project: project.value }),
+    setup: () => () => h(AssetManagerWorkspace, { commands, project: project.value, saveStatus: 'Saved' }),
   }), { attachTo: document.body })
   wrappers.push(wrapper)
   const editor = wrapper.getComponent(AssetManagerWorkspace)
@@ -54,6 +55,32 @@ function setup() {
 }
 
 describe('shared data workspace drafts', () => {
+  it('waits for durable saving and keeps a failed save recoverable until retry succeeds', async () => {
+    const { wrapper, editor, tab, commands } = setup()
+    let finish!: (saved: boolean) => void
+    commands.saveProject = vi.fn(() => new Promise<boolean>((resolve) => {
+      finish = resolve
+    }))
+    await tab('JSON')
+    await wrapper.get('textarea[aria-label="Dataset JSON"]').setValue('[{"name":"Durable edit"}]')
+    await wrapper.get('[data-asset-dataset-save]').trigger('click')
+    expect(wrapper.get('[data-asset-dataset-save]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.asset-manager__save-state').text()).toBe('Saving')
+    expect(wrapper.text()).not.toContain('Dataset saved.')
+    finish(false)
+    await flushPromises()
+    expect(wrapper.get('[data-asset-dataset-save]').attributes('disabled')).toBeUndefined()
+    expect(editor.vm.hasChanges).toBe(true)
+    expect(wrapper.get('.asset-manager__save-state').text()).toContain('Save failed')
+    expect((wrapper.get('textarea[aria-label="Dataset JSON"]').element as HTMLTextAreaElement).value).toContain('Durable edit')
+    commands.saveProject = vi.fn().mockResolvedValue(true)
+    await wrapper.get('[data-asset-dataset-save]').trigger('click')
+    await flushPromises()
+    expect(editor.vm.hasChanges).toBe(false)
+    expect(wrapper.text()).toContain('Dataset saved.')
+    expect(commands.replaceDatasetRows).toHaveBeenCalledTimes(1)
+  })
+
   it('clears a completed file replacement draft after browsing another asset', async () => {
     const { wrapper, editor, select, project, commands } = setup()
     const file = new File(['replacement'], 'new-logo.svg', { type: 'image/svg+xml' })

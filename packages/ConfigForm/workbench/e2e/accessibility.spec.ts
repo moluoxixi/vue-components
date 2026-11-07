@@ -77,7 +77,7 @@ test.beforeEach(async ({ page }) => {
 test('keeps all palette and resolved-theme combinations accessible', async ({ page }) => {
   await openProjectCreation(page)
   const creationDialog = page.locator('.project-creation-dialog:visible')
-  await expect(creationDialog.getByLabel('Project name')).toBeVisible()
+  await expect(creationDialog.getByRole('textbox', { name: 'Project name', exact: true })).toBeVisible()
   await expect(creationDialog.locator('.project-creation-workspace')).toHaveAttribute('data-palette', 'ink')
   await expectNoAccessibilityViolations(page, 'new project workspace')
   await createProject(page, 'element')

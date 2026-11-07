@@ -1,7 +1,7 @@
 @import url(./foundation.css);
 @import url(./theme.css);
 @import url(./shell.css);
-@import url(../app/components/WorkbenchCommandHint/style/index.css);
+@import url(../components/WorkbenchCommandHint/style/index.css);
 @import url(../app/components/WorkbenchAppearancePopover/style/index.css);
 @import url(../app/components/WorkbenchAppearancePanel/style/index.css);
 @import url(../app/components/WorkbenchAppearanceDrawer/style/index.css);

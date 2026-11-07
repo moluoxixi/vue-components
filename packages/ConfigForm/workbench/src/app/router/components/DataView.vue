@@ -44,7 +44,7 @@ useAssetDraftGuard({ editor: () => editor.value, locale })
           <span class="project-data-save-state" role="status" :title="saveState">{{ saveState }}</span>
         </template>
       </ProjectWorkspaceHeader>
-      <AssetManagerWorkspace ref="editor" :key="project.id" fill :commands="controller" :locale="controller.localeOptions.value" :project="project" />
+      <AssetManagerWorkspace ref="editor" :key="project.id" fill :commands="controller" :locale="controller.localeOptions.value" :project="project" :save-status="controller.statusLabel.value" />
     </main>
     <main v-else class="project-data-state">
       <p role="status">

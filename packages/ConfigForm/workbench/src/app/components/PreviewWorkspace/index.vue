@@ -4,8 +4,8 @@ import type { PreviewWorkspaceEmits, PreviewWorkspaceProps } from '../../../stud
 import { Monitor, PanelRight, RotateCcw, Smartphone, Tablet, X } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
-import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import StudioExperienceInspector from './components/StudioExperienceInspector.vue'
 
 const props = defineProps<PreviewWorkspaceProps>()

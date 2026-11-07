@@ -1,6 +1,26 @@
 import type { WorkbenchLocaleId, WorkbenchMessageCatalog } from '../types'
 
 export const WORKBENCH_EN_US_MESSAGES = {
+  'save.versionContent': 'Version content',
+  'save.source.create': 'Project created',
+  'save.source.manual': 'Manual save',
+  'save.source.autosave': 'Autosaved',
+  'save.source.restore': 'Version restored',
+
+  'action.processing': 'An operation is in progress. Wait for it to finish.',
+  'data.saveFailed': 'Save failed; retry to keep your changes.',
+  'data.saveBeforeExport': 'Save or discard draft changes before exporting.',
+  'assets.chooseFileFirst': 'Choose a replacement file first.',
+  'import.sourceRequired': 'Paste JSON or choose a JSON file before analyzing.',
+  'import.nothingToClear': 'There is no input to clear.',
+  'save.checkpointRequired': 'Enter a checkpoint name to create it.',
+  'save.labelRequired': 'Enter a version label to save it.',
+  'save.noLabel': 'This version has no label to remove.',
+  'save.selectVersion': 'Select a version before restoring.',
+  'recovery.activeReason': 'This draft is open in another tab. Close that tab before recovering or discarding it.',
+  'recovery.unknownReason': 'Session status is unconfirmed. Reopen recovery after confirming the other tab is closed.',
+  'surface.maskRequired': 'Enable the mask before allowing clicks on it to close the surface.',
+
   'browse.view': 'Display options',
   'library.information': 'Template information',
   'browse.list': 'List view',
@@ -771,6 +791,26 @@ export const WORKBENCH_EN_US_MESSAGES = {
 } as const
 
 export const WORKBENCH_ZH_CN_MESSAGES: WorkbenchMessageCatalog = {
+  'save.versionContent': '版本内容',
+  'save.source.create': '项目创建',
+  'save.source.manual': '手动保存',
+  'save.source.autosave': '自动保存',
+  'save.source.restore': '版本恢复',
+
+  'action.processing': '正在处理操作，完成后即可继续',
+  'data.saveFailed': '保存失败，请重试以保留修改',
+  'data.saveBeforeExport': '请先保存或放弃草稿修改，再导出',
+  'assets.chooseFileFirst': '请先选择要替换的文件',
+  'import.sourceRequired': '请先粘贴 JSON 或选择 JSON 文件，再进行分析',
+  'import.nothingToClear': '还没有输入内容，无需清空',
+  'save.checkpointRequired': '填写存档名称后即可创建',
+  'save.labelRequired': '填写版本标签后即可保存',
+  'save.noLabel': '此版本尚无标签，无需移除',
+  'save.selectVersion': '选择一个版本后即可恢复',
+  'recovery.activeReason': '此草稿正在其他标签页中使用，关闭该标签页后即可恢复或丢弃',
+  'recovery.unknownReason': '尚未确认会话状态，确认其他标签页已关闭后重新打开草稿恢复',
+  'surface.maskRequired': '启用遮罩后，才能设置点击遮罩关闭',
+
   'browse.view': '显示方式',
   'library.information': '模板信息',
   'browse.list': '列表视图',

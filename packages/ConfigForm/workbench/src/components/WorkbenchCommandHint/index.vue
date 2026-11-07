@@ -111,8 +111,9 @@ onBeforeUnmount(() => {
     :content="content"
     :disabled="suppressed"
     effect="light"
-    transition=""
+    transition="none"
     :trigger="['hover', 'focus']"
+    :trigger-keys="[]"
     placement="bottom"
     :fallback-placements="['top', 'right', 'left']"
     :show-after="350"
@@ -126,7 +127,9 @@ onBeforeUnmount(() => {
     <span
       v-if="detached"
       class="workbench-command-hint-anchor"
-      :class="anchorClass"
+      :class="[anchorClass, { 'is-command-unavailable': disabledReason }]"
+      :tabindex="disabledReason ? 0 : undefined"
+      :aria-label="disabledReason ? content : undefined"
       @focusin="openDetachedTooltip"
       @focusout="closeDetachedTooltip"
     ><slot /></span>

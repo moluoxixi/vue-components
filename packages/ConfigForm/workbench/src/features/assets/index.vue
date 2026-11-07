@@ -43,6 +43,7 @@ defineExpose({
       :initial-kind="initialKind"
       :locale="props.locale"
       :project="project"
+      :save-status="saveStatus"
     />
   </ElDialog>
 </template>

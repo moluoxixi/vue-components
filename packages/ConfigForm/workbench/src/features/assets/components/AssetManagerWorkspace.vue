@@ -27,7 +27,8 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, useTemplateRef, watch } from 'vue'
-import WorkbenchCommandHint from '../../../app/components/WorkbenchCommandHint/index.vue'
+import ControlHint from '../../../components/ControlHint.vue'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
 import { DatasetIngestPanel, DatasetProjectionBuilder, DatasetTableEditor } from './AssetManagerWorkspace/components'
 
 const props = withDefaults(defineProps<AssetManagerWorkspaceProps>(), { active: true, fill: false })
@@ -54,6 +55,35 @@ const messageTone = ref<'success' | 'error'>('success')
 let messageTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(messageTimer))
 const assetBusy = ref(false)
+const persisting = ref(false)
+const saveFailed = ref(false)
+const busyReason = computed(() => assetBusy.value || persisting.value ? locale.value.t('action.processing', 'An operation is in progress. Wait for it to finish.') : undefined)
+
+function assetSaveState(dirty: boolean): string {
+  return persisting.value
+    ? locale.value.t('status.saving', 'Saving')
+    : saveFailed.value
+      ? locale.value.t('data.saveFailed', 'Save failed; retry to keep your changes.')
+      : dirty ? locale.value.t('data.pendingChanges', 'Unsaved changes') : props.saveStatus
+}
+
+async function persistChanges(successMessage: string): Promise<boolean> {
+  persisting.value = true
+  try {
+    const saved = await props.commands.saveProject({ announce: false })
+    saveFailed.value = !saved
+    setMessage(saved ? successMessage : locale.value.t('data.saveFailed', 'Save failed; retry to keep your changes.'), saved ? 'success' : 'error')
+    return saved
+  }
+  catch {
+    saveFailed.value = true
+    setMessage(locale.value.t('data.saveFailed', 'Save failed; retry to keep your changes.'), 'error')
+    return false
+  }
+  finally {
+    persisting.value = false
+  }
+}
 const mobilePane = ref<'list' | 'editor'>('list')
 const datasetTab = ref('table')
 const tableEditor = useTemplateRef<InstanceType<typeof DatasetTableEditor>>('dataset-table')
@@ -66,12 +96,13 @@ const datasetDrafts = reactive(new Map<string, { json: string, projection: strin
 let loadedDatasetId = ''
 const loadedRows = ref('[]')
 const loadedProjection = ref('')
-const datasetDirty = computed(
+const datasetRowsDirty = computed(
   () =>
     datasetJson.value !== loadedRows.value
-    || projectionJson.value !== loadedProjection.value
     || Object.keys(datasetCells.value).length > 0,
 )
+const projectionDirty = computed(() => projectionJson.value !== loadedProjection.value)
+const datasetDirty = computed(() => datasetRowsDirty.value || projectionDirty.value)
 
 const datasets = computed(() => props.project.datasetOrder
   .map(id => props.project.datasetsById[id])
@@ -221,6 +252,8 @@ function discardResourceDraft(): void {
 }
 
 const hasChanges = computed(() => {
+  if (saveFailed.value)
+    return true
   if ((selectedDataset.value && datasetDirty.value) || resourceDirty.value)
     return true
   for (const [id, draft] of datasetDrafts) {
@@ -248,13 +281,14 @@ const hasChanges = computed(() => {
 })
 
 watch(() => props.project.id, () => {
+  saveFailed.value = false
   resourceDrafts.clear()
   loadedResourceId = ''
   pendingFile.value = undefined
   assetQuery.value = ''
 }, { flush: 'sync' })
 
-defineExpose({ hasChanges, busy: assetBusy, hasDataset: computed(() => Boolean(selectedDataset.value)) })
+defineExpose({ hasChanges, busy: computed(() => assetBusy.value || persisting.value), hasDataset: computed(() => Boolean(selectedDataset.value)) })
 
 function ensureSelection(): void {
   if (kind.value === 'dataset') {
@@ -357,7 +391,9 @@ function openDatasetImport(): void {
     datasetTab.value = 'ingest'
 }
 
-function saveDatasetRows(): boolean {
+async function saveDatasetRows(): Promise<boolean> {
+  if (persisting.value)
+    return false
   const rows = parseRows()
   if (!rows || !selectedDataset.value)
     return false
@@ -368,20 +404,21 @@ function saveDatasetRows(): boolean {
     loadedRows.value = JSON.stringify(rows, null, 2)
     datasetJson.value = loadedRows.value
     datasetCells.value = {}
-    setMessage(locale.value.t('assets.datasetSaved', 'Dataset saved.'))
-    return true
+    return await persistChanges(locale.value.t('assets.datasetSaved', 'Dataset saved.'))
   }
   setMessage(locale.value.t('assets.datasetRowsRejected', 'Dataset rows were rejected.'), 'error')
   return false
 }
 
-function applyIngest(rows: unknown[]): void {
+async function applyIngest(rows: unknown[]): Promise<void> {
   datasetJson.value = JSON.stringify(rows, null, 2)
-  if (saveDatasetRows())
+  if (await saveDatasetRows())
     datasetTab.value = 'table'
 }
 
-function saveProjection(): void {
+async function saveProjection(): Promise<void> {
+  if (persisting.value)
+    return
   const dataset = selectedDataset.value
   if (!dataset)
     return
@@ -398,7 +435,7 @@ function saveProjection(): void {
     else {
       loadedProjection.value = JSON.stringify(projection, null, 2) ?? ''
       projectionJson.value = loadedProjection.value
-      setMessage(locale.value.t('assets.projectionSaved', 'Default projection saved.'))
+      await persistChanges(locale.value.t('assets.projectionSaved', 'Default projection saved.'))
     }
   }
   catch {
@@ -509,7 +546,9 @@ async function createEmbeddedResource(uploadFile: UploadFile): Promise<void> {
   }
 }
 
-function saveUrlResource(): void {
+async function saveUrlResource(): Promise<void> {
+  if (persisting.value)
+    return
   const resource = selectedResource.value
   if (!resource || resource.kind !== 'url')
     return
@@ -522,7 +561,7 @@ function saveUrlResource(): void {
     setMessage(locale.value.t('assets.resourceUrlRejected', 'Resource URL was rejected.'), 'error')
   }
   else {
-    setMessage(locale.value.t('assets.resourceSaved', 'Resource saved.'))
+    await persistChanges(locale.value.t('assets.resourceSaved', 'Resource saved.'))
   }
 }
 
@@ -549,7 +588,7 @@ async function replaceEmbeddedResource(): Promise<void> {
     if (selectedResource.value?.id !== resource.id)
       return
     pendingFile.value = undefined
-    setMessage(locale.value.t('assets.resourceSaved', 'Resource saved.'))
+    await persistChanges(locale.value.t('assets.resourceSaved', 'Resource saved.'))
   }
   catch {
     setMessage(locale.value.t('assets.resourceReplacementRejected', 'Resource replacement was rejected.'), 'error')
@@ -780,19 +819,20 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                     <Upload :size="13" aria-hidden="true" />{{ locale.t('assets.import', 'Import') }}
                   </ElButton>
                 </ElUpload>
-                <ElUpload
-                  ref="resourceFile"
-                  class="asset-manager__upload"
-                  data-asset-resource-file
-                  :disabled="assetBusy"
-                  :auto-upload="false"
-                  :show-file-list="false"
-                  :on-change="createEmbeddedResource"
-                >
-                  <ElButton tag="span" size="small" data-asset-resource-file-picker :loading="assetBusy">
-                    <FilePlus2 :size="13" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
-                  </ElButton>
-                </ElUpload>
+                <ControlHint class="asset-manager__upload" :reason="busyReason">
+                  <ElUpload
+                    ref="resourceFile"
+                    data-asset-resource-file
+                    :disabled="!!busyReason"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    :on-change="createEmbeddedResource"
+                  >
+                    <ElButton tag="span" size="small" data-asset-resource-file-picker :loading="assetBusy">
+                      <FilePlus2 :size="13" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
+                    </ElButton>
+                  </ElUpload>
+                </ControlHint>
               </div>
             </section>
           </div>
@@ -825,10 +865,12 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           data-asset-dataset-editor
         >
           <header class="asset-manager__editor-header">
+            <div class="asset-manager__editor-meta">
+              <Database :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span>
+              <span class="asset-manager__save-state" :class="{ 'is-dirty': datasetDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(datasetDirty) }}</span>
+            </div>
             <div class="asset-manager__editor-title">
-              <div class="asset-manager__editor-meta">
-                <Database :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span><span class="asset-manager__save-state" :class="{ 'is-dirty': datasetDirty }" role="status">{{ datasetDirty ? locale.t('data.pendingChanges', 'Unsaved changes') : locale.t('data.saved', 'Saved') }}</span>
-              </div><ElInput
+              <ElInput
                 ref="dataset-name"
                 v-model="datasetName"
                 :aria-label="locale.t('assets.datasetName', 'Dataset name')"
@@ -836,14 +878,14 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               />
             </div>
             <div class="asset-manager__editor-actions">
-              <WorkbenchCommandHint :label="locale.t('data.exportHint', 'Export the saved dataset; save draft changes first')">
-                <ElButton size="small" data-asset-dataset-export :aria-label="locale.t('assets.export', 'Export')" @click="exportDataset">
-                  <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
+              <WorkbenchCommandHint detached :label="locale.t('assets.export', 'Export')" :disabled-reason="busyReason || ((datasetDirty || saveFailed) ? locale.t('data.saveBeforeExport', 'Save or discard draft changes before exporting.') : undefined)">
+                <ElButton data-asset-dataset-export :disabled="datasetDirty || saveFailed || persisting" :aria-label="locale.t('assets.export', 'Export')" @click="exportDataset">
+                  <Download :size="15" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
                 </ElButton>
               </WorkbenchCommandHint>
-              <WorkbenchCommandHint :label="locale.t('assets.delete', 'Delete')">
-                <ElButton size="small" text type="danger" :aria-label="locale.t('assets.delete', 'Delete')" @click="removeDataset">
-                  <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
+              <WorkbenchCommandHint detached :label="locale.t('assets.delete', 'Delete')" :disabled-reason="busyReason">
+                <ElButton text class="asset-manager__delete" :disabled="!!busyReason" :aria-label="locale.t('assets.delete', 'Delete')" @click="removeDataset">
+                  <Trash2 :size="15" aria-hidden="true" />
                 </ElButton>
               </WorkbenchCommandHint>
             </div>
@@ -860,7 +902,8 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   v-model:json="datasetJson"
                   v-model:cells="datasetCells"
                   :dataset-id="`${project.id}:${selectedDataset.id}`"
-                  :dirty="datasetDirty"
+                  :dirty="datasetRowsDirty || saveFailed"
+                  :saving="persisting"
                   :locale="locale.locale"
                   @save="saveDatasetRows"
                   @import="openDatasetImport"
@@ -874,7 +917,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               </ElTabPane>
               <ElTabPane name="json">
                 <template #label>
-                  <span class="asset-manager__tab-label"><Braces :size="14" aria-hidden="true" />JSON</span>
+                  <span class="asset-manager__tab-label"><Braces :size="14" aria-hidden="true" />JSON<span v-if="datasetRowsDirty" class="asset-manager__draft-dot" aria-hidden="true" :title="locale.t('data.pendingChanges', 'Unsaved changes')" /></span>
                 </template>
                 <ElInput
                   v-model="datasetJson"
@@ -890,7 +933,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                 <template #label>
                   <span class="asset-manager__tab-label"><SlidersHorizontal :size="14" aria-hidden="true" />{{
                     locale.t('assets.defaultProjection', 'Default projection')
-                  }}</span>
+                  }}<span v-if="projectionDirty" class="asset-manager__draft-dot" aria-hidden="true" :title="locale.t('data.pendingChanges', 'Unsaved changes')" /></span>
                 </template>
                 <DatasetProjectionBuilder
                   v-model:json="projectionJson"
@@ -910,12 +953,16 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
             <ElButton v-if="datasetDirty" size="small" @click="discardDatasetDraft">
               {{ locale.t('data.discardDraft', 'Discard draft') }}
             </ElButton>
-            <ElButton v-if="datasetTab === 'json'" type="primary" data-asset-dataset-save @click="saveDatasetRows">
-              <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveJson', 'Save JSON') }}
-            </ElButton>
-            <ElButton v-if="datasetTab === 'projection'" type="primary" @click="saveProjection">
-              <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveProjection', 'Save projection') }}
-            </ElButton>
+            <WorkbenchCommandHint v-if="datasetTab === 'json'" detached :label="locale.t('assets.saveJson', 'Save JSON')" :disabled-reason="busyReason">
+              <ElButton type="primary" :disabled="persisting" :loading="persisting" data-asset-dataset-save @click="saveDatasetRows">
+                <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveJson', 'Save JSON') }}
+              </ElButton>
+            </WorkbenchCommandHint>
+            <WorkbenchCommandHint v-if="datasetTab === 'projection'" detached :label="locale.t('assets.saveProjection', 'Save projection')" :disabled-reason="busyReason">
+              <ElButton type="primary" :disabled="persisting" :loading="persisting" @click="saveProjection">
+                <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveProjection', 'Save projection') }}
+              </ElButton>
+            </WorkbenchCommandHint>
           </footer>
         </section>
 
@@ -926,20 +973,28 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           data-asset-resource-editor
         >
           <header class="asset-manager__editor-header">
+            <div class="asset-manager__editor-meta">
+              <Link2 v-if="selectedResource.kind === 'url'" :size="14" aria-hidden="true" /><FileText v-else :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span>
+              <span class="asset-manager__save-state" :class="{ 'is-dirty': resourceDirty || saveFailed }" role="status"><span class="asset-manager__save-dot" aria-hidden="true" />{{ assetSaveState(resourceDirty) }}</span>
+            </div>
             <div class="asset-manager__editor-title">
-              <span>{{ selectedAssetLabel }}</span><ElInput
+              <ElInput
                 v-model="resourceName"
                 :aria-label="locale.t('assets.resourceName', 'Resource name')"
                 @change="renameResource"
               />
             </div>
             <div class="asset-manager__editor-actions">
-              <ElButton size="small" data-asset-resource-export :title="locale.t('assets.export', 'Export')" :aria-label="locale.t('assets.export', 'Export')" :disabled="!selectedResource" @click="exportResource">
-                <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
-              </ElButton>
-              <ElButton size="small" type="danger" plain :title="locale.t('assets.delete', 'Delete')" :aria-label="locale.t('assets.delete', 'Delete')" :disabled="assetBusy" @click="removeResource">
-                <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
-              </ElButton>
+              <WorkbenchCommandHint detached :label="locale.t('assets.export', 'Export')" :disabled-reason="busyReason || ((resourceDirty || saveFailed) ? locale.t('data.saveBeforeExport', 'Save or discard draft changes before exporting.') : undefined)">
+                <ElButton data-asset-resource-export :aria-label="locale.t('assets.export', 'Export')" :disabled="assetBusy || resourceDirty || saveFailed || persisting" @click="exportResource">
+                  <Download :size="15" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
+                </ElButton>
+              </WorkbenchCommandHint>
+              <WorkbenchCommandHint detached :label="locale.t('assets.delete', 'Delete')" :disabled-reason="busyReason">
+                <ElButton text class="asset-manager__delete" :aria-label="locale.t('assets.delete', 'Delete')" :disabled="!!busyReason" @click="removeResource">
+                  <Trash2 :size="15" aria-hidden="true" />
+                </ElButton>
+              </WorkbenchCommandHint>
             </div>
           </header>
           <div class="asset-manager__editor-body">
@@ -981,35 +1036,38 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               </dl>
               <div class="asset-manager__file-replace">
                 <strong>{{ locale.t('assets.replaceFile', 'Replace file') }}</strong>
-                <ElUpload
-                  ref="resourceReplacementFile"
-                  class="asset-manager__upload"
-                  data-asset-resource-replacement-file
-                  :disabled="assetBusy"
-                  :auto-upload="false"
-                  :show-file-list="false"
-                  :on-change="selectReplacementFile"
-                >
-                  <ElButton tag="span" :disabled="assetBusy">
-                    <Upload :size="14" aria-hidden="true" />{{
-                      locale.t('assets.chooseReplacement', 'Choose replacement')
-                    }}
-                  </ElButton>
-                </ElUpload>
+                <ControlHint class="asset-manager__upload" :reason="busyReason">
+                  <ElUpload
+                    ref="resourceReplacementFile"
+                    data-asset-resource-replacement-file
+                    :disabled="!!busyReason"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    :on-change="selectReplacementFile"
+                  >
+                    <ElButton tag="span" :disabled="!!busyReason">
+                      <Upload :size="14" aria-hidden="true" />{{
+                        locale.t('assets.chooseReplacement', 'Choose replacement')
+                      }}
+                    </ElButton>
+                  </ElUpload>
+                </ControlHint>
                 <div v-if="pendingFile" class="asset-manager__pending-file">
                   <FileText :size="15" aria-hidden="true" /><span :title="pendingFile.name">{{
                     pendingFile.name
                   }}</span>
-                  <ElButton
-                    text
-                    circle
-                    :disabled="assetBusy"
-                    :title="locale.t('assets.clearFile', 'Clear selected file')"
-                    :aria-label="locale.t('assets.clearFile', 'Clear selected file')"
-                    @click="pendingFile = undefined"
-                  >
-                    <X :size="14" aria-hidden="true" />
-                  </ElButton>
+                  <ControlHint :reason="busyReason">
+                    <ElButton
+                      text
+                      circle
+                      :disabled="!!busyReason"
+                      :title="locale.t('assets.clearFile', 'Clear selected file')"
+                      :aria-label="locale.t('assets.clearFile', 'Clear selected file')"
+                      @click="pendingFile = undefined"
+                    >
+                      <X :size="14" aria-hidden="true" />
+                    </ElButton>
+                  </ControlHint>
                 </div>
               </div>
             </template>
@@ -1019,18 +1077,16 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
             <ElButton v-if="resourceDirty" size="small" @click="discardResourceDraft">
               {{ locale.t('data.discardDraft', 'Discard draft') }}
             </ElButton>
-            <ElButton v-if="selectedResource.kind === 'url'" type="primary" @click="saveUrlResource">
-              <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveUrl', 'Save URL') }}
-            </ElButton>
-            <ElButton
-              v-else
-              :disabled="!pendingFile"
-              :loading="assetBusy"
-              type="primary"
-              @click="replaceEmbeddedResource"
-            >
-              <Save :size="14" aria-hidden="true" />{{ locale.t('assets.replace', 'Replace file') }}
-            </ElButton>
+            <WorkbenchCommandHint v-if="selectedResource.kind === 'url'" detached :label="locale.t('assets.saveUrl', 'Save URL')" :disabled-reason="busyReason">
+              <ElButton type="primary" :disabled="!!busyReason" :loading="persisting" @click="saveUrlResource">
+                <Save :size="14" aria-hidden="true" />{{ locale.t('assets.saveUrl', 'Save URL') }}
+              </ElButton>
+            </WorkbenchCommandHint>
+            <WorkbenchCommandHint v-else detached :label="locale.t('assets.replace', 'Replace file')" :disabled-reason="busyReason || (!pendingFile && !saveFailed ? locale.t('assets.chooseFileFirst', 'Choose a replacement file first.') : undefined)">
+              <ElButton :disabled="!!busyReason || (!pendingFile && !saveFailed)" :loading="assetBusy || persisting" type="primary" @click="saveFailed && !pendingFile ? persistChanges(locale.t('assets.resourceSaved', 'Resource saved.')) : replaceEmbeddedResource()">
+                <Save :size="14" aria-hidden="true" />{{ saveFailed && !pendingFile ? locale.t('action.save', 'Save') : locale.t('assets.replace', 'Replace file') }}
+              </ElButton>
+            </WorkbenchCommandHint>
           </footer>
         </section>
 
@@ -1055,19 +1111,20 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
             <ElButton text @click="newUrlResource">
               <Link2 :size="14" aria-hidden="true" />{{ locale.t('assets.createUrlResource', 'Create URL resource') }}
             </ElButton>
-            <ElUpload
-              ref="resourceEmptyFile"
-              class="asset-manager__upload"
-              data-asset-resource-empty-file
-              :disabled="assetBusy"
-              :auto-upload="false"
-              :show-file-list="false"
-              :on-change="createEmbeddedResource"
-            >
-              <ElButton tag="span" text :loading="assetBusy">
-                <FilePlus2 :size="14" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
-              </ElButton>
-            </ElUpload>
+            <ControlHint class="asset-manager__upload" :reason="busyReason">
+              <ElUpload
+                ref="resourceEmptyFile"
+                data-asset-resource-empty-file
+                :disabled="!!busyReason"
+                :auto-upload="false"
+                :show-file-list="false"
+                :on-change="createEmbeddedResource"
+              >
+                <ElButton tag="span" text :loading="assetBusy">
+                  <FilePlus2 :size="14" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
+                </ElButton>
+              </ElUpload>
+            </ControlHint>
           </div>
         </section>
       </div>

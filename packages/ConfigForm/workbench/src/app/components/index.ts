@@ -1,3 +1,4 @@
+export { default as WorkbenchCommandHint } from '../../components/WorkbenchCommandHint/index.vue'
 export { default as DesignRuntimeHostFrame } from './DesignRuntimeHostFrame/index.vue'
 export { default as PreviewRuntimeHostFrame } from './PreviewRuntimeHostFrame/index.vue'
 export { default as PreviewWorkspace } from './PreviewWorkspace/index.vue'
@@ -12,6 +13,5 @@ export { default as TemplateCreationWorkspace } from './TemplateCreationWorkspac
 export { default as WorkbenchAppearanceDrawer } from './WorkbenchAppearanceDrawer.vue'
 export { default as WorkbenchAppearancePanel } from './WorkbenchAppearancePanel.vue'
 export { default as WorkbenchAppearancePopover } from './WorkbenchAppearancePopover.vue'
-export { default as WorkbenchCommandHint } from './WorkbenchCommandHint/index.vue'
 export { default as WorkbenchTopbar } from './WorkbenchTopbar.vue'
 export { default as WorkspaceStatus } from './WorkspaceStatus/index.vue'

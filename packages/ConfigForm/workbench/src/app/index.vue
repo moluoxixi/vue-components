@@ -728,6 +728,7 @@ watch(
       :initial-kind="assetSelection.kind"
       :locale="localeOptions"
       :project="currentProject"
+      :save-status="controller.statusLabel.value"
     />
     <StudioCommandPalette v-model:open="commandOpen" :commands="studioCommands" :locale="localeId" />
 

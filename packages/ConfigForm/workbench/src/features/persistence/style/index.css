@@ -30,6 +30,8 @@
 }
 
 .persistence-dialog .el-dialog__body {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
   padding: 0;
@@ -61,12 +63,15 @@
 .version-history-layout {
   display: grid;
   min-height: 0;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
   grid-template-columns: 260px minmax(0, 1fr);
 }
 
 .version-history-layout > nav {
   min-height: 0;
-  padding: 8px;
+  padding: 16px;
   overflow-y: auto;
   border-right: 1px solid var(--wb-separator);
 }
@@ -85,6 +90,12 @@
 .version-history-layout > nav > .el-button.is-active {
   border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);
+}
+.version-history-layout > nav > .el-button > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
 }
 
 .version-history-layout nav span,
@@ -108,7 +119,7 @@
   min-width: 0;
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  padding: 14px;
+  padding: 16px;
   gap: 12px;
 }
 
@@ -121,7 +132,7 @@
 
 .version-inspector pre {
   min-width: 0;
-  min-height: 220px;
+  min-height: 0;
   margin: 0;
   padding: 14px;
   overflow: auto;
@@ -129,7 +140,10 @@
   border: 1px solid var(--wb-separator);
   border-radius: 4px;
   background: var(--wb-code-bg, var(--wb-surface));
-  font: 12px/1.55 Consolas, "Courier New", monospace;
+  font:
+    12px/1.55 Consolas,
+    'Courier New',
+    monospace;
 }
 
 .version-inspector footer p {
@@ -142,6 +156,9 @@
   min-height: 0;
   padding: 12px;
   overflow-y: auto;
+}
+.persistence-dialog .el-button > span {
+  gap: 6px;
 }
 
 .recovery-draft-list article {
@@ -172,13 +189,13 @@
   gap: 6px;
 }
 
-:is(.workbench-app, .workbench-overlays)[data-theme="light"] .persistence-dialog {
+:is(.workbench-app, .workbench-overlays)[data-theme='light'] .persistence-dialog {
   color: var(--wb-text);
   border-color: var(--wb-separator);
   background: var(--wb-elevated);
 }
 
-:is(.workbench-app, .workbench-overlays)[data-theme="light"] .persistence-dialog .el-dialog__title {
+:is(.workbench-app, .workbench-overlays)[data-theme='light'] .persistence-dialog .el-dialog__title {
   color: var(--wb-text-strong);
 }
 
@@ -193,27 +210,39 @@
   }
   .version-history-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(130px, 34vh) minmax(0, 1fr);
+    grid-template-rows: minmax(96px, 24%) minmax(0, 1fr);
   }
   .version-history-layout > nav {
     border-right: 0;
     border-bottom: 1px solid var(--wb-separator);
   }
-  .version-label-editor > div {
-    grid-template-columns: 1fr auto;
-  }
-  .version-label-editor > div button:last-child {
-    grid-column: 1 / -1;
-  }
   .version-inspector footer,
-.recovery-draft-list article {
+  .recovery-draft-list article {
     align-items: stretch;
     flex-direction: column;
   }
   .version-inspector footer p {
     margin: 0;
   }
+  .version-inspector footer > .workbench-command-hint-anchor > button {
+    width: 100%;
+  }
   .recovery-draft-list article > div:last-child button {
     flex: 1 1 0;
+  }
+  .recovery-draft-list article > div:last-child > .workbench-command-hint-anchor {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .version-label-editor > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .version-label-editor .version-label-remove {
+    grid-column: 1 / -1;
+  }
+  .version-label-editor .version-label-remove > button {
+    width: 100%;
   }
 }

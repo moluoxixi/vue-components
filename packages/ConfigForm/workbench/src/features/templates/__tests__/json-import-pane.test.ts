@@ -134,6 +134,7 @@ function mountPane(locale: 'en-US' | 'zh-CN' = 'en-US') {
 
 describe('json import pane', () => {
   beforeEach(() => {
+    document.body.innerHTML = '<div id="workbench-overlays"></div>'
     mocks.create.mockResolvedValue(true)
     mocks.useController.mockReturnValue({
       busy: ref(false),

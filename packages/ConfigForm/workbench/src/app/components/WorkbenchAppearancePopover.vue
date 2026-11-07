@@ -6,8 +6,8 @@ import type {
 import { Settings2 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
+import WorkbenchCommandHint from '../../components/WorkbenchCommandHint/index.vue'
 import WorkbenchAppearancePanel from './WorkbenchAppearancePanel.vue'
-import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
 
 const props = defineProps<WorkbenchAppearancePopoverProps>()
 const emit = defineEmits<WorkbenchAppearancePanelEmits>()

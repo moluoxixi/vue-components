@@ -47,6 +47,39 @@ const copy = {
   'zh-CN': { name: '项目名称', pages: '管理页面', data: '管理数据', projects: '返回项目', dataset: '创建数据集', import: '导入数据', raw: '待导入数据', templates: '模板管理', save: '保存数据', list: '数据集', details: '编辑详情', export: '导出', help: '表格操作帮助', collapse: '收起数据列表', expand: '展开数据列表', discard: '放弃草稿', next: '下一页', column: '添加列', newColumn: '新列名', cancelColumn: '取消添加列', edit: '编辑内容', settings: '导入设置' },
 } as const
 
+test('keeps long version content scrollable and restoration reachable on desktop and mobile', async ({ page }) => {
+  await page.goto('/')
+  await createProject(page, 'element')
+  await page.getByRole('button', { name: 'Save options', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Create named checkpoint', exact: true }).click()
+  const checkpoint = page.getByRole('dialog', { name: 'Create named checkpoint', exact: true })
+  const create = checkpoint.getByRole('button', { name: 'Create checkpoint', exact: true })
+  await expect(checkpoint.getByRole('textbox', { name: 'Checkpoint name', exact: true })).toBeFocused()
+  await expect(create).toBeDisabled()
+  await create.locator('..').hover()
+  await expect(page.getByRole('tooltip')).toContainText('Enter a checkpoint name')
+  await checkpoint.getByRole('textbox', { name: 'Checkpoint name', exact: true }).fill('Review baseline')
+  await create.click()
+  await expect(checkpoint).not.toBeVisible()
+  await page.getByRole('button', { name: 'Save options', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Version history', exact: true }).click()
+  const history = page.getByRole('dialog', { name: 'Version history', exact: true })
+  await expect(history.locator('pre')).toContainText('surfacesById')
+  for (const width of [1366, 667, 320]) {
+    await page.setViewportSize({ width, height: 640 })
+    await expectFitsViewport(history.getByRole('button', { name: 'Restore as new version', exact: true }))
+    await expectFitsViewport(history.getByRole('textbox', { name: 'Version label', exact: true }))
+    const pre = history.locator('pre')
+    await expectFitsViewport(pre)
+    const geometry = await pre.evaluate(node => ({ client: node.clientHeight, scroll: node.scrollHeight }))
+    expect(geometry.client).toBeGreaterThan(80)
+    expect(geometry.scroll).toBeGreaterThan(geometry.client)
+    await pre.focus()
+    await page.keyboard.press('Control+End')
+    await expectFitsViewport(history.getByRole('button', { name: 'Restore as new version', exact: true }))
+  }
+})
+
 for (const locale of ['en-US', 'zh-CN'] as const) {
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 540 }, { width: 1024, height: 600 }, { width: 320, height: 568 }]) {
     test(`${locale} management keeps content, navigation and save actions reachable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
@@ -99,10 +132,14 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       await page.locator('[data-dataset-ingest-apply]').click()
       const save = page.getByRole('button', { name: labels.save, exact: true })
       await expectFitsViewport(save)
-      await save.click()
+      await expect(save).toBeDisabled()
       const tableBounds = await page.locator('[data-asset-dataset-table]').boundingBox()
-      expect(tableBounds!.y).toBeLessThanOrEqual(viewport.width > 700 ? 240 : 300)
-      expect(tableBounds!.height).toBeGreaterThan(viewport.height * (viewport.width > 700 ? 0.5 : 0.4))
+      // Preserve a usable scroll area after the editor title, view tabs and tools.
+      // The former fixed Y offset assumed those controls shared one compact strip.
+      expect(tableBounds!.height).toBeGreaterThanOrEqual(viewport.width > 700 ? 144 : 112)
+      const editorHeader = await page.locator('.asset-manager__editor-header').boundingBox()
+      const viewTabs = await page.locator('.asset-manager__tabs > .el-tabs__header').boundingBox()
+      expect(viewTabs!.y - (editorHeader!.y + editorHeader!.height)).toBeGreaterThanOrEqual(16)
       await expectSingleTableScroll(page)
       if (viewport.width > 700) {
         const tableWidth = tableBounds!.width

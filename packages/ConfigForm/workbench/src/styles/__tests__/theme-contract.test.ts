@@ -9,8 +9,8 @@ const stylesheetLayers = [
   { importPath: './theme.css', source: new URL('../theme.css', import.meta.url) },
   { importPath: './shell.css', source: new URL('../shell.css', import.meta.url) },
   {
-    importPath: '../app/components/WorkbenchCommandHint/style/index.css',
-    source: new URL('../../app/components/WorkbenchCommandHint/style/index.css', import.meta.url),
+    importPath: '../components/WorkbenchCommandHint/style/index.css',
+    source: new URL('../../components/WorkbenchCommandHint/style/index.css', import.meta.url),
   },
   {
     importPath: '../app/components/WorkbenchAppearancePopover/style/index.css',
@@ -188,7 +188,7 @@ describe('workbench theme contract', () => {
       ['../../styles/theme.css', '--wb-bg', '.workbench-topbar {'],
       ['../../styles/tailwind.css', '@theme inline', 'preflight.css'],
       ['../../styles/shell.css', '.workbench-app', '.workbench-topbar'],
-      ['../../app/components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
+      ['../../components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
       [
         '../../app/components/WorkbenchAppearancePopover/style/index.css',
         '.workbench-appearance-popover',
@@ -529,7 +529,7 @@ describe('workbench theme contract', () => {
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__interaction-rule-toggle:hover')
     expect(selectorBlock('.project-row:focus-within')).toContain('box-shadow: 0 6px 20px rgb(15 23 42 / 6%);')
     expect(selectorBlock('.page-manager__row:focus-within', pageManagerStylesheet)).toContain(
-      'box-shadow: 0 5px 18px rgb(0 0 0 / 5%);',
+      'box-shadow: 0 2px 8px rgb(0 0 0 / 4%);',
     )
     expect(selectorBlock('.designer-layers > div:focus-within', studioLeftPanelStylesheet)).toContain(
       'background: var(--wb-hover);',

@@ -7,6 +7,7 @@ defineProps<{ reason?: string, label?: string }>()
     :content="reason || label || ''"
     :disabled="!reason && !label"
     :trigger="['hover', 'focus']"
+    :trigger-keys="[]"
     :show-after="250"
     :hide-after="0"
     :enterable="false"
@@ -20,7 +21,17 @@ defineProps<{ reason?: string, label?: string }>()
 </template>
 
 <style scoped>
-.control-hint { display: inline-flex; min-width: 0; vertical-align: middle; }
-.control-hint:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; border-radius: 4px; }
-.has-disabled-reason :deep(:disabled) { pointer-events: none; }
+.control-hint {
+  display: inline-flex;
+  min-width: 0;
+  vertical-align: middle;
+}
+.control-hint:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.has-disabled-reason :deep(:disabled) {
+  pointer-events: none;
+}
 </style>

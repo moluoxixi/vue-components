@@ -70,35 +70,39 @@ export function createWorkbenchPersistenceCommands(options: {
     workbenchLocale,
   } = options
 
-  async function saveProject(): Promise<void> {
+  async function saveProject({ announce = true }: { announce?: boolean } = {}): Promise<boolean> {
     const activePersistence = getPersistenceSession()
     if (!activePersistence || !repository.value || busy.value)
-      return
+      return false
     if (configError.value) {
       ui.notify(configError.value)
-      return
+      return false
     }
     busy.value = true
     ui.clearMessage()
     try {
       const result = await activePersistence.flush()
       if (!result)
-        return
+        return false
       if (!result.success) {
         ui.notify(result.error.message)
-        return
+        return false
       }
       await refreshProjects()
-      ui.notify(result.newerEdits
-        ? workbenchLocale.value.t(
-            'workbench.savedWithNewer',
-            'Saved revision {revision}; newer edits remain unsaved',
-            { revision: result.repositoryRevision },
-          )
-        : workbenchLocale.value.t('workbench.saved', 'Saved revision {revision}', { revision: result.repositoryRevision }))
+      if (announce) {
+        ui.notify(result.newerEdits
+          ? workbenchLocale.value.t(
+              'workbench.savedWithNewer',
+              'Saved revision {revision}; newer edits remain unsaved',
+              { revision: result.repositoryRevision },
+            )
+          : workbenchLocale.value.t('workbench.saved', 'Saved revision {revision}', { revision: result.repositoryRevision }))
+      }
+      return !result.newerEdits
     }
     catch (error) {
       ui.notify(error)
+      return false
     }
     finally {
       busy.value = false

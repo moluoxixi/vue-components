@@ -10,6 +10,7 @@ import type {
 export type AssetImportConflictStrategy = 'copy' | 'overwrite' | 'skip'
 
 export interface AssetManagerCommands {
+  saveProject: (options?: { announce?: boolean }) => Promise<boolean>
   createDataset: (name: string, rows?: unknown) => string | undefined
   createEmbeddedResource: (input: {
     bytes: Uint8Array
@@ -55,6 +56,7 @@ export interface AssetManagerWorkspaceProps {
   initialKind?: 'dataset' | 'resource'
   locale?: DesignerLocaleOptions
   project: ReadonlyProjectDocument
+  saveStatus: string
 }
 
 export interface AssetManagerDialogProps extends Omit<AssetManagerWorkspaceProps, 'active' | 'fill'> {

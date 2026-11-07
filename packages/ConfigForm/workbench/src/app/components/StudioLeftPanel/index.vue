@@ -371,6 +371,16 @@ function navigationIndex(event: KeyboardEvent, current: number, length: number):
   return undefined
 }
 
+function handleMaterialScrollKeydown(event: KeyboardEvent): void {
+  const target = event.target
+  if (!(target instanceof HTMLElement) || !target.classList.contains('el-scrollbar__wrap'))
+    return
+  if (event.key !== 'Home' && event.key !== 'End')
+    return
+  event.preventDefault()
+  target.scrollTop = event.key === 'Home' ? 0 : target.scrollHeight
+}
+
 function focusItem(root: HTMLElement | null, attribute: 'layerId' | 'surfaceId', id: string): void {
   void nextTick(() => [...(root?.querySelectorAll<HTMLElement>('[tabindex]') ?? [])]
     .find(element => element.dataset[attribute] === id)
@@ -499,7 +509,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
         @add-material="insertMaterial"
       >
         <template #content="{ getMaterialBindings, groups, materialTitle }">
-          <ElScrollbar class="designer-material-scrollbar" always :tabindex="0" :aria-label="locale.t('palette.browseAll', 'Browse all components')">
+          <ElScrollbar class="designer-material-scrollbar" always :tabindex="0" :aria-label="locale.t('palette.browseAll', 'Browse all components')" @keydown="handleMaterialScrollKeydown">
             <ElCollapse v-model="expandedMaterialCategories" class="designer-material-groups">
               <ElCollapseItem v-for="[category, entries] in groups" :key="category" :name="category">
                 <template #title>

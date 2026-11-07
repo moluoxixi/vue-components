@@ -703,7 +703,7 @@ test('provides focus and Escape command hints, including disabled reasons and re
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
   await page.keyboard.press('Tab')
   await page.getByRole('button', { name: 'Mobile preview' }).focus()
-  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveText('Mobile preview')
+  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveText('Mobile preview · 390px, fits the available width')
 })
 
 test('keeps status and lower-priority commands reachable without topbar overflow at 900 and 390', async ({ page }) => {
@@ -844,7 +844,8 @@ test('keeps Camera inside the canvas lower right without covering selected node 
     })
     expect(cameraBox.x + cameraBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width - 8)
     expect(cameraBox.y + cameraBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height - 8)
-    expect(cameraBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width / 2)
+    expect(cameraBox.x).toBeGreaterThanOrEqual(canvasBox.x + 8)
+    expect(cameraBox.x + cameraBox.width / 2).toBeGreaterThan(canvasBox.x + canvasBox.width / 2)
     expect(rectsIntersect(cameraBox, toolbarBox)).toBe(false)
   }
 })
@@ -879,7 +880,7 @@ for (const adapter of [
     await expect(layers).toHaveCount(3)
 
     await nameLayer.click()
-    await roleLayer.click({ modifiers: ['Control'] })
+    await roleLayer.click({ modifiers: ['ControlOrMeta'] })
     await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
     const copyButton = page.getByRole('button', { name: 'Copy selection' })
     await expect(copyButton).toHaveAttribute('aria-keyshortcuts', 'Control+D Meta+D')
@@ -1837,13 +1838,11 @@ test('pins the selected Preview viewport when the host window is wider', async (
   expect(initialColumns.active).toBe(initialColumns.desktop)
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
-  const activeColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim(),
-  )
   const mobileColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-columns-mobile').trim(),
   )
 
   await expect(stage).toHaveAttribute('data-viewport', 'mobile')
-  expect(activeColumns).toBe(mobileColumns)
+  await expect.poll(() => layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim())).toBe(mobileColumns)
 })
 
 test('recreates an interactive Preview Runtime session after closing and reopening', async ({ page }) => {

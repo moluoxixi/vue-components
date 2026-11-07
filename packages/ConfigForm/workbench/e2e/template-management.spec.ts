@@ -272,8 +272,9 @@ test('walks the project, page, and design hierarchy through the URLs', async ({ 
   await expect(pages).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages$`))
 
-  await pages.getByRole('button', { name: /^Open .* in the designer$/ }).first().focus()
-  await page.keyboard.press('Enter')
+  const openDesign = pages.getByRole('button', { name: /^Open .* in the designer$/ }).first()
+  await expect(openDesign).toBeEnabled()
+  await openDesign.press('Enter')
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`#/projects/${projectId}/pages/[^/]+/design$`))
 
@@ -646,6 +647,16 @@ test('creates a drawer directly, persists it, and edits its presentation in a co
   await page.getByRole('menuitem', { name: 'Overlay appearance', exact: true }).click()
   const presentation = card.locator('.surface-presentation-editor')
   await expect(presentation).toBeVisible()
+  const mask = presentation.getByRole('switch', { name: 'Mask', exact: true })
+  await mask.locator('..').click()
+  await expect(mask).not.toBeChecked()
+  const closeFromMask = presentation.getByRole('switch', { name: 'Close from mask', exact: true })
+  await expect(closeFromMask).toBeDisabled()
+  await presentation.locator('.control-hint.has-disabled-reason').hover()
+  await expect(page.getByRole('tooltip')).toContainText('Enable the mask')
+  await mask.locator('..').click()
+  await expect(mask).toBeChecked()
+  await expect(closeFromMask).toBeEnabled()
   for (const width of [1366, 320]) {
     await page.setViewportSize({ width, height: 768 })
     const controlsFit = await presentation.evaluate((editor) => {

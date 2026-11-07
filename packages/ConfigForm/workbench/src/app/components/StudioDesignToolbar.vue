@@ -3,7 +3,7 @@ import type { DesignerLocaleOptions, DesignSurfaceToolbarScope } from '@moluoxix
 import { Columns2, Copy, Monitor, MoreHorizontal, Redo2, Smartphone, Tablet, Trash2, Undo2 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
-import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
+import WorkbenchCommandHint from '../../components/WorkbenchCommandHint/index.vue'
 
 const props = withDefaults(defineProps<{ scope: DesignSurfaceToolbarScope, locale?: DesignerLocaleOptions, showCompare?: boolean }>(), { showCompare: true })
 const emit = defineEmits<{ compare: [] }>()

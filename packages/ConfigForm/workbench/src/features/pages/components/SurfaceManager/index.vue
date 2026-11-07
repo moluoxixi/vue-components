@@ -23,9 +23,9 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, watch } from 'vue'
-import WorkbenchCommandHint from '../../../../app/components/WorkbenchCommandHint/index.vue'
 import BrowseViewToggle from '../../../../components/BrowseViewToggle.vue'
 import { useBrowseView } from '../../../../components/composables/use-browse-view'
+import WorkbenchCommandHint from '../../../../components/WorkbenchCommandHint/index.vue'
 import { createPagePreviewDataUrl } from '../../services'
 import { SurfacePresentationEditor } from './components'
 

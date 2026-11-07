@@ -96,6 +96,17 @@ describe('workbench command hint', () => {
     wrapper.unmount()
   })
 
+  it('preserves native Enter and Space activation for the command', () => {
+    const wrapper = mountHost()
+    const command = wrapper.get('button[aria-label="Redo"]').element
+    for (const key of ['Enter', 'Space']) {
+      const event = new KeyboardEvent('keydown', { key: key === 'Space' ? ' ' : key, code: key, bubbles: true, cancelable: true })
+      command.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(false)
+    }
+    wrapper.unmount()
+  })
+
   it('closes for a peer hint event and removes document listeners on unmount', async () => {
     const removeEventListener = vi.spyOn(document, 'removeEventListener')
     const wrapper = mountHost()

@@ -11,6 +11,14 @@
 .workbench-command-hint-anchor {
   display: inline-flex;
 }
+.workbench-command-hint-anchor.is-command-unavailable :is(:disabled, [aria-disabled='true']) {
+  pointer-events: none;
+}
+.workbench-command-hint-anchor.is-command-unavailable:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 .workbench-command-hint-anchor > button.is-active {
   color: var(--wb-accent-text);
@@ -20,7 +28,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .workbench-command-tooltip,
-.workbench-command-tooltip * {
+  .workbench-command-tooltip * {
     transition: none !important;
     animation: none !important;
   }

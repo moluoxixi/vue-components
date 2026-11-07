@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { UploadFile, UploadInstance } from 'element-plus'
+import type { JsonImportPaneEmits, JsonImportPaneProps } from '../../../../features/templates'
 import type {
   ConfigImportDiagnostic,
   PreparedConfigImport,
 } from '../../../../project'
-import type { JsonImportPaneEmits, JsonImportPaneProps } from '../../../../features/templates'
 import {
   CheckCircle2,
   FileJson2,
@@ -13,11 +13,12 @@ import {
   Trash2,
   Upload,
 } from '@lucide/vue'
-import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
-import { useWorkbenchController, useWorkbenchUiStore } from '../../../composables'
+import WorkbenchCommandHint from '../../../../components/WorkbenchCommandHint/index.vue'
 import { MAX_IMPORT_SOURCE_BYTES } from '../../../../project'
+import { useWorkbenchController, useWorkbenchUiStore } from '../../../composables'
 import DesignRuntimeHostFrame from '../../DesignRuntimeHostFrame/index.vue'
 
 const props = defineProps<JsonImportPaneProps>()
@@ -46,6 +47,9 @@ const sourceModeOptions = computed(() => [
   { label: locale.value.t('import.file', 'JSON file'), value: 'file' },
 ])
 const ready = computed(() => Boolean(source.value.trim()) && !analyzing.value && !submitting.value)
+const busyReason = computed(() => analyzing.value || submitting.value || controller.busy.value
+  ? locale.value.t('action.processing', 'An operation is in progress. Wait for it to finish.')
+  : undefined)
 const hasErrors = computed(() => diagnostics.value.length > 0)
 const createLabel = computed(() => props.target === 'project'
   ? locale.value.t('import.createProject', 'Create imported project')
@@ -221,9 +225,11 @@ onBeforeUnmount(() => {
       <button type="button" :aria-current="mobileStage === 'diagnostics' ? 'step' : undefined" @click="mobileStage = 'diagnostics'">
         <span aria-hidden="true">2</span>{{ locale.t('import.diagnostics', 'Diagnostics') }}
       </button>
-      <button type="button" :aria-current="mobileStage === 'preview' ? 'step' : undefined" :disabled="!prepared" @click="mobileStage = 'preview'">
-        <span aria-hidden="true">3</span>{{ locale.t('import.preview', 'Preview') }}
-      </button>
+      <WorkbenchCommandHint detached anchor-class="json-import-stage-hint" :label="locale.t('import.preview', 'Preview')" :disabled-reason="!prepared ? locale.t('import.confirmUnavailable', 'Analyze valid JSON before creating.') : undefined">
+        <button type="button" :aria-current="mobileStage === 'preview' ? 'step' : undefined" :disabled="!prepared" @click="mobileStage = 'preview'">
+          <span aria-hidden="true">3</span>{{ locale.t('import.preview', 'Preview') }}
+        </button>
+      </WorkbenchCommandHint>
     </nav>
 
     <div class="json-import-layout">
@@ -238,7 +244,7 @@ onBeforeUnmount(() => {
 
         <ElInput
           v-if="sourceMode === 'paste'"
-            ref="sourceInput"
+          ref="sourceInput"
           v-model="source"
           class="json-import-textarea"
           type="textarea"
@@ -270,22 +276,30 @@ onBeforeUnmount(() => {
         </div>
 
         <footer>
-          <ElButton native-type="button" :disabled="!source && !selectedFilename" @click="clearSource">
-            <Trash2 :size="15" aria-hidden="true" />{{ locale.t('import.clear', 'Clear') }}
-          </ElButton>
-          <ElButton native-type="button" type="primary" :loading="analyzing" :disabled="!ready" @click="analyze">
-            <SearchCheck :size="15" aria-hidden="true" />{{ locale.t('import.analyze', 'Analyze JSON') }}
-          </ElButton>
+          <WorkbenchCommandHint detached :label="locale.t('import.clear', 'Clear')" :disabled-reason="!source && !selectedFilename ? locale.t('import.nothingToClear', 'There is no input to clear.') : undefined">
+            <ElButton native-type="button" :disabled="!source && !selectedFilename" @click="clearSource">
+              <Trash2 :size="15" aria-hidden="true" />{{ locale.t('import.clear', 'Clear') }}
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('import.analyze', 'Analyze JSON')" :disabled-reason="busyReason || (!source.trim() ? locale.t('import.sourceRequired', 'Paste JSON or choose a JSON file before analyzing.') : undefined)">
+            <ElButton native-type="button" type="primary" :loading="analyzing" :disabled="!ready || !!busyReason" @click="analyze">
+              <SearchCheck :size="15" aria-hidden="true" />{{ locale.t('import.analyze', 'Analyze JSON') }}
+            </ElButton>
+          </WorkbenchCommandHint>
         </footer>
       </section>
 
       <section class="json-import-inspection" :class="{ 'is-mobile-hidden': mobileStage === 'source' }">
         <div class="json-import-diagnostics" :class="{ 'is-mobile-hidden': mobileStage !== 'diagnostics' }">
           <header>
-            <div class="json-import-panel-title"><SearchCheck :size="17" aria-hidden="true" /><h2>{{ locale.t('import.diagnostics', 'Diagnostics') }}</h2></div>
+            <div class="json-import-panel-title">
+              <SearchCheck :size="17" aria-hidden="true" /><h2>{{ locale.t('import.diagnostics', 'Diagnostics') }}</h2>
+            </div>
             <span v-if="prepared" class="json-import-status is-ready"><CheckCircle2 :size="14" aria-hidden="true" />{{ locale.t('import.ready', 'Ready') }}</span>
           </header>
-          <p v-if="analyzing" role="status">{{ locale.t('import.analyzing', 'Analyzing JSON') }}</p>
+          <p v-if="analyzing" role="status">
+            {{ locale.t('import.analyzing', 'Analyzing JSON') }}
+          </p>
           <div v-else-if="hasErrors" class="json-import-error-summary" role="alert">
             <strong>{{ locale.t('import.blocked', 'Import blocked') }}</strong>
             <ul>
@@ -303,7 +317,9 @@ onBeforeUnmount(() => {
               <div><dt>{{ locale.t('import.nodes', 'Nodes') }}</dt><dd>{{ prepared.summary.nodeCount }}</dd></div>
               <div><dt>{{ locale.t('import.resources', 'Resources') }}</dt><dd>{{ prepared.summary.resourceCount }}</dd></div>
               <div><dt>SurfaceGraph</dt><dd>v{{ prepared.summary.surfaceGraphVersion }}</dd></div>
-              <div v-if="prepared.summary.version"><dt>{{ locale.t('import.version', 'Project version') }}</dt><dd>v{{ prepared.summary.version }}</dd></div>
+              <div v-if="prepared.summary.version">
+                <dt>{{ locale.t('import.version', 'Project version') }}</dt><dd>v{{ prepared.summary.version }}</dd>
+              </div>
             </dl>
           </div>
           <div v-else class="json-import-empty">
@@ -313,7 +329,11 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="json-import-preview" :class="{ 'is-mobile-hidden': mobileStage !== 'preview' }">
-          <header><div class="json-import-panel-title"><CheckCircle2 :size="17" aria-hidden="true" /><h2>{{ locale.t('import.preview', 'Preview') }}</h2></div></header>
+          <header>
+            <div class="json-import-panel-title">
+              <CheckCircle2 :size="17" aria-hidden="true" /><h2>{{ locale.t('import.preview', 'Preview') }}</h2>
+            </div>
+          </header>
           <DesignRuntimeHostFrame
             v-if="prepared?.preview"
             :adapter="prepared.preview.adapter"
@@ -327,17 +347,27 @@ onBeforeUnmount(() => {
             variant="canvas"
             @error="ui.notify"
           />
-          <div v-else class="json-import-empty"><FileJson2 :size="22" aria-hidden="true" /><span>{{ prepared ? locale.t('import.noPages', 'This project has no pages yet. Import it to manage its data and resources.') : locale.t('import.previewUnavailable', 'Preview unavailable') }}</span></div>
+          <div v-else class="json-import-empty">
+            <FileJson2 :size="22" aria-hidden="true" /><span>{{ prepared ? locale.t('import.noPages', 'This project has no pages yet. Import it to manage its data and resources.') : locale.t('import.previewUnavailable', 'Preview unavailable') }}</span>
+          </div>
         </div>
       </section>
     </div>
 
     <footer class="json-import-footer">
-      <p v-if="ui.message.value" role="alert">{{ ui.message.value }}</p>
+      <p v-if="ui.message.value" role="alert">
+        {{ ui.message.value }}
+      </p>
       <span v-else>{{ prepared ? locale.t('import.confirmHint', 'Creates a new independent instance.') : locale.t('import.confirmUnavailable', 'Analyze valid JSON before creating.') }}</span>
       <div>
-        <ElButton v-if="hasErrors && source.trim()" native-type="button" @click="analyze"><RotateCcw :size="15" aria-hidden="true" />{{ locale.t('import.retry', 'Retry') }}</ElButton>
-        <ElButton native-type="button" type="primary" :loading="submitting" :disabled="!prepared || controller.busy.value" @click="createImported">{{ createLabel }}</ElButton>
+        <ElButton v-if="hasErrors && source.trim()" native-type="button" @click="analyze">
+          <RotateCcw :size="15" aria-hidden="true" />{{ locale.t('import.retry', 'Retry') }}
+        </ElButton>
+        <WorkbenchCommandHint detached :label="createLabel" :disabled-reason="busyReason || (!prepared ? locale.t('import.confirmUnavailable', 'Analyze valid JSON before creating.') : undefined)">
+          <ElButton native-type="button" type="primary" :loading="submitting" :disabled="!prepared || !!busyReason" @click="createImported">
+            {{ createLabel }}
+          </ElButton>
+        </WorkbenchCommandHint>
       </div>
     </footer>
   </section>

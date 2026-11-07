@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type {
   DeepReadonly,
   ProjectDialogSurface,
   ProjectDrawerSurface,
 } from '@moluoxixi/config-form-model'
-import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, ref, watch } from 'vue'
+import ControlHint from '../../../../../components/ControlHint.vue'
 import { cloneWorkbenchJson } from '../../../../../utils'
 
 type OverlaySurface = DeepReadonly<ProjectDialogSurface | ProjectDrawerSurface>
@@ -24,7 +25,9 @@ const emit = defineEmits<{
 }>()
 
 const locale = computed(() => createDesignerLocale(props.locale))
+const busyReason = computed(() => props.disabled ? locale.value.t('action.processing', 'An operation is in progress. Wait for it to finish.') : undefined)
 const draft = ref<OverlayPresentation>(cloneWorkbenchJson(props.surface.presentation) as OverlayPresentation)
+const maskReason = computed(() => busyReason.value || (!draft.value.mask ? locale.value.t('surface.maskRequired', 'Enable the mask before allowing clicks on it to close the surface.') : undefined))
 const units = ['px', '%', 'rem', 'vw', 'vh'] as const
 const placements = ['left', 'right', 'top', 'bottom'] as const
 
@@ -57,41 +60,65 @@ function save(): void {
   <section class="surface-presentation-editor" :aria-label="locale.t('surface.presentation', 'Surface presentation')">
     <label class="surface-presentation-editor__wide">
       <span>{{ locale.t('surface.title', 'Title') }}</span>
-      <ElInput v-model="draft.title" :disabled="disabled" />
+      <ControlHint :reason="busyReason"><ElInput v-model="draft.title" :aria-label="locale.t('surface.title', 'Title')" :disabled="disabled" /></ControlHint>
     </label>
     <label v-if="draft.kind === 'drawer'">
       <span>{{ locale.t('surface.placement', 'Placement') }}</span>
-      <ElSelect v-model="draft.placement" :disabled="disabled" append-to="#workbench-overlays">
+      <ControlHint :reason="busyReason"><ElSelect v-model="draft.placement" :aria-label="locale.t('surface.placement', 'Placement')" :disabled="disabled" append-to="#workbench-overlays">
         <ElOption v-for="placement in placements" :key="placement" :value="placement" :label="locale.t(`surface.placement.${placement}`, placement)" />
-      </ElSelect>
+      </ElSelect></ControlHint>
     </label>
     <fieldset>
       <legend>{{ locale.t('surface.desktopSize', 'Desktop size') }}</legend>
-      <ElInputNumber v-model="size.desktop.value" :aria-label="locale.t('surface.desktopSize', 'Desktop size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
-      <ElSelect v-model="size.desktop.unit" :aria-label="locale.t('surface.desktopUnit', 'Desktop size unit')" :disabled="disabled" append-to="#workbench-overlays">
-        <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
-      </ElSelect>
+      <ControlHint :reason="busyReason">
+        <ElInputNumber v-model="size.desktop.value" :aria-label="locale.t('surface.desktopSize', 'Desktop size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
+      </ControlHint>
+      <ControlHint :reason="busyReason">
+        <ElSelect v-model="size.desktop.unit" :aria-label="locale.t('surface.desktopUnit', 'Desktop size unit')" :disabled="disabled" append-to="#workbench-overlays">
+          <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
+        </ElSelect>
+      </ControlHint>
     </fieldset>
     <fieldset>
       <legend>{{ locale.t('surface.mobileSize', 'Mobile size') }}</legend>
       <template v-if="size.mobile">
-        <ElInputNumber v-model="size.mobile.value" :aria-label="locale.t('surface.mobileSize', 'Mobile size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
-        <ElSelect v-model="size.mobile.unit" :aria-label="locale.t('surface.mobileUnit', 'Mobile size unit')" :disabled="disabled" append-to="#workbench-overlays">
-          <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
-        </ElSelect>
-        <ElButton native-type="button" text :disabled="disabled" @click="removeMobileSize">{{ locale.t('surface.useDesktopSize', 'Use desktop') }}</ElButton>
+        <ControlHint :reason="busyReason">
+          <ElInputNumber v-model="size.mobile.value" :aria-label="locale.t('surface.mobileSize', 'Mobile size')" :disabled="disabled" :min="1" :max="10000" controls-position="right" />
+        </ControlHint>
+        <ControlHint :reason="busyReason">
+          <ElSelect v-model="size.mobile.unit" :aria-label="locale.t('surface.mobileUnit', 'Mobile size unit')" :disabled="disabled" append-to="#workbench-overlays">
+            <ElOption v-for="unit in units" :key="unit" :value="unit" :label="unit" />
+          </ElSelect>
+        </ControlHint>
+        <ControlHint class="surface-presentation-size-action" :reason="busyReason">
+          <ElButton native-type="button" text :disabled="disabled" @click="removeMobileSize">
+            {{ locale.t('surface.useDesktopSize', 'Use desktop') }}
+          </ElButton>
+        </ControlHint>
       </template>
-      <ElButton v-else native-type="button" :disabled="disabled" @click="ensureMobileSize">{{ locale.t('surface.addMobileSize', 'Add mobile size') }}</ElButton>
+      <ControlHint v-else class="surface-presentation-size-action" :reason="busyReason">
+        <ElButton native-type="button" :disabled="disabled" @click="ensureMobileSize">
+          {{ locale.t('surface.addMobileSize', 'Add mobile size') }}
+        </ElButton>
+      </ControlHint>
     </fieldset>
     <div class="surface-presentation-editor__switches surface-presentation-editor__wide">
-      <label><span>{{ locale.t('surface.mask', 'Mask') }}</span><ElSwitch :model-value="draft.mask" :disabled="disabled" @update:model-value="value => updateMask(Boolean(value))" /></label>
-      <label><span>{{ locale.t('surface.close.escape', 'Close with Escape') }}</span><ElSwitch v-model="draft.close.escape" :disabled="disabled" /></label>
-      <label><span>{{ locale.t('surface.close.mask', 'Close from mask') }}</span><ElSwitch v-model="draft.close.mask" :disabled="disabled || !draft.mask" /></label>
-      <label><span>{{ locale.t('surface.close.button', 'Show close button') }}</span><ElSwitch v-model="draft.close.button" :disabled="disabled" /></label>
+      <label><span>{{ locale.t('surface.mask', 'Mask') }}</span><ControlHint :reason="busyReason"><ElSwitch :model-value="draft.mask" :aria-label="locale.t('surface.mask', 'Mask')" :disabled="disabled" @update:model-value="value => updateMask(Boolean(value))" /></ControlHint></label>
+      <label><span>{{ locale.t('surface.close.escape', 'Close with Escape') }}</span><ControlHint :reason="busyReason"><ElSwitch v-model="draft.close.escape" :aria-label="locale.t('surface.close.escape', 'Close with Escape')" :disabled="disabled" /></ControlHint></label>
+      <label><span>{{ locale.t('surface.close.mask', 'Close from mask') }}</span><ControlHint :reason="maskReason"><ElSwitch v-model="draft.close.mask" :aria-label="locale.t('surface.close.mask', 'Close from mask')" :disabled="disabled || !draft.mask" /></ControlHint></label>
+      <label><span>{{ locale.t('surface.close.button', 'Show close button') }}</span><ControlHint :reason="busyReason"><ElSwitch v-model="draft.close.button" :aria-label="locale.t('surface.close.button', 'Show close button')" :disabled="disabled" /></ControlHint></label>
     </div>
     <footer class="surface-presentation-editor__wide">
-      <ElButton native-type="button" :disabled="disabled" @click="emit('cancel')">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
-      <ElButton native-type="button" type="primary" :disabled="disabled" @click="save">{{ locale.t('action.apply', 'Apply') }}</ElButton>
+      <ControlHint :reason="busyReason">
+        <ElButton native-type="button" :disabled="disabled" @click="emit('cancel')">
+          {{ locale.t('action.cancel', 'Cancel') }}
+        </ElButton>
+      </ControlHint>
+      <ControlHint :reason="busyReason">
+        <ElButton native-type="button" type="primary" :disabled="disabled" @click="save">
+          {{ locale.t('action.apply', 'Apply') }}
+        </ElButton>
+      </ControlHint>
     </footer>
   </section>
 </template>
@@ -131,12 +158,13 @@ function save(): void {
   gap: 6px;
 }
 
-.surface-presentation-editor .el-input-number {
+.surface-presentation-editor .el-input-number,
+.surface-presentation-editor .el-select {
   width: 100%;
   min-width: 0;
 }
 
-.surface-presentation-editor fieldset > .el-button {
+.surface-presentation-editor fieldset > .surface-presentation-size-action {
   grid-column: 1 / -1;
   justify-self: start;
 }
