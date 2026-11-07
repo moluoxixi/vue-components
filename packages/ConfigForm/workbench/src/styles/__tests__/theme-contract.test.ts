@@ -94,6 +94,7 @@ const projectThemeEditor = readFileSync(
   new URL('../../app/components/ProjectThemeEditor/index.vue', import.meta.url),
   'utf8',
 )
+const projectThemeStylesheet = readFileSync(new URL('../../app/components/ProjectThemeEditor/style/index.css', import.meta.url), 'utf8')
 const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(
@@ -255,10 +256,13 @@ describe('workbench theme contract', () => {
     expect(studioLeftPanelStylesheet).toContain('.designer-pages button')
     expect(selectorBlock('.designer-theme-panel', studioLeftPanelStylesheet)).toContain('flex-direction: column;')
     expect(selectorBlock('.designer-theme-panel > *', studioLeftPanelStylesheet)).toContain('flex: 1 1 auto;')
-    expect(selectorBlock('.designer-theme-type-grid', studioLeftPanelStylesheet)).toContain(
+    expect(projectThemeEditor).toContain('import \'./style/index.css\'')
+    expect(projectThemeStylesheet).toContain('border-bottom: 1px solid var(--wb-separator);')
+    expect(projectThemeStylesheet).toContain('color: var(--wb-muted);')
+    expect(selectorBlock('.designer-theme-shape-grid', projectThemeStylesheet)).toContain(
       'grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));',
     )
-    expect(selectorBlock('.designer-theme-field > .el-select', studioLeftPanelStylesheet)).toContain('width: 100%;')
+    expect(selectorBlock('.designer-theme-field > .el-select', projectThemeStylesheet)).toContain('width: 100%;')
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
@@ -325,8 +329,6 @@ describe('workbench theme contract', () => {
     expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
     expect(exportDialogComponent).toContain('bg-wb-editor-surface')
     expect(exportDialogComponent).toContain('text-wb-accent-text')
-    expect(projectThemeEditor).toContain('border-[var(--wb-control-border)]')
-    expect(projectThemeEditor).toContain('text-[var(--wb-muted)]')
     expect(runtimeHostBootstrap).toContain('import \'../styles/index.css\'')
     expect(runtimeHostBootstrap).not.toContain('import \'../../styles/index.css\'')
     expect(runtimeHostBootstrap).not.toContain('tailwind.css')

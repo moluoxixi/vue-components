@@ -9,13 +9,16 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  grid-template-rows: 42px 36px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-rows: 42px minmax(0, 1fr);
   overflow: hidden;
   background: var(--wb-surface);
 }
 
 .designer-left-heading {
   display: flex;
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
   padding: 0 14px;
   align-items: center;
@@ -35,11 +38,15 @@
 
 .designer-left-tabs {
   min-width: 0;
-  border-bottom: 1px solid var(--wb-separator);
+  grid-column: 1;
+  grid-row: 1 / 3;
+  border-right: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
 }
 
-.designer-left-tabs .el-tabs__header {
-  height: 35px;
+.designer-left-tabs .el-tabs__header.is-left {
+  width: 55px;
+  height: 100%;
   margin: 0;
 }
 
@@ -53,10 +60,17 @@
   display: none;
 }
 
-.designer-left-tabs .el-tabs__item {
-  height: 35px;
+.designer-left-tabs .el-tabs__nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.designer-left-tabs .el-tabs__item.is-left {
+  width: 55px;
+  height: 62px;
   min-width: 0;
-  padding: 0 2px;
+  padding: 0;
+  justify-content: center;
   color: var(--wb-muted);
   font-size: 11px;
 }
@@ -67,8 +81,10 @@
   background: var(--wb-hover);
 }
 
-.designer-left-tabs .el-tabs__active-bar {
-  height: 2px;
+.designer-left-tabs .el-tabs__active-bar.is-left {
+  width: 2px;
+  left: 0;
+  right: auto;
   background: var(--wb-accent);
 }
 
@@ -79,9 +95,22 @@
 .designer-left-tabs [data-designer-left-tab] {
   display: inline-flex;
   width: 100%;
+  height: 100%;
   min-width: 0;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+}
+
+.designer-left-tabs small {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.designer-left-panel > :not(.designer-left-heading, .designer-left-tabs) {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .designer-left-tabs span,
@@ -101,7 +130,7 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   container-name: designer-material-panel;
   container-type: inline-size;
@@ -266,14 +295,16 @@
 
 .designer-pages-panel {
   display: grid;
+  min-width: 0;
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .designer-data-actions {
   display: grid;
-  gap: 6px;
-  padding: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 8px;
+  padding: 12px 14px;
   border-top: 1px solid var(--wb-separator);
 }
 
@@ -290,7 +321,12 @@
 }
 
 .designer-asset-search {
-  padding: 8px 8px 2px;
+  width: auto;
+  margin: 16px 14px 12px;
+}
+
+.designer-pages {
+  padding: 0 14px 12px;
 }
 
 .designer-asset-group {
@@ -477,56 +513,6 @@
   min-height: 0;
 }
 
-.designer-theme-panel .el-tabs {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-}
-
-.designer-theme-panel .el-tabs__header {
-  flex: 0 0 auto;
-}
-
-.designer-theme-panel .el-tabs__content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.designer-theme-panel .el-tab-pane {
-  min-height: 100%;
-}
-
-.designer-theme-field-grid {
-  display: grid;
-  min-width: 0;
-  gap: 12px;
-}
-
-.designer-theme-type-grid,
-.designer-theme-shape-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-}
-
-.designer-theme-field {
-  min-width: 0;
-}
-
-.designer-theme-field > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.designer-theme-field > .el-select,
-.designer-theme-field > .el-input-number {
-  width: 100%;
-  min-width: 0;
-}
-
 .designer-history-header {
   display: flex;
   min-height: 36px;
@@ -648,7 +634,7 @@
 .manage-pages-button {
   display: inline-flex;
   min-height: 34px;
-  margin: 0 6px 6px;
+  margin: 12px 14px;
   padding: 0 8px;
   align-items: center;
   justify-content: center;
@@ -665,6 +651,12 @@
   color: var(--wb-text-strong);
   border-color: var(--wb-field-hover);
   background: var(--wb-hover);
+}
+
+.manage-pages-button > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .designer-layers button,
@@ -845,7 +837,12 @@
 
 @media (max-width: 700px) {
   .designer-left-panel {
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .designer-left-heading,
+  .designer-left-panel > :not(.designer-left-heading, .designer-left-tabs) {
+    grid-column: 1;
   }
 
   .designer-left-tabs {
