@@ -61,7 +61,7 @@ function setPaletteFamily(value: unknown): void {
       <span class="appearance-field__label">{{ locale.t('appearance.mode', 'Mode') }}</span>
       <ElSegmented
         class="appearance-mode-control"
-        :model-value="themePreference"
+        :model-value="props.themePreference"
         :options="themeOptions"
         :aria-label="locale.t('appearance.mode', 'Mode')"
         @update:model-value="setThemePreference"
@@ -72,7 +72,7 @@ function setPaletteFamily(value: unknown): void {
       <span id="appearance-palette-label" class="appearance-field__label">{{ locale.t('appearance.palette', 'Color theme') }}</span>
       <ElRadioGroup
         class="appearance-palette-list"
-        :model-value="paletteFamily"
+        :model-value="props.paletteFamily"
         aria-labelledby="appearance-palette-label"
         @update:model-value="setPaletteFamily"
       >
@@ -92,7 +92,7 @@ function setPaletteFamily(value: unknown): void {
                 <i v-for="color in WORKBENCH_PALETTE_SWATCHES[option.value].dark" :key="color" :style="{ backgroundColor: color }" />
               </span>
             </span>
-            <Check v-if="paletteFamily === option.value" class="appearance-palette-option__check" :size="16" aria-hidden="true" />
+            <Check v-if="props.paletteFamily === option.value" class="appearance-palette-option__check" :size="16" aria-hidden="true" />
           </span>
         </ElRadio>
       </ElRadioGroup>

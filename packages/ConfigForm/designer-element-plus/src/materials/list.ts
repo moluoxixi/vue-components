@@ -2,6 +2,7 @@ import * as shared from './shared'
 
 export default shared.defineElementBusinessMaterial({
   name: 'list',
+  locale: { title: '列表', category: '数据', setters: { } },
   order: 300,
   title: 'List',
   category: 'Data',

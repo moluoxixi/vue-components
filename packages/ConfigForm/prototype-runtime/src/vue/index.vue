@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { CSSProperties, ComponentPublicInstance } from 'vue'
+import type { ComponentPublicInstance, CSSProperties } from 'vue'
 import type {
-  PrototypeNodeAddressV1,
   PrototypeSurfaceContractV1,
   SurfaceInstanceId,
   SurfaceInstanceV1,
@@ -18,10 +17,10 @@ import type {
 } from './types'
 import {
   computed,
+  markRaw,
   nextTick,
   onBeforeUnmount,
   onMounted,
-  markRaw,
   ref,
   shallowRef,
   toRaw,

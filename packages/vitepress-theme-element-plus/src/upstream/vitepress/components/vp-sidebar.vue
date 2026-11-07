@@ -3,7 +3,7 @@ import { provideDocsUi } from '../../../runtime/provide-docs-ui'
 import { useSidebar } from '../composables/sidebar'
 import VPSidebarLink from './sidebar/vp-sidebar-link.vue'
 
-defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean }>()
 defineEmits(['close'])
 
 // const isHome = useIsHome()
@@ -12,7 +12,7 @@ provideDocsUi()
 </script>
 
 <template>
-  <el-scrollbar data-docs-ui v-if="hasSidebar" id="docs-sidebar" :class="{ sidebar: true, open }">
+  <el-scrollbar v-if="hasSidebar" id="docs-sidebar" data-docs-ui class="sidebar" :class="{ open: props.open }">
     <aside>
       <slot name="top" />
       <div class="sidebar-groups">
@@ -106,5 +106,4 @@ provideDocsUi()
     width: calc(var(--ep-docs-vp-sidebar-width-small) + 48px);
   }
 }
-
 </style>

@@ -176,19 +176,19 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
     ref="formRef"
     v-bind="formAttrs"
     data-config-form-responsive-root
-    :data-config-form-mode="mode"
-    :data-config-form-density="density"
+    :data-config-form-mode="props.mode"
+    :data-config-form-density="props.density"
     :data-dirty="meta.dirty"
     :data-touched="meta.touched"
     @submit.prevent="submit"
   >
     <section
-      v-if="errorSummary && validationIssues.length && mode !== 'design'"
+      v-if="props.errorSummary && validationIssues.length && props.mode !== 'design'"
       data-config-form-error-summary
       role="region"
-      :aria-label="errorSummaryLabel"
+      :aria-label="props.errorSummaryLabel"
     >
-      <strong>{{ errorSummaryLabel }} ({{ validationIssues.length }})</strong>
+      <strong>{{ props.errorSummaryLabel }} ({{ validationIssues.length }})</strong>
       <ul>
         <li v-for="(issue, index) in validationIssues" :key="`${issue.instanceKey}:${issue.code}:${index}`">
           <button type="button" @click="revealInstance(issue.instanceKey)">
@@ -208,7 +208,7 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
         validating: controller.getValidating(),
       }"
     />
-    <div v-if="$slots.actions" data-config-form-actions :data-sticky="stickyActions || undefined">
+    <div v-if="$slots.actions" data-config-form-actions :data-sticky="props.stickyActions || undefined">
       <slot name="actions" v-bind="{ meta, model, submit, resetFields, validating: controller.getValidating() }" />
     </div>
   </form>

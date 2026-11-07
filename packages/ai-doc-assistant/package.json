@@ -62,11 +62,15 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/vue": "catalog:",
     "@lucide/vue": "catalog:ui",
-    "@moluoxixi/ai-provider": "workspace:*",
     "@orama/orama": "catalog:data",
     "@orama/plugin-data-persistence": "catalog:data",
+    "@types/json-schema": "catalog:type",
     "ai": "catalog:",
     "element-plus": "catalog:ui",
     "markdown-it": "catalog:",

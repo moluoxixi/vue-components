@@ -7,7 +7,7 @@ import { useDesignerLocale } from '../../../../locale'
 import { DesignerCommandHint } from '../../../DesignerCommandHint'
 import { DesignerCanvasNodeToolbar } from './components'
 
-defineProps<{
+const props = defineProps<{
   boxes: DesignerCanvasOverlayBox[]
   canResize: (nodeId: string) => boolean
   collapsedCandidateIndicator?: CSSProperties
@@ -48,17 +48,17 @@ function handleResizeKeydown(event: KeyboardEvent, nodeId: string): void {
 <template>
   <div class="mx-config-form-designer__editor-overlay">
     <div
-      v-if="collapsedCandidateIndicator"
+      v-if="props.collapsedCandidateIndicator"
       class="mx-config-form-designer__collapsed-drop-indicator"
-      :style="collapsedCandidateIndicator"
+      :style="props.collapsedCandidateIndicator"
     />
     <div
-      v-for="box in boxes"
+      v-for="box in props.boxes"
       :key="box.id"
       class="mx-config-form-designer__selection-box"
-      :class="{ 'is-primary': box.primary, 'is-resizing': overlayMode === 'resizing' && box.id === resizingNodeId }"
+      :class="{ 'is-primary': box.primary, 'is-resizing': props.overlayMode === 'resizing' && box.id === props.resizingNodeId }"
       :style="box.style"
-      :aria-label="box.primary ? locale.t('node.select', 'Select {label}', { label: nodeLabel(box.id) }) : undefined"
+      :aria-label="box.primary ? locale.t('node.select', 'Select {label}', { label: props.nodeLabel(box.id) }) : undefined"
       :data-editor-focus-node-id="box.primary ? box.id : undefined"
       :role="box.primary ? 'group' : undefined"
       :tabindex="box.primary ? -1 : undefined"
@@ -66,11 +66,11 @@ function handleResizeKeydown(event: KeyboardEvent, nodeId: string): void {
       <DesignerCanvasNodeToolbar
         v-if="box.primary"
         :node-id="box.id"
-        :readonly="readonly"
-        :command-hint="commandHint"
-        :keyboard-dragging="isNodeKeyboardDragging(box.id)"
-        :menu-id="menuId"
-        :menu-open="menuNodeId === box.id"
+        :readonly="props.readonly"
+        :command-hint="props.commandHint"
+        :keyboard-dragging="props.isNodeKeyboardDragging(box.id)"
+        :menu-id="props.menuId"
+        :menu-open="props.menuNodeId === box.id"
         @action="emit('action', $event, box.id)"
         @begin-drag="emit('beginDrag', $event, box.id)"
         @drag-keydown="emit('dragKeydown', $event, box.id)"
@@ -79,7 +79,7 @@ function handleResizeKeydown(event: KeyboardEvent, nodeId: string): void {
         @toggle-menu="emit('toggleMenu', box.id)"
         @toolbar-keydown="emit('toolbarKeydown', $event)"
       />
-      <DesignerCommandHint v-if="box.primary && canResize(box.id)" :renderer="commandHint" :label="locale.t('node.resize', 'Resize node')">
+      <DesignerCommandHint v-if="box.primary && props.canResize(box.id)" :renderer="props.commandHint" :label="locale.t('node.resize', 'Resize node')">
         <button
           type="button"
           class="mx-config-form-designer__resize-handle"
@@ -94,7 +94,7 @@ function handleResizeKeydown(event: KeyboardEvent, nodeId: string): void {
       </DesignerCommandHint>
     </div>
     <span
-      v-for="spot in designPolicySpots"
+      v-for="spot in props.designPolicySpots"
       :key="`design-policy-${spot.id}`"
       class="mx-config-form-designer__design-policy-spot"
       :style="spot.style"

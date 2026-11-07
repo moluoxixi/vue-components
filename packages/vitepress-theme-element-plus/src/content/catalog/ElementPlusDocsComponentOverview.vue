@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import type { ElementPlusDocsOverviewMessages } from '../types'
 import type { ElementPlusDocsCatalogGroup } from './types'
 import { Search } from '@lucide/vue'
 import { ElEmpty, ElInput } from 'element-plus'
 import { computed, ref } from 'vue'
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import ElementPlusDocsOverviewCard from './ElementPlusDocsOverviewCard.vue'
 
 const props = defineProps<{
@@ -43,8 +43,8 @@ provideDocsUi()
       <ElInput
         v-model="query"
         :prefix-icon="Search"
-        :placeholder="messages.searchPlaceholder"
-        :aria-label="messages.searchAria"
+        :placeholder="props.messages.searchPlaceholder"
+        :aria-label="props.messages.searchAria"
         clearable
         size="large"
       />
@@ -63,12 +63,11 @@ provideDocsUi()
       </section>
     </template>
 
-    <ElEmpty v-else class="component-overview-empty" :description="messages.noResults" />
+    <ElEmpty v-else class="component-overview-empty" :description="props.messages.noResults" />
   </div>
 </template>
 
 <style scoped>
-
 .component-overview {
   margin-top: 24px;
 }
@@ -124,5 +123,4 @@ provideDocsUi()
   font-family: var(--ep-docs-font-family-mono);
   font-size: 12px;
 }
-
 </style>

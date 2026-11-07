@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
-import { ElAnchorLink } from 'element-plus'
 import type { TocLinkItem } from '../../types'
+import { ElAnchorLink } from 'element-plus'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 
 defineOptions({ name: 'VPTableOfContentLink' })
 
-defineProps<{
+const props = defineProps<{
   header: TocLinkItem
 }>()
 
@@ -15,14 +15,14 @@ provideDocsUi()
 
 <template>
   <ElAnchorLink
-    :href="header.link"
-    :title="header.text"
+    :href="props.header.link"
+    :title="props.header.text"
   >
     <!-- eslint-disable-next-line vue/no-v-html -->
-    <div :title="removeTag(header.text)" v-html="header.text" />
-    <template v-if="header.children?.length" #sub-link>
+    <div :title="removeTag(props.header.text)" v-html="props.header.text" />
+    <template v-if="props.header.children?.length" #sub-link>
       <VPTableOfContentLink
-        v-for="child in header.children"
+        v-for="child in props.header.children"
         :key="child.link"
         :header="child"
       />

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ElementPlusDocsReplProps, ElementPlusDocsReplVersionKey } from './types'
-import Monaco from '@vue/repl/monaco-editor'
-import { Repl as VueRepl } from '@vue/repl'
 import { Check, Copy, GitBranch, Moon, RefreshCw, RotateCcw, Sun } from '@lucide/vue'
+import { Repl as VueRepl } from '@vue/repl'
+import Monaco from '@vue/repl/monaco-editor'
 import { computed, onMounted, ref, watchEffect } from 'vue'
 import { fetchElementPlusDocsPackageVersions } from './dependency'
 import { createElementPlusDocsReplStore } from './store'
@@ -92,8 +92,8 @@ onMounted(async () => {
       <div class="mx-repl__brand">
         <span class="mx-repl__mark" aria-hidden="true">MX</span>
         <div>
-          <strong>{{ title }}</strong>
-          <small>{{ componentPackage.name }}{{ componentPackage.version ? ` v${componentPackage.version}` : '' }}</small>
+          <strong>{{ props.title }}</strong>
+          <small>{{ props.componentPackage.name }}{{ props.componentPackage.version ? ` v${props.componentPackage.version}` : '' }}</small>
         </div>
       </div>
 
@@ -127,13 +127,15 @@ onMounted(async () => {
           <Sun v-if="dark" :size="18" />
           <Moon v-else :size="18" />
         </button>
-        <a v-if="repositoryUrl" :href="repositoryUrl" target="_blank" rel="noreferrer" title="View repository" aria-label="View repository">
+        <a v-if="props.repositoryUrl" :href="props.repositoryUrl" target="_blank" rel="noreferrer" title="View repository" aria-label="View repository">
           <GitBranch :size="18" />
         </a>
       </nav>
     </header>
 
-    <div v-if="loading" class="mx-repl__loading" role="status">Loading playground…</div>
+    <div v-if="loading" class="mx-repl__loading" role="status">
+      Loading playground…
+    </div>
     <VueRepl
       v-else
       ref="replRef"

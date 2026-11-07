@@ -50,11 +50,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/openai": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@moluoxixi/config-form-compiler": "workspace:*",
     "@moluoxixi/config-form-model": "workspace:*",
     "@moluoxixi/config-form-source": "workspace:*",
     "@moluoxixi/config-form-studio": "workspace:*",
+    "@types/json-schema": "catalog:type",
+    "ai": "catalog:",
     "fflate": "catalog:",
     "zod": "catalog:dev"
   },

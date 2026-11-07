@@ -7,7 +7,7 @@ interface Props {
   /** 标题 */
   title?: string
 }
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>
 
 <template>

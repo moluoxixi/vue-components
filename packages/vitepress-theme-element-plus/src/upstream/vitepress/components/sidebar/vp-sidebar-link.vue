@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
-import { computed, ref, watch } from 'vue'
-import { useRoute, withBase } from 'vitepress'
-import { isActive } from '../../utils'
-
 import type { Link } from '../../types'
+import { useRoute, withBase } from 'vitepress'
+import { computed, ref, watch } from 'vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
+
+import { isActive } from '../../utils'
 
 const props = defineProps<{
   item: Link
@@ -17,7 +17,7 @@ const sidebarItem = ref<HTMLElement>()
 const route = useRoute()
 
 const activeLink = computed<boolean>(() =>
-  isActive(route.data.relativePath, props.item.link)
+  isActive(route.data.relativePath, props.item.link),
 )
 
 watch([activeLink, sidebarItem], ([active, el]) => {
@@ -31,17 +31,16 @@ provideDocsUi()
 <template>
   <a
     ref="sidebarItem"
-    :class="{
-      link: true,
-      active: activeLink,
-      'flex items-center': item.promotion,
+    class="link" :class="{
+      'active': activeLink,
+      'flex items-center': props.item.promotion,
     }"
-    :href="withBase(item.link)"
+    :href="withBase(props.item.link)"
     @click="$emit('close')"
   >
-    <p class="link-text">{{ item.text }}</p>
-    <ElTag v-if="item.promotion" size="small" effect="plain">
-      {{ item.promotion }}
+    <p class="link-text">{{ props.item.text }}</p>
+    <ElTag v-if="props.item.promotion" size="small" effect="plain">
+      {{ props.item.promotion }}
     </ElTag>
   </a>
 </template>

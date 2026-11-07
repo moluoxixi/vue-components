@@ -2,6 +2,7 @@ import * as shared from './shared'
 
 export default shared.defineAntdBusinessMaterial({
   name: 'text',
+  locale: { title: '文本', category: '展示', setters: { text: '文本' } },
   order: 260,
   title: 'Text',
   category: 'Display',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RequestOptionRecord, RequestParamsRecord } from '../../request/types'
 
-defineProps<{
+const props = defineProps<{
   query: (params: RequestParamsRecord) => Promise<RequestOptionRecord[]>
 }>()
 </script>

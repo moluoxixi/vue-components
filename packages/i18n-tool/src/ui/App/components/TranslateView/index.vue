@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { CandidateState, RequestStatus } from '../../state'
 import type { I18nDiagnostic, TranslationUnit } from '../../../../core'
 import type { SanitizedConfigResponse, ScanResponse, ScanUnitGapWire } from '../../../../shared/protocol'
-import { computed } from 'vue'
+import type { CandidateState, RequestStatus } from '../../state'
 import { Eye, RotateCcw, Sparkles, Square } from '@lucide/vue'
+import { computed } from 'vue'
 
 const props = defineProps<{
   candidates: readonly CandidateState[]
@@ -83,35 +83,37 @@ function toggleSelection(unitId: string, checked: boolean): void {
   >
     <header class="view-heading translate-heading-row">
       <div>
-        <h2 id="translate-heading">Translate</h2>
+        <h2 id="translate-heading">
+          Translate
+        </h2>
         <p>Review source messages and generate candidates for one target locale.</p>
       </div>
       <el-select
-        v-if="config"
-        :model-value="targetLocale"
+        v-if="props.config"
+        :model-value="props.targetLocale"
         aria-label="Target locale"
         class="locale-select"
         @update:model-value="emit('targetChange', String($event))"
       >
-        <el-option v-for="locale in config.resources.targetLocales" :key="locale" :label="locale" :value="locale" />
+        <el-option v-for="locale in props.config.resources.targetLocales" :key="locale" :label="locale" :value="locale" />
       </el-select>
     </header>
 
     <div class="command-bar" aria-label="Translation commands">
       <el-button
         type="primary"
-        :disabled="selectedUnitIds.length === 0 || status === 'loading' || config?.ai.status !== 'configured'"
+        :disabled="props.selectedUnitIds.length === 0 || props.status === 'loading' || props.config?.ai.status !== 'configured'"
         @click="emit('translate')"
       >
         <Sparkles :size="17" aria-hidden="true" />
-        Translate {{ selectedUnitIds.length }}
+        Translate {{ props.selectedUnitIds.length }}
       </el-button>
       <el-tooltip content="Stop active translation">
         <span class="tooltip-trigger">
           <el-button
             class="icon-button"
             circle
-            :disabled="status !== 'loading'"
+            :disabled="props.status !== 'loading'"
             aria-label="Stop active translation"
             @click="emit('stop')"
           >
@@ -124,7 +126,7 @@ function toggleSelection(unitId: string, checked: boolean): void {
           <el-button
             class="icon-button"
             circle
-            :disabled="!retryable || status === 'loading'"
+            :disabled="!retryable || props.status === 'loading'"
             aria-label="Retry failed messages"
             @click="emit('retry')"
           >
@@ -132,18 +134,18 @@ function toggleSelection(unitId: string, checked: boolean): void {
           </el-button>
         </span>
       </el-tooltip>
-      <el-button :disabled="!canPreview || status === 'loading'" @click="emit('preview')">
+      <el-button :disabled="!canPreview || props.status === 'loading'" @click="emit('preview')">
         <Eye :size="17" aria-hidden="true" />
         Preview changes
       </el-button>
-      <span v-if="status === 'loading'" class="progress-label" role="status">
-        {{ progress.completed }} / {{ progress.total }} translated
+      <span v-if="props.status === 'loading'" class="progress-label" role="status">
+        {{ props.progress.completed }} / {{ props.progress.total }} translated
       </span>
-      <span v-else-if="status === 'cancelled'" class="progress-label is-warning" role="status">Translation stopped</span>
+      <span v-else-if="props.status === 'cancelled'" class="progress-label is-warning" role="status">Translation stopped</span>
     </div>
 
-    <div v-if="diagnostics.length" class="diagnostic-list" role="alert">
-      <p v-for="(diagnostic, index) in diagnostics" :key="`${diagnostic.code}-${index}`">
+    <div v-if="props.diagnostics.length" class="diagnostic-list" role="alert">
+      <p v-for="(diagnostic, index) in props.diagnostics" :key="`${diagnostic.code}-${index}`">
         <strong>{{ diagnostic.code }}</strong> {{ diagnostic.message }}
       </p>
     </div>
@@ -208,6 +210,8 @@ function toggleSelection(unitId: string, checked: boolean): void {
       </div>
     </div>
 
-    <div v-else class="view-state" role="status">Scan locale resources to begin.</div>
+    <div v-else class="view-state" role="status">
+      Scan locale resources to begin.
+    </div>
   </section>
 </template>

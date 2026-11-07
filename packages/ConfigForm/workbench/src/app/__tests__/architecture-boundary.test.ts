@@ -676,7 +676,7 @@ describe('workbench production architecture boundary', () => {
       )
 
     expect(shell).toContain(':controller="controller"')
-    expect(persistence).toContain('const controller = props.controller')
+    expect(persistence).toContain('props.controller.')
     expect(featureAppImports).toEqual([])
   })
 

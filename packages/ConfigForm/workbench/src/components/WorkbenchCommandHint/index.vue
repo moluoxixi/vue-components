@@ -125,11 +125,11 @@ onBeforeUnmount(() => {
     @before-show="announceShow"
   >
     <span
-      v-if="detached"
+      v-if="props.detached"
       class="workbench-command-hint-anchor"
-      :class="[anchorClass, { 'is-command-unavailable': disabledReason }]"
-      :tabindex="disabledReason ? 0 : undefined"
-      :aria-label="disabledReason ? content : undefined"
+      :class="[props.anchorClass, { 'is-command-unavailable': props.disabledReason }]"
+      :tabindex="props.disabledReason ? 0 : undefined"
+      :aria-label="props.disabledReason ? content : undefined"
       @focusin="openDetachedTooltip"
       @focusout="closeDetachedTooltip"
     ><slot /></span>

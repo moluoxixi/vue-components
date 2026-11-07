@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vitepress'
-import { useLang } from '../composables/lang'
+import { computed, ref, watch } from 'vue'
 import skipLinkLocale from '../../../i18n/component/skip-link.json'
+import { useLang } from '../composables/lang'
 
 const route = useRoute()
 const lang = useLang()
@@ -12,12 +12,12 @@ const title = computed(() => (skipLinkLocale[lang.value] ?? skipLinkLocale['en-U
 
 watch(
   () => route.path,
-  () => anchorRef.value.focus()
+  () => anchorRef.value.focus(),
 )
 
-const focusOnTargetAnchor = ({ target }: Event) => {
+function focusOnTargetAnchor({ target }: Event) {
   const el = document.querySelector(
-    (target as HTMLAnchorElement).hash!
+    (target as HTMLAnchorElement).hash!,
   ) as HTMLAnchorElement
 
   if (el) {
@@ -36,7 +36,7 @@ const focusOnTargetAnchor = ({ target }: Event) => {
 <template>
   <span ref="anchorRef" tabindex="-1" />
   <a
- data-docs-ui    href="#page-content"
+    data-docs-ui href="#page-content"
     class="skip-link visually-hidden"
     @click="focusOnTargetAnchor"
   >

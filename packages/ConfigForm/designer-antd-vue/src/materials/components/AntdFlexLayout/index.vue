@@ -22,7 +22,7 @@ const style = computed(() => ({
 </script>
 
 <template>
-  <div class="mx-antd-flex-layout" :class="{ 'is-column': direction === 'column' }" :style="style">
+  <div class="mx-antd-flex-layout" :class="{ 'is-column': props.direction === 'column' }" :style="style">
     <slot />
   </div>
 </template>

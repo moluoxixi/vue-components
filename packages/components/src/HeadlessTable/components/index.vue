@@ -1,33 +1,33 @@
 <script setup lang="ts" generic="TRow extends HeadlessTableRow = HeadlessTableRow">
 import type {
-  HeadlessTableCellRender,
   HeadlessTableCellComponent,
+  HeadlessTableCellRender,
   HeadlessTableCellScope,
   HeadlessTableColumn,
   HeadlessTableDefaultScope,
-  HeadlessTableEmptyScope,
-  HeadlessTableHeaderRender,
-  HeadlessTableHeaderComponent,
-  HeadlessTableHeaderScope,
   HeadlessTableEmits,
+  HeadlessTableEmptyComponent,
+  HeadlessTableEmptyScope,
+  HeadlessTableHeaderComponent,
+  HeadlessTableHeaderRender,
+  HeadlessTableHeaderScope,
   HeadlessTableProps,
   HeadlessTableRow,
   HeadlessTableRowKey,
   HeadlessTableSlots,
-  HeadlessTableEmptyComponent,
 } from '../types'
 import { computed, defineComponent, inject, markRaw, onBeforeUpdate, shallowRef } from 'vue'
-import {
-  getHeadlessTableColumnId,
-  getHeadlessTableColumnLabel,
-  getHeadlessTableRawValue,
-} from '../utils'
+import { useHeadlessTableMode } from '../composables'
 import {
   headlessTableRenderer,
   headlessTableRendererKey,
   resolveHeadlessTableRenderer,
 } from '../services/renderer'
-import { useHeadlessTableMode } from '../composables'
+import {
+  getHeadlessTableColumnId,
+  getHeadlessTableColumnLabel,
+  getHeadlessTableRawValue,
+} from '../utils'
 
 defineOptions({ name: 'HeadlessTable' })
 
@@ -40,8 +40,8 @@ const props = withDefaults(defineProps<HeadlessTableProps<TRow>>(), {
   slots: () => ({}),
 })
 
-const slots = defineSlots<HeadlessTableSlots<TRow>>()
 const emit = defineEmits<HeadlessTableEmits>()
+const slots = defineSlots<HeadlessTableSlots<TRow>>()
 const slotsVersion = shallowRef(0)
 const warnedDiagnostics = new Set<string>()
 const injectedRendererRegistry = inject(headlessTableRendererKey, null)

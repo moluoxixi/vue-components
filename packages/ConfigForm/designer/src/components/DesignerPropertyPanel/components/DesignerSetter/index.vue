@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '@designer/registry'
-import { computed, useId } from 'vue'
+import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import { useDesignerLocale } from '@designer/locale'
+import { computed, useId } from 'vue'
 import DesignerDefaultValueSetter from '../DesignerDefaultValueSetter/index.vue'
 import DesignerOptionsSetter from '../DesignerOptionsSetter/index.vue'
 import DesignerValidateOnSetter from '../DesignerValidateOnSetter/index.vue'
@@ -34,55 +34,54 @@ const inherited = computed(() => props.value === undefined && props.inheritedVal
 function commitCustom(value: unknown): void {
   emit('commit', value)
 }
-
 </script>
 
 <template>
   <div class="mx-config-form-designer__setter" :class="{ 'is-compound': compound }">
     <span class="mx-config-form-designer__setter-label-row">
-      <span class="mx-config-form-designer__setter-label" :title="setter.label">{{ setter.label }}</span>
+      <span class="mx-config-form-designer__setter-label" :title="props.setter.label">{{ props.setter.label }}</span>
       <span class="mx-config-form-designer__setter-hints">
         <span v-if="inherited" class="mx-config-form-designer__setter-hint">{{ locale.t('setter.inherited', 'Inherited') }}</span>
-        <span v-if="hint" :id="hintId" class="mx-config-form-designer__setter-hint is-value">{{ hint }}</span>
+        <span v-if="props.hint" :id="hintId" class="mx-config-form-designer__setter-hint is-value">{{ props.hint }}</span>
       </span>
     </span>
 
     <component
-      :is="setter.component"
-      v-if="setter.control === 'custom' && setter.component"
-      :model-value="value"
-      :disabled="readonly"
-      :node="node"
-      v-bind="setter.componentProps"
+      :is="props.setter.component"
+      v-if="props.setter.control === 'custom' && props.setter.component"
+      :model-value="props.value"
+      :disabled="props.readonly"
+      :node="props.node"
+      v-bind="props.setter.componentProps"
       @update:model-value="commitCustom"
     />
     <DesignerDefaultValueSetter
-      v-else-if="setter.control === 'defaultValue' && setter.valueKind"
-      :model-value="value"
-      :kind="setter.valueKind"
-      :options="setter.options"
-      :disabled="readonly"
+      v-else-if="props.setter.control === 'defaultValue' && props.setter.valueKind"
+      :model-value="props.value"
+      :kind="props.setter.valueKind"
+      :options="props.setter.options"
+      :disabled="props.readonly"
       @update:model-value="commitCustom"
     />
     <DesignerOptionsSetter
-      v-else-if="setter.control === 'options'"
-      :model-value="value"
-      :option-value-types="setter.optionValueTypes"
-      :disabled="readonly"
+      v-else-if="props.setter.control === 'options'"
+      :model-value="props.value"
+      :option-value-types="props.setter.optionValueTypes"
+      :disabled="props.readonly"
       @update:model-value="commitCustom"
     />
     <DesignerValidationSetter
-      v-else-if="setter.control === 'validation'"
-      :model-value="value"
-      :value-kind="setter.valueKind"
-      :options="setter.options"
-      :disabled="readonly"
+      v-else-if="props.setter.control === 'validation'"
+      :model-value="props.value"
+      :value-kind="props.setter.valueKind"
+      :options="props.setter.options"
+      :disabled="props.readonly"
       @update:model-value="commitCustom"
     />
     <DesignerValidateOnSetter
-      v-else-if="setter.control === 'validateOn'"
-      :model-value="value"
-      :disabled="readonly"
+      v-else-if="props.setter.control === 'validateOn'"
+      :model-value="props.value"
+      :disabled="props.readonly"
       @update:model-value="commitCustom"
     />
   </div>

@@ -3,7 +3,7 @@ interface SubProps {
   /** 列配置 */
   columns: string[]
 }
-defineProps<SubProps>()
+const props = defineProps<SubProps>()
 </script>
 
 <template>

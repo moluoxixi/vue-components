@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form-core'
+import { useDesignerLocale } from '@designer/locale'
 import { Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { nextTick, ref, useId, watch } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
 
 const props = withDefaults(defineProps<{
   breakpoint?: ConfigFormBreakpoint
@@ -20,7 +20,10 @@ const breakpoints = [
   { key: 'mobile', icon: Smartphone },
 ] as const
 
-watch(() => props.breakpoint, (value) => { if (value) active.value = value })
+watch(() => props.breakpoint, (value) => {
+  if (value)
+    active.value = value
+})
 
 function title(breakpoint: ConfigFormBreakpoint): string {
   if (breakpoint === 'desktop')
@@ -43,19 +46,21 @@ function navigateTabs(event: KeyboardEvent): void {
 
 <template>
   <section class="mx-config-form-designer__responsive-settings" :aria-label="locale.t('property.responsive', 'Responsive layout')">
-    <div v-if="showHeading" class="mx-config-form-designer__responsive-heading">
+    <div v-if="props.showHeading" class="mx-config-form-designer__responsive-heading">
       <strong>{{ locale.t('property.responsive', 'Responsive layout') }}</strong>
     </div>
 
     <div class="mx-config-form-designer__responsive-tabs" role="tablist" :aria-label="locale.t('property.responsive', 'Responsive layout')">
-      <button v-for="item in breakpoints" :id="`${tabsId}-${item.key}-tab`" :key="item.key" type="button" role="tab" :aria-selected="active === item.key" :aria-controls="`${tabsId}-${item.key}-panel`" :tabindex="active === item.key ? 0 : -1" @click="active = item.key" @keydown="navigateTabs"><component :is="item.icon" :size="14" aria-hidden="true" />{{ title(item.key) }}</button>
+      <button v-for="item in breakpoints" :id="`${tabsId}-${item.key}-tab`" :key="item.key" type="button" role="tab" :aria-selected="active === item.key" :aria-controls="`${tabsId}-${item.key}-panel`" :tabindex="active === item.key ? 0 : -1" @click="active = item.key" @keydown="navigateTabs">
+        <component :is="item.icon" :size="14" aria-hidden="true" />{{ title(item.key) }}
+      </button>
     </div>
 
     <div
       v-for="item in breakpoints"
+      v-show="active === item.key"
       :id="`${tabsId}-${item.key}-panel`"
       :key="item.key"
-      v-show="active === item.key"
       role="tabpanel"
       :aria-labelledby="`${tabsId}-${item.key}-tab`"
       :inert="active !== item.key ? true : undefined"

@@ -6,16 +6,17 @@ import { defineAsyncComponent, useTemplateRef } from 'vue'
 import { MarkdownContent } from './components'
 import { useChatWorkspace } from './composables'
 
+const props = defineProps<{ indexReady: boolean, indexState: IndexState }>()
+
+const emit = defineEmits<{
+  'open-source': [name: string]
+}>()
+
 const DemoPreview = defineAsyncComponent(() =>
   import('./components/DemoPreview.vue').then(module => module.default),
 )
 
 const question = defineModel<string>('question', { required: true })
-const props = defineProps<{ indexReady: boolean, indexState: IndexState }>()
-const emit = defineEmits<{
-  'open-source': [name: string]
-}>()
-
 const questionInput = useTemplateRef<HTMLInputElement>('questionInput')
 const chatBody = useTemplateRef<HTMLElement>('chatBody')
 const {
@@ -151,7 +152,7 @@ function openSource(source: SourceRef): void {
     </button>
 
     <form class="ask-panel" data-testid="ask-panel" @submit.prevent="onAsk">
-      <div v-if="!indexReady" class="hint" data-testid="chat-need-index">
+      <div v-if="!props.indexReady" class="hint" data-testid="chat-need-index">
         {{ indexHint }}
       </div>
       <div class="ask-row">

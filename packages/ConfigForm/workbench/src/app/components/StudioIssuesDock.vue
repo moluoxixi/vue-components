@@ -51,25 +51,25 @@ function severityLabel(item: StudioDiagnostic): string {
 </script>
 
 <template>
-  <section class="studio-issues-dock" :data-open="open" :data-status="status">
+  <section class="studio-issues-dock" :data-open="props.open" :data-status="status">
     <header>
       <button
         type="button"
-        :aria-expanded="open"
+        :aria-expanded="props.open"
         :aria-controls="listId"
-        @click="emit('update:open', !open)"
+        @click="emit('update:open', !props.open)"
       >
         <AlertCircle v-if="status === 'error'" :size="16" aria-hidden="true" />
         <TriangleAlert v-else-if="status === 'warning'" :size="16" aria-hidden="true" />
         <Info v-else-if="status === 'info'" :size="16" aria-hidden="true" />
         <CheckCircle2 v-else :size="16" aria-hidden="true" />
-        <strong>{{ chinese ? '问题' : 'Issues' }}</strong><span>{{ diagnostics.length }}</span>
+        <strong>{{ chinese ? '问题' : 'Issues' }}</strong><span>{{ props.diagnostics.length }}</span>
         <small>{{ summary }}</small>
-        <ChevronUp :size="14" :style="{ transform: open ? 'rotate(180deg)' : undefined }" />
+        <ChevronUp :size="14" :style="{ transform: props.open ? 'rotate(180deg)' : undefined }" />
       </button>
       <span class="studio-issues-hint">{{ chinese ? '命令中心' : 'Command center' }} <kbd>Ctrl K</kbd></span>
     </header>
-    <div v-if="open" :id="listId" class="studio-issues-body">
+    <div v-if="props.open" :id="listId" class="studio-issues-body">
       <div class="studio-issues-filters">
         <div role="group" :aria-label="chinese ? '问题筛选' : 'Filter issues'">
           <button v-for="option in filters" :key="option.id" type="button" :aria-pressed="filter === option.id" @click="filter = option.id">
@@ -103,7 +103,7 @@ function severityLabel(item: StudioDiagnostic): string {
         </details>
       </article>
       <div v-if="!visible.length" class="studio-issues-empty" role="status">
-        <template v-if="diagnostics.length">
+        <template v-if="props.diagnostics.length">
           <p>{{ chinese ? '当前分类下没有问题，其他分类仍有待处理项。' : 'No issues in this category. Other categories still have items to review.' }}</p>
           <button type="button" @click="filter = 'all'">
             {{ chinese ? '查看全部问题' : 'Show all issues' }}

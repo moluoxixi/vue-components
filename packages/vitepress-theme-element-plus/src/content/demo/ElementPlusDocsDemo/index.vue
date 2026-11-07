@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../runtime/provide-docs-ui'
-import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
-import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
 import type { ElementPlusDocsExternalProjectSource } from '../../playground/external/vue-project'
-import { indexElementPlusDocsPlaygroundActions } from '../../playground/registry'
 import type {
   ElementPlusDocsPlaygroundAction,
   ElementPlusDocsPlaygroundActionContext,
   ElementPlusDocsPlaygroundKind,
 } from '../../playground/types'
+import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from '../types'
+import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
+import { ElSegmented } from 'element-plus'
 import {
   computed,
   nextTick,
@@ -20,9 +19,10 @@ import {
   shallowRef,
   useId,
 } from 'vue'
-import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from '../types'
-import ElementPlusDocsDemoSource from './components/ElementPlusDocsDemoSource.vue'
 import ElementPlusDocsConsumerBoundary from '../../../runtime/ElementPlusDocsConsumerBoundary.vue'
+import { provideDocsUi } from '../../../runtime/provide-docs-ui'
+import { indexElementPlusDocsPlaygroundActions } from '../../playground/registry'
+import ElementPlusDocsDemoSource from './components/ElementPlusDocsDemoSource.vue'
 
 const props = defineProps<ElementPlusDocsDemoProps>()
 
@@ -226,17 +226,16 @@ provideDocsUi()
         <ElementPlusDocsConsumerBoundary v-if="demoComponent && !error">
           <component :is="demoComponent" />
         </ElementPlusDocsConsumerBoundary>
-
       </div>
-        <div v-if="error" data-docs-ui class="demo-error" role="alert">
-          <strong>{{ messages.compileError }}</strong><br>{{ error }}
-        </div>
-        <div v-if="isLoading && !error" data-docs-ui class="demo-loading" role="status">
-          <span>{{ messages.loading }}</span>
-        </div>
+      <div v-if="error" data-docs-ui class="demo-error" role="alert">
+        <strong>{{ props.messages.compileError }}</strong><br>{{ error }}
+      </div>
+      <div v-if="isLoading && !error" data-docs-ui class="demo-loading" role="status">
+        <span>{{ props.messages.loading }}</span>
+      </div>
 
-      <div v-if="title" class="demo-description" data-docs-ui>
-        {{ title }}
+      <div v-if="props.title" class="demo-description" data-docs-ui>
+        {{ props.title }}
       </div>
 
       <div class="demo-footer" data-docs-ui>
@@ -245,17 +244,17 @@ provideDocsUi()
           v-model="sourceLanguage"
           class="demo-source-languages"
           data-testid="demo-source-language"
-          :aria-label="messages.sourceLanguage"
+          :aria-label="props.messages.sourceLanguage"
           :options="sourceLanguages"
           size="small"
         />
-        <div class="demo-actions" role="group" :aria-label="messages.actions">
+        <div class="demo-actions" role="group" :aria-label="props.messages.actions">
           <button
             v-if="playgroundActionByKind.has('codesandbox')"
             class="demo-action-btn"
             type="button"
-            :title="messages.openCodeSandbox"
-            :aria-label="messages.openCodeSandbox"
+            :title="props.messages.openCodeSandbox"
+            :aria-label="props.messages.openCodeSandbox"
             data-testid="demo-codesandbox"
             @click="handleOpenPlayground('codesandbox')"
           >
@@ -265,8 +264,8 @@ provideDocsUi()
             v-if="playgroundActionByKind.has('stackblitz')"
             class="demo-action-btn"
             type="button"
-            :title="messages.openStackBlitz"
-            :aria-label="messages.openStackBlitz"
+            :title="props.messages.openStackBlitz"
+            :aria-label="props.messages.openStackBlitz"
             data-testid="demo-stackblitz"
             @click="handleOpenPlayground('stackblitz')"
           >
@@ -276,8 +275,8 @@ provideDocsUi()
             v-if="playgroundActionByKind.has('element-plus')"
             class="demo-action-btn"
             type="button"
-            :title="messages.openElementPlusPlayground"
-            :aria-label="messages.openElementPlusPlayground"
+            :title="props.messages.openElementPlusPlayground"
+            :aria-label="props.messages.openElementPlusPlayground"
             data-testid="demo-element-plus-playground"
             @click="handleOpenPlayground('element-plus')"
           >
@@ -287,30 +286,30 @@ provideDocsUi()
             v-if="playgroundActionByKind.has('lightweight')"
             class="demo-action-btn"
             type="button"
-            :title="messages.openPlayground"
-            :aria-label="messages.openPlayground"
+            :title="props.messages.openPlayground"
+            :aria-label="props.messages.openPlayground"
             data-testid="demo-lightweight-playground"
             @click="handleOpenPlayground('lightweight')"
           >
             <SquareTerminal :size="16" aria-hidden="true" />
           </button>
           <a
-            v-if="sourceHref"
+            v-if="props.sourceHref"
             class="demo-action-btn"
             data-testid="demo-source-link"
-            :href="sourceHref"
+            :href="props.sourceHref"
             target="_blank"
             rel="noreferrer noopener"
-            :title="messages.viewSource"
-            :aria-label="messages.viewSource"
+            :title="props.messages.viewSource"
+            :aria-label="props.messages.viewSource"
           >
             <GitBranch :size="16" aria-hidden="true" />
           </a>
           <button
             class="demo-action-btn"
             type="button"
-            :title="isCopied ? messages.copied : messages.copyCode"
-            :aria-label="isCopied ? messages.codeCopied : messages.copyCode"
+            :title="isCopied ? props.messages.copied : props.messages.copyCode"
+            :aria-label="isCopied ? props.messages.codeCopied : props.messages.copyCode"
             @click="copyCode"
           >
             <Copy v-if="!isCopied" :size="16" aria-hidden="true" />
@@ -320,8 +319,8 @@ provideDocsUi()
             ref="sourceToggle"
             class="demo-action-btn"
             type="button"
-            :title="isExpanded ? messages.collapseCode : messages.expandCode"
-            :aria-label="isExpanded ? messages.collapseExampleCode : messages.expandExampleCode"
+            :title="isExpanded ? props.messages.collapseCode : props.messages.expandCode"
+            :aria-label="isExpanded ? props.messages.collapseExampleCode : props.messages.expandExampleCode"
             :aria-expanded="isExpanded"
             :aria-controls="sourceId"
             @click="isExpanded = !isExpanded"
@@ -333,7 +332,7 @@ provideDocsUi()
       </div>
 
       <div v-if="actionError" class="demo-action-error" data-docs-ui role="alert">
-        {{ messages.playgroundUnavailable }}: {{ actionError }}
+        {{ props.messages.playgroundUnavailable }}: {{ actionError }}
       </div>
 
       <Transition name="demo-expand">
@@ -345,10 +344,10 @@ provideDocsUi()
         >
           <ElementPlusDocsDemoSource
             :source="highlightedHtml"
-            :fold-code-region="messages.foldCodeRegion"
-            :folded-line="messages.foldedLine"
-            :folded-lines="messages.foldedLines"
-            :unfold-code-region="messages.unfoldCodeRegion"
+            :fold-code-region="props.messages.foldCodeRegion"
+            :folded-line="props.messages.foldedLine"
+            :folded-lines="props.messages.foldedLines"
+            :unfold-code-region="props.messages.unfoldCodeRegion"
           />
           <button
             class="demo-collapse-control" data-docs-ui
@@ -357,7 +356,7 @@ provideDocsUi()
             @click="collapseSource"
           >
             <ChevronUp :size="16" aria-hidden="true" />
-            <span>{{ messages.collapseCode }}</span>
+            <span>{{ props.messages.collapseCode }}</span>
           </button>
         </div>
       </Transition>
@@ -366,11 +365,9 @@ provideDocsUi()
 </template>
 
 <style scoped>
-
 .demo-block {
   margin: 20px 0 28px;
 }
-
 
 .demo-block {
   overflow: hidden;

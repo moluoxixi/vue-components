@@ -176,12 +176,12 @@ onBeforeUnmount(() => {
     @keydown="handleKeydown"
   >
     <SourceFileTreeNode
-      v-for="node in nodes"
+      v-for="node in props.nodes"
       :key="node.id"
       :node="node"
       :expanded-ids="expandedIds"
       :focused-id="focusedId"
-      :selected-path="selectedPath"
+      :selected-path="props.selectedPath"
       @activate="activateNode"
       @focus-node="focusedId = $event"
     />

@@ -401,20 +401,20 @@ onBeforeUnmount(() => {
     :aria-describedby="showEmptyCanvas ? emptyCanvasDescriptionId : undefined"
     :data-camera-mode="camera.mode"
     :data-camera-scale="camera.scale"
-    :data-preview-breakpoint="breakpoint ?? 'desktop'"
+    :data-preview-breakpoint="props.breakpoint ?? 'desktop'"
     :data-editor-overlay-mode="overlayMode"
     tabindex="-1"
     @pointerenter="cameraHovered = true"
     @pointerleave="cameraHovered = false"
   >
-    <div v-if="showInteractiveToggle" class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
-      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.linkagePreview', 'Linkage preview')">
+    <div v-if="props.showInteractiveToggle" class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
+      <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('canvas.linkagePreview', 'Linkage preview')">
         <button
           type="button"
-          :class="{ 'is-active': interactive }"
+          :class="{ 'is-active': props.interactive }"
           :aria-label="locale.t('canvas.linkagePreview', 'Linkage preview')"
           :title="locale.t('canvas.linkagePreview', 'Linkage preview')"
-          :aria-pressed="Boolean(interactive)"
+          :aria-pressed="Boolean(props.interactive)"
           @click.stop="emit('toggleInteractive')"
         >
           <Workflow :size="15" aria-hidden="true" />
@@ -432,7 +432,7 @@ onBeforeUnmount(() => {
         <div
           ref="sheetRef"
           class="mx-config-form-designer__canvas-sheet mx-config-form-designer__runtime-surface"
-          :data-sheet-breakpoint="breakpoint ?? 'desktop'"
+          :data-sheet-breakpoint="props.breakpoint ?? 'desktop'"
           :data-intrinsic-width="intrinsicFrameWidth"
           :style="cameraSheetStyle"
           role="group"
@@ -451,14 +451,14 @@ onBeforeUnmount(() => {
             :boxes="overlayBoxes"
             :can-resize="canResize"
             :collapsed-candidate-indicator="collapsedCandidateIndicator"
-            :command-hint="commandHint"
+            :command-hint="props.commandHint"
             :design-policy-spots="designPolicySpots"
             :is-node-keyboard-dragging="isNodeKeyboardDragging"
             :menu-id="nodeActionMenuId"
             :menu-node-id="nodeActionMenuNodeId"
             :node-label="nodeLabel"
             :overlay-mode="overlayMode"
-            :readonly="Boolean(readonly)"
+            :readonly="Boolean(props.readonly)"
             :resizing-node-id="resizingNodeId"
             @action="handleOverlayAction"
             @begin-drag="beginNodeDrag"
@@ -481,7 +481,7 @@ onBeforeUnmount(() => {
       @pointerdown="beginCameraPan"
     />
     <DesignerCanvasCameraControls
-      :command-hint="commandHint"
+      :command-hint="props.commandHint"
       :mode="camera.mode"
       :scale="camera.scale"
       :percent="cameraPercent"
@@ -503,7 +503,7 @@ onBeforeUnmount(() => {
       v-if="runtimeContextMenu"
       :key="`${runtimeContextMenu.nodeId}-${runtimeContextMenu.x}-${runtimeContextMenu.y}`"
       :node-id="runtimeContextMenu.nodeId"
-      :paste-available="Boolean(pasteAvailable)"
+      :paste-available="Boolean(props.pasteAvailable)"
       :x="runtimeContextMenu.x"
       :y="runtimeContextMenu.y"
       @action="runContextMenuAction"

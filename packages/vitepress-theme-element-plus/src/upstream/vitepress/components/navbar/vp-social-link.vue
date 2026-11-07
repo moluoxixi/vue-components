@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import type { Component } from 'vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 
-defineProps<{
+const props = defineProps<{
   icon?: Component
   link: string
   text: string
@@ -12,17 +12,17 @@ provideDocsUi()
 
 <template>
   <a
-    :href="link"
-    :title="text"
-    :aria-label="text"
+    :href="props.link"
+    :title="props.text"
+    :aria-label="props.text"
     target="_blank"
     rel="noreferrer noopener"
     class="social-link"
   >
-    <ElIcon v-if="icon" :size="20">
-      <component :is="icon" />
+    <ElIcon v-if="props.icon" :size="20">
+      <component :is="props.icon" />
     </ElIcon>
-    <span v-else class="social-link-text">{{ text }}</span>
+    <span v-else class="social-link-text">{{ props.text }}</span>
   </a>
 </template>
 

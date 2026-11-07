@@ -41,7 +41,9 @@ defineAttrs<MacroProbeAttrs>()
 function focus(): void {}
 function reset(): void {}
 const status: ExposedStatus = 'idle'
-function getStatus(): ExposedStatus { return status }
+function getStatus(): ExposedStatus {
+  return status
+}
 defineExpose({ items: props.items, focus, reset, getStatus })
 </script>
 

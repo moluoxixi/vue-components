@@ -295,9 +295,9 @@ const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.
               'onClick': () => !hasPropertyQuery.value && togglePropertyGroup(group.id),
             },
             slots: { default: () => [
-              h(ChevronRight, { size: 14, 'aria-hidden': true }),
+              h(ChevronRight, { 'size': 14, 'aria-hidden': true }),
               h('span', group.label),
-              h('span', { class: 'mx-config-form-designer__property-group-count', 'aria-hidden': true }, group.entries.length),
+              h('span', { 'class': 'mx-config-form-designer__property-group-count', 'aria-hidden': true }, group.entries.length),
             ] },
           },
           {
@@ -322,7 +322,7 @@ const inspectorLayout: DesignerPropertyFormLayout = field => propertyTabs.value.
         component: 'div',
         props: { 'class': 'mx-config-form-designer__property-empty', 'data-property-empty': '', 'role': 'status' },
         slots: { default: () => [
-          h(Search, { size: 15, 'aria-hidden': true }),
+          h(Search, { 'size': 15, 'aria-hidden': true }),
           h('span', locale.t('property.emptySearch', 'No properties match this search.')),
           h('button', { type: 'button', onClick: clearPropertyQuery }, locale.t('property.clearSearch', 'Clear search')),
         ] },
@@ -456,11 +456,11 @@ defineExpose({ propertyPanelRef })
       class="mx-config-form-designer__inspector-form"
       :entries="inspectorEntries"
       :layout="inspectorLayout"
-      :renderer="renderer"
-      :components="components"
-      :controls="propertyControls"
-      :readonly="readonly"
-      :node="node"
+      :renderer="props.renderer"
+      :components="props.components"
+      :controls="props.propertyControls"
+      :readonly="props.readonly"
+      :node="props.node"
       :identity="selectionIdentity"
       gap="0"
       @commit="commitInspectorProperty"

@@ -89,7 +89,7 @@ function navigate(event: Event | KeyboardEvent): void {
 
 <template>
   <ElDialog
-    :model-value="open"
+    :model-value="props.open"
     class="studio-command-dialog"
     width="min(620px, calc(var(--wb-viewport-width) - 24px))"
     :title="chinese ? '命令中心' : 'Command center'"
@@ -106,7 +106,7 @@ function navigate(event: Event | KeyboardEvent): void {
         container-role="combobox"
         autocomplete="off"
         :aria-controls="listId"
-        :aria-expanded="open"
+        :aria-expanded="props.open"
         aria-autocomplete="list"
         :aria-activedescendant="activeOptionId"
         :aria-label="chinese ? '搜索命令、组件和页面' : 'Search commands, materials and surfaces'"

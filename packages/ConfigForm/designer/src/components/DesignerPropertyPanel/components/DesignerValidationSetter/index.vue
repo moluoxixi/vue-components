@@ -269,15 +269,15 @@ function formatAdvancedRule(rule: RuleDraft): string {
       <ElSwitch
         :model-value="enabled"
         :aria-label="locale.t('validation.enable', 'Enable validation')"
-        :disabled="disabled || !base || hasAdvancedRules"
+        :disabled="props.disabled || !base || hasAdvancedRules"
         @change="updateEnabled"
       />
     </div>
 
     <template v-if="enabled && base">
       <div class="mx-config-form-designer__flag-buttons">
-        <ElCheckbox :model-value="optional" :disabled="disabled" :label="locale.t('validation.optional', 'Optional')" @update:model-value="updateFlag('optional', $event)" />
-        <ElCheckbox :model-value="nullable" :disabled="disabled" :label="locale.t('validation.nullable', 'Nullable')" @update:model-value="updateFlag('nullable', $event)" />
+        <ElCheckbox :model-value="optional" :disabled="props.disabled" :label="locale.t('validation.optional', 'Optional')" @update:model-value="updateFlag('optional', $event)" />
+        <ElCheckbox :model-value="nullable" :disabled="props.disabled" :label="locale.t('validation.nullable', 'Nullable')" @update:model-value="updateFlag('nullable', $event)" />
       </div>
 
       <div v-if="rules.length || ruleTypes.length" class="mx-config-form-designer__rule-list">
@@ -291,29 +291,29 @@ function formatAdvancedRule(rule: RuleDraft): string {
           </div>
           <template v-else>
             <div class="mx-config-form-designer__collection-row-heading">
-              <ElSelect :model-value="rule.kind" :aria-label="locale.t('validation.ruleType', 'Rule {index} type', { index: index + 1 })" :disabled="disabled" @update:model-value="changeRuleKind(index, $event)">
+              <ElSelect :model-value="rule.kind" :aria-label="locale.t('validation.ruleType', 'Rule {index} type', { index: index + 1 })" :disabled="props.disabled" @update:model-value="changeRuleKind(index, $event)">
                 <ElOption v-for="item in ruleTypes" :key="item.value" :value="item.value" :label="item.label" />
               </ElSelect>
-              <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteRule', 'Delete rule {index}', { index: index + 1 })" :disabled="disabled" @click="removeRule(index)">
+              <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteRule', 'Delete rule {index}', { index: index + 1 })" :disabled="props.disabled" @click="removeRule(index)">
                 <Trash2 :size="14" aria-hidden="true" />
               </button>
             </div>
 
-            <ElInputNumber v-if="numberKinds.includes(rule.kind)" :model-value="typeof rule.value === 'number' ? rule.value : undefined" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumberRule(index, $event)" />
+            <ElInputNumber v-if="numberKinds.includes(rule.kind)" :model-value="typeof rule.value === 'number' ? rule.value : undefined" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="props.disabled" controls-position="right" @change="updateNumberRule(index, $event)" />
             <template v-else-if="rule.kind === 'regex'">
-              <ElInput :model-value="String(rule.source ?? '')" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'source', $event)" @blur="commit" />
-              <ElInput :model-value="String(rule.flags ?? '')" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'flags', $event || undefined)" @blur="commit" />
+              <ElInput :model-value="String(rule.source ?? '')" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="props.disabled" @update:model-value="updateRuleDraft(index, 'source', $event)" @blur="commit" />
+              <ElInput :model-value="String(rule.flags ?? '')" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="props.disabled" @update:model-value="updateRuleDraft(index, 'flags', $event || undefined)" @blur="commit" />
             </template>
-            <ElDatePicker v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :model-value="dateInputValue(rule.value)" type="date" value-format="YYYY-MM-DD" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @update:model-value="updateDateRule(index, $event)" />
+            <ElDatePicker v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :model-value="dateInputValue(rule.value)" type="date" value-format="YYYY-MM-DD" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="props.disabled" @update:model-value="updateDateRule(index, $event)" />
 
             <div v-if="inclusiveKinds.includes(rule.kind)" class="mx-config-form-designer__switch-row is-compact">
               <span>{{ locale.t('validation.inclusive', 'Inclusive') }}</span>
-              <ElSwitch :model-value="rule.inclusive !== false" :aria-label="locale.t('validation.inclusive', 'Inclusive')" :disabled="disabled" @change="updateRule(index, 'inclusive', $event)" />
+              <ElSwitch :model-value="rule.inclusive !== false" :aria-label="locale.t('validation.inclusive', 'Inclusive')" :disabled="props.disabled" @change="updateRule(index, 'inclusive', $event)" />
             </div>
-            <ElInput :model-value="String(rule.message ?? '')" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="disabled" @update:model-value="updateRuleDraft(index, 'message', $event || undefined)" @blur="commit" />
+            <ElInput :model-value="String(rule.message ?? '')" :aria-label="locale.t('validation.ruleMessage', 'Rule {index} message', { index: index + 1 })" :placeholder="locale.t('validation.customMessage', 'Custom message (optional)')" :disabled="props.disabled" @update:model-value="updateRuleDraft(index, 'message', $event || undefined)" @blur="commit" />
           </template>
         </div>
-        <button v-if="ruleTypes.length" type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRule">
+        <button v-if="ruleTypes.length" type="button" class="mx-config-form-designer__add-row" :disabled="props.disabled" @click="addRule">
           <Plus :size="15" aria-hidden="true" />
           {{ locale.t('validation.addRule', 'Add rule') }}
         </button>

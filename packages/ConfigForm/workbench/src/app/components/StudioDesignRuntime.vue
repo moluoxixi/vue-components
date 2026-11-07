@@ -11,27 +11,27 @@ const localeText = computed(() => createDesignerLocale({ locale: props.locale })
 </script>
 
 <template>
-  <SurfacePresentationFrame :surface="surface" :breakpoint="scope.breakpoint" :empty-hint="localeText.t('canvas.emptyGuide', 'Drag or click a component on the left to add a field')">
+  <SurfacePresentationFrame :surface="props.surface" :breakpoint="props.scope.breakpoint" :empty-hint="localeText.t('canvas.emptyGuide', 'Drag or click a component on the left to add a field')">
     <DesignRuntimeHostFrame
-      :adapter="adapter"
-      :breakpoint="scope.breakpoint"
-      :camera-scale="scope.cameraScale"
-      :candidate-id="scope.candidateId"
-      :candidate-uses-fallback="scope.candidateUsesFallback"
-      :command="scope.command"
-      :locale="locale"
-      :model-value="scope.model"
-      :namespace="namespace"
-      :resolve-compilation="resolveCompilation"
-      :title="title"
+      :adapter="props.adapter"
+      :breakpoint="props.scope.breakpoint"
+      :camera-scale="props.scope.cameraScale"
+      :candidate-id="props.scope.candidateId"
+      :candidate-uses-fallback="props.scope.candidateUsesFallback"
+      :command="props.scope.command"
+      :locale="props.locale"
+      :model-value="props.scope.model"
+      :namespace="props.namespace"
+      :resolve-compilation="props.resolveCompilation"
+      :title="props.title"
       variant="canvas"
       @error="emit('error', $event)"
-      @geometry="scope.bridge.updateGeometry"
-      @context-menu="scope.bridge.contextMenu"
-      @pointer-cancel="scope.bridge.pointerCancel"
-      @pointer-down="scope.bridge.pointerDown"
-      @pointer-move="scope.bridge.pointerMove"
-      @pointer-up="scope.bridge.pointerUp"
+      @geometry="props.scope.bridge.updateGeometry"
+      @context-menu="props.scope.bridge.contextMenu"
+      @pointer-cancel="props.scope.bridge.pointerCancel"
+      @pointer-down="props.scope.bridge.pointerDown"
+      @pointer-move="props.scope.bridge.pointerMove"
+      @pointer-up="props.scope.bridge.pointerUp"
     />
   </SurfacePresentationFrame>
 </template>

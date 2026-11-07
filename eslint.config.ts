@@ -1,4 +1,5 @@
 import antfu from '@antfu/eslint-config'
+import vueConventions from './scripts/eslint/vue-explicit-props.mjs'
 
 const markdownFormatter = {
   files: ['**/*.md'],
@@ -19,6 +20,7 @@ const markdownFormatter = {
 }
 
 export default antfu({
+  vue: true,
   formatters: {
     markdown: 'prettier',
     prettierOptions: {
@@ -41,6 +43,12 @@ export default antfu({
     '.trellis/**',
     '.workbuddy/**',
     'spikes/**',
+    // Markdown code fences are formatted by Prettier, not the Vue SFC processor.
+    '**/*.md/**/*.vue',
   ],
   rules: {},
-}, markdownFormatter)
+}, markdownFormatter, {
+  files: ['**/*.vue'],
+  plugins: { 'project-vue': vueConventions },
+  rules: { 'project-vue/explicit-props': 'error', 'vue/custom-event-name-casing': 'off' },
+})

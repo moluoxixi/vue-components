@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ forwarded: string }>()
+const props = defineProps<{ forwarded: string }>()
 </script>
 
 <template>

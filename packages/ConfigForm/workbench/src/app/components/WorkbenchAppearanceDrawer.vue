@@ -29,10 +29,10 @@ watch(() => props.open, (open, wasOpen) => {
 
 <template>
   <ElDrawer
-    v-if="open"
+    v-if="props.open"
     class="appearance-drawer-shell"
     modal-class="appearance-drawer-overlay"
-    :model-value="open"
+    :model-value="props.open"
     direction="rtl"
     size="min(92vw, 380px)"
     append-to="#workbench-overlays"
@@ -48,8 +48,8 @@ watch(() => props.open, (open, wasOpen) => {
   >
     <WorkbenchAppearancePanel
       :locale="props.locale"
-      :palette-family="paletteFamily"
-      :theme-preference="themePreference"
+      :palette-family="props.paletteFamily"
+      :theme-preference="props.themePreference"
       @set-palette-family="emit('setPaletteFamily', $event)"
       @set-theme-preference="emit('setThemePreference', $event)"
     >

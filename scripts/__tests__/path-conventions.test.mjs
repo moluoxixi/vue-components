@@ -21,7 +21,6 @@ const docsVitepressConfig = readFileSync(
 const declarationFinalizer = resolve(repositoryRoot, 'scripts/finalize-published-declarations.mjs')
 const declarationFinalizerPackages = [
   '@moluoxixi/ai-doc-assistant',
-  '@moluoxixi/ai-provider',
   '@moluoxixi/components',
   '@moluoxixi/config-form',
   '@moluoxixi/config-form-antd-vue',

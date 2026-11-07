@@ -71,8 +71,12 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/openai-compatible": "catalog:",
     "@lucide/vue": "catalog:ui",
-    "@moluoxixi/ai-provider": "workspace:*",
+    "@types/json-schema": "catalog:type",
     "ai": "catalog:",
     "element-plus": "catalog:ui",
     "jiti": "catalog:dev",

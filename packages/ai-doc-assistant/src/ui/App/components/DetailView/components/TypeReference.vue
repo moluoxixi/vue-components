@@ -3,7 +3,7 @@ import { ElPopover } from 'element-plus'
 import { ref, useTemplateRef } from 'vue'
 import { restoreFocusIfLost } from '../../../../focus'
 
-defineProps<{ text: string, content: string }>()
+const props = defineProps<{ text: string, content: string }>()
 
 const visible = ref(false)
 const trigger = useTemplateRef<HTMLButtonElement>('trigger')
@@ -32,16 +32,16 @@ function restoreFocusAfterOutsideClose(): void {
         ref="trigger"
         class="type-reference"
         type="button"
-        :aria-label="`查看 ${text} 类型详情`"
+        :aria-label="`查看 ${props.text} 类型详情`"
         :aria-expanded="visible"
         data-testid="type-reference"
-        :data-content="content"
+        :data-content="props.content"
         @keydown.esc.stop.prevent="close"
       >
-        <code>{{ text }}</code>
+        <code>{{ props.text }}</code>
       </button>
     </template>
-    <pre data-testid="type-popover-content">{{ content }}</pre>
+    <pre data-testid="type-popover-content">{{ props.content }}</pre>
   </ElPopover>
 </template>
 

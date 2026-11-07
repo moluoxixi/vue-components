@@ -14,7 +14,7 @@ import {
 import { useDesignerLocale } from '../../../../../../locale'
 import { DesignerCommandHint } from '../../../../../DesignerCommandHint'
 
-defineProps<{
+const props = defineProps<{
   commandHint?: Component
   keyboardDragging: boolean
   menuId: string
@@ -45,45 +45,45 @@ const locale = useDesignerLocale()
     data-designer-editor-control
     @keydown="emit('toolbarKeydown', $event)"
   >
-    <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.moveNode', 'Move node')" shortcut="Space" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
-      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :disabled="readonly" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Space" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="keyboardDragging" :data-designer-drag-node-id="nodeId" @keydown="emit('dragKeydown', $event)" @pointerdown="emit('beginDrag', $event)">
+    <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('node.moveNode', 'Move node')" shortcut="Space" :disabled-reason="props.readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :disabled="props.readonly" :aria-disabled="props.readonly ? 'true' : undefined" aria-keyshortcuts="Space" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="props.keyboardDragging" :data-designer-drag-node-id="props.nodeId" @keydown="emit('dragKeydown', $event)" @pointerdown="emit('beginDrag', $event)">
         <GripVertical :size="16" aria-hidden="true" />
       </button>
     </DesignerCommandHint>
-    <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.copyNode', 'Copy node')" shortcut="Ctrl/Cmd+D" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
-      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Control+D Meta+D" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="emit('action', 'copy')">
+    <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('node.copyNode', 'Copy node')" shortcut="Ctrl/Cmd+D" :disabled-reason="props.readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button" :disabled="props.readonly" :aria-disabled="props.readonly ? 'true' : undefined" aria-keyshortcuts="Control+D Meta+D" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="emit('action', 'copy')">
         <Copy :size="15" aria-hidden="true" />
       </button>
     </DesignerCommandHint>
-    <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.deleteNode', 'Delete node')" shortcut="Delete" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
-      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="readonly" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Delete Backspace" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="emit('action', 'remove')">
+    <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('node.deleteNode', 'Delete node')" shortcut="Delete" :disabled-reason="props.readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+      <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="props.readonly" :aria-disabled="props.readonly ? 'true' : undefined" aria-keyshortcuts="Delete Backspace" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="emit('action', 'remove')">
         <Trash2 :size="15" aria-hidden="true" />
       </button>
     </DesignerCommandHint>
     <button
-      :id="`${menuId}-trigger`"
+      :id="`${props.menuId}-trigger`"
       data-node-toolbar-button
       data-node-action-menu-trigger
       type="button"
       class="mx-config-form-designer__icon-button"
-      :disabled="readonly"
-      :aria-disabled="readonly ? 'true' : undefined"
-      :title="readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
-      :aria-label="readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
+      :disabled="props.readonly"
+      :aria-disabled="props.readonly ? 'true' : undefined"
+      :title="props.readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
+      :aria-label="props.readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
       aria-haspopup="menu"
-      :aria-controls="menuId"
-      :aria-expanded="menuOpen"
-      @click.stop="!readonly && emit('toggleMenu')"
+      :aria-controls="props.menuId"
+      :aria-expanded="props.menuOpen"
+      @click.stop="!props.readonly && emit('toggleMenu')"
     >
       <MoreHorizontal :size="16" aria-hidden="true" />
     </button>
     <div
-      v-if="menuOpen"
-      :id="menuId"
+      v-if="props.menuOpen"
+      :id="props.menuId"
       class="mx-config-form-designer__node-action-menu"
       data-node-action-menu
       role="menu"
-      :aria-labelledby="`${menuId}-trigger`"
+      :aria-labelledby="`${props.menuId}-trigger`"
       @keydown="emit('menuKeydown', $event)"
     >
       <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.moveNodeUp', 'Move node up')" @click.stop="emit('menuAction', 'moveBefore')">

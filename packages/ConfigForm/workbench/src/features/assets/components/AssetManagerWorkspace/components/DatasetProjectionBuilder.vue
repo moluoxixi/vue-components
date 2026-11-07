@@ -281,7 +281,7 @@ const preview = computed(() => {
       <summary>{{ chinese ? '高级 JSON' : 'Advanced JSON' }}</summary>
       <ElInput
         type="textarea"
-        :model-value="json"
+        :model-value="props.json"
         :rows="8"
         :aria-label="chinese ? '数据默认映射 JSON' : 'Dataset default projection JSON'"
         @update:model-value="emit('update:json', $event)"

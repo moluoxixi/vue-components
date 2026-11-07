@@ -3,31 +3,32 @@ import { isClient, useEventListener, useToggle } from '@vueuse/core'
 import { useSidebar } from '../composables/sidebar'
 import { useToggleWidgets } from '../composables/toggle-widgets'
 import { breakpoints } from '../constant'
-import VPOverlay from './vp-overlay.vue'
-import VPSkipLink from './vp-skip-link.vue'
-import VPNav from './vp-nav.vue'
-import VPSubNav from './vp-subnav.vue'
-import VPSidebar from './vp-sidebar.vue'
 import VPContent from './vp-content.vue'
+import VPNav from './vp-nav.vue'
+import VPOverlay from './vp-overlay.vue'
+import VPSidebar from './vp-sidebar.vue'
+import VPSkipLink from './vp-skip-link.vue'
+import VPSubNav from './vp-subnav.vue'
 
 const [isSidebarOpen, toggleSidebar] = useToggle(false)
 const { hasSidebar } = useSidebar()
 
 useToggleWidgets(isSidebarOpen, () => {
-  if (!isClient) return
+  if (!isClient)
+    return
   if (window.outerWidth >= breakpoints.lg) {
     toggleSidebar(false)
   }
 })
 
 useEventListener('keydown', (e) => {
-  if (!isClient) return
+  if (!isClient)
+    return
   if (e.code === 'Escape' && isSidebarOpen.value) {
     toggleSidebar(false)
     document.querySelector<HTMLButtonElement>('.sidebar-button')?.focus()
   }
 })
-
 </script>
 
 <template>

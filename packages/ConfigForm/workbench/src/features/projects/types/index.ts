@@ -39,6 +39,7 @@ export interface ProjectManagerProps {
 }
 
 export interface ProjectManagerEmits {
+  assistant: []
   create: [mode: 'json' | 'template']
   quickCreate: []
   open: []

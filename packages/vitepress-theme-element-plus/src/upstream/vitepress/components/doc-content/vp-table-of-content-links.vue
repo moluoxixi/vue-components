@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
-import { ElAnchor } from 'element-plus'
 import type { TocLinkItem } from '../../types'
+import { ElAnchor } from 'element-plus'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import VPTableOfContentLink from './vp-table-of-content-link.vue'
 
-defineProps<{
+const props = defineProps<{
   headers: TocLinkItem[]
 }>()
 provideDocsUi()
@@ -13,7 +13,7 @@ provideDocsUi()
 <template>
   <ElAnchor :offset="70" :bound="120">
     <VPTableOfContentLink
-      v-for="header in headers"
+      v-for="header in props.headers"
       :key="header.link"
       :header="header"
     />

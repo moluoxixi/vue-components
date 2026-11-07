@@ -2,6 +2,7 @@ import * as shared from './shared'
 
 export default shared.defineAntdBusinessMaterial({
   name: 'image',
+  locale: { title: '图片', category: '展示', setters: { src: '图片地址', alt: '替代文本' } },
   order: 290,
   title: 'Image',
   category: 'Display',

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import type { ElementPlusDocsContentMessages } from '../types'
 import type { ElementPlusDocsContributor } from './types'
 import { ElTooltip } from 'element-plus'
 import { onMounted, ref } from 'vue'
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import { formatElementPlusDocsMessage } from '../format-message'
 
 const props = defineProps<{
@@ -44,12 +44,13 @@ provideDocsUi()
 </script>
 
 <template>
-  <ul data-docs-ui
-    v-if="contributors.length"
+  <ul
+    v-if="props.contributors.length"
+    data-docs-ui
     class="doc-contributors"
-    :aria-label="formatElementPlusDocsMessage(messages.contributors.aria, { name })"
+    :aria-label="formatElementPlusDocsMessage(props.messages.contributors.aria, { name: props.name })"
   >
-    <li v-for="contributor in contributors" :key="contributor.id">
+    <li v-for="contributor in props.contributors" :key="contributor.id">
       <ElTooltip
         :trigger="['hover', 'focus']"
         :enterable="true"
@@ -64,7 +65,7 @@ provideDocsUi()
           <span class="doc-contributor-tooltip-content">
             <strong>{{ contributor.name }}</strong>
             <span v-if="contributor.login">@{{ contributor.login }}</span>
-            <span>{{ contributionText(messages.contributors.contribution, name, contributor.contributions) }}</span>
+            <span>{{ contributionText(props.messages.contributors.contribution, props.name, contributor.contributions) }}</span>
           </span>
         </template>
         <component
@@ -93,12 +94,11 @@ provideDocsUi()
     </li>
   </ul>
   <p v-else class="doc-contributors-empty">
-    {{ messages.contributors.empty }}
+    {{ props.messages.contributors.empty }}
   </p>
 </template>
 
 <style scoped>
-
 .doc-contributors {
   display: flex;
   flex-wrap: wrap;
@@ -181,5 +181,4 @@ provideDocsUi()
   font-size: 13px;
   font-weight: 600;
 }
-
 </style>

@@ -68,7 +68,7 @@ const config = {
     },
     rollupOptions: {
       external: [
-        /^@moluoxixi\/ai-provider(?:\/|$)/,
+        /^@ai-sdk\//,
         'ai',
         '@orama/orama',
         '@orama/plugin-data-persistence',

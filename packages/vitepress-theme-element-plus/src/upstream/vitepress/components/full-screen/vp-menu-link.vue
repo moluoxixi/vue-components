@@ -1,22 +1,20 @@
 <script lang="ts" setup>
-import VPLink from '../common/vp-link.vue'
-
 import type { Link } from '../../types'
 
-defineProps<{
+import VPLink from '../common/vp-link.vue'
+
+const props = defineProps<{
   item: Link
 }>()
 </script>
 
 <template>
   <VPLink
-    :class="{
-      'is-menu-link': true,
-    }"
-    :href="item.link"
+    class="is-menu-link"
+    :href="props.item.link"
     :no-icon="true"
   >
-    {{ item.text }}
+    {{ props.item.text }}
   </VPLink>
 </template>
 

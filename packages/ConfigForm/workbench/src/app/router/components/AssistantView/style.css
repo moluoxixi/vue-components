@@ -1,0 +1,50 @@
+@reference "../../../../styles/tailwind.css";
+.assistant-workspace { @apply flex flex-col w-full min-w-0 min-h-0 h-full; color: var(--wb-text); background: var(--wb-surface); }
+.assistant-heading { @apply flex flex-wrap items-center gap-3 p-4 shrink-0; border-bottom: 1px solid var(--wb-separator); }
+.assistant-heading h1 { @apply m-0 text-base font-semibold; }
+.assistant-heading p { @apply m-0 mt-1 text-xs; color: var(--wb-muted); }
+.assistant-back { @apply flex items-center justify-center size-8 rounded; color: var(--wb-muted); }
+.assistant-back:hover { background: var(--wb-hover); }
+.assistant-edit { @apply text-sm no-underline; color: var(--wb-accent-text); }
+.assistant-body { @apply grid min-h-0 flex-1 pt-4; grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr); }
+.assistant-chat { @apply flex flex-col min-w-0 min-h-0; border-right: 1px solid var(--wb-separator); }
+.assistant-chat-heading, .assistant-preview-heading { @apply flex items-center gap-2 px-4 py-2 text-sm shrink-0; border-bottom: 1px solid var(--wb-separator); }
+.assistant-chat-heading > span { @apply text-xs; color: var(--wb-muted); max-width: 12rem; }
+.assistant-messages { @apply flex-1 min-h-0 overflow-y-auto p-4; overflow-wrap: anywhere; overscroll-behavior: contain; }
+.assistant-welcome h2 { @apply m-0 mb-2 text-base; }
+.assistant-welcome p { @apply my-2 text-sm leading-relaxed; color: var(--wb-muted); }
+.assistant-message { @apply mb-4 p-3 rounded-lg; background: var(--wb-hover); }
+.assistant-message[data-role='assistant'] { @apply p-0; background: transparent; }
+.assistant-message[data-role='update'] { @apply px-3 py-2; color: var(--wb-accent-text); background: var(--wb-accent-soft); border-left: 2px solid var(--wb-accent); }
+.assistant-message-role { @apply text-xs font-semibold; }
+.assistant-message p { @apply m-0 mt-1 whitespace-pre-wrap text-sm leading-relaxed; }
+.assistant-config-hint { @apply p-3 rounded text-xs leading-relaxed; color: var(--wb-muted); border: 1px solid var(--wb-separator); }
+.assistant-composer { @apply grid gap-2 p-4 shrink-0; border-top: 1px solid var(--wb-separator); }
+.assistant-preview { @apply flex flex-col min-w-0 min-h-0; background: var(--wb-workspace-bg); }
+.assistant-preview-heading { background: var(--wb-surface); }
+.assistant-device { @apply flex items-center justify-center size-8 rounded border-0 cursor-pointer; color: var(--wb-muted); background: transparent; }
+.assistant-device[aria-pressed='true'] { color: var(--wb-accent-text); background: var(--wb-accent-soft); }
+.assistant-preview-viewport { @apply flex min-h-0 flex-1 w-full mx-auto; }
+.assistant-preview-viewport[data-breakpoint='mobile'] { max-width: 24rem; }
+.assistant-preview-viewport :deep(iframe) { @apply w-full h-full border-0; }
+.assistant-empty { @apply flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center text-sm; color: var(--wb-muted); }
+.assistant-empty p { @apply m-0; }
+.assistant-error { @apply m-0 p-3 text-sm shrink-0; color: var(--wb-danger); background: var(--wb-surface); }
+.assistant-connect { @apply grid gap-3 p-4 w-full max-w-2xl mx-auto overflow-y-auto; }
+.assistant-connect h2 { @apply m-0 text-lg; }
+.assistant-connect p { @apply m-0 text-sm leading-relaxed; color: var(--wb-muted); }
+.assistant-connect code { @apply p-3 rounded text-xs whitespace-pre-wrap break-all; background: var(--wb-hover); }
+.assistant-connect label { @apply text-sm; }
+.assistant-connect-link { @apply px-4 py-2 rounded text-center text-sm no-underline; color: var(--wb-action-text); background: var(--wb-action-bg); }
+.assistant-mobile-tabs { @apply hidden; }
+.assistant-workspace :focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+@media (max-width: 48rem) {
+  .assistant-heading { @apply gap-2 p-3; }
+  .assistant-mobile-tabs { @apply flex gap-1 shrink-0 px-3 pt-4 pb-2; }
+  .assistant-mobile-tabs button { @apply flex-1 px-3 py-2 rounded border-0 text-sm; color: var(--wb-muted); background: transparent; }
+  .assistant-mobile-tabs button[aria-selected='true'] { color: var(--wb-accent-text); background: var(--wb-accent-soft); }
+  .assistant-body { @apply flex pt-0; }
+  .assistant-chat, .assistant-preview { @apply flex-1; }
+  .assistant-body[data-mobile-tab='chat'] .assistant-preview, .assistant-body[data-mobile-tab='preview'] .assistant-chat { @apply hidden; }
+  .assistant-composer { @apply p-3; }
+}

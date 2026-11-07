@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../runtime/provide-docs-ui'
+import type { Component } from 'vue'
+import type { ElementPlusDocsPlaygroundProps } from './types'
 import { Check, Copy, Play, RotateCcw } from '@lucide/vue'
 import { ElTooltip } from 'element-plus'
-import type { Component } from 'vue'
 import {
   nextTick,
   onErrorCaptured,
@@ -12,12 +12,12 @@ import {
   shallowRef,
   useId,
 } from 'vue'
+import ElementPlusDocsConsumerBoundary from '../../runtime/ElementPlusDocsConsumerBoundary.vue'
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import {
   consumeElementPlusDocsPlaygroundSession,
   elementPlusDocsPlaygroundSessionQuery,
 } from './session'
-import type { ElementPlusDocsPlaygroundProps } from './types'
-import ElementPlusDocsConsumerBoundary from '../../runtime/ElementPlusDocsConsumerBoundary.vue'
 
 const props = withDefaults(defineProps<ElementPlusDocsPlaygroundProps>(), {
   sessionQuery: elementPlusDocsPlaygroundSessionQuery,
@@ -133,29 +133,29 @@ provideDocsUi()
 <template>
   <main class="component-playground">
     <header class="playground-header" data-docs-ui>
-      <h1>{{ messages.title }}</h1>
+      <h1>{{ props.messages.title }}</h1>
       <div class="playground-actions">
         <!-- Keep the tooltip inline so its SSR nodes hydrate with the page. -->
         <ElTooltip
           :disabled="!isRunning"
           :teleported="false"
-          :content="messages.runningHint ?? 'The example is compiling. Run is available when compilation finishes.'"
+          :content="props.messages.runningHint ?? 'The example is compiling. Run is available when compilation finishes.'"
         >
           <span class="playground-run-trigger" :tabindex="isRunning ? 0 : undefined">
             <button data-testid="playground-run" type="button" :disabled="isRunning" @click="run">
               <Play :size="16" aria-hidden="true" />
-              {{ isRunning ? messages.running : messages.run }}
+              {{ isRunning ? props.messages.running : props.messages.run }}
             </button>
           </span>
         </ElTooltip>
         <button data-testid="playground-reset" type="button" @click="reset">
           <RotateCcw :size="16" aria-hidden="true" />
-          {{ messages.reset }}
+          {{ props.messages.reset }}
         </button>
         <button data-testid="playground-copy" type="button" @click="copySource">
           <Check v-if="isCopied" :size="16" aria-hidden="true" />
           <Copy v-else :size="16" aria-hidden="true" />
-          {{ isCopied ? messages.copied : messages.copy }}
+          {{ isCopied ? props.messages.copied : props.messages.copy }}
         </button>
       </div>
     </header>
@@ -163,7 +163,7 @@ provideDocsUi()
     <div class="playground-workspace">
       <section class="playground-pane playground-editor-pane">
         <div class="playground-pane-title" data-docs-ui>
-          <label :for="editorId">{{ messages.editor }}</label>
+          <label :for="editorId">{{ props.messages.editor }}</label>
           <span>Vue SFC</span>
         </div>
         <textarea
@@ -171,7 +171,7 @@ provideDocsUi()
           v-model="source"
           data-testid="playground-editor"
           class="playground-editor" data-docs-ui
-          :aria-label="messages.editorAria"
+          :aria-label="props.messages.editorAria"
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
@@ -181,15 +181,15 @@ provideDocsUi()
 
       <section class="playground-pane playground-preview-pane">
         <div class="playground-pane-title" data-docs-ui>
-          <span>{{ messages.preview }}</span>
+          <span>{{ props.messages.preview }}</span>
           <span>Browser</span>
         </div>
         <div class="playground-preview" aria-live="polite" data-testid="playground-preview">
           <div v-if="isRunning" data-docs-ui class="playground-status" role="status">
-            {{ messages.running }}...
+            {{ props.messages.running }}...
           </div>
           <div v-else-if="compileError" data-docs-ui class="playground-diagnostics" role="alert" data-testid="playground-diagnostics">
-            <strong>{{ messages.diagnostics }}</strong>
+            <strong>{{ props.messages.diagnostics }}</strong>
             <pre>{{ compileError }}</pre>
           </div>
           <div v-else-if="previewComponent" class="vp-raw">

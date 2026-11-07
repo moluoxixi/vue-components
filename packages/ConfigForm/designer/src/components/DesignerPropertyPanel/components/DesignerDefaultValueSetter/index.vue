@@ -3,6 +3,7 @@ import type {
   DesignerDefaultValueKind,
   DesignerSetterOption,
 } from '@designer/registry'
+import { useDesignerLocale } from '@designer/locale'
 import {
   ElDatePicker,
   ElInput,
@@ -13,7 +14,6 @@ import {
   ElTimePicker,
 } from 'element-plus'
 import { computed, ref, watch } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
 
 type SelectOptionValue = string | number | boolean | Record<string, unknown> | unknown[]
 
@@ -43,7 +43,7 @@ const selectOptions = computed(() => (props.options ?? []).flatMap(option => opt
   ? []
   : [{ label: option.label, value: option.value as SelectOptionValue }]))
 
-watch(() => props.modelValue, value => {
+watch(() => props.modelValue, (value) => {
   draft.value = value === undefined || value === null ? '' : String(value)
   draftTouched.value = false
 }, { immediate: true })
@@ -75,41 +75,41 @@ function commitNumber(value: number | undefined): void {
 }
 
 function commitChoice(value: unknown): void {
-  emit('update:modelValue', value === null || value === undefined ? undefined : value)
+  emit('update:modelValue', value ?? undefined)
 }
 </script>
 
 <template>
   <div class="mx-config-form-designer__default-value">
     <ElInput
-      v-if="kind === 'text'"
+      v-if="props.kind === 'text'"
       :model-value="draft"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="updateDraft"
       @blur="commitDraft"
       @keydown.enter.prevent="commitDraft"
     />
     <ElInputNumber
-      v-else-if="kind === 'number'"
+      v-else-if="props.kind === 'number'"
       :model-value="numberValue"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       controls-position="right"
       @change="commitNumber"
     />
     <ElSwitch
-      v-else-if="kind === 'boolean'"
+      v-else-if="props.kind === 'boolean'"
       :model-value="booleanValue"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @change="commitChoice"
     />
     <ElSelect
-      v-else-if="kind === 'select'"
+      v-else-if="props.kind === 'select'"
       :model-value="singleValue"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="commitChoice"
     >
       <ElOption
@@ -120,11 +120,11 @@ function commitChoice(value: unknown): void {
       />
     </ElSelect>
     <ElSelect
-      v-else-if="kind === 'multiselect'"
+      v-else-if="props.kind === 'multiselect'"
       :model-value="multipleValue"
       multiple
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="commitChoice"
     >
       <ElOption
@@ -135,12 +135,12 @@ function commitChoice(value: unknown): void {
       />
     </ElSelect>
     <ElDatePicker
-      v-else-if="kind === 'date'"
+      v-else-if="props.kind === 'date'"
       :model-value="draft"
       type="date"
       value-format="YYYY-MM-DD"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="commitChoice"
     />
     <ElTimePicker
@@ -149,7 +149,7 @@ function commitChoice(value: unknown): void {
       format="HH:mm:ss"
       value-format="HH:mm:ss"
       :aria-label="locale.t('default.value', 'Default value')"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="commitChoice"
     />
   </div>

@@ -3,6 +3,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { generateProjectSource } from '@moluoxixi/config-form-studio'
+import { assistantModelFromEnvironment } from './assistant'
 import { startWorkspaceMcp } from './mcp'
 import { startLocalWorkspace } from './server'
 import { writeSourceDirectory } from './source-files'
@@ -39,7 +40,7 @@ async function main(): Promise<void> {
     const port = values.port === undefined ? 4332 : Number(values.port)
     if (!Number.isInteger(port) || port < 0 || port > 65535)
       throw new Error('Port must be an integer between 0 and 65535.')
-    const workspace = await startLocalWorkspace({ directory: values.workspace, port, staticDirectory: fileURLToPath(new URL(/* @vite-ignore */ './designer/', import.meta.url)), allowOrigins: values['allow-origin'] })
+    const workspace = await startLocalWorkspace({ directory: values.workspace, port, staticDirectory: fileURLToPath(new URL(/* @vite-ignore */ './designer/', import.meta.url)), allowOrigins: values['allow-origin'], assistant: { model: assistantModelFromEnvironment(process.env) } })
     process.stdout.write(`ConfigForm: ${workspace.url}/#/projects\nWorkspace: ${workspace.directory}\nMCP: config-form mcp --url ${workspace.url}\n`)
     let stopping = false
     const stop = async () => {

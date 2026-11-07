@@ -29,25 +29,25 @@ function toggle(value: string | number | boolean): void {
   <section class="mx-config-form-designer__breakpoint-layout">
     <header class="mx-config-form-designer__breakpoint-header">
       <span class="mx-config-form-designer__responsive-label">
-        <component :is="icon" :size="15" aria-hidden="true" />
-        {{ title }}
+        <component :is="props.icon" :size="15" aria-hidden="true" />
+        {{ props.title }}
       </span>
       <ElSwitch
-        v-if="toggleLabel"
+        v-if="props.toggleLabel"
         class="mx-config-form-designer__responsive-toggle-control"
-        :model-value="enabled"
-        :aria-label="toggleLabel"
-        :disabled="commandsDisabled"
+        :model-value="props.enabled"
+        :aria-label="props.toggleLabel"
+        :disabled="props.commandsDisabled"
         @change="toggle"
       />
-      <span v-else class="mx-config-form-designer__breakpoint-base">{{ baseLabel }}</span>
+      <span v-else class="mx-config-form-designer__breakpoint-base">{{ props.baseLabel }}</span>
     </header>
 
-    <output class="mx-config-form-designer__responsive-fraction" :aria-label="fractionAria">
-      {{ fraction }}
+    <output class="mx-config-form-designer__responsive-fraction" :aria-label="props.fractionAria">
+      {{ props.fraction }}
     </output>
 
-    <div v-if="enabled" class="mx-config-form-designer__breakpoint-fields">
+    <div v-if="props.enabled" class="mx-config-form-designer__breakpoint-fields">
       <slot />
     </div>
   </section>

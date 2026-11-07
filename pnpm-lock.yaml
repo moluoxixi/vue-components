@@ -356,6 +356,9 @@ catalogs:
       specifier: ^3.24.2
       version: 3.25.76
   type:
+    '@types/json-schema':
+      specifier: ^7.0.15
+      version: 7.0.15
     '@types/node':
       specifier: ^25.6.0
       version: 25.6.0
@@ -877,6 +880,15 @@ importers:
 
   packages/ConfigForm/local:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: 'catalog:'
+        version: 4.0.44(zod@3.25.76)
+      '@ai-sdk/google':
+        specifier: 'catalog:'
+        version: 4.0.56(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: 'catalog:'
+        version: 4.0.50(zod@3.25.76)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.32.1(zod@3.25.76)
@@ -892,6 +904,12 @@ importers:
       '@moluoxixi/config-form-studio':
         specifier: workspace:*
         version: link:../studio
+      '@types/json-schema':
+        specifier: catalog:type
+        version: 7.0.15
+      ai:
+        specifier: 'catalog:'
+        version: 7.0.83(zod@3.25.76)
       fflate:
         specifier: 'catalog:'
         version: 0.8.3
@@ -1420,21 +1438,33 @@ importers:
 
   packages/ai-doc-assistant:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: 'catalog:'
+        version: 4.0.44(zod@3.25.76)
+      '@ai-sdk/google':
+        specifier: 'catalog:'
+        version: 4.0.56(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: 'catalog:'
+        version: 4.0.50(zod@3.25.76)
+      '@ai-sdk/openai-compatible':
+        specifier: 'catalog:'
+        version: 3.0.39(zod@3.25.76)
       '@ai-sdk/vue':
         specifier: 'catalog:'
         version: 4.0.83(vue@3.5.33(typescript@5.9.3))(zod@3.25.76)
       '@lucide/vue':
         specifier: catalog:ui
         version: 1.28.0(vue@3.5.33(typescript@5.9.3))
-      '@moluoxixi/ai-provider':
-        specifier: workspace:*
-        version: link:../ai-provider
       '@orama/orama':
         specifier: catalog:data
         version: 3.1.18
       '@orama/plugin-data-persistence':
         specifier: catalog:data
         version: 3.1.18
+      '@types/json-schema':
+        specifier: catalog:type
+        version: 7.0.15
       ai:
         specifier: 'catalog:'
         version: 7.0.83(zod@3.25.76)
@@ -1490,43 +1520,6 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
-
-  packages/ai-provider:
-    dependencies:
-      '@ai-sdk/anthropic':
-        specifier: 'catalog:'
-        version: 4.0.44(zod@3.25.76)
-      '@ai-sdk/google':
-        specifier: 'catalog:'
-        version: 4.0.56(zod@3.25.76)
-      '@ai-sdk/openai':
-        specifier: 'catalog:'
-        version: 4.0.50(zod@3.25.76)
-      '@ai-sdk/openai-compatible':
-        specifier: 'catalog:'
-        version: 3.0.39(zod@3.25.76)
-      ai:
-        specifier: 'catalog:'
-        version: 7.0.83(zod@3.25.76)
-    devDependencies:
-      '@types/node':
-        specifier: catalog:type
-        version: 25.6.0
-      '@vitest/coverage-v8':
-        specifier: catalog:dev
-        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
-      typescript:
-        specifier: catalog:dev
-        version: 5.9.3
-      unplugin-dts:
-        specifier: catalog:dev
-        version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
-      vite:
-        specifier: catalog:dev
-        version: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
-      vitest:
-        specifier: catalog:dev
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
 
   packages/ajax-package:
     dependencies:
@@ -1690,12 +1683,24 @@ importers:
 
   packages/i18n-tool:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: 'catalog:'
+        version: 4.0.44(zod@3.25.76)
+      '@ai-sdk/google':
+        specifier: 'catalog:'
+        version: 4.0.56(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: 'catalog:'
+        version: 4.0.50(zod@3.25.76)
+      '@ai-sdk/openai-compatible':
+        specifier: 'catalog:'
+        version: 3.0.39(zod@3.25.76)
       '@lucide/vue':
         specifier: catalog:ui
         version: 1.28.0(vue@3.5.33(typescript@5.9.3))
-      '@moluoxixi/ai-provider':
-        specifier: workspace:*
-        version: link:../ai-provider
+      '@types/json-schema':
+        specifier: catalog:type
+        version: 7.0.15
       ai:
         specifier: 'catalog:'
         version: 7.0.83(zod@3.25.76)

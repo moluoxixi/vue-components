@@ -83,7 +83,7 @@ defineExpose({ focusName })
   >
     <header v-if="!props.embedded" class="project-creation-header">
       <div class="project-creation-header__heading">
-        <ControlHint v-if="canClose" :reason="pendingReason">
+        <ControlHint v-if="props.canClose" :reason="pendingReason">
           <ElButton
             native-type="button"
             text
@@ -160,13 +160,15 @@ defineExpose({ focusName })
       <ElAlert v-if="ui.message.value" :title="ui.message.value" type="error" show-icon closable @close="ui.clearMessage" />
 
       <footer class="project-creation-footer">
-        <ControlHint v-if="canClose && props.embedded" :reason="pendingReason">
-          <ElButton native-type="button" :disabled="pending" @click="emit('close')">{{ locale.t('action.cancel', 'Cancel') }}</ElButton>
+        <ControlHint v-if="props.canClose && props.embedded" :reason="pendingReason">
+          <ElButton native-type="button" :disabled="pending" @click="emit('close')">
+            {{ locale.t('action.cancel', 'Cancel') }}
+          </ElButton>
         </ControlHint>
         <ControlHint
           :reason="
-            pendingReason ||
-            (!normalizedName ? locale.t('projectCreate.nameRequired', 'Enter a project name to create the project.') : undefined)
+            pendingReason
+              || (!normalizedName ? locale.t('projectCreate.nameRequired', 'Enter a project name to create the project.') : undefined)
           "
         >
           <ElButton native-type="submit" type="primary" data-project-create-submit :loading="submitting" :disabled="!canCreate">

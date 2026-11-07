@@ -1,4 +1,4 @@
-import type { AiProviderId } from '@moluoxixi/ai-provider/shared'
+import type { I18nToolAiConfigInput } from '../config'
 import type { ChangeOperation, I18nDiagnostic, TranslationCandidate, TranslationUnit } from '../core'
 import { z } from 'zod'
 import { I18N_DIAGNOSTIC_CODES } from '../core/constants'
@@ -37,7 +37,7 @@ export interface SanitizedConfigResponse {
   ai: {
     baseUrl?: string
     model: string
-    provider: AiProviderId
+    provider: I18nToolAiConfigInput['provider']
     status: 'configured' | 'missing'
   }
   projectName: string

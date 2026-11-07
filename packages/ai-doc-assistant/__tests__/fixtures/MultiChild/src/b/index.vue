@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ leaked: string }>()
+const props = defineProps<{ leaked: string }>()
 </script>
 
 <template>

@@ -12,6 +12,7 @@ import {
   Image,
   Layers3,
   LoaderCircle,
+  MessageSquare,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -253,6 +254,9 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
         <h1>{{ locale.t('projects.title', 'Projects') }}</h1>
       </div>
       <div class="project-manager__commands">
+        <ElButton native-type="button" @click="emit('assistant')">
+          <MessageSquare :size="16" aria-hidden="true" />{{ locale.t('projects.aiCreate', 'AI form') }}
+        </ElButton>
         <ElButton v-if="props.controller.projects.value.length > 0" native-type="button" class="project-manager__import" data-create-trigger="project-manager-import" @click="emit('create', 'json')">
           <FileJson2 :size="16" aria-hidden="true" />
           {{ locale.t('projects.import', 'Import JSON') }}

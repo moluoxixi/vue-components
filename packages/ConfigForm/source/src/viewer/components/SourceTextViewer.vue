@@ -52,7 +52,7 @@ onBeforeUnmount(() => {
   <div
     class="config-form-source-viewer__text-viewer"
     role="region"
-    :aria-label="`Read-only source: ${file.path}`"
+    :aria-label="`Read-only source: ${props.file.path}`"
     :aria-busy="loadState === 'loading'"
   >
     <div ref="containerRef" class="config-form-source-viewer__monaco" />
@@ -60,7 +60,9 @@ onBeforeUnmount(() => {
       Loading code viewer
     </p>
     <div v-else-if="loadState === 'error'" class="config-form-source-viewer__fallback">
-      <p role="status">Code viewer unavailable. Showing plain text.</p>
+      <p role="status">
+        Code viewer unavailable. Showing plain text.
+      </p>
       <pre tabindex="0">{{ fallbackText }}</pre>
     </div>
   </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Base from './base/index.vue'
 
-defineProps<{ placeholder?: string }>()
+const props = defineProps<{ placeholder?: string }>()
 </script>
 
 <template>

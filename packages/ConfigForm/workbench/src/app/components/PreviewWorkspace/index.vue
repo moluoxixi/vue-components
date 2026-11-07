@@ -44,7 +44,7 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
 
 <template>
   <aside
-    v-if="open"
+    v-if="props.open"
     ref="workspace"
     class="preview-workspace"
     :aria-label="locale.t('preview.page', 'Page preview')"
@@ -60,9 +60,9 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
       <header class="pane-header">
         <div class="preview-heading">
           <strong id="preview-workspace-title">{{ locale.t('preview.title', 'Preview') }}</strong>
-          <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
+          <span class="preview-live-state" :data-tone="props.state.tone" role="status" aria-live="polite">
             <span aria-hidden="true" />
-            {{ state.label }}
+            {{ props.state.label }}
           </span>
         </div>
         <div class="preview-toolbar">
@@ -94,7 +94,7 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
               <button
                 type="button"
                 :aria-label="item.label"
-                :aria-pressed="viewport === item.id"
+                :aria-pressed="props.viewport === item.id"
                 @click="emit('update:viewport', item.id)"
               >
                 <component :is="item.icon" :size="15" aria-hidden="true" />
@@ -115,18 +115,18 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
 
       <div class="preview-body" :class="{ 'has-inspector': inspect }">
         <div class="preview-canvas">
-          <div class="preview-stage" :data-viewport="viewport">
+          <div class="preview-stage" :data-viewport="props.viewport">
             <PreviewRuntimeHostFrame
-              v-if="runtimeAvailable && adapter && compilation && session"
-              :key="`${adapter}:${sessionId}:${revision}`"
-              :adapter="adapter"
-              :breakpoint="viewport"
-              :compilation="compilation"
+              v-if="runtimeAvailable && props.adapter && props.compilation && props.session"
+              :key="`${props.adapter}:${props.sessionId}:${props.revision}`"
+              :adapter="props.adapter"
+              :breakpoint="props.viewport"
+              :compilation="props.compilation"
               :locale="locale.locale"
-              :namespace="namespace"
-              :revision="revision"
-              :session="session"
-              :session-id="sessionId"
+              :namespace="props.namespace"
+              :revision="props.revision"
+              :session="props.session"
+              :session-id="props.sessionId"
               :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
               @error="emit('error', $event)"
               @instance-state="emit('instanceState', $event)"
@@ -136,11 +136,11 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
             />
             <div v-else class="preview-errors" role="status">
               <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
-              <p>{{ state.label }}</p>
+              <p>{{ props.state.label }}</p>
             </div>
           </div>
         </div>
-        <StudioExperienceInspector v-if="inspect" :states="instanceStates ?? {}" :locale="locale.locale" />
+        <StudioExperienceInspector v-if="inspect" :states="props.instanceStates ?? {}" :locale="locale.locale" />
       </div>
     </aside>
   </aside>

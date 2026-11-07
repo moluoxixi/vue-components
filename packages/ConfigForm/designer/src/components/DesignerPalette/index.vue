@@ -57,13 +57,13 @@ const groups = computed(() => {
 </script>
 
 <template>
-  <aside class="mx-config-form-designer__palette" :class="{ 'has-search': showSearch }" :aria-label="locale.t('palette.materials', 'Materials')">
+  <aside class="mx-config-form-designer__palette" :class="{ 'has-search': props.showSearch }" :aria-label="locale.t('palette.materials', 'Materials')">
     <p class="mx-config-form-designer__palette-status" role="status" aria-live="polite" aria-atomic="true">
       <template v-if="keyboardStartFailure">
         {{ locale.t('drag.startUnavailable', 'Cannot start dragging {item}: no available position. Press Space to retry or Enter to add.', { item: locale.materialTitle(keyboardStartFailure) }) }}
       </template>
     </p>
-    <div v-if="showSearch" class="mx-config-form-designer__search">
+    <div v-if="props.showSearch" class="mx-config-form-designer__search">
       <Search :size="16" aria-hidden="true" />
       <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
     </div>
@@ -82,7 +82,7 @@ const groups = computed(() => {
               :key="material.key"
               class="mx-config-form-designer__palette-item"
               :class="{
-                'is-disabled': readonly,
+                'is-disabled': props.readonly,
                 'is-keyboard-dragging': isMaterialKeyboardDragging(material.key),
               }"
               :data-material-row-key="material.key"

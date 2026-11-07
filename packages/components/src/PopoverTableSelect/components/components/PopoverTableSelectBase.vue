@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { ConfigTableCellParams } from '#components/ConfigTable'
 import type {
   PopoverTableSelectBaseEmits,
   PopoverTableSelectBaseProps,
-  PopoverTableSelectSlotScope,
   PopoverTableSelectSlots,
+  PopoverTableSelectSlotScope,
 } from '../../types'
-import type { ConfigTableCellParams } from '#components/ConfigTable'
 import { ElPopover } from 'element-plus'
 import { computed, useTemplateRef } from 'vue'
 import { ConfigTable } from '#components/ConfigTable'
@@ -39,6 +39,22 @@ const popoverRef = useTemplateRef<HTMLElement>('popoverRef')
 const elPopoverRef = useTemplateRef<any>('elPopoverRef')
 const tableSlotNames = computed<string[]>(() => Object.keys(slots).filter(name => name !== 'footer'))
 
+const {
+  computedPopoverProps,
+  handleCellClick,
+  handleCellDblClick,
+  handleTableScroll,
+  popoverRefStyle,
+  popoverTableProps,
+  tableHeight,
+  tableWidth,
+  tableWrapperStyle,
+} = usePopoverTableSelectBase(
+  props,
+  emit,
+  { currentRowIndex, visible: popoverVisible },
+  { elPopover: elPopoverRef, popover: popoverRef },
+)
 function onCellClick(params: ConfigTableCellParams): void {
   if (!params.event)
     return
@@ -64,23 +80,6 @@ function onCellDblClick(params: ConfigTableCellParams): void {
     params.event,
   )
 }
-
-const {
-  computedPopoverProps,
-  handleCellClick,
-  handleCellDblClick,
-  handleTableScroll,
-  popoverRefStyle,
-  popoverTableProps,
-  tableHeight,
-  tableWidth,
-  tableWrapperStyle,
-} = usePopoverTableSelectBase(
-  props,
-  emit,
-  { currentRowIndex, visible: popoverVisible },
-  { elPopover: elPopoverRef, popover: popoverRef },
-)
 </script>
 
 <template>

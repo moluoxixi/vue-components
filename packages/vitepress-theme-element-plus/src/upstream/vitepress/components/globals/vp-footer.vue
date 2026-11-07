@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
+import { computed } from 'vue'
 
-defineProps<{ isHome?: boolean }>()
+const props = defineProps<{ isHome?: boolean }>()
 const { theme } = useData()
 const sitemapHref = computed(() => {
   const sitemap = theme.value.sitemap
@@ -12,7 +12,7 @@ const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Re
 </script>
 
 <template>
-  <footer data-docs-ui class="footer" :class="{ 'is-home': isHome }">
+  <footer data-docs-ui class="footer" :class="{ 'is-home': props.isHome }">
     <div class="footer-main">
       <h4>Documentation</h4>
       <a

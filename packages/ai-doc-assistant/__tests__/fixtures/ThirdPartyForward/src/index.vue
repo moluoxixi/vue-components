@@ -6,7 +6,7 @@ interface Props {
   /** 占位文案 */
   placeholder?: string
 }
-defineProps<Props>()
+const props = defineProps<Props>()
 </script>
 
 <template>

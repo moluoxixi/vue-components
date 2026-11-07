@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import type { ComponentListItem, HealthResponse, IndexState } from '../../shared/protocol'
+import type { WorkspaceView } from './components'
 /**
  * AI 文档助手可视化面板（外壳）。
  *
  * 双视图工作区外壳：Chat 始终挂载，知识库作为同级视图承载总览与详情。
  */
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
-import type { ComponentListItem, HealthResponse, IndexState } from '../../shared/protocol'
 import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from '../api'
 import { readKnowledgeImportFile } from '../export'
-import { ChatView, DetailView, OverviewView, WorkspaceTopbar, type WorkspaceView } from './components'
+import { ChatView, DetailView, OverviewView, WorkspaceTopbar } from './components'
 
 type KnowledgeView = 'overview' | 'detail'
 type RequestStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
@@ -180,11 +181,9 @@ async function onImportFile(file: File): Promise<void> {
   try {
     const payload = await readKnowledgeImportFile(file)
     const first = await importKnowledge(payload)
-    const result = first.status === 'conflict'
-      ? (window.confirm(`外部知识库已存在 ${first.packageName}/${first.name}，是否覆盖外部版本？`)
-          ? await importKnowledge(payload, true)
-          : first)
-      : first
+    // eslint-disable-next-line no-alert -- Replacing imported knowledge requires explicit confirmation.
+    const overwrite = first.status === 'conflict' && window.confirm(`外部知识库已存在 ${first.packageName}/${first.name}，是否覆盖外部版本？`)
+    const result = overwrite ? await importKnowledge(payload, true) : first
     if (result.status !== 'conflict') {
       await refreshHealth()
       await refreshComponents()
@@ -234,14 +233,18 @@ onMounted(initialize)
 
     <div v-if="errorMsg" class="error-bar" role="alert" data-testid="error-bar">
       <span>{{ errorMsg }}</span>
-      <button type="button" @click="initialize">重试</button>
-      <button type="button" aria-label="关闭错误提示" @click="errorMsg = ''">关闭</button>
+      <button type="button" @click="initialize">
+        重试
+      </button>
+      <button type="button" aria-label="关闭错误提示" @click="errorMsg = ''">
+        关闭
+      </button>
     </div>
 
     <main class="workspace-content">
       <section
-        id="workspace-chat-panel"
         v-show="workspaceView === 'chat'"
+        id="workspace-chat-panel"
         class="workspace-pane chat-pane"
         role="tabpanel"
         aria-labelledby="workspace-chat-tab"
@@ -255,8 +258,8 @@ onMounted(initialize)
         />
       </section>
       <section
-        id="workspace-knowledge-panel"
         v-if="workspaceView === 'knowledge'"
+        id="workspace-knowledge-panel"
         class="workspace-pane knowledge-pane"
         role="tabpanel"
         aria-labelledby="workspace-knowledge-tab"

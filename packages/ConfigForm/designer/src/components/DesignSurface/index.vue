@@ -308,7 +308,7 @@ defineExpose<DesignSurfaceExpose>({
     :data-active-view="activeWorkspaceView"
     :data-palette-open="isSidePanelOpen('palette')"
     :data-properties-open="isSidePanelOpen('properties')"
-    :data-workspace-navigation="workspaceNavigation"
+    :data-workspace-navigation="props.workspaceNavigation"
     :data-workspace-mode="workspaceMode"
     @focusin="handleRootFocusin"
     @keydown="handleRootKeydown"
@@ -316,9 +316,9 @@ defineExpose<DesignSurfaceExpose>({
     <header class="mx-config-form-designer__toolbar">
       <DesignerSelectionSpine
         :graph="controller.graph.value"
-        :registry="registry"
+        :registry="props.registry"
         :selected-ids="controller.selectedIds.value"
-        :surface-name="surface?.name ?? locale.t('property.form', 'Form')"
+        :surface-name="props.surface?.name ?? locale.t('property.form', 'Form')"
         :breakpoint="activeBreakpoint"
         @select="controller.select($event)"
       />
@@ -388,7 +388,7 @@ defineExpose<DesignSurfaceExpose>({
 
     <div class="mx-config-form-designer__workspace">
       <nav
-        v-if="workspaceMode === 'narrow' && workspaceNavigation === 'internal'"
+        v-if="workspaceMode === 'narrow' && props.workspaceNavigation === 'internal'"
         class="mx-config-form-designer__workspace-tabs"
         role="tablist"
         :aria-label="locale.t('designer.workspaceViews', 'Designer views')"
@@ -433,7 +433,7 @@ defineExpose<DesignSurfaceExpose>({
         />
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
-          <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
+          <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('action.close', 'Close')">
             <button
               type="button"
               class="mx-config-form-designer__icon-button"
@@ -448,16 +448,16 @@ defineExpose<DesignSurfaceExpose>({
         </div>
         <slot
           name="palette"
-          :materials="registry.listMaterials()"
+          :materials="props.registry.listMaterials()"
           :add-material="addMaterial"
-          :readonly="readonly"
+          :readonly="props.readonly"
           :form="controller.graph.value.form"
         >
           <DesignerPalette
-            :materials="registry.listMaterials()"
-            :registry="registry"
+            :materials="props.registry.listMaterials()"
+            :registry="props.registry"
             :form="controller.graph.value.form"
-            :readonly="readonly"
+            :readonly="props.readonly"
             @add-material="addMaterial"
           />
         </slot>
@@ -473,15 +473,15 @@ defineExpose<DesignSurfaceExpose>({
         :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined"
       >
         <DesignerCanvas
-          :command-hint="commandHint"
+          :command-hint="props.commandHint"
           :graph="controller.graph.value"
-          :surface-id="surfaceId"
-          :registry="registry"
+          :surface-id="props.surfaceId"
+          :registry="props.registry"
           :selected-id="controller.selectedId.value"
           :selected-ids="controller.selectedIds.value"
-          :readonly="readonly"
+          :readonly="props.readonly"
           :breakpoint="activeBreakpoint"
-          :candidate-preview="commandControl.preview"
+          :candidate-preview="props.commandControl.preview"
           :interactive="false"
           :paste-available="controller.pasteAvailable.value"
           :model="runtimeProjection.values"
@@ -524,7 +524,7 @@ defineExpose<DesignSurfaceExpose>({
         />
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
-          <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
+          <DesignerCommandHint :renderer="props.commandHint" :label="locale.t('action.close', 'Close')">
             <button
               type="button"
               class="mx-config-form-designer__icon-button"
@@ -552,19 +552,19 @@ defineExpose<DesignSurfaceExpose>({
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
-            :datasets="datasets"
+            :datasets="props.datasets"
             :component-definition="selectedComponentDefinition"
-            :get-material="registry.getMaterial"
-            :get-component-definition="componentRegistry.get"
+            :get-material="props.registry.getMaterial"
+            :get-component-definition="props.componentRegistry.get"
             :breakpoint="activeBreakpoint"
-            :components="registry.components"
-            :property-controls="registry.propertyControls"
-            :readonly="readonly"
-            :renderer="renderer"
-            :resources="resources"
-            :interactions="surface?.interactions"
-            :surface-id="surfaceId"
-            :surfaces="surfaces"
+            :components="props.registry.components"
+            :property-controls="props.registry.propertyControls"
+            :readonly="props.readonly"
+            :renderer="props.renderer"
+            :resources="props.resources"
+            :interactions="props.surface?.interactions"
+            :surface-id="props.surfaceId"
+            :surfaces="props.surfaces"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"

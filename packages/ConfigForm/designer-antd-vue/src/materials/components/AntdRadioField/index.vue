@@ -9,9 +9,9 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<AntdRadioFieldProps>()
 
-const options = computed(() => normalizeAntdVueOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
-
 const emit = defineEmits<AntdRadioFieldEmits>()
+
+const options = computed(() => normalizeAntdVueOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
 </script>
 
 <template>
@@ -19,7 +19,7 @@ const emit = defineEmits<AntdRadioFieldEmits>()
     <RadioGroup
       v-bind="$attrs"
       data-designer-selection-target
-      :value="value"
+      :value="props.value"
       :options="options"
       @update:value="emit('update:value', $event)"
     />

@@ -156,19 +156,18 @@ async function analyze(): Promise<void> {
   if (!ready.value)
     return
   const request = ++requestSequence
-  const target = props.target
-  const identity = projectIdentity()
+  const requestState = { target: props.target, projectIdentity: projectIdentity() }
   analyzing.value = true
   diagnostics.value = []
   prepared.value = undefined
   ui.clearMessage()
   try {
-    const result = await controller.prepareJsonImport(source.value, target)
+    const result = await controller.prepareJsonImport(source.value, requestState.target)
     if (
       disposed
       || request !== requestSequence
-      || props.target !== target
-      || projectIdentity() !== identity
+      || props.target !== requestState.target
+      || projectIdentity() !== requestState.projectIdentity
     ) {
       return
     }

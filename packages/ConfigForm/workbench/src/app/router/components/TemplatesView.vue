@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { TemplateDetails } from '../../../features/templates'
 import type { PreparedTemplatePreview, ProjectTemplateCatalogEntry } from '../../../project'
-import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadWorkbenchAdapter } from '../../../adapters'
-import { builtInTemplateCatalogProvider, copyTemplate, createBlankTemplate, createTemplateCatalogService, createUserTemplateStore, prepareTemplatePreview } from '../../../project'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
+import { builtInTemplateCatalogProvider, copyTemplate, createBlankTemplate, createTemplateCatalogService, createUserTemplateStore, downloadSourceFile, prepareTemplatePreview, serializeTemplateArchive, TEMPLATE_ARCHIVE_MAX_BYTES } from '../../../project'
 import { DesignRuntimeHostFrame, SurfacePresentationFrame } from '../../components'
 import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import { templateDesignPath } from '../../navigation'
@@ -19,7 +20,9 @@ const store = createUserTemplateStore()
 const templates = shallowRef<ProjectTemplateCatalogEntry[]>([])
 const loading = ref(true)
 const busy = ref(false)
+const busyReason = computed(() => busy.value ? controller.workbenchLocale.value.t('action.processing', 'Wait for the current operation to finish.') : undefined)
 const error = ref('')
+const notice = ref('')
 const creationOpen = ref(false)
 const creationError = ref('')
 const deleteTarget = shallowRef<ProjectTemplateCatalogEntry>()
@@ -52,6 +55,32 @@ async function load(): Promise<void> {
 
 function nameFor(entry: ProjectTemplateCatalogEntry): string {
   return controller.workbenchLocale.value.t(`template.catalog.${entry.manifest.id}.name`, entry.manifest.displayName)
+}
+
+async function importTemplates(file: File): Promise<void> {
+  if (busy.value)
+    return
+  busy.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    if (file.size > TEMPLATE_ARCHIVE_MAX_BYTES)
+      throw new Error(controller.workbenchLocale.value.t('library.fileTooLarge', 'Template archives are limited to 5 MB.'))
+    const imported = await store.importArchive(JSON.parse(await file.text()))
+    await load()
+    notice.value = controller.workbenchLocale.value.t('library.imported', 'Imported {count} templates as new copies.', { count: imported.length })
+  }
+  catch (reason) { error.value = reason instanceof Error ? reason.message : String(reason) }
+  finally { busy.value = false }
+}
+
+function exportTemplates(entry?: ProjectTemplateCatalogEntry): void {
+  try {
+    const selected = entry ? [entry] : templates.value.filter(item => item.providerId === 'personal')
+    const filename = entry ? `${entry.manifest.id}.template.json` : 'config-form-templates.json'
+    downloadSourceFile({ filename, mime: 'application/json;charset=utf-8', file: { kind: 'text', language: 'json', path: filename, content: serializeTemplateArchive(selected) } })
+  }
+  catch (reason) { error.value = reason instanceof Error ? reason.message : String(reason) }
 }
 
 async function create(details: TemplateDetails): Promise<void> {
@@ -153,16 +182,20 @@ onBeforeUnmount(() => {
 
 <template>
   <ManagementShell :palette="ui.paletteFamily.value" :theme="ui.resolvedTheme.value">
-    <TemplateManager :templates="templates" :locale="controller.localeOptions.value" :loading="loading" :busy="busy" :error="error" @create="creationError = ''; creationOpen = true" @edit="edit" @duplicate="duplicate" @delete="deleteTarget = $event" @preview="showPreview" @retry="load" />
+    <TemplateManager :templates="templates" :locale="controller.localeOptions.value" :loading="loading" :busy="busy" :error="error" :notice="notice" @import="importTemplates" @export="exportTemplates" @create="creationError = ''; creationOpen = true" @edit="edit" @duplicate="duplicate" @delete="deleteTarget = $event" @preview="showPreview" @retry="load" />
     <TemplateDetailsDialog v-model="creationOpen" with-types :busy="busy" :error="creationError" :locale="controller.localeOptions.value" @confirm="create" />
     <ElDialog :model-value="Boolean(deleteTarget)" :title="controller.workbenchLocale.value.t('library.deleteTitle', 'Delete template?')" width="min(440px, calc(var(--wb-viewport-width) - 24px))" align-center append-to="#workbench-overlays" :close-on-press-escape="!busy" :show-close="!busy" @update:model-value="!busy && (deleteTarget = undefined)">
       <p>{{ controller.workbenchLocale.value.t('library.deleteHint', 'Delete {name}? Pages already created from it will keep their own copies.', { name: deleteTarget ? nameFor(deleteTarget) : '' }) }}</p>
       <template #footer>
-        <ElButton :disabled="busy" @click="deleteTarget = undefined">
-          {{ controller.workbenchLocale.value.t('action.cancel', 'Cancel') }}
-        </ElButton><ElButton type="danger" :loading="busy" @click="confirmDelete">
-          {{ controller.workbenchLocale.value.t('action.delete', 'Delete') }}
-        </ElButton>
+        <WorkbenchCommandHint detached :label="controller.workbenchLocale.value.t('action.cancel', 'Cancel')" :disabled-reason="busyReason">
+          <ElButton :disabled="busy" @click="deleteTarget = undefined">
+            {{ controller.workbenchLocale.value.t('action.cancel', 'Cancel') }}
+          </ElButton>
+        </WorkbenchCommandHint><WorkbenchCommandHint detached :label="controller.workbenchLocale.value.t('action.delete', 'Delete')" :disabled-reason="busyReason">
+          <ElButton type="danger" :loading="busy" :disabled="busy" @click="confirmDelete">
+            {{ controller.workbenchLocale.value.t('action.delete', 'Delete') }}
+          </ElButton>
+        </WorkbenchCommandHint>
       </template>
     </ElDialog>
     <ElDialog :model-value="Boolean(previewTarget)" class="library-preview-dialog" :title="previewTarget ? nameFor(previewTarget) : ''" width="min(980px, calc(var(--wb-viewport-width) - 24px))" top="1rem" append-to="#workbench-overlays" destroy-on-close @update:model-value="closePreview">
@@ -178,9 +211,11 @@ onBeforeUnmount(() => {
       <template #footer>
         <ElButton @click="closePreview">
           {{ controller.workbenchLocale.value.t('action.close', 'Close') }}
-        </ElButton><ElButton v-if="previewTarget" type="primary" :disabled="busy" @click="edit(previewTarget)">
-          {{ previewTarget.providerId === 'personal' ? controller.workbenchLocale.value.t('library.edit', 'Edit template') : controller.workbenchLocale.value.t('library.customize', 'Customize') }}
-        </ElButton>
+        </ElButton><WorkbenchCommandHint v-if="previewTarget" detached :label="controller.workbenchLocale.value.t('library.customize', 'Customize')" :disabled-reason="busyReason">
+          <ElButton type="primary" :disabled="busy" @click="edit(previewTarget)">
+            {{ previewTarget.providerId === 'personal' ? controller.workbenchLocale.value.t('library.edit', 'Edit template') : controller.workbenchLocale.value.t('library.customize', 'Customize') }}
+          </ElButton>
+        </WorkbenchCommandHint>
       </template>
     </ElDialog>
   </ManagementShell>

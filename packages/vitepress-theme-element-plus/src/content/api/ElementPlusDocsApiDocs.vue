@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { formatElementPlusDocsMessage } from '../format-message'
-import ElementPlusDocsApiTable from './ElementPlusDocsApiTable.vue'
 import type {
   ElementPlusDocsApiDocsMessages,
   ElementPlusDocsApiSection,
   ElementPlusDocsComponentApiContract,
 } from './types'
+import { computed } from 'vue'
+import { formatElementPlusDocsMessage } from '../format-message'
+import ElementPlusDocsApiTable from './ElementPlusDocsApiTable.vue'
 
 const props = defineProps<{
   api: ElementPlusDocsComponentApiContract
@@ -29,28 +29,27 @@ function permanentLinkLabel(section: string): string {
 <template>
   <div data-docs-ui class="api-docs">
     <section v-for="section in sections" :key="section.key" class="api-docs-section">
-      <h3 :id="`${api.name}-${section.key}`" tabindex="-1">
+      <h3 :id="`${props.api.name}-${section.key}`" tabindex="-1">
         {{ section.label }}
         <a
           class="header-anchor"
-          :href="`#${api.name}-${section.key}`"
+          :href="`#${props.api.name}-${section.key}`"
           :aria-label="permanentLinkLabel(section.label)"
         >&#8203;</a>
       </h3>
       <ElementPlusDocsApiTable
-        :data="api[section.key]"
+        :data="props.api[section.key]"
         :type="section.key"
-        :messages="messages"
+        :messages="props.messages"
       />
     </section>
     <p v-if="sections.length === 0" class="api-docs-empty">
-      {{ messages.empty }}
+      {{ props.messages.empty }}
     </p>
   </div>
 </template>
 
 <style scoped>
-
 .api-docs-section + .api-docs-section {
   margin-top: 28px;
 }
@@ -58,5 +57,4 @@ function permanentLinkLabel(section: string): string {
 .api-docs-empty {
   color: var(--ep-docs-text-color-lighter);
 }
-
 </style>

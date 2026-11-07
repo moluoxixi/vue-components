@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@designer/graph'
 import type { DesignerOptionValueType } from '@designer/registry'
+import { useDesignerLocale } from '@designer/locale'
+import { DESIGNER_OPTION_VALUE_TYPES } from '@designer/options'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from '@lucide/vue'
 import {
   ElInput,
@@ -9,8 +11,6 @@ import {
   ElSelect,
 } from 'element-plus'
 import { ref, watch } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
-import { DESIGNER_OPTION_VALUE_TYPES } from '@designer/options'
 
 type OptionValueType = DesignerOptionValueType | 'complex'
 
@@ -27,11 +27,11 @@ const props = defineProps<{
   optionValueTypes?: readonly DesignerOptionValueType[]
   disabled?: boolean
 }>()
-const locale = useDesignerLocale()
-
 const emit = defineEmits<{
   'update:modelValue': [value: DesignerJsonValue[]]
 }>()
+
+const locale = useDesignerLocale()
 
 const rows = ref<OptionDraft[]>([])
 const allowedValueTypes = () => props.optionValueTypes ?? DESIGNER_OPTION_VALUE_TYPES
@@ -141,35 +141,35 @@ function updateNumber(row: OptionDraft, value: number | undefined): void {
       <div class="mx-config-form-designer__collection-row-heading">
         <span>{{ locale.t('options.option', 'Option {index}', { index: index + 1 }) }}</span>
         <span class="mx-config-form-designer__mini-actions">
-          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveUp', 'Move option {index} up', { index: index + 1 })" :disabled="disabled || index === 0" @click="moveRow(index, -1)">
+          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveUp', 'Move option {index} up', { index: index + 1 })" :disabled="props.disabled || index === 0" @click="moveRow(index, -1)">
             <ChevronUp :size="14" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveDown', 'Move option {index} down', { index: index + 1 })" :disabled="disabled || index === rows.length - 1" @click="moveRow(index, 1)">
+          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveDown', 'Move option {index} down', { index: index + 1 })" :disabled="props.disabled || index === rows.length - 1" @click="moveRow(index, 1)">
             <ChevronDown :size="14" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('options.delete', 'Delete option {index}', { index: index + 1 })" :disabled="disabled" @click="removeRow(index)">
+          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('options.delete', 'Delete option {index}', { index: index + 1 })" :disabled="props.disabled" @click="removeRow(index)">
             <Trash2 :size="14" aria-hidden="true" />
           </button>
         </span>
       </div>
-      <ElInput :model-value="row.label" :aria-label="locale.t('options.labelAria', 'Option {index} label', { index: index + 1 })" :placeholder="locale.t('property.label', 'Label')" :disabled="disabled" @update:model-value="updateLabel(row, $event)" @blur="commit" />
+      <ElInput :model-value="row.label" :aria-label="locale.t('options.labelAria', 'Option {index} label', { index: index + 1 })" :placeholder="locale.t('property.label', 'Label')" :disabled="props.disabled" @update:model-value="updateLabel(row, $event)" @blur="commit" />
       <div class="mx-config-form-designer__typed-value">
-        <ElSelect :model-value="row.valueType" :aria-label="locale.t('options.valueTypeAria', 'Option {index} value type', { index: index + 1 })" :disabled="disabled" @update:model-value="changeType(row, $event)">
+        <ElSelect :model-value="row.valueType" :aria-label="locale.t('options.valueTypeAria', 'Option {index} value type', { index: index + 1 })" :disabled="props.disabled" @update:model-value="changeType(row, $event)">
           <ElOption v-if="allowedValueTypes().includes('string')" value="string" :label="locale.t('valueType.text', 'Text')" />
           <ElOption v-if="allowedValueTypes().includes('number')" value="number" :label="locale.t('valueType.number', 'Number')" />
           <ElOption v-if="allowedValueTypes().includes('boolean')" value="boolean" :label="locale.t('valueType.boolean', 'Boolean')" />
           <ElOption v-if="row.valueType === 'complex'" value="complex" disabled :label="locale.t('valueType.structured', 'Structured')" />
         </ElSelect>
         <output v-if="row.valueType === 'complex'">{{ locale.t('valueType.structuredValue', 'Structured value') }}</output>
-        <ElSelect v-else-if="row.valueType === 'boolean'" :model-value="row.value === true" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="disabled" @update:model-value="updateValue(row, $event)">
+        <ElSelect v-else-if="row.valueType === 'boolean'" :model-value="row.value === true" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="props.disabled" @update:model-value="updateValue(row, $event)">
           <ElOption :value="true" :label="locale.t('value.true', 'True')" />
           <ElOption :value="false" :label="locale.t('value.false', 'False')" />
         </ElSelect>
-        <ElInputNumber v-else-if="row.valueType === 'number'" :model-value="typeof row.value === 'number' ? row.value : 0" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="disabled" controls-position="right" @change="updateNumber(row, $event)" />
-        <ElInput v-else :model-value="typeof row.value === 'string' ? row.value : ''" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :placeholder="locale.t('options.valuePlaceholder', 'Value')" :disabled="disabled" @update:model-value="updateTextValue(row, $event)" @blur="commit" />
+        <ElInputNumber v-else-if="row.valueType === 'number'" :model-value="typeof row.value === 'number' ? row.value : 0" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="props.disabled" controls-position="right" @change="updateNumber(row, $event)" />
+        <ElInput v-else :model-value="typeof row.value === 'string' ? row.value : ''" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :placeholder="locale.t('options.valuePlaceholder', 'Value')" :disabled="props.disabled" @update:model-value="updateTextValue(row, $event)" @blur="commit" />
       </div>
     </div>
-    <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRow">
+    <button type="button" class="mx-config-form-designer__add-row" :disabled="props.disabled" @click="addRow">
       <Plus :size="15" aria-hidden="true" />
       {{ locale.t('options.add', 'Add option') }}
     </button>

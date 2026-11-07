@@ -9,7 +9,6 @@ const props = defineProps<PersistenceDialogProps>()
 
 const emit = defineEmits<PersistenceDialogEmits>()
 
-const controller = props.controller
 const versions = ref<ProjectVersionSummary[]>([])
 const drafts = ref<PersistenceRecoveryDraftSummary[]>([])
 const selectedRevision = ref<number>()
@@ -26,8 +25,8 @@ async function focusDialog(): Promise<void> {
   const target = content?.querySelector<HTMLElement>('input:not(:disabled), button:not(:disabled)') ?? content
   target?.focus()
 }
-const locale = controller.workbenchLocale
-const busyReason = computed(() => controller.busy.value ? locale.value.t('action.processing', 'An operation is in progress. Wait for it to finish.') : undefined)
+const locale = props.controller.workbenchLocale
+const busyReason = computed(() => props.controller.busy.value ? locale.value.t('action.processing', 'An operation is in progress. Wait for it to finish.') : undefined)
 const open = computed(() => !!props.mode)
 const selectedVersion = computed(() =>
   versions.value.find(version => version.repositoryRevision === selectedRevision.value))
@@ -42,7 +41,7 @@ const dialogTitle = computed(() => props.mode === 'checkpoint'
 async function loadVersions(): Promise<void> {
   loading.value = true
   try {
-    versions.value = await controller.listProjectVersions()
+    versions.value = await props.controller.listProjectVersions()
     selectedRevision.value = versions.value[0]?.repositoryRevision
     versionLabel.value = versions.value[0]?.label ?? ''
     await loadSelectedVersion()
@@ -55,7 +54,7 @@ async function loadVersions(): Promise<void> {
 async function loadDrafts(): Promise<void> {
   loading.value = true
   try {
-    drafts.value = await controller.listRecoveryDrafts()
+    drafts.value = await props.controller.listRecoveryDrafts()
   }
   finally {
     loading.value = false
@@ -71,7 +70,7 @@ async function loadSelectedVersion(): Promise<void> {
   }
   inspecting.value = true
   try {
-    const version = await controller.inspectProjectVersion(revision)
+    const version = await props.controller.inspectProjectVersion(revision)
     if (selectedRevision.value === revision)
       selectedSource.value = version ? JSON.stringify(version.document, null, 2) : ''
   }
@@ -90,7 +89,7 @@ async function selectVersion(version: ProjectVersionSummary): Promise<void> {
 async function submitCheckpoint(): Promise<void> {
   if (!checkpointLabel.value.trim())
     return
-  await controller.createNamedCheckpoint(checkpointLabel.value)
+  await props.controller.createNamedCheckpoint(checkpointLabel.value)
   checkpointLabel.value = ''
   emit('close')
 }
@@ -98,7 +97,7 @@ async function submitCheckpoint(): Promise<void> {
 async function updateVersionLabel(clear = false): Promise<void> {
   if (selectedRevision.value === undefined)
     return
-  await controller.setProjectVersionLabel(
+  await props.controller.setProjectVersionLabel(
     selectedRevision.value,
     clear ? undefined : versionLabel.value,
   )
@@ -108,17 +107,17 @@ async function updateVersionLabel(clear = false): Promise<void> {
 async function restoreVersion(): Promise<void> {
   if (selectedRevision.value === undefined)
     return
-  await controller.restoreProjectVersion(selectedRevision.value)
+  await props.controller.restoreProjectVersion(selectedRevision.value)
   emit('close')
 }
 
 async function restoreDraft(draftId: string): Promise<void> {
-  await controller.restoreRecoveryDraft(draftId)
+  await props.controller.restoreRecoveryDraft(draftId)
   emit('close')
 }
 
 async function discardDraft(draftId: string): Promise<void> {
-  await controller.discardRecoveryDraft(draftId)
+  await props.controller.discardRecoveryDraft(draftId)
   await loadDrafts()
 }
 
@@ -135,17 +134,17 @@ watch(() => props.mode, async (mode) => {
 <template>
   <ElDialog
     class="persistence-dialog"
-    :class="mode ? `persistence-dialog--${mode}` : undefined"
+    :class="props.mode ? `persistence-dialog--${props.mode}` : undefined"
     :model-value="open"
     :title="dialogTitle"
-    :width="mode === 'checkpoint' ? 'min(520px, calc(var(--wb-viewport-width) - 32px))' : 'min(980px, calc(var(--wb-viewport-width) - 32px))'"
+    :width="props.mode === 'checkpoint' ? 'min(520px, calc(var(--wb-viewport-width) - 32px))' : 'min(980px, calc(var(--wb-viewport-width) - 32px))'"
     align-center
     append-to="#workbench-overlays"
     transition="none"
     @opened="focusDialog"
     @close="emit('close')"
   >
-    <form v-if="mode === 'checkpoint'" ref="dialog-content" class="checkpoint-form" tabindex="-1" @submit.prevent="submitCheckpoint">
+    <form v-if="props.mode === 'checkpoint'" ref="dialog-content" class="checkpoint-form" tabindex="-1" @submit.prevent="submitCheckpoint">
       <label for="checkpoint-name">{{ locale.t('save.checkpointName', 'Checkpoint name') }}</label>
       <ElInput
         id="checkpoint-name"
@@ -159,7 +158,7 @@ watch(() => props.mode, async (mode) => {
           {{ locale.t('action.cancel', 'Cancel') }}
         </ElButton>
         <WorkbenchCommandHint detached :label="locale.t('save.createCheckpoint', 'Create checkpoint')" :disabled-reason="busyReason || (!checkpointLabel.trim() ? locale.t('save.checkpointRequired', 'Enter a checkpoint name to create it.') : undefined)">
-          <ElButton native-type="submit" type="primary" :disabled="!checkpointLabel.trim() || controller.busy.value">
+          <ElButton native-type="submit" type="primary" :disabled="!checkpointLabel.trim() || props.controller.busy.value">
             <Check :size="15" aria-hidden="true" />
             {{ locale.t('save.createCheckpoint', 'Create checkpoint') }}
           </ElButton>
@@ -167,7 +166,7 @@ watch(() => props.mode, async (mode) => {
       </footer>
     </form>
 
-    <div v-else-if="mode === 'versions'" ref="dialog-content" class="version-history-layout" tabindex="-1" :aria-busy="loading">
+    <div v-else-if="props.mode === 'versions'" ref="dialog-content" class="version-history-layout" tabindex="-1" :aria-busy="loading">
       <nav :aria-label="locale.t('save.history', 'Version history')">
         <ElButton
           v-for="version in versions"
@@ -189,12 +188,12 @@ watch(() => props.mode, async (mode) => {
           <div>
             <ElInput id="version-label" v-model="versionLabel" maxlength="80" />
             <WorkbenchCommandHint detached :label="locale.t('action.save', 'Save')" :disabled-reason="busyReason || (!versionLabel.trim() ? locale.t('save.labelRequired', 'Enter a version label to save it.') : undefined)">
-              <ElButton native-type="button" :disabled="!versionLabel.trim() || controller.busy.value" @click="updateVersionLabel(false)">
+              <ElButton native-type="button" :disabled="!versionLabel.trim() || props.controller.busy.value" @click="updateVersionLabel(false)">
                 {{ locale.t('action.save', 'Save') }}
               </ElButton>
             </WorkbenchCommandHint>
             <WorkbenchCommandHint detached anchor-class="version-label-remove" :label="locale.t('save.removeLabel', 'Remove label')" :disabled-reason="busyReason || (!selectedVersion.label ? locale.t('save.noLabel', 'This version has no label to remove.') : undefined)">
-              <ElButton native-type="button" :disabled="!selectedVersion.label || controller.busy.value" @click="updateVersionLabel(true)">
+              <ElButton native-type="button" :disabled="!selectedVersion.label || props.controller.busy.value" @click="updateVersionLabel(true)">
                 {{ locale.t('save.removeLabel', 'Remove label') }}
               </ElButton>
             </WorkbenchCommandHint>
@@ -227,13 +226,13 @@ watch(() => props.mode, async (mode) => {
         </div>
         <div>
           <WorkbenchCommandHint detached :label="locale.t('recovery.restore', 'Recover')" :disabled-reason="busyReason || (draft.presence === 'active' ? locale.t('recovery.activeReason', 'This draft is open in another tab. Close that tab before recovering or discarding it.') : undefined)">
-            <ElButton native-type="button" :disabled="draft.presence === 'active' || controller.busy.value" @click="restoreDraft(draft.draftId)">
+            <ElButton native-type="button" :disabled="draft.presence === 'active' || props.controller.busy.value" @click="restoreDraft(draft.draftId)">
               <RotateCcw :size="15" aria-hidden="true" />
               {{ locale.t('recovery.restore', 'Recover') }}
             </ElButton>
           </WorkbenchCommandHint>
           <WorkbenchCommandHint detached :label="locale.t('recovery.discard', 'Discard')" :disabled-reason="busyReason || (draft.presence === 'active' ? locale.t('recovery.activeReason', 'This draft is open in another tab. Close that tab before recovering or discarding it.') : draft.presence === 'unknown' ? locale.t('recovery.unknownReason', 'Session status is unconfirmed. Reopen recovery after confirming the other tab is closed.') : undefined)">
-            <ElButton native-type="button" :disabled="draft.presence !== 'inactive' || controller.busy.value" @click="discardDraft(draft.draftId)">
+            <ElButton native-type="button" :disabled="draft.presence !== 'inactive' || props.controller.busy.value" @click="discardDraft(draft.draftId)">
               <Trash2 :size="15" aria-hidden="true" />
               {{ locale.t('recovery.discard', 'Discard') }}
             </ElButton>

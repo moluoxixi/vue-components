@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ secret: string }>()
+const props = defineProps<{ secret: string }>()
 </script>
 
 <template>

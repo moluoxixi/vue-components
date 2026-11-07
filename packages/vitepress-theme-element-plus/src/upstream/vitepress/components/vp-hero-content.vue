@@ -2,10 +2,14 @@
   <div class="hero-content">
     <Content />
   </div>
-  <hr class="hero-divider" />
+  <hr class="hero-divider">
   <div data-docs-ui class="epdocs:text-center epdocs:py-6 epdocs:text-xs">
-    <p class="epdocs:mb-1">Released under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT License</a>.</p>
-    <p class="epdocs:mt-1">Build your documentation with the reusable theme.</p>
+    <p class="epdocs:mb-1">
+      Released under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT License</a>.
+    </p>
+    <p class="epdocs:mt-1">
+      Build your documentation with the reusable theme.
+    </p>
   </div>
 </template>
 
@@ -22,5 +26,4 @@
 }
 
 .docs-playground-page .hero-content { width: 100%; max-width: none; margin: 0; padding: 0; }
-
 </style>

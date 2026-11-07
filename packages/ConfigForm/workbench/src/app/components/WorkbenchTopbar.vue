@@ -102,22 +102,22 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
     </div>
 
     <div
-      v-if="project && currentSurface"
+      v-if="props.project && props.currentSurface"
       class="workspace-context"
       :aria-label="locale.t('workbench.context', 'Current project and Surface')"
     >
       <WorkbenchCommandHint :label="locale.t('pages.manage', 'Manage pages')">
         <button type="button" @click="emit('openSurfaces')">
-          {{ project.name }}
+          {{ props.project.name }}
         </button>
       </WorkbenchCommandHint>
       <span class="workspace-context__separator" aria-hidden="true">/</span>
-      <strong>{{ currentSurface.name }}</strong>
-      <WorkspaceStatus v-if="storageInfo" :storage="storageInfo" :locale="localeId" />
+      <strong>{{ props.currentSurface.name }}</strong>
+      <WorkspaceStatus v-if="props.storageInfo" :storage="props.storageInfo" :locale="props.localeId" />
     </div>
 
     <div
-      v-if="project"
+      v-if="props.project"
       class="workbench-view-switch"
       role="group"
       :aria-label="locale.t('workbench.views', 'Workspace view')"
@@ -126,8 +126,8 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
         <button
           type="button"
           :aria-label="locale.t('workbench.design', 'Design')"
-          :aria-pressed="!previewOpen && !sourceOpen"
-          :class="{ 'is-active': !previewOpen && !sourceOpen }"
+          :aria-pressed="!props.previewOpen && !props.sourceOpen"
+          :class="{ 'is-active': !props.previewOpen && !props.sourceOpen }"
           @click="emit('showDesign')"
         >
           <MousePointer2 :size="14" aria-hidden="true" />
@@ -137,9 +137,9 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
       <WorkbenchCommandHint :label="locale.locale === 'zh-CN' ? '体验：填写表单，验证校验规则和页面交互' : 'Experience: fill in the form and try validation and interactions'">
         <button
           type="button"
-          :aria-pressed="previewOpen === true"
-          :class="{ 'is-active': previewOpen }"
-          :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
+          :aria-pressed="props.previewOpen === true"
+          :class="{ 'is-active': props.previewOpen }"
+          :aria-label="props.previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
           @click="emit('togglePreview')"
         >
           <Play :size="14" aria-hidden="true" />
@@ -150,8 +150,8 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
         <button
           type="button"
           :aria-label="locale.t('workbench.code', 'Handoff')"
-          :aria-pressed="sourceOpen === true"
-          :class="{ 'is-active': sourceOpen }"
+          :aria-pressed="props.sourceOpen === true"
+          :class="{ 'is-active': props.sourceOpen }"
           @click="emit('export', 'source')"
         >
           <Code2 :size="15" aria-hidden="true" />
@@ -161,7 +161,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
     </div>
 
     <div class="topbar-actions">
-      <WorkbenchCommandHint v-if="project" :label="locale.locale === 'zh-CN' ? '搜索并执行工作区操作' : 'Search and run workspace commands'" shortcut="Ctrl / ⌘ K">
+      <WorkbenchCommandHint v-if="props.project" :label="locale.locale === 'zh-CN' ? '搜索并执行工作区操作' : 'Search and run workspace commands'" shortcut="Ctrl / ⌘ K">
         <button
           type="button"
           class="studio-command-trigger"
@@ -183,7 +183,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           <FolderKanban :size="17" aria-hidden="true" />
         </ElButton>
       </WorkbenchCommandHint>
-      <WorkbenchCommandHint v-if="project" :label="locale.t('pages.manage', 'Manage pages')">
+      <WorkbenchCommandHint v-if="props.project" :label="locale.t('pages.manage', 'Manage pages')">
         <ElButton
           native-type="button"
           class="mobile-page-manager-button"
@@ -194,10 +194,10 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           <Files :size="17" aria-hidden="true" />
         </ElButton>
       </WorkbenchCommandHint>
-      <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
-        v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
+      <span v-if="props.project" class="revision-state" :class="{ 'is-dirty': props.dirty }" aria-live="polite">
+        v{{ props.repositoryRevision ?? 0 }} · {{ props.statusLabel }}
       </span>
-      <WorkbenchCommandHint v-if="project" detached :label="locale.t('save.menu', 'Save options')" :disabled-reason="saveUnavailableReason">
+      <WorkbenchCommandHint v-if="props.project" detached :label="locale.t('save.menu', 'Save options')" :disabled-reason="saveUnavailableReason">
         <ElDropdown
           class="save-menu export-menu"
           :disabled="Boolean(saveUnavailableReason)"
@@ -224,8 +224,8 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="export-menu-popover save-menu-popover" data-save-menu>
-              <ElDropdownItem command="save" :disabled="!dirty">
-                <WorkbenchCommandHint :label="locale.t('save.now', 'Save now')" :disabled-reason="!dirty ? (locale.locale === 'zh-CN' ? '当前更改已保存；修改设计后可再次保存' : 'All changes are saved; edit the design to save again') : undefined">
+              <ElDropdownItem command="save" :disabled="!props.dirty">
+                <WorkbenchCommandHint :label="locale.t('save.now', 'Save now')" :disabled-reason="!props.dirty ? (locale.locale === 'zh-CN' ? '当前更改已保存；修改设计后可再次保存' : 'All changes are saved; edit the design to save again') : undefined">
                   <span class="menu-command-content">
                     <Save :size="15" aria-hidden="true" />
                     <span>{{ locale.t('save.now', 'Save now') }}</span>
@@ -246,7 +246,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
       </WorkbenchCommandHint>
       <WorkbenchCommandHint
         :label="
-          localeId === 'zh-CN'
+          props.localeId === 'zh-CN'
             ? locale.t('locale.switchToEnglish', 'Switch to English')
             : locale.t('locale.switchToChinese', 'Switch to Chinese')
         "
@@ -255,7 +255,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           native-type="button"
           class="topbar-secondary-action"
           :aria-label="
-            localeId === 'zh-CN'
+            props.localeId === 'zh-CN'
               ? locale.t('locale.switchToEnglish', 'Switch to English')
               : locale.t('locale.switchToChinese', 'Switch to Chinese')
           "
@@ -268,8 +268,8 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
       <WorkbenchAppearancePopover
         trigger-class="topbar-secondary-action"
         :locale="props.locale"
-        :palette-family="paletteFamily"
-        :theme-preference="themePreference"
+        :palette-family="props.paletteFamily"
+        :theme-preference="props.themePreference"
         @set-palette-family="emit('setPaletteFamily', $event)"
         @set-theme-preference="emit('setThemePreference', $event)"
       />
@@ -292,22 +292,22 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
             <MoreHorizontal :size="18" aria-hidden="true" />
           </ElButton>
           <template #dropdown>
-            <div v-if="project" class="topbar-status-item" role="status" data-mobile-action-status>
-              v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
+            <div v-if="props.project" class="topbar-status-item" role="status" data-mobile-action-status>
+              v{{ props.repositoryRevision ?? 0 }} · {{ props.statusLabel }}
             </div>
             <ElDropdownMenu class="mobile-action-popover" data-mobile-action-menu>
               <ElDropdownItem command="openProjects">
                 <FolderKanban :size="15" aria-hidden="true" /><span>{{ locale.t('projects.back', 'Back to projects') }}</span>
               </ElDropdownItem>
-              <ElDropdownItem v-if="project" command="openCommands">
+              <ElDropdownItem v-if="props.project" command="openCommands">
                 <Search :size="15" aria-hidden="true" /><span>{{ locale.t('studio.commands', 'Command center') }}</span>
               </ElDropdownItem>
-              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openSurfaces">
+              <ElDropdownItem v-if="props.project && pageManagerInOverflow" command="openSurfaces">
                 <Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span>
               </ElDropdownItem>
               <ElDropdownItem command="toggleLocale">
                 <Languages :size="15" aria-hidden="true" /><span>{{
-                  localeId === 'zh-CN'
+                  props.localeId === 'zh-CN'
                     ? locale.t('locale.switchToEnglish', 'Switch to English')
                     : locale.t('locale.switchToChinese', 'Switch to Chinese')
                 }}</span>

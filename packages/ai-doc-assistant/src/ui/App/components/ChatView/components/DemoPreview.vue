@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
+import { Code2, Copy } from '@lucide/vue'
 /**
  * demo 预览块：真实组件实时预览 + TS/JS 双码查看与复制。
  *
@@ -11,8 +13,6 @@
  * 不做 js=ts 静默降级（降级在服务端已被禁止，前端只忠实呈现）。
  */
 import { computed, nextTick, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
-import type { Component } from 'vue'
-import { Code2, Copy } from '@lucide/vue'
 import { compileSfc } from '../../../../preview'
 
 const props = withDefaults(defineProps<{
@@ -222,8 +222,8 @@ async function copy(which: CopyLang): Promise<void> {
   <section class="demo-preview" data-testid="demo-preview">
     <!-- 预览区：可渲染时实时挂载真实组件；不可渲染时展示原因（依赖白名单外） -->
     <div class="dp-live" aria-live="polite" data-testid="demo-live">
-      <div v-if="!renderable" class="dp-hint warn" data-testid="demo-unrenderable">
-        ⚠ 该示例无法实时预览：{{ reason || '当前预览环境不支持该示例依赖。' }}
+      <div v-if="!props.renderable" class="dp-hint warn" data-testid="demo-unrenderable">
+        ⚠ 该示例无法实时预览：{{ props.reason || '当前预览环境不支持该示例依赖。' }}
       </div>
       <div v-else-if="compiling" class="dp-hint" data-testid="demo-compiling">
         编译中…
@@ -302,10 +302,18 @@ async function copy(which: CopyLang): Promise<void> {
           data-testid="copy-current"
           @click="copy(lang)"
         >
-          <template v-if="copied === lang">已复制</template>
-          <template v-else-if="copied === 'selected' && failedCopy === lang">已选中</template>
-          <template v-else-if="copied === 'error'">复制失败</template>
-          <template v-else>复制源码</template>
+          <template v-if="copied === lang">
+            已复制
+          </template>
+          <template v-else-if="copied === 'selected' && failedCopy === lang">
+            已选中
+          </template>
+          <template v-else-if="copied === 'error'">
+            复制失败
+          </template>
+          <template v-else>
+            复制源码
+          </template>
         </button>
       </div>
       <pre data-testid="code-block"><code ref="codeRef">{{ currentCode }}</code></pre>

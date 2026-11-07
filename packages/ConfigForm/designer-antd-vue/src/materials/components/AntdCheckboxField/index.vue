@@ -9,14 +9,14 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<AntdCheckboxFieldProps>()
 
+const emit = defineEmits<AntdCheckboxFieldEmits>()
+
 const checkboxOptions = computed(() => normalizeAntdVueOptions(
   props.options,
   DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
 ).filter(
   (option): option is AntdVueDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
-
-const emit = defineEmits<AntdCheckboxFieldEmits>()
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const emit = defineEmits<AntdCheckboxFieldEmits>()
     <CheckboxGroup
       v-bind="$attrs"
       data-designer-selection-target
-      :value="value"
+      :value="props.value"
       :options="checkboxOptions"
       @update:value="emit('update:value', $event as Array<string | number>)"
     />

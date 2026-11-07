@@ -10,9 +10,8 @@ import {
   readPrototypeSession,
 } from '@moluoxixi/config-form-prototype-runtime/session'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { acceptsRuntimeHostMessageEvent, isRuntimeHostToParentMessage, RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../../../runtime-host'
 import { cloneWorkbenchJson } from '../../../utils'
-import { acceptsRuntimeHostMessageEvent, isRuntimeHostToParentMessage } from '../../../runtime-host'
-import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../../../runtime-host'
 
 const props = defineProps<ExperienceRuntimeHostFrameProps>()
 const emit = defineEmits<ExperienceRuntimeHostFrameEmits>()
@@ -113,8 +112,9 @@ function handleMessage(event: MessageEvent<unknown>): void {
   }
   if (message.type === 'experience.session') {
     if (message.sessionId !== props.sessionId
-      || message.transition.session.projectId !== props.compilation.key.projectId)
+      || message.transition.session.projectId !== props.compilation.key.projectId) {
       return
+    }
     const context = createPrototypeProjectContext(props.compilation)
     if (!context.success)
       return
@@ -207,7 +207,7 @@ defineExpose<ExperienceRuntimeHostFrameExpose>({ dispatch })
     data-preview-runtime-host
     referrerpolicy="same-origin"
     :src="frameSource"
-    :title="title"
+    :title="props.title"
     @load="handleLoad"
   />
 </template>

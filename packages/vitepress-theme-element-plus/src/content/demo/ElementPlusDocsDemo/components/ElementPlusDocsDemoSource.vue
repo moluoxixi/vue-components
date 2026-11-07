@@ -71,7 +71,7 @@ function setupFolding(): void {
         const placeholder = document.createElement('button')
         placeholder.type = 'button'
         placeholder.className = 'code-fold-placeholder'
-        placeholder.textContent = '\u22ef'
+        placeholder.textContent = '\u22EF'
         placeholder.title = (count === 1 ? props.foldedLine : props.foldedLines)
           .replace('{lines}', String(count))
         placeholder.addEventListener('click', toggle)
@@ -94,7 +94,7 @@ watch(() => props.source, async () => {
 
 <template>
   <!-- eslint-disable-next-line vue/no-v-html -->
-  <div ref="sourceRef" class="demo-source-code" v-html="source" />
+  <div ref="sourceRef" class="demo-source-code" v-html="props.source" />
 </template>
 
 <style scoped>

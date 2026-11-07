@@ -18,7 +18,7 @@ defineExpose({
 <template>
   <ElDialog
     class="asset-manager-dialog"
-    :model-value="modelValue"
+    :model-value="props.modelValue"
     :width="workspace?.hasDataset ? 'min(1280px, calc(var(--wb-viewport-width) - 32px))' : 'min(1040px, calc(var(--wb-viewport-width) - 32px))'"
     :title="locale.t('assets.title', 'Assets')"
     append-to="#workbench-overlays"
@@ -37,13 +37,13 @@ defineExpose({
     </template>
     <AssetManagerWorkspace
       ref="workspace"
-      :active="modelValue"
-      :commands="commands"
-      :initial-id="initialId"
-      :initial-kind="initialKind"
+      :active="props.modelValue"
+      :commands="props.commands"
+      :initial-id="props.initialId"
+      :initial-kind="props.initialKind"
       :locale="props.locale"
-      :project="project"
-      :save-status="saveStatus"
+      :project="props.project"
+      :save-status="props.saveStatus"
     />
   </ElDialog>
 </template>

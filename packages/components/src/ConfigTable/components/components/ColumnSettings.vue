@@ -140,8 +140,9 @@ async function setupSortable(): Promise<void> {
     || !isSortableEnabled()
     || !dialogVisible.value
     || !listRef.value
-  )
+  ) {
     return
+  }
 
   sortable = Sortable.create(listRef.value, {
     animation: 150,

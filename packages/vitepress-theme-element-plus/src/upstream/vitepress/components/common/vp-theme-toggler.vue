@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { nextTick, ref, watch } from 'vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { isDark, toggleDark } from '../../composables/dark'
 import DarkIcon from '../icons/dark.vue'
 import LightIcon from '../icons/light.vue'
-
 
 defineOptions({ inheritAttrs: false })
 
@@ -16,7 +15,7 @@ watch(
   () => isDark.value,
   (newVal) => {
     darkMode.value = newVal
-  }
+  },
 )
 
 watch(
@@ -25,14 +24,14 @@ watch(
     if (newVal !== isDark.value) {
       toggleDark()
     }
-  }
+  },
 )
 
-const beforeChange = () => {
+function beforeChange() {
   return new Promise<boolean>((resolve) => {
-    const isAppearanceTransition =
-      document.startViewTransition &&
-      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const isAppearanceTransition
+      = document.startViewTransition
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (!isAppearanceTransition) {
       resolve(true)
       return
@@ -49,7 +48,7 @@ const beforeChange = () => {
 
     const endRadius = Math.hypot(
       Math.max(x, innerWidth - x),
-      Math.max(y, innerHeight - y)
+      Math.max(y, innerHeight - y),
     )
 
     const ratioX = (100 * x) / innerWidth
@@ -70,7 +69,8 @@ const beforeChange = () => {
     })
 
     transition.finished.finally(() => {
-      if (transitionId !== latestTransitionId) return
+      if (transitionId !== latestTransitionId)
+        return
 
       delete root.dataset.themeTransition
       root.style.removeProperty('--ep-docs-theme-transition-x')

@@ -252,11 +252,11 @@ function applyAdvanced(): void {
 </script>
 
 <template>
-  <div class="mx-config-form-designer__expression-editor" :data-expression-purpose="purpose">
-    <div v-if="label" class="mx-config-form-designer__expression-heading">
-      {{ label }}
+  <div class="mx-config-form-designer__expression-editor" :data-expression-purpose="props.purpose">
+    <div v-if="props.label" class="mx-config-form-designer__expression-heading">
+      {{ props.label }}
     </div>
-    <ElCheckbox v-if="optional" :model-value="enabled" :disabled="disabled" @update:model-value="toggleEnabled">
+    <ElCheckbox v-if="props.optional" :model-value="enabled" :disabled="props.disabled" @update:model-value="toggleEnabled">
       {{ locale.t('interaction.condition.enabled', 'Use condition') }}
     </ElCheckbox>
 
@@ -264,28 +264,28 @@ function applyAdvanced(): void {
       <ElSegmented
         :model-value="mode"
         :options="modeOptions"
-        :disabled="disabled"
+        :disabled="props.disabled"
         block
         :aria-label="locale.t('interaction.expression.mode', 'Expression mode')"
         @change="selectMode"
       />
 
       <div v-if="mode === 'simple'" class="mx-config-form-designer__expression-simple">
-        <template v-if="purpose === 'condition'">
+        <template v-if="props.purpose === 'condition'">
           <ElSelect
             :model-value="fieldId"
-            :disabled="disabled || fields.length === 0"
+            :disabled="props.disabled || props.fields.length === 0"
             :aria-label="locale.t('interaction.condition.field', 'Condition field')"
             @update:model-value="
               fieldId = $event;
               commitSimple();
             "
           >
-            <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+            <ElOption v-for="field in props.fields" :key="field.id" :value="field.id" :label="field.label" />
           </ElSelect>
           <ElSelect
             :model-value="operator"
-            :disabled="disabled"
+            :disabled="props.disabled"
             :aria-label="locale.t('interaction.condition.operator', 'Condition operator')"
             @update:model-value="
               operator = $event;
@@ -297,7 +297,7 @@ function applyAdvanced(): void {
         </template>
         <ElSelect
           :model-value="literalKind"
-          :disabled="disabled"
+          :disabled="props.disabled"
           :aria-label="locale.t('interaction.value.type', 'Value type')"
           @update:model-value="
             literalKind = $event;
@@ -309,7 +309,7 @@ function applyAdvanced(): void {
         <ElSelect
           v-if="literalKind === 'boolean'"
           :model-value="literalBoolean"
-          :disabled="disabled"
+          :disabled="props.disabled"
           :aria-label="locale.t('interaction.value.literal', 'Value')"
           @update:model-value="
             literalBoolean = $event;
@@ -323,7 +323,7 @@ function applyAdvanced(): void {
           v-else-if="literalKind !== 'null'"
           :model-value="literalText"
           :type="literalKind === 'number' ? 'number' : 'text'"
-          :disabled="disabled"
+          :disabled="props.disabled"
           :aria-label="locale.t('interaction.value.literal', 'Value')"
           @update:model-value="literalText = $event"
           @blur="commitSimple"
@@ -332,10 +332,10 @@ function applyAdvanced(): void {
       </div>
 
       <DesignerConditionTree
-        v-else-if="mode === 'builder' && modelValue"
-        :model-value="modelValue.ast"
-        :fields="fields"
-        :disabled="disabled"
+        v-else-if="mode === 'builder' && props.modelValue"
+        :model-value="props.modelValue.ast"
+        :fields="props.fields"
+        :disabled="props.disabled"
         @update:model-value="emitExpression({ version: 1, ast: $event })"
       />
       <div v-else class="mx-config-form-designer__expression-advanced">
@@ -343,7 +343,7 @@ function applyAdvanced(): void {
           v-model="advancedDraft"
           type="textarea"
           :rows="8"
-          :disabled="disabled"
+          :disabled="props.disabled"
           :aria-label="locale.t('interaction.expression.json', 'Safe expression JSON')"
           :class="{ 'is-error': advancedError }"
           @input="advancedError = ''"
@@ -351,7 +351,7 @@ function applyAdvanced(): void {
         <button
           type="button"
           class="mx-config-form-designer__interaction-command"
-          :disabled="disabled"
+          :disabled="props.disabled"
           @click="applyAdvanced"
         >
           {{ locale.t('action.apply', 'Apply') }}
@@ -360,7 +360,7 @@ function applyAdvanced(): void {
       <p v-if="advancedError" class="mx-config-form-designer__interaction-error" role="alert">
         {{ advancedError }}
       </p>
-      <DesignerExpressionPlayground :expression="modelValue" />
+      <DesignerExpressionPlayground :expression="props.modelValue" />
     </template>
   </div>
 </template>

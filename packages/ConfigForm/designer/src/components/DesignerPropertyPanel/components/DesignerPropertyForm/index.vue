@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload, ConfigFormField } from '@moluoxixi/config-form-headless'
-import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerPropertyControlDefinition,
   DesignerPropertyControlRegistry,
@@ -8,13 +6,15 @@ import type {
   DesignerSetterControl,
   DesignerSimpleSetterControl,
 } from '@designer/registry'
-import type { DesignerPropertyFormEntry, DesignerPropertyFormLayout, DesignerPropertyParseResult } from '../../types'
+import type { ConfigFormComponentRegistry, ConfigFormField, ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
+import type { SurfaceNode } from '@moluoxixi/config-form-model'
 import type { Component } from 'vue'
+import type { DesignerPropertyFormEntry, DesignerPropertyFormLayout, DesignerPropertyParseResult } from '../../types'
+import { useDesignerLocale } from '@designer/locale'
 import { defineField } from '@moluoxixi/config-form-headless'
 import { computed, markRaw, toRaw } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
-import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
 import { useDesignerPropertyFormState } from '../../composables'
+import { DEFAULT_DESIGNER_PROPERTY_CONTROLS } from '../../constants/property-controls'
 import DesignerSetter from '../DesignerSetter/index.vue'
 
 const props = defineProps<{
@@ -106,39 +106,41 @@ function simpleField(
   const visualHint = entry.hint
     ? [inheritedLabel, entry.hint].filter(Boolean).join(' · ')
     : undefined
-  const componentProps: Record<string, unknown> = entry.editor ? {
-    ...control.props,
-    disabled: props.readonly || entry.readonly,
-    error: errors.value[key],
-    onCommit: commitValue,
-  } : {
-    ...control.props,
-    'aria-description': description,
-    'aria-label': setter.label,
-    'class': [
-      control.props?.class,
-      'mx-config-form-designer__property-control',
-      `is-${controlClass}`,
-    ],
-    'disabled': props.readonly || entry.readonly,
-    ...(setter.control === 'textarea' ? { rows: 3 } : {}),
-    ...(setter.control === 'number'
-      ? {
-          min: setter.min,
-          max: setter.max,
-          step: setter.step,
-          ...(setter.integer ? { precision: 0 } : {}),
-        }
-      : {}),
-    ...(setter.control === 'select' ? { options: setter.options ?? [] } : {}),
-    ...(setter.control === 'defaultValue'
-      ? { kind: setter.valueKind, options: setter.options ?? [] }
-      : {}),
-    ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
-    ...(['text', 'textarea'].includes(setter.control)
-      ? { onBlur: () => commitValue(model.value[key]) }
-      : {}),
-  }
+  const componentProps: Record<string, unknown> = entry.editor
+    ? {
+        ...control.props,
+        disabled: props.readonly || entry.readonly,
+        error: errors.value[key],
+        onCommit: commitValue,
+      }
+    : {
+        ...control.props,
+        'aria-description': description,
+        'aria-label': setter.label,
+        'class': [
+          control.props?.class,
+          'mx-config-form-designer__property-control',
+          `is-${controlClass}`,
+        ],
+        'disabled': props.readonly || entry.readonly,
+        ...(setter.control === 'textarea' ? { rows: 3 } : {}),
+        ...(setter.control === 'number'
+          ? {
+              min: setter.min,
+              max: setter.max,
+              step: setter.step,
+              ...(setter.integer ? { precision: 0 } : {}),
+            }
+          : {}),
+        ...(setter.control === 'select' ? { options: setter.options ?? [] } : {}),
+        ...(setter.control === 'defaultValue'
+          ? { kind: setter.valueKind, options: setter.options ?? [] }
+          : {}),
+        ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
+        ...(['text', 'textarea'].includes(setter.control)
+          ? { onBlur: () => commitValue(model.value[key]) }
+          : {}),
+      }
 
   return defineField({
     id: key,
@@ -224,10 +226,12 @@ function parseValue(entry: DesignerPropertyFormEntry, value: unknown): DesignerP
   if (entry.editor?.parse)
     return entry.editor.parse(value)
   const normalized = normalizeValue(entry.setter, value)
-  return normalized === invalidNumber ? { valid: false } : {
-    valid: true,
-    value: entry.setter.unit === 'px' && typeof normalized === 'number' ? `${normalized}px` : normalized,
-  }
+  return normalized === invalidNumber
+    ? { valid: false }
+    : {
+        valid: true,
+        value: entry.setter.unit === 'px' && typeof normalized === 'number' ? `${normalized}px` : normalized,
+      }
 }
 
 function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, unknown>>): void {
@@ -239,8 +243,9 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
   if (
     (entry.setter.control === 'text' || entry.setter.control === 'textarea')
     && !entry.editor && controlFor(entry)
-  )
+  ) {
     return
+  }
   commit(entry, payload.value)
 }
 </script>
@@ -249,11 +254,11 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
   <component
     :is="formRenderer"
     :model="modelPort"
-    :components="components"
+    :components="props.components"
     :fields="fields"
-    :columns="columns ?? 1"
+    :columns="props.columns ?? 1"
     :field-span="1"
-    :gap="gap ?? '13px'"
+    :gap="props.gap ?? '13px'"
     label-position="top"
     namespace="mx-config-form-designer-property-form"
     @field-change="handleFieldChange"

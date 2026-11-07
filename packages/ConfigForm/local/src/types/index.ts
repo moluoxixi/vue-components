@@ -7,3 +7,5 @@ export interface SourceArtifact {
   repositoryRevision: number
   source: RawSourceFileSetV1
 }
+
+export type * from './assistant'

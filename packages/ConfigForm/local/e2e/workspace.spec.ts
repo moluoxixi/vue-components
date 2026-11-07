@@ -40,7 +40,8 @@ test('separate browser contexts share projects, refresh saved edits, and preserv
     const created = await request<PersistedProjectEnvelope>('create', { id: 'shared-browser', name: 'Shared account', preset: 'element-plus', templateId: 'element-profile' })
     await expect(page.getByText('Shared account', { exact: true }).first()).toBeVisible()
     await expect(right.getByText('Shared account', { exact: true }).first()).toBeVisible()
-    await expect(page.locator('.workspace-status')).toContainText('config-form-browser-')
+    await page.getByRole('button', { name: 'Storage: workspace', exact: true }).hover()
+    await expect(page.getByRole('tooltip')).toContainText('config-form-browser-')
     const surfaceId = created.document.homeSurfaceId
     await page.goto(`${service.url}/#/projects/${created.document.id}/pages/${surfaceId}/design`)
     const canvas = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')

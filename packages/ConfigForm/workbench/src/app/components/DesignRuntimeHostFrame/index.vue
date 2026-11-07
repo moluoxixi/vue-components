@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DesignerRuntimeRect } from '@moluoxixi/config-form-designer'
 import type { CSSProperties } from 'vue'
 import type {
   DesignRuntimeHostFrameEmits,
@@ -6,14 +7,14 @@ import type {
   RuntimeHostFormStateSnapshotV7,
   RuntimeHostGeometryPayload,
 } from '../../../runtime-host'
-import type { DesignerRuntimeRect } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue'
-import { cloneWorkbenchJson } from '../../../utils'
 import {
   acceptsRuntimeHostMessageEvent,
   isRuntimeHostToParentMessage,
+  RUNTIME_HOST_CHANNEL,
+  RUNTIME_HOST_PROTOCOL_VERSION,
 } from '../../../runtime-host'
-import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '../../../runtime-host'
+import { cloneWorkbenchJson } from '../../../utils'
 
 const props = defineProps<DesignRuntimeHostFrameProps>()
 const emit = defineEmits<DesignRuntimeHostFrameEmits>()
@@ -228,7 +229,7 @@ function handleMessage(event: MessageEvent<unknown>): void {
   }
   if ((message.type === 'design.pointerDown' || message.type === 'design.pointerMove'
     || message.type === 'design.pointerUp' || message.type === 'design.pointerCancel' || message.type === 'design.contextMenu')
-    && message.surfaceId === surfaceId.value && props.variant === 'canvas') {
+  && message.surfaceId === surfaceId.value && props.variant === 'canvas') {
     lastChildSequence = message.sequence
     const frameRect = frame.value?.getBoundingClientRect()
     if (!frameRect)
@@ -239,10 +240,14 @@ function handleMessage(event: MessageEvent<unknown>): void {
       clientX: frameRect.left + message.payload.clientX * scale.x,
       clientY: frameRect.top + message.payload.clientY * scale.y,
     }
-    if (message.type === 'design.pointerDown') emit('pointerDown', payload)
-    else if (message.type === 'design.pointerMove') emit('pointerMove', payload)
-    else if (message.type === 'design.pointerUp') emit('pointerUp', payload)
-    else if (message.type === 'design.pointerCancel') emit('pointerCancel', payload)
+    if (message.type === 'design.pointerDown')
+      emit('pointerDown', payload)
+    else if (message.type === 'design.pointerMove')
+      emit('pointerMove', payload)
+    else if (message.type === 'design.pointerUp')
+      emit('pointerUp', payload)
+    else if (message.type === 'design.pointerCancel')
+      emit('pointerCancel', payload)
     else emit('contextMenu', payload)
     return
   }
@@ -294,13 +299,13 @@ onBeforeUnmount(() => {
     v-if="compilation"
     ref="frame"
     class="design-runtime-host"
-    :class="`is-${variant}`"
+    :class="`is-${props.variant}`"
     data-design-runtime-host
-    :data-design-runtime-variant="variant"
+    :data-design-runtime-variant="props.variant"
     referrerpolicy="same-origin"
     :src="frameSource"
     :style="frameStyle"
-    :title="title"
+    :title="props.title"
     tabindex="-1"
     @load="handleLoad"
   />

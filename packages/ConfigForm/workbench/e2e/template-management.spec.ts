@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { createProject, openPageCreation as openManagedPageCreation, openPageManagement, restoreAppearance, setAppearance, waitForPageCreation } from './helpers'
@@ -29,6 +30,7 @@ async function openPageCreation(page: Page): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
+  await expect(page.locator('.project-manager')).toBeVisible()
 })
 
 for (const framework of ['Element Plus', 'Ant Design Vue']) {
@@ -826,3 +828,40 @@ for (const viewport of [
     await expectNoHorizontalOverflow(page)
   })
 }
+
+test('backs up and imports personal templates as independent copies', async ({ page }) => {
+  await page.getByRole('link', { name: 'Template management', exact: true }).click()
+  const library = page.getByRole('main', { name: 'Template management', exact: true })
+  const backup = library.getByRole('button', { name: 'Back up my templates', exact: true })
+  await expect(backup).toBeDisabled()
+  await backup.locator('..').hover()
+  await expect(page.getByRole('tooltip')).toContainText('Create or import a personal template')
+  await library.getByRole('button', { name: 'Duplicate Element Plus blank form', exact: true }).first().click()
+  const personal = library.locator('[data-library-template^="custom-"]')
+  await expect(personal).toHaveCount(1)
+  const originalId = await personal.getAttribute('data-library-template')
+  const downloadPromise = page.waitForEvent('download')
+  await backup.click()
+  const download = await downloadPromise
+  const path = await download.path()
+  const archive = JSON.parse(await readFile(path!, 'utf8'))
+  expect(archive.kind).toBe('config-form-template-library')
+  expect(archive.templates).toHaveLength(1)
+  await library.locator('input[type="file"]').setInputFiles(path!)
+  await expect(personal).toHaveCount(2)
+  const ids = await personal.evaluateAll(items => items.map(item => item.getAttribute('data-library-template')))
+  expect(new Set(ids).size).toBe(2)
+  expect(ids).toContain(originalId)
+  await page.reload()
+  await expect(personal).toHaveCount(2)
+
+  await page.setViewportSize({ width: 320, height: 568 })
+  await library.getByRole('button', { name: 'New template', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'New template', exact: true })
+  const submit = dialog.getByRole('button', { name: 'Start designing', exact: true })
+  await expect(submit).toBeDisabled()
+  await submit.locator('..').hover()
+  await expect(page.getByRole('tooltip')).toContainText('Enter a template name')
+  await expect(submit).toBeInViewport({ ratio: 1 })
+  await expectNoHorizontalOverflow(page)
+})

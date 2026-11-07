@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import type { ElementPlusDocsContentMessages } from '../types'
 import type { ElementPlusDocsComponentMetaData } from './types'
 import {
@@ -15,6 +14,7 @@ import {
 } from '@lucide/vue'
 import { ElDialog } from 'element-plus'
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import { formatElementPlusDocsMessage } from '../format-message'
 import ElementPlusDocsCommitTimeline from './ElementPlusDocsCommitTimeline.vue'
 
@@ -76,70 +76,76 @@ provideDocsUi()
 </script>
 
 <template>
-  <div data-docs-ui class="component-doc-meta" :aria-label="messages.meta.aria">
+  <div data-docs-ui class="component-doc-meta" :aria-label="props.messages.meta.aria">
     <table class="component-doc-meta-table">
       <tbody>
         <tr>
-          <th scope="row">{{ messages.meta.usage }}</th>
+          <th scope="row">
+            {{ props.messages.meta.usage }}
+          </th>
           <td>
             <div class="component-doc-import">
               <button
                 class="component-doc-import-copy"
                 type="button"
                 :disabled="copying"
-                :title="copied ? messages.meta.copied : messages.meta.copyImport"
-                :aria-label="copied ? messages.meta.copied : messages.meta.copyImport"
+                :title="copied ? props.messages.meta.copied : props.messages.meta.copyImport"
+                :aria-label="copied ? props.messages.meta.copied : props.messages.meta.copyImport"
                 @click="copyImport"
               >
-                <code>{{ data.importStatement }}</code>
+                <code>{{ props.data.importStatement }}</code>
                 <Check v-if="copied" class="component-doc-copy-status" :size="14" aria-hidden="true" />
               </button>
             </div>
           </td>
         </tr>
-        <tr v-if="data.sourceHref || data.newIssueHref || data.openIssuesHref">
-          <th scope="row">{{ messages.meta.feedback }}</th>
+        <tr v-if="props.data.sourceHref || props.data.newIssueHref || props.data.openIssuesHref">
+          <th scope="row">
+            {{ props.messages.meta.feedback }}
+          </th>
           <td>
             <div class="component-doc-links">
-              <a v-if="data.sourceHref" :href="data.sourceHref" target="_blank" rel="noreferrer">
+              <a v-if="props.data.sourceHref" :href="props.data.sourceHref" target="_blank" rel="noreferrer">
                 <FolderGit2 :size="14" aria-hidden="true" />
-                {{ data.sourceLabel }}
+                {{ props.data.sourceLabel }}
               </a>
-              <a v-if="data.newIssueHref" :href="data.newIssueHref" target="_blank" rel="noreferrer">
+              <a v-if="props.data.newIssueHref" :href="props.data.newIssueHref" target="_blank" rel="noreferrer">
                 <MessageSquareWarning :size="14" aria-hidden="true" />
-                {{ messages.meta.submitIssue }}
+                {{ props.messages.meta.submitIssue }}
               </a>
               <a
-                v-if="data.openIssuesHref && data.openIssueCount !== undefined"
-                :href="data.openIssuesHref"
+                v-if="props.data.openIssuesHref && props.data.openIssueCount !== undefined"
+                :href="props.data.openIssuesHref"
                 target="_blank"
                 rel="noreferrer"
               >
                 <ListTodo :size="14" aria-hidden="true" />
-                {{ messages.meta.openIssues }}
-                <span class="component-doc-count">{{ data.openIssueCount }}</span>
+                {{ props.messages.meta.openIssues }}
+                <span class="component-doc-count">{{ props.data.openIssueCount }}</span>
               </a>
             </div>
           </td>
         </tr>
         <tr>
-          <th scope="row">{{ messages.meta.documentation }}</th>
+          <th scope="row">
+            {{ props.messages.meta.documentation }}
+          </th>
           <td>
             <div class="component-doc-links">
-              <a v-if="data.editHref" :href="data.editHref" target="_blank" rel="noreferrer">
+              <a v-if="props.data.editHref" :href="props.data.editHref" target="_blank" rel="noreferrer">
                 <FilePenLine :size="14" aria-hidden="true" />
-                {{ data.hasSourceDoc ? messages.meta.editPage : messages.meta.addDocs }}
+                {{ props.data.hasSourceDoc ? props.messages.meta.editPage : props.messages.meta.addDocs }}
               </a>
-              <a :href="data.overviewHref">
+              <a :href="props.data.overviewHref">
                 <PanelsTopLeft :size="14" aria-hidden="true" />
-                {{ messages.meta.componentOverview }}
+                {{ props.messages.meta.componentOverview }}
               </a>
-              <a :href="data.apiHref ?? '#api'">
+              <a :href="props.data.apiHref ?? '#api'">
                 <CircleDot :size="14" aria-hidden="true" />
-                {{ messages.route.api }}
+                {{ props.messages.route.api }}
               </a>
               <button
-                v-if="data.commits?.length"
+                v-if="props.data.commits?.length"
                 ref="changelogTrigger"
                 type="button"
                 aria-haspopup="dialog"
@@ -147,8 +153,8 @@ provideDocsUi()
                 @click="changelogVisible = true"
               >
                 <History :size="14" aria-hidden="true" />
-                {{ messages.meta.changelog }}
-                <span class="component-doc-count">{{ data.commits.length }}</span>
+                {{ props.messages.meta.changelog }}
+                <span class="component-doc-count">{{ props.data.commits.length }}</span>
               </button>
             </div>
           </td>
@@ -158,7 +164,7 @@ provideDocsUi()
 
     <ClientOnly>
       <ElDialog
-        v-if="data.commits?.length"
+        v-if="props.data.commits?.length"
         v-model="changelogVisible"
         align-center
         append-to-body
@@ -174,7 +180,7 @@ provideDocsUi()
             <button
               class="component-changelog-dialog-close"
               type="button"
-              :aria-label="messages.theme.close"
+              :aria-label="props.messages.theme.close"
               @click="close"
             >
               <X :size="18" aria-hidden="true" />
@@ -183,10 +189,10 @@ provideDocsUi()
         </template>
         <div class="component-changelog-dialog-scroll">
           <ElementPlusDocsCommitTimeline
-            :commits="data.commits"
-            :locale="locale"
-            :messages="messages"
-            :name="data.name"
+            :commits="props.data.commits"
+            :locale="props.locale"
+            :messages="props.messages"
+            :name="props.data.name"
           />
         </div>
       </ElDialog>
@@ -195,7 +201,6 @@ provideDocsUi()
 </template>
 
 <style scoped>
-
 .component-doc-meta {
   margin: 16px 0 24px;
   padding-bottom: 24px;
@@ -425,5 +430,4 @@ provideDocsUi()
     row-gap: 8px;
   }
 }
-
 </style>

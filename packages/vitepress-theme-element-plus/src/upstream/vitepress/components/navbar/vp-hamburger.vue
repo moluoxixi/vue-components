@@ -2,7 +2,7 @@
 import { Menu, X } from '@lucide/vue'
 import { useNavbarLocale } from '../../composables/navbar-locale'
 
-defineProps<{
+const props = defineProps<{
   active: boolean
 }>()
 
@@ -12,13 +12,13 @@ const locale = useNavbarLocale()
 <template>
   <button
     type="button"
-    :class="{ active }"
+    :class="{ active: props.active }"
     :aria-label="locale['mobile-nav']"
-    :aria-expanded="active"
+    :aria-expanded="props.active"
     aria-controls="full-screen"
     class="reset-btn menu-hamburger"
   >
-    <X v-if="active" :size="20" :stroke-width="1.75" aria-hidden="true" />
+    <X v-if="props.active" :size="20" :stroke-width="1.75" aria-hidden="true" />
     <Menu v-else :size="20" :stroke-width="1.75" aria-hidden="true" />
   </button>
 </template>
@@ -48,5 +48,4 @@ const locale = useNavbarLocale()
     display: none;
   }
 }
-
 </style>

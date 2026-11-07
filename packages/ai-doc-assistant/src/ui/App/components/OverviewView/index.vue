@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ComponentListItem } from '../../../../shared/protocol'
+import type { KnowledgeExportFormat } from '../../../export'
 /**
  * Overview 视图：组件总览。
  * 顶部搜索框按名称/包名实时过滤，下方卡片网格展示每个组件的 props 数量。
@@ -7,9 +9,8 @@
 import { Download } from '@lucide/vue'
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
 import { computed, ref, shallowRef } from 'vue'
-import type { ComponentListItem } from '../../../../shared/protocol'
 import { fetchComponentDetail } from '../../../api'
-import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../../../export'
+import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS } from '../../../export'
 import { restoreFocusIfLost } from '../../../focus'
 
 const props = withDefaults(defineProps<{ components: ComponentListItem[], loading?: boolean, error?: string }>(), {
@@ -74,22 +75,24 @@ function onExportVisibleChange(visible: boolean): void {
         data-testid="overview-search"
         placeholder="搜索组件名或包名…"
       >
-      <span class="count" data-testid="overview-count">{{ filtered.length }} / {{ components.length }}</span>
+      <span class="count" data-testid="overview-count">{{ filtered.length }} / {{ props.components.length }}</span>
     </div>
 
     <div v-if="errorMsg" class="overview-error" role="alert" data-testid="overview-export-error">
       {{ errorMsg }}
     </div>
 
-    <div v-if="loading" class="empty" role="status" data-testid="overview-loading">
+    <div v-if="props.loading" class="empty" role="status" data-testid="overview-loading">
       正在加载组件契约…
     </div>
-    <div v-else-if="error" class="empty error" role="alert" data-testid="overview-error">
-      <span>{{ error }}</span>
-      <button type="button" data-testid="overview-retry" @click="emit('retry')">重试</button>
+    <div v-else-if="props.error" class="empty error" role="alert" data-testid="overview-error">
+      <span>{{ props.error }}</span>
+      <button type="button" data-testid="overview-retry" @click="emit('retry')">
+        重试
+      </button>
     </div>
     <div v-else-if="!filtered.length" class="empty" data-testid="overview-empty">
-      {{ components.length ? '没有匹配的组件' : '知识库中还没有组件' }}
+      {{ props.components.length ? '没有匹配的组件' : '知识库中还没有组件' }}
     </div>
 
     <div v-else class="card-grid">
@@ -132,12 +135,12 @@ function onExportVisibleChange(visible: boolean): void {
             <template #dropdown>
               <ElDropdownMenu data-testid="card-export-menu">
                 <ElDropdownItem
-              v-for="format in KNOWLEDGE_EXPORT_FORMATS"
-              :key="format.id"
-              :command="format.id"
-              :disabled="exportingKey === `${c.knowledgeKey ?? c.name}:${format.id}`"
-              data-testid="card-export-option"
-            >
+                  v-for="format in KNOWLEDGE_EXPORT_FORMATS"
+                  :key="format.id"
+                  :command="format.id"
+                  :disabled="exportingKey === `${c.knowledgeKey ?? c.name}:${format.id}`"
+                  data-testid="card-export-option"
+                >
                   {{ format.label }}
                 </ElDropdownItem>
               </ElDropdownMenu>

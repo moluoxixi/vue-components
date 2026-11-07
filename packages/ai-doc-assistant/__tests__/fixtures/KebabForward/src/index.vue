@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import SubComp from './sub/index.vue'
 
-defineProps<{ placeholder?: string }>()
+const props = defineProps<{ placeholder?: string }>()
 </script>
 
 <template>
-  <sub-comp v-bind="$attrs" />
+  <SubComp v-bind="$attrs" />
 </template>

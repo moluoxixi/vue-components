@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useNavbarLocale } from '../../composables/navbar-locale'
 import { PanelLeft } from '@lucide/vue'
+import { useNavbarLocale } from '../../composables/navbar-locale'
 
 const locale = useNavbarLocale()
 </script>

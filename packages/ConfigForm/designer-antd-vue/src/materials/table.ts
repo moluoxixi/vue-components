@@ -2,6 +2,7 @@ import * as shared from './shared'
 
 export default shared.defineAntdBusinessMaterial({
   name: 'table',
+  locale: { title: '表格', category: '数据', setters: { } },
   order: 350,
   title: 'Table',
   category: 'Data',

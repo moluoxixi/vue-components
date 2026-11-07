@@ -1,21 +1,21 @@
 <script setup lang="ts">
+import type { HeadlessTableModeApi, HeadlessTableRowKey } from '#components/HeadlessTable'
 import type {
   ConfigTableColumn,
-  ConfigTableRow,
   ConfigTableEmits,
   ConfigTableProps,
+  ConfigTableRow,
   ConfigTableSlots,
 } from '../types'
-import type { HeadlessTableModeApi, HeadlessTableRowKey } from '#components/HeadlessTable'
 import { ElPagination, ElTableV2 } from 'element-plus'
-import { useHeadlessTableMode } from '#components/HeadlessTable'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { ConfigTableColumnSettings, ConfigTableRenderNode } from './components'
+import { useHeadlessTableMode } from '#components/HeadlessTable'
 import {
   useConfigTableColumns,
   useConfigTableData,
   useConfigTableRenderer,
 } from '../composables'
+import { ConfigTableColumnSettings, ConfigTableRenderNode } from './components'
 
 defineOptions({ name: 'ConfigTable' })
 

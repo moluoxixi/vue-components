@@ -18,10 +18,9 @@ const fields = computed(() => projectRuntimeFields(
   props.fields,
   runtime.value,
 ) as ConfigFormRendererNode<TValues>[])
-const rendererProps = computed(() => {
-  const { runtime: _runtime, fields: _fields, ...rest } = props
-  return rest
-})
+const rendererProps = computed(() => Object.fromEntries(
+  Object.entries(props).filter(([key]) => key !== 'runtime' && key !== 'fields'),
+) as Omit<ConfigFormProps<TValues>, 'runtime' | 'fields'>)
 defineExpose(createConfigFormRendererExpose(renderer))
 </script>
 
@@ -39,6 +38,8 @@ defineExpose(createConfigFormRendererExpose(renderer))
     @data-source-state-change="emit('dataSourceStateChange', $event)"
     @submit="emit('submit', $event)"
   >
-    <template #default="scope"><slot v-bind="scope" /></template>
+    <template #default="scope">
+      <slot v-bind="scope" />
+    </template>
   </ConfigFormRenderer>
 </template>

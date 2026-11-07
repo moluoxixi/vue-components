@@ -2,6 +2,7 @@ import * as shared from './shared'
 
 export default shared.defineAntdBusinessMaterial({
   name: 'pagination',
+  locale: { title: '分页', category: '数据', setters: { total: '总条数', pageSize: '每页条数' } },
   order: 380,
   title: 'Pagination',
   category: 'Data',

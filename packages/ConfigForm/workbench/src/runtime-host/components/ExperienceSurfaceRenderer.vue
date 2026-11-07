@@ -373,20 +373,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="runtime-host-experience-instance" :data-surface-kind="bindings.surface.kind" @click="handleActivate" @submit="handleSubmit">
+  <div ref="root" class="runtime-host-experience-instance" :data-surface-kind="props.bindings.surface.kind" @click="handleActivate" @submit="handleSubmit">
     <ConfigFormRenderer
       ref="renderer"
       :model="model"
-      :namespace="namespace"
+      :namespace="props.namespace"
       :reaction-projection="reactionProjection"
       class="surface-experience-form"
       mode="preview"
       error-summary
-      :loading-text="locale === 'zh-CN' ? '加载中…' : 'Loading…'"
-      :validating-text="locale === 'zh-CN' ? '校验中…' : 'Validating…'"
-      :error-summary-label="locale === 'zh-CN' ? '请检查以下字段' : 'Please review the following fields'"
-      v-bind="artifact.renderer"
-      :breakpoint="breakpoint"
+      :loading-text="props.locale === 'zh-CN' ? '加载中…' : 'Loading…'"
+      :validating-text="props.locale === 'zh-CN' ? '校验中…' : 'Validating…'"
+      :error-summary-label="props.locale === 'zh-CN' ? '请检查以下字段' : 'Please review the following fields'"
+      v-bind="props.artifact.renderer"
+      :breakpoint="props.breakpoint"
       :on-semantic-activate="handleSemanticActivation"
       @field-change="handleFieldChange"
       @errors-change="emitState"

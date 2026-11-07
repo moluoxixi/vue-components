@@ -63,12 +63,12 @@ function updateResource(bindingKey: string, value: unknown): void {
     <DesignerDatasetBindingEditor
       v-for="capability in datasetCapabilities"
       :key="capability.key"
-      :binding="node.datasetBindings?.[capability.key]"
+      :binding="props.node.datasetBindings?.[capability.key]"
       :capability="capability"
-      :datasets="datasets"
-      :has-inline-options="capability.projectionKinds.includes('options') && Array.isArray(node.props.options)"
-      :node="node"
-      :readonly="readonly"
+      :datasets="props.datasets"
+      :has-inline-options="capability.projectionKinds.includes('options') && Array.isArray(props.node.props.options)"
+      :node="props.node"
+      :readonly="props.readonly"
       @apply="emit('updateDataset', capability.key, $event)"
       @materialize="emit('materializeOptions', capability.key)"
       @remove="emit('updateDataset', capability.key, undefined)"
@@ -87,8 +87,8 @@ function updateResource(bindingKey: string, value: unknown): void {
       </div>
       <label>{{ locale.t('data.resource.asset', 'Static asset') }}</label>
       <ElSelect
-        :model-value="node.resourceBindings?.[capability.key]?.resourceId"
-        :disabled="readonly"
+        :model-value="props.node.resourceBindings?.[capability.key]?.resourceId"
+        :disabled="props.readonly"
         clearable
         filterable
         :aria-label="locale.t('data.resource.asset', 'Static asset')"

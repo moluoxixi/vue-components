@@ -71,9 +71,9 @@ async function created(): Promise<void> {
 <template>
   <TemplateCreationWorkspace
     :can-close="true"
-    :initial-mode="mode"
+    :initial-mode="props.mode"
     :locale="controller.localeOptions.value"
-    :target="target"
+    :target="props.target"
     @close="close"
     @created="created"
     @toggle-locale="ui.toggleLocale"

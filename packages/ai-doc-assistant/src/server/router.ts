@@ -24,7 +24,7 @@ import {
   MAX_HISTORY_CHARACTERS,
   MAX_HISTORY_MESSAGES,
 } from '../shared/protocol'
-import { providerStatusOf } from './ai-provider'
+import { providerStatusOf } from './model-config'
 import { createQueryUIMessageStream, prepareQuery } from './query-handler'
 
 const MAX_QUESTION_CHARACTERS = 4_000

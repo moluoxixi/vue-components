@@ -44,8 +44,8 @@ const path = computed(() => {
 <template>
   <nav class="mx-config-form-designer__selection-spine" :aria-label="locale.t('selection.path', 'Selection path')">
     <Layers3 :size="14" aria-hidden="true" />
-    <button type="button" :title="surfaceName" @click="emit('select')">
-      {{ surfaceName }}
+    <button type="button" :title="props.surfaceName" @click="emit('select')">
+      {{ props.surfaceName }}
     </button>
     <template v-for="entry in path" :key="entry.id">
       <ChevronRight :size="12" aria-hidden="true" /><button
@@ -56,7 +56,7 @@ const path = computed(() => {
         {{ entry.label }}<small v-if="entry.slot">{{ entry.slot }}</small>
       </button>
     </template>
-    <span v-if="selectedIds.length > 1" class="mx-config-form-designer__spine-count">+{{ selectedIds.length - 1 }}</span>
-    <code>{{ breakpoint }}</code>
+    <span v-if="props.selectedIds.length > 1" class="mx-config-form-designer__spine-count">+{{ props.selectedIds.length - 1 }}</span>
+    <code>{{ props.breakpoint }}</code>
   </nav>
 </template>

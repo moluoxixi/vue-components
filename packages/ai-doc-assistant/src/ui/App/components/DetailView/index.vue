@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ComponentDetailResponse } from '../../../../shared/protocol'
+import type { KnowledgeExportFormat } from '../../../export'
 /**
  * 详情视图：单组件完整契约。
  * 挂载 / name 变化时拉取 GET /components/:name，分区渲染 props / emits / slots /
@@ -8,9 +10,8 @@
 import { ArrowLeft, Download, MessageSquare } from '@lucide/vue'
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import type { ComponentDetailResponse } from '../../../../shared/protocol'
 import { fetchComponentDetail } from '../../../api'
-import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../../../export'
+import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS } from '../../../export'
 import { restoreFocusIfLost } from '../../../focus'
 import { TypeReference } from './components'
 
@@ -159,12 +160,12 @@ watch(() => props.name, load, { immediate: true })
           <template #dropdown>
             <ElDropdownMenu data-testid="detail-export-menu">
               <ElDropdownItem
-              v-for="format in KNOWLEDGE_EXPORT_FORMATS"
-              :key="format.id"
-              :command="format.id"
-              :disabled="exportingFormat === format.id"
-              data-testid="detail-export-option"
-            >
+                v-for="format in KNOWLEDGE_EXPORT_FORMATS"
+                :key="format.id"
+                :command="format.id"
+                :disabled="exportingFormat === format.id"
+                data-testid="detail-export-option"
+              >
                 {{ format.label }}
               </ElDropdownItem>
             </ElDropdownMenu>
@@ -187,7 +188,7 @@ watch(() => props.name, load, { immediate: true })
     </div>
     <div v-else-if="errorMsg" class="hint error" role="alert" data-testid="detail-error">
       <span>{{ errorMsg }}</span>
-      <button class="link-btn retry" type="button" data-testid="detail-retry" @click="load(name)">
+      <button class="link-btn retry" type="button" data-testid="detail-retry" @click="load(props.name)">
         重试
       </button>
     </div>
@@ -214,170 +215,170 @@ watch(() => props.name, load, { immediate: true })
           </button>
         </nav>
         <div class="detail-sections">
-      <section id="detail-props-section" v-if="detail.props.length" data-testid="detail-props">
-        <h3>Props</h3>
-        <table class="contract-table">
-          <thead>
-            <tr><th>名称</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in detail.props" :key="p.name" data-testid="prop-row">
-              <td>
-                <code>{{ p.name }}</code>
-                <span
-                  v-if="p.forwardedFrom"
-                  class="forwarded-badge"
-                  :title="`透传自内部组件 ${p.forwardedFrom}`"
-                  data-testid="prop-forwarded"
-                >透传自 {{ p.forwardedFrom }}</span>
-              </td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(p.type, p.typeRefs)"
-                  :text="p.type"
-                  :content="typeTooltipContent(typeRefsForDisplay(p.type, p.typeRefs))"
-                />
-                <code v-else>{{ p.type }}</code>
-              </td>
-              <td>{{ p.required ? '是' : '否' }}</td>
-              <td><code v-if="p.defaultValue">{{ p.defaultValue }}</code><span v-else>—</span></td>
-              <td>{{ p.description || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.props.length" id="detail-props-section" data-testid="detail-props">
+            <h3>Props</h3>
+            <table class="contract-table">
+              <thead>
+                <tr><th>名称</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in detail.props" :key="p.name" data-testid="prop-row">
+                  <td>
+                    <code>{{ p.name }}</code>
+                    <span
+                      v-if="p.forwardedFrom"
+                      class="forwarded-badge"
+                      :title="`透传自内部组件 ${p.forwardedFrom}`"
+                      data-testid="prop-forwarded"
+                    >透传自 {{ p.forwardedFrom }}</span>
+                  </td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(p.type, p.typeRefs)"
+                      :text="p.type"
+                      :content="typeTooltipContent(typeRefsForDisplay(p.type, p.typeRefs))"
+                    />
+                    <code v-else>{{ p.type }}</code>
+                  </td>
+                  <td>{{ p.required ? '是' : '否' }}</td>
+                  <td><code v-if="p.defaultValue">{{ p.defaultValue }}</code><span v-else>—</span></td>
+                  <td>{{ p.description || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-emits-section" v-if="detail.emits.length" data-testid="detail-emits">
-        <h3>Emits</h3>
-        <table class="contract-table">
-          <thead><tr><th>事件</th><th>载荷类型</th><th>说明</th></tr></thead>
-          <tbody>
-            <tr v-for="e in detail.emits" :key="e.name">
-              <td><code>{{ e.name }}</code></td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(e.payloadType, e.typeRefs)"
-                  :text="e.payloadType"
-                  :content="typeTooltipContent(typeRefsForDisplay(e.payloadType, e.typeRefs))"
-                />
-                <code v-else>{{ e.payloadType }}</code>
-              </td>
-              <td>{{ e.description || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.emits.length" id="detail-emits-section" data-testid="detail-emits">
+            <h3>Emits</h3>
+            <table class="contract-table">
+              <thead><tr><th>事件</th><th>载荷类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr v-for="e in detail.emits" :key="e.name">
+                  <td><code>{{ e.name }}</code></td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(e.payloadType, e.typeRefs)"
+                      :text="e.payloadType"
+                      :content="typeTooltipContent(typeRefsForDisplay(e.payloadType, e.typeRefs))"
+                    />
+                    <code v-else>{{ e.payloadType }}</code>
+                  </td>
+                  <td>{{ e.description || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-models-section" v-if="detail.models.length" data-testid="detail-models">
-        <h3>v-model</h3>
-        <table class="contract-table">
-          <thead><tr><th>名称</th><th>类型</th></tr></thead>
-          <tbody>
-            <tr v-for="m in detail.models" :key="m.name">
-              <td><code>{{ m.name }}</code></td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(m.type)"
-                  :text="m.type"
-                  :content="typeTooltipContent(typeRefsForDisplay(m.type))"
-                />
-                <code v-else>{{ m.type }}</code>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.models.length" id="detail-models-section" data-testid="detail-models">
+            <h3>v-model</h3>
+            <table class="contract-table">
+              <thead><tr><th>名称</th><th>类型</th></tr></thead>
+              <tbody>
+                <tr v-for="m in detail.models" :key="m.name">
+                  <td><code>{{ m.name }}</code></td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(m.type)"
+                      :text="m.type"
+                      :content="typeTooltipContent(typeRefsForDisplay(m.type))"
+                    />
+                    <code v-else>{{ m.type }}</code>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-slots-section" v-if="detail.slots.length" data-testid="detail-slots">
-        <h3>Slots</h3>
-        <table class="contract-table">
-          <thead><tr><th>名称</th><th>作用域类型</th><th>说明</th></tr></thead>
-          <tbody>
-            <tr v-for="s in detail.slots" :key="s.name">
-              <td><code>{{ s.name }}</code></td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(s.scopeType, s.typeRefs)"
-                  :text="s.scopeType"
-                  :content="typeTooltipContent(typeRefsForDisplay(s.scopeType, s.typeRefs))"
-                />
-                <code v-else>{{ s.scopeType }}</code>
-              </td>
-              <td>{{ s.description || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.slots.length" id="detail-slots-section" data-testid="detail-slots">
+            <h3>Slots</h3>
+            <table class="contract-table">
+              <thead><tr><th>名称</th><th>作用域类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr v-for="s in detail.slots" :key="s.name">
+                  <td><code>{{ s.name }}</code></td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(s.scopeType, s.typeRefs)"
+                      :text="s.scopeType"
+                      :content="typeTooltipContent(typeRefsForDisplay(s.scopeType, s.typeRefs))"
+                    />
+                    <code v-else>{{ s.scopeType }}</code>
+                  </td>
+                  <td>{{ s.description || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-attrs-section" v-if="detail.attrs && detail.attrs.length" data-testid="detail-attrs">
-        <h3>透传属性（$attrs）</h3>
-        <table class="contract-table">
-          <thead><tr><th>名称</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
-          <tbody>
-            <tr v-for="a in detail.attrs" :key="a.name" data-testid="attr-row">
-              <td><code>{{ a.name }}</code></td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(a.type)"
-                  :text="a.type"
-                  :content="typeTooltipContent(typeRefsForDisplay(a.type))"
-                />
-                <code v-else>{{ a.type }}</code>
-              </td>
-              <td>{{ a.optional ? '是' : '否' }}</td>
-              <td>{{ a.description || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.attrs && detail.attrs.length" id="detail-attrs-section" data-testid="detail-attrs">
+            <h3>透传属性（$attrs）</h3>
+            <table class="contract-table">
+              <thead><tr><th>名称</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr v-for="a in detail.attrs" :key="a.name" data-testid="attr-row">
+                  <td><code>{{ a.name }}</code></td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(a.type)"
+                      :text="a.type"
+                      :content="typeTooltipContent(typeRefsForDisplay(a.type))"
+                    />
+                    <code v-else>{{ a.type }}</code>
+                  </td>
+                  <td>{{ a.optional ? '是' : '否' }}</td>
+                  <td>{{ a.description || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-exposed-section" v-if="detail.exposed && detail.exposed.length" data-testid="detail-exposed">
-        <h3>对外暴露（defineExpose）</h3>
-        <table class="contract-table">
-          <thead><tr><th>名称</th><th>类型</th><th>说明</th></tr></thead>
-          <tbody>
-            <tr v-for="e in detail.exposed" :key="e.name" data-testid="expose-row">
-              <td><code>{{ e.name }}</code></td>
-              <td>
-                <TypeReference
-                  v-if="hasTypeTooltip(e.type, e.typeRefs)"
-                  :text="e.type"
-                  :content="typeTooltipContent(typeRefsForDisplay(e.type, e.typeRefs))"
-                />
-                <code v-else>{{ e.type }}</code>
-              </td>
-              <td>{{ e.description || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+          <section v-if="detail.exposed && detail.exposed.length" id="detail-exposed-section" data-testid="detail-exposed">
+            <h3>对外暴露（defineExpose）</h3>
+            <table class="contract-table">
+              <thead><tr><th>名称</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr v-for="e in detail.exposed" :key="e.name" data-testid="expose-row">
+                  <td><code>{{ e.name }}</code></td>
+                  <td>
+                    <TypeReference
+                      v-if="hasTypeTooltip(e.type, e.typeRefs)"
+                      :text="e.type"
+                      :content="typeTooltipContent(typeRefsForDisplay(e.type, e.typeRefs))"
+                    />
+                    <code v-else>{{ e.type }}</code>
+                  </td>
+                  <td>{{ e.description || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-      <section id="detail-typedefs-section" v-if="detail.typeDefs.length" data-testid="detail-typedefs">
-        <h3>关联类型定义</h3>
-        <div v-for="t in detail.typeDefs" :key="t.name" class="typedef" data-testid="typedef-block">
-          <div class="typedef-name">
-            <code>{{ t.name }}</code><small>{{ t.kind }}</small>
-          </div>
-          <table v-if="t.fields.length" class="contract-table">
-            <thead><tr><th>字段</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
-            <tbody>
-              <tr v-for="f in t.fields" :key="f.name">
-                <td><code>{{ f.name }}</code></td>
-                <td>
-                  <TypeReference
-                    v-if="hasTypeTooltip(f.type)"
-                    :text="f.type"
-                    :content="typeTooltipContent(typeRefsForDisplay(f.type))"
-                  />
-                  <code v-else>{{ f.type }}</code>
-                </td>
-                <td>{{ f.optional ? '是' : '否' }}</td>
-                <td>{{ f.description || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <section v-if="detail.typeDefs.length" id="detail-typedefs-section" data-testid="detail-typedefs">
+            <h3>关联类型定义</h3>
+            <div v-for="t in detail.typeDefs" :key="t.name" class="typedef" data-testid="typedef-block">
+              <div class="typedef-name">
+                <code>{{ t.name }}</code><small>{{ t.kind }}</small>
+              </div>
+              <table v-if="t.fields.length" class="contract-table">
+                <thead><tr><th>字段</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr v-for="f in t.fields" :key="f.name">
+                    <td><code>{{ f.name }}</code></td>
+                    <td>
+                      <TypeReference
+                        v-if="hasTypeTooltip(f.type)"
+                        :text="f.type"
+                        :content="typeTooltipContent(typeRefsForDisplay(f.type))"
+                      />
+                      <code v-else>{{ f.type }}</code>
+                    </td>
+                    <td>{{ f.optional ? '是' : '否' }}</td>
+                    <td>{{ f.description || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </div>
     </template>

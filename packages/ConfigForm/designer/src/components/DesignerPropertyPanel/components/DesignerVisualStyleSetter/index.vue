@@ -46,23 +46,23 @@ function commitOnEnter(event: Event): void {
 <template>
   <ElTooltip
     :content="locale.t('visual.readonly', 'This property is read-only. Switch to an editable selection to change it.')"
-    :disabled="!disabled"
+    :disabled="!props.disabled"
     :trigger="['hover', 'focus']"
   >
-    <div class="mx-config-form-designer__visual-field" :class="{ 'is-color': field.control === 'color' }" :data-visual-field="field.key">
+    <div class="mx-config-form-designer__visual-field" :class="{ 'is-color': props.field.control === 'color' }" :data-visual-field="props.field.key">
       <div class="mx-config-form-designer__visual-label">
-        <label :for="controlId">{{ label }}</label>
+        <label :for="controlId">{{ props.label }}</label>
         <ElTooltip
-          :content="disabledReason || locale.t('visual.resetField', 'Reset {field}', { field: label })"
+          :content="disabledReason || locale.t('visual.resetField', 'Reset {field}', { field: props.label })"
           :trigger="['hover', 'focus']"
         >
           <span :tabindex="disabledReason ? 0 : undefined" :aria-label="disabledReason" style="display: inline-flex">
             <button
               type="button"
-              :aria-label="locale.t('visual.resetField', 'Reset {field}', { field: label })"
-              :title="locale.t('visual.resetField', 'Reset {field}', { field: label })"
-              :disabled="disabled || !canReset"
-              :style="disabled || !canReset ? { pointerEvents: 'none' } : undefined"
+              :aria-label="locale.t('visual.resetField', 'Reset {field}', { field: props.label })"
+              :title="locale.t('visual.resetField', 'Reset {field}', { field: props.label })"
+              :disabled="props.disabled || !props.canReset"
+              :style="props.disabled || !props.canReset ? { pointerEvents: 'none' } : undefined"
               @click="commit(undefined)"
             >
               <RotateCcw :size="11" aria-hidden="true" />
@@ -71,25 +71,25 @@ function commitOnEnter(event: Event): void {
         </ElTooltip>
       </div>
       <ElInput
-        v-if="field.control === 'length'"
+        v-if="props.field.control === 'length'"
         :id="controlId"
         :model-value="value ?? ''"
-        :aria-label="label"
-        :aria-invalid="error ? 'true' : undefined"
-        :aria-describedby="error ? `${controlId}-error` : undefined"
-        :placeholder="placeholder"
-        :disabled="disabled"
+        :aria-label="props.label"
+        :aria-invalid="props.error ? 'true' : undefined"
+        :aria-describedby="props.error ? `${controlId}-error` : undefined"
+        :placeholder="props.placeholder"
+        :disabled="props.disabled"
         size="small"
         clearable
-        @update:model-value="!disabled && emit('update:modelValue', $event)"
+        @update:model-value="!props.disabled && emit('update:modelValue', $event)"
         @change="commit"
         @keydown.enter="commitOnEnter"
       />
-      <div v-else-if="field.control === 'color'" class="mx-config-form-designer__visual-color">
+      <div v-else-if="props.field.control === 'color'" class="mx-config-form-designer__visual-color">
         <ElColorPicker
           :model-value="color"
-          :aria-label="locale.t('visual.customColor', 'Custom {field}', { field: label })"
-          :disabled="disabled"
+          :aria-label="locale.t('visual.customColor', 'Custom {field}', { field: props.label })"
+          :disabled="props.disabled"
           color-format="hex"
           show-alpha
           size="small"
@@ -98,9 +98,9 @@ function commitOnEnter(event: Event): void {
         <ElSelect
           :id="controlId"
           :model-value="value"
-          :aria-label="label"
-          :placeholder="placeholder"
-          :disabled="disabled"
+          :aria-label="props.label"
+          :placeholder="props.placeholder"
+          :disabled="props.disabled"
           size="small"
           clearable
           @change="commit"
@@ -118,21 +118,21 @@ function commitOnEnter(event: Event): void {
         v-else
         :id="controlId"
         :model-value="value"
-        :aria-label="label"
-        :placeholder="placeholder"
-        :disabled="disabled"
+        :aria-label="props.label"
+        :placeholder="props.placeholder"
+        :disabled="props.disabled"
         size="small"
         clearable
         @change="commit"
       >
         <ElOption
-          v-for="option in field.options"
+          v-for="option in props.field.options"
           :key="option.value"
           :value="option.value"
           :label="locale.t(`visual.option.${option.label}`, option.label)"
         />
       </ElSelect>
-      <span v-if="error" :id="`${controlId}-error`" class="mx-config-form-designer__visual-error" role="status">{{ error }}</span>
+      <span v-if="props.error" :id="`${controlId}-error`" class="mx-config-form-designer__visual-error" role="status">{{ props.error }}</span>
     </div>
   </ElTooltip>
 </template>

@@ -38,20 +38,20 @@ const nodeIcon = computed<Component>(() => {
   <div
     class="config-form-source-viewer__tree-item"
     role="treeitem"
-    :tabindex="focusedId === node.id ? 0 : -1"
-    :aria-expanded="node.kind === 'directory' ? expanded : undefined"
-    :aria-selected="node.kind === 'file' ? selectedPath === node.path : undefined"
-    :data-source-tree-id="node.id"
-    @focus.self="emit('focusNode', node.id)"
+    :tabindex="props.focusedId === props.node.id ? 0 : -1"
+    :aria-expanded="props.node.kind === 'directory' ? expanded : undefined"
+    :aria-selected="props.node.kind === 'file' ? props.selectedPath === props.node.path : undefined"
+    :data-source-tree-id="props.node.id"
+    @focus.self="emit('focusNode', props.node.id)"
   >
     <div
       class="config-form-source-viewer__tree-row"
-      :title="node.path"
-      @click.stop="emit('activate', node)"
+      :title="props.node.path"
+      @click.stop="emit('activate', props.node)"
     >
       <component
         :is="expanded ? ChevronDown : ChevronRight"
-        v-if="node.kind === 'directory'"
+        v-if="props.node.kind === 'directory'"
         class="config-form-source-viewer__tree-chevron"
         :size="13"
         aria-hidden="true"
@@ -60,21 +60,21 @@ const nodeIcon = computed<Component>(() => {
       <component
         :is="nodeIcon"
         class="config-form-source-viewer__tree-icon"
-        :data-language="node.kind === 'directory' ? 'directory' : node.file.kind === 'text' ? node.file.language : 'binary'"
+        :data-language="props.node.kind === 'directory' ? 'directory' : props.node.file.kind === 'text' ? props.node.file.language : 'binary'"
         :size="15"
         aria-hidden="true"
       />
-      <span class="config-form-source-viewer__tree-name">{{ node.name }}</span>
+      <span class="config-form-source-viewer__tree-name">{{ props.node.name }}</span>
     </div>
 
-    <div v-if="node.kind === 'directory' && expanded" role="group">
+    <div v-if="props.node.kind === 'directory' && expanded" role="group">
       <SourceFileTreeNode
-        v-for="child in node.children"
+        v-for="child in props.node.children"
         :key="child.id"
         :node="child"
-        :expanded-ids="expandedIds"
-        :focused-id="focusedId"
-        :selected-path="selectedPath"
+        :expanded-ids="props.expandedIds"
+        :focused-id="props.focusedId"
+        :selected-path="props.selectedPath"
         @activate="emit('activate', $event)"
         @focus-node="emit('focusNode', $event)"
       />

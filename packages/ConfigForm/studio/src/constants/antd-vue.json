@@ -3461,8 +3461,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Text",
-      "category": "Display",
+      "title": "文本",
+      "category": "展示",
       "properties": [
         {
           "key": "text",
@@ -3546,8 +3546,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Title",
-      "category": "Display",
+      "title": "标题",
+      "category": "展示",
       "properties": [
         {
           "key": "text",
@@ -3633,8 +3633,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Icon",
-      "category": "Display",
+      "title": "图标",
+      "category": "展示",
       "properties": [
         {
           "key": "text",
@@ -3715,8 +3715,8 @@
           }
         ]
       },
-      "title": "Image",
-      "category": "Display",
+      "title": "图片",
+      "category": "展示",
       "properties": [
         {
           "key": "src",
@@ -3802,8 +3802,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Divider",
-      "category": "Display",
+      "title": "分割线",
+      "category": "展示",
       "properties": [
         {
           "key": "text",
@@ -3889,8 +3889,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Button",
-      "category": "Actions",
+      "title": "按钮",
+      "category": "操作",
       "properties": [
         {
           "key": "text",
@@ -3986,8 +3986,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Link",
-      "category": "Actions",
+      "title": "链接",
+      "category": "操作",
       "properties": [
         {
           "key": "text",
@@ -4071,8 +4071,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Tag",
-      "category": "Display",
+      "title": "标签",
+      "category": "展示",
       "properties": [
         {
           "key": "text",
@@ -4172,8 +4172,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Alert",
-      "category": "Display",
+      "title": "提示",
+      "category": "展示",
       "properties": [
         {
           "key": "title",
@@ -4280,8 +4280,8 @@
         ],
         "resourceBindings": []
       },
-      "title": "Table",
-      "category": "Data",
+      "title": "表格",
+      "category": "数据",
       "properties": [],
       "defaultSubgraph": {
         "root": [
@@ -4347,8 +4347,8 @@
         ],
         "resourceBindings": []
       },
-      "title": "List",
-      "category": "Data",
+      "title": "列表",
+      "category": "数据",
       "properties": [],
       "defaultSubgraph": {
         "root": [
@@ -4413,8 +4413,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Empty",
-      "category": "Display",
+      "title": "空状态",
+      "category": "展示",
       "properties": [
         {
           "key": "description",
@@ -4498,8 +4498,8 @@
         "datasetBindings": [],
         "resourceBindings": []
       },
-      "title": "Pagination",
-      "category": "Data",
+      "title": "分页",
+      "category": "数据",
       "properties": [
         {
           "key": "total",

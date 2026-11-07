@@ -27,25 +27,25 @@ export type {
   SlotDef,
 } from './src/core/types'
 
+// ── server：运行时上下文 ────────────────────────────────────────
+export { ServerContext } from './src/server/context'
+
+export type { ServerContextOptions } from './src/server/context'
 // ── server：AI provider 配置 ────────────────────────────────────
 export {
   embeddingIdentitySeedOf,
   ENV_KEYS,
   loadProviderConfig,
   providerStatusOf,
-} from './src/server/ai-provider'
+} from './src/server/model-config'
 
 export type {
+  AiDocChatConfig,
+  AiDocEmbeddingConfig,
   AiDocProviderConfig,
   AiRuntimeStatus,
   EmbeddingIdentitySeed,
-  EmbeddingModelTarget,
-  LanguageModelTarget,
-} from './src/server/ai-provider'
-// ── server：运行时上下文 ────────────────────────────────────────
-export { ServerContext } from './src/server/context'
-
-export type { ServerContextOptions } from './src/server/context'
+} from './src/server/model-config'
 // ── server：查询编排 ────────────────────────────────────────────
 export { createQueryUIMessageStream, exampleBlocksFromAnswer } from './src/server/query-handler'
 

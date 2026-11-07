@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
+import type { Measurable } from 'element-plus'
 import { ChevronDown, List } from '@lucide/vue'
-import { ElPopover, type Measurable } from 'element-plus'
+import { ElPopover } from 'element-plus'
 import { computed, nextTick, ref } from 'vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useLang } from '../../composables/lang'
 import { useToc } from '../../composables/use-toc'
 import VPTableOfContentLinks from './vp-table-of-content-links.vue'
@@ -51,7 +52,7 @@ provideDocsUi()
 </script>
 
 <template>
-  <aside data-docs-ui ref="container" class="toc-wrapper">
+  <aside data-docs-ui class="toc-wrapper">
     <ClientOnly>
       <button
         ref="compactTrigger"
@@ -106,7 +107,9 @@ provideDocsUi()
       class="toc-content toc-content--desktop"
       :aria-label="label"
     >
-      <h3 class="toc-content__heading">{{ label }}</h3>
+      <h3 class="toc-content__heading">
+        {{ label }}
+      </h3>
       <VPTableOfContentLinks :headers="headers" />
     </nav>
     <div class="toc-content-mask" />
@@ -323,5 +326,4 @@ provideDocsUi()
 :global(.dark .toc-compact-popper.epd-popper) {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
 }
-
 </style>

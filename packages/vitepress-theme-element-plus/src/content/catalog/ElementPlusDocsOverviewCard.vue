@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ArrowRight } from '@lucide/vue'
 import type { ElementPlusDocsOverviewCardItem } from './types'
+import { ArrowRight } from '@lucide/vue'
 
-defineProps<{
+const props = defineProps<{
   items: readonly ElementPlusDocsOverviewCardItem[]
 }>()
 </script>
@@ -10,7 +10,7 @@ defineProps<{
 <template>
   <div class="overview-grid">
     <a
-      v-for="item in items"
+      v-for="item in props.items"
       :key="item.name"
       :href="item.link"
       class="overview-card"

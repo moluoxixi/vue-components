@@ -1,28 +1,28 @@
 <script lang="ts" setup>
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
-import { useRoute } from 'vitepress'
+import type { Link } from '../../types'
 import { useStorage } from '@vueuse/core'
-import VPLink from '../common/vp-link.vue'
+import { useRoute } from 'vitepress'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { isActive } from '../../utils'
 
-import type { Link } from '../../types'
+import VPLink from '../common/vp-link.vue'
 
-const USER_VISITED_NEW_RESOURCE_PAGE = 'USER_VISITED_NEW_RESOURCE_PAGE'
-
-defineProps<{
+const props = defineProps<{
   item: Link
 }>()
+
+const USER_VISITED_NEW_RESOURCE_PAGE = 'USER_VISITED_NEW_RESOURCE_PAGE'
 
 const route = useRoute()
 
 const isVisited = useStorage<boolean | string>(
   USER_VISITED_NEW_RESOURCE_PAGE,
-  false
+  false,
 )
 
 const isNewPage = (item: Link) => item.activeMatch === '/some_fake_path/'
 
-const onNavClick = (item: Link) => {
+function onNavClick(item: Link) {
   if (isNewPage(item) && !isVisited.value) {
     isVisited.value = Date.now().toString()
   }
@@ -32,22 +32,23 @@ provideDocsUi()
 
 <template>
   <VPLink
-    :class="{
-      'is-menu-link': true,
+    class="is-menu-link" :class="{
       active: isActive(
         route.data.relativePath,
-        item.activeMatch || item.link,
-        !!item.activeMatch
+        props.item.activeMatch || props.item.link,
+        !!props.item.activeMatch,
       ),
     }"
-    :href="item.link"
+    :href="props.item.link"
     :no-icon="true"
-    @click="onNavClick(item)"
+    @click="onNavClick(props.item)"
   >
-    <el-badge v-if="isNewPage(item) && !isVisited" is-dot class="badge">
-      {{ item.text }}</el-badge
-    >
-    <template v-else> {{ item.text }}</template>
+    <el-badge v-if="isNewPage(props.item) && !isVisited" is-dot class="badge">
+      {{ props.item.text }}
+    </el-badge>
+    <template v-else>
+      {{ props.item.text }}
+    </template>
   </VPLink>
 </template>
 

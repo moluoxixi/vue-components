@@ -56,5 +56,4 @@ const { page } = useData()
     padding: 56px 0 48px 56px;
   }
 }
-
 </style>

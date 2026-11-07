@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../runtime/provide-docs-ui'
 import { ElTooltip } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
+import { provideDocsUi } from '../../runtime/provide-docs-ui'
 
 const props = defineProps<{
   detail?: string
@@ -35,8 +35,9 @@ function hideTooltip(event?: Event): void {
 function handlePointerDown(event: PointerEvent): void {
   if (event.pointerType === 'mouse' || !tooltip.value)
     return
-  if (touchVisible.value)
+  if (touchVisible.value) {
     hideTooltip(event)
+  }
   else {
     tooltipRef.value?.onOpen(event)
     touchVisible.value = true
@@ -65,7 +66,7 @@ provideDocsUi()
     <button
       type="button"
       class="type-cell type-cell-trigger"
-      :aria-label="typeDetailsLabel"
+      :aria-label="props.typeDetailsLabel"
       @pointerdown="handlePointerDown"
       @keydown.esc.stop.prevent="hideTooltip($event)"
     >

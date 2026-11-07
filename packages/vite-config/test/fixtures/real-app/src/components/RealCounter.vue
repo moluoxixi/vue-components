@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   count: number
   doubled: number
 }>()
@@ -11,6 +11,6 @@ defineEmits<{
 
 <template>
   <button type="button" @click="$emit('increment')">
-    count: {{ count }} / doubled: {{ doubled }}
+    count: {{ props.count }} / doubled: {{ props.doubled }}
   </button>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useToggle } from '@vueuse/core'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useTranslation } from '../../composables/translation'
 import ExpandIcon from '../icons/expand.vue'
 
@@ -10,7 +10,7 @@ const { languageMap, langs, lang, switchLang, locale } = useTranslation()
 
 const [show, toggle] = useToggle()
 
-const onSwitchLang = (lang: string) => {
+function onSwitchLang(lang: string) {
   switchLang(lang)
   emit('close')
 }
@@ -34,7 +34,7 @@ provideDocsUi()
         </ElIcon>
       </div>
     </ElButton>
-    <div id="translation-items" v-show="show" class="translation-items">
+    <div v-show="show" id="translation-items" class="translation-items">
       <p
         v-for="l in langs"
         :key="l"

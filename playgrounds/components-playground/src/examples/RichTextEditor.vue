@@ -35,7 +35,9 @@ const readonly = shallowRef(false)
     />
 
     <div class="rich-text-example__output">
-      <div class="rich-text-example__output-label">HTML</div>
+      <div class="rich-text-example__output-label">
+        HTML
+      </div>
       <pre data-testid="rich-text-html">{{ content }}</pre>
     </div>
   </div>

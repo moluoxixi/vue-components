@@ -651,7 +651,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
 </script>
 
 <template>
-  <div class="asset-manager-workspace" :class="{ 'is-full-page': fill }" data-asset-workspace>
+  <div class="asset-manager-workspace" :class="{ 'is-full-page': props.fill }" data-asset-workspace>
     <div class="asset-manager-shell flex min-h-0 flex-1 flex-col overflow-hidden" :data-active-pane="mobilePane">
       <div
         class="asset-manager__mobile-navigation"
@@ -684,8 +684,8 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           <Pencil :size="15" aria-hidden="true" />{{ locale.t('assets.details', 'Details') }}
         </button>
       </div>
-      <div class="asset-manager" :class="{ 'has-dataset': selectedDataset, 'is-sidebar-collapsed': fill && sidebarCollapsed }">
-        <aside v-if="fill && sidebarCollapsed" class="asset-manager__rail">
+      <div class="asset-manager" :class="{ 'has-dataset': selectedDataset, 'is-sidebar-collapsed': props.fill && sidebarCollapsed }">
+        <aside v-if="props.fill && sidebarCollapsed" class="asset-manager__rail">
           <ElButton ref="expand-button" text circle :title="locale.t('data.expandAssets', 'Expand asset list')" :aria-label="locale.t('data.expandAssets', 'Expand asset list')" aria-controls="asset-list-panel" :aria-expanded="false" @click="toggleSidebar">
             <PanelLeftOpen :size="17" aria-hidden="true" />
           </ElButton>
@@ -702,7 +702,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                 <Search :size="14" aria-hidden="true" />
               </template>
             </ElInput>
-            <ElButton v-if="fill" ref="collapse-button" text circle :title="locale.t('data.collapseAssets', 'Collapse asset list')" :aria-label="locale.t('data.collapseAssets', 'Collapse asset list')" aria-controls="asset-list-panel" :aria-expanded="true" @click="toggleSidebar">
+            <ElButton v-if="props.fill" ref="collapse-button" text circle :title="locale.t('data.collapseAssets', 'Collapse asset list')" :aria-label="locale.t('data.collapseAssets', 'Collapse asset list')" aria-controls="asset-list-panel" :aria-expanded="true" @click="toggleSidebar">
               <PanelLeftClose :size="17" aria-hidden="true" />
             </ElButton>
           </div>
@@ -898,7 +898,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   :key="selectedDataset.id"
                   v-model:json="datasetJson"
                   v-model:cells="datasetCells"
-                  :dataset-id="`${project.id}:${selectedDataset.id}`"
+                  :dataset-id="`${props.project.id}:${selectedDataset.id}`"
                   :dirty="datasetRowsDirty || saveFailed"
                   :saving="persisting"
                   :locale="locale.locale"

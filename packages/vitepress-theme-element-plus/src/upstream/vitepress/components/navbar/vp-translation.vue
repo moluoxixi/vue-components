@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { Languages } from '@lucide/vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useTranslation } from '../../composables/translation'
 
-const { switchLang, languageMap, langs, locale } =
-  useTranslation()
+const { switchLang, languageMap, langs, locale }
+  = useTranslation()
 provideDocsUi()
 </script>
 
@@ -68,7 +68,6 @@ provideDocsUi()
   padding: 7px 0;
   min-width: 192px;
   transition: background-color 0.5s;
-
 
 }
 

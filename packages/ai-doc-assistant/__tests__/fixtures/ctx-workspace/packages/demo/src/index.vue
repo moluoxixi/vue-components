@@ -1,8 +1,8 @@
 <script setup lang="ts">
-defineProps<{ label: string, disabled?: boolean }>()
+const props = defineProps<{ label: string, disabled?: boolean }>()
 defineEmits<{ click: [id: number] }>()
 </script>
 
 <template>
-  <button>{{ label }}</button>
+  <button>{{ props.label }}</button>
 </template>

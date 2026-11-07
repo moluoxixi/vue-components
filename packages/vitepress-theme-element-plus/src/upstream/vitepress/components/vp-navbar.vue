@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../runtime/provide-docs-ui'
-import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
+import { computed } from 'vue'
+import { provideDocsUi } from '../../../runtime/provide-docs-ui'
 import { resolveNavbarIdentity } from '../composables/navbar-identity'
 import { useSiteLocales } from '../composables/site-locale'
-import VPNavbarSearch from './navbar/vp-search.vue'
+import VPNavbarHamburger from './navbar/vp-hamburger.vue'
 import VPNavbarMenu from './navbar/vp-menu.vue'
+import VPNavbarSearch from './navbar/vp-search.vue'
+import VPNavbarSocialLinks from './navbar/vp-social-links.vue'
 import VPNavbarThemeToggler from './navbar/vp-theme-toggler.vue'
 import VPNavbarTranslation from './navbar/vp-translation.vue'
-import VPNavbarSocialLinks from './navbar/vp-social-links.vue'
-import VPNavbarHamburger from './navbar/vp-hamburger.vue'
 
-defineProps<{
+const props = defineProps<{
   fullScreen: boolean
 }>()
 
@@ -35,7 +35,7 @@ provideDocsUi()
             class="logo"
             :src="withBase(identity.logo)"
             :alt="identity.siteTitle"
-          />
+          >
           <span v-else class="site-title" :title="identity.siteTitle">{{ identity.siteTitle }}</span>
         </a>
 
@@ -50,7 +50,7 @@ provideDocsUi()
         <VPNavbarTranslation class="translation" />
         <VPNavbarSocialLinks class="social-links" />
         <VPNavbarHamburger
-          :active="fullScreen"
+          :active="props.fullScreen"
           class="hamburger"
           @click="$emit('toggle')"
         />
@@ -63,7 +63,6 @@ provideDocsUi()
 @use '../styles/mixins' as *;
 
 // import components
-
 
 .navbar-wrapper {
   position: relative;
@@ -107,8 +106,6 @@ provideDocsUi()
   }
 }
 
-
-
 .menu + .appearance {
   margin-left: 8px;
 }
@@ -120,7 +117,6 @@ provideDocsUi()
 .appearance + .social-links {
   margin-left: 12px;
 }
-
 
 .logo-container {
   display: flex;

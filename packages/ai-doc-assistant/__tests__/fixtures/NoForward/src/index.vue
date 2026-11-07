@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Base from './base/index.vue'
 
-defineProps<{ visible?: boolean }>()
+const props = defineProps<{ visible?: boolean }>()
 </script>
 
 <template>

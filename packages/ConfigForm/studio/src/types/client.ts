@@ -3,7 +3,8 @@ import type { ProjectRepository } from '@moluoxixi/config-form-model'
 export type RepositoryMethod = Exclude<keyof ProjectRepository, 'close' | 'persistence'>
 
 export interface WorkspaceChange {
-  kind: 'project' | 'delete' | 'reset'
+  kind: 'project' | 'delete' | 'reset' | 'preview'
+  sessionId?: string
   projectId?: string
   repositoryRevision?: number
   clientId?: string

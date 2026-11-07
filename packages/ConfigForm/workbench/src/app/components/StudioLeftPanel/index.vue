@@ -56,18 +56,17 @@ const views = computed(() => [
   { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History'), shortLabel: locale.value.t('designer.rail.history', 'History') },
 ])
 const historyPositions = computed(() => {
-  const history = props.history
-  if (!history)
+  if (!props.history)
     return []
   return [
     {
-      current: history.position === 0,
+      current: props.history.position === 0,
       label: locale.value.t('history.initial', 'Earliest retained state'),
       position: 0,
       timestamp: undefined,
     },
-    ...history.entries.map((entry, index) => ({
-      current: history.position === index + 1,
+    ...props.history.entries.map((entry, index) => ({
+      current: props.history?.position === index + 1,
       label: entry.label,
       position: index + 1,
       timestamp: entry.timestamp as number | undefined,
@@ -453,8 +452,8 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
       <strong>{{ views.find((view) => view.id === activeView)?.label }}</strong>
       <span v-if="activeView === 'components'">{{ filteredMaterials.length }}</span>
       <span v-else-if="activeView === 'layers'">{{ visibleLayers.length }}</span>
-      <span v-else-if="activeView === 'pages'">{{ project.surfaceOrder.length }}</span>
-      <span v-else-if="activeView === 'data'">{{ project.datasetOrder.length + Object.keys(project.resources).length }}</span>
+      <span v-else-if="activeView === 'pages'">{{ props.project.surfaceOrder.length }}</span>
+      <span v-else-if="activeView === 'data'">{{ props.project.datasetOrder.length + Object.keys(props.project.resources).length }}</span>
     </header>
     <ElTabs class="designer-left-tabs" tab-position="left" :model-value="activeView" @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
@@ -502,9 +501,9 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
       <DesignerPalette
         v-if="filteredMaterials.length > 0"
         :materials="filteredMaterials"
-        :form="form"
-        :registry="registry"
-        :readonly="readonly"
+        :form="props.form"
+        :registry="props.registry"
+        :readonly="props.readonly"
         :show-search="false"
         @add-material="insertMaterial"
       >
@@ -583,18 +582,18 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
           :key="layer.id"
           role="treeitem"
           :aria-level="layer.depth + 1"
-          :aria-selected="selectedIds.includes(layer.id)"
+          :aria-selected="props.selectedIds.includes(layer.id)"
           :aria-expanded="hasChildren(layer.id) ? !collapsedLayers.has(layer.id) : undefined"
           aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
           :data-layer-id="layer.id"
-          :tabindex="selectedIds[0] === layer.id || (selectedIds.length === 0 && index === 0) ? 0 : -1"
+          :tabindex="props.selectedIds[0] === layer.id || (props.selectedIds.length === 0 && index === 0) ? 0 : -1"
           :class="{
-            'is-selected': selectedIds.includes(layer.id),
+            'is-selected': props.selectedIds.includes(layer.id),
             'is-dragging': dragLayerId === layer.id,
             'is-drop-before': dropIndicator?.id === layer.id && dropIndicator.position === 'before',
             'is-drop-after': dropIndicator?.id === layer.id && dropIndicator.position === 'after',
           }"
-          :draggable="!readonly"
+          :draggable="!props.readonly"
           @keydown="handleLayerKeydown($event, layer.id)"
           @dragstart="handleLayerDragStart($event, layer.id)"
           @dragover="handleLayerDragOver($event, layer.id)"
@@ -629,7 +628,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
                 native-type="button"
                 class="designer-layer-menu-trigger"
                 :data-layer-menu-trigger="layer.id"
-                :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
+                :tabindex="props.selectedIds.includes(layer.id) ? 0 : -1"
                 :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
                 :title="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
               >
@@ -708,11 +707,11 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
                 text
                 native-type="button"
                 role="option"
-                :aria-selected="surface.id === currentSurfaceId"
-                :aria-current="surface.id === currentSurfaceId ? 'page' : undefined"
+                :aria-selected="surface.id === props.currentSurfaceId"
+                :aria-current="surface.id === props.currentSurfaceId ? 'page' : undefined"
                 :data-surface-id="surface.id"
-                :tabindex="surface.id === currentSurfaceId ? 0 : -1"
-                :class="{ 'is-current': surface.id === currentSurfaceId }"
+                :tabindex="surface.id === props.currentSurfaceId ? 0 : -1"
+                :class="{ 'is-current': surface.id === props.currentSurfaceId }"
                 @click="emit('selectSurface', surface.id)"
                 @keydown="handleSurfaceKeydown($event, surface.id)"
               >
@@ -810,8 +809,8 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
         <strong>{{ locale.t('history.title', 'Local history') }}</strong>
         <small>{{
           locale.t('history.position', '{current} of {total}', {
-            current: history?.position ?? 0,
-            total: history?.entries.length ?? 0,
+            current: props.history?.position ?? 0,
+            total: props.history?.entries.length ?? 0,
           })
         }}</small>
       </div>
@@ -822,7 +821,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
               text
               native-type="button"
               :aria-current="item.current ? 'step' : undefined"
-              :disabled="item.current || readonly"
+              :disabled="item.current || props.readonly"
               @click="emit('jumpHistory', item.position)"
             >
               <span class="designer-history-marker">
@@ -844,7 +843,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
         :image-size="42"
       />
       <p class="designer-history-limit">
-        {{ locale.t('history.limit', 'Keeps the latest {count} operations', { count: history?.limit ?? 0 }) }}
+        {{ locale.t('history.limit', 'Keeps the latest {count} operations', { count: props.history?.limit ?? 0 }) }}
       </p>
     </div>
   </div>

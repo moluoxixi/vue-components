@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ElementLinkedValues } from '../types'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { ElButton } from 'element-plus'
 import { computed, shallowRef } from 'vue'
 import { createElementLinkedValues, elementLinkedFields } from '../services'

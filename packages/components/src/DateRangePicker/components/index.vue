@@ -81,10 +81,9 @@ const shortcuts = computed<DateRangePickerShortcut[]>(() => {
 })
 
 const disabledBoundary = computed(() => {
-  const range = props.disabledDateRange
   return {
-    min: range ? range[0] : props.minDate,
-    max: range ? range[1] : props.maxDate,
+    min: props.disabledDateRange ? props.disabledDateRange[0] : props.minDate,
+    max: props.disabledDateRange ? props.disabledDateRange[1] : props.maxDate,
   }
 })
 

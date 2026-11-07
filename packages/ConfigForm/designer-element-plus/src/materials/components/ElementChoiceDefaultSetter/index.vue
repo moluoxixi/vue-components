@@ -26,10 +26,10 @@ function updateValue(value: unknown): void {
 <template>
   <div class="mx-element-designer-choice-default">
     <ElementDefaultValueSetter
-      :model-value="modelValue as DesignerJsonValue"
-      :kind="kind"
+      :model-value="props.modelValue as DesignerJsonValue"
+      :kind="props.kind"
       :options="setterOptions"
-      :disabled="disabled"
+      :disabled="props.disabled"
       @update:model-value="updateValue"
     />
   </div>

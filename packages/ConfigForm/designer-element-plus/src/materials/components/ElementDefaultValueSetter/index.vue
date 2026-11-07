@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
 import type { ElementDefaultValueSetterEmits, ElementDefaultValueSetterProps } from '../../../types'
+import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 import {
   ElDatePicker,
   ElInput,
@@ -11,7 +12,6 @@ import {
   ElTimePicker,
 } from 'element-plus'
 import { computed, normalizeClass, ref, useAttrs, watch } from 'vue'
-import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 
 defineOptions({ inheritAttrs: false })
 
@@ -75,45 +75,45 @@ function updateValue(value: unknown): void {
 <template>
   <div class="mx-element-designer-default-value">
     <ElInput
-      v-if="kind === 'text'"
+      v-if="props.kind === 'text'"
       v-bind="forwardedAttrs"
       :id="props.id"
       :class="propertyControlClass"
       :model-value="draft"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :aria-label="locale.t('default.value', 'Default value')"
       @update:model-value="updateDraft"
       @blur="commitDraft"
       @keydown.enter.prevent="commitDraft"
     />
     <ElInputNumber
-      v-else-if="kind === 'number'"
+      v-else-if="props.kind === 'number'"
       v-bind="forwardedAttrs"
       :id="props.id"
       :class="propertyControlClass"
       :model-value="numberValue"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :aria-label="locale.t('default.value', 'Default value')"
       @change="updateNumber"
     />
     <ElSwitch
-      v-else-if="kind === 'boolean'"
+      v-else-if="props.kind === 'boolean'"
       v-bind="forwardedAttrs"
       :id="props.id"
       :class="propertyControlClass"
       :model-value="booleanValue"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :aria-label="locale.t('default.value', 'Default value')"
       @change="updateValue"
     />
     <ElSelect
-      v-else-if="kind === 'select' || kind === 'multiselect'"
+      v-else-if="props.kind === 'select' || props.kind === 'multiselect'"
       v-bind="forwardedAttrs"
       :id="props.id"
       :class="propertyControlClass"
-      :model-value="kind === 'multiselect' ? multipleValue : singleValue"
-      :disabled="disabled"
-      :multiple="kind === 'multiselect'"
+      :model-value="props.kind === 'multiselect' ? multipleValue : singleValue"
+      :disabled="props.disabled"
+      :multiple="props.kind === 'multiselect'"
       :aria-label="locale.t('default.value', 'Default value')"
       @update:model-value="updateValue"
     >
@@ -125,12 +125,12 @@ function updateValue(value: unknown): void {
       />
     </ElSelect>
     <ElDatePicker
-      v-else-if="kind === 'date'"
+      v-else-if="props.kind === 'date'"
       v-bind="forwardedAttrs"
       :id="props.id"
       :class="propertyControlClass"
       :model-value="stringValue"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :aria-label="locale.t('default.value', 'Default value')"
       type="date"
       value-format="YYYY-MM-DD"
@@ -142,7 +142,7 @@ function updateValue(value: unknown): void {
       :id="props.id"
       :class="propertyControlClass"
       :model-value="stringValue"
-      :disabled="disabled"
+      :disabled="props.disabled"
       :aria-label="locale.t('default.value', 'Default value')"
       format="HH:mm:ss"
       value-format="HH:mm:ss"

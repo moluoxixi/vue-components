@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ElementPlusDocsRepl } from '@moluoxixi/vitepress-theme-element-plus/repl'
 
-const assetUrl = (path: string): string => new URL(
-  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`,
-  window.location.origin,
-).toString()
+function assetUrl(path: string): string {
+  return new URL(
+    `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`,
+    window.location.origin,
+  ).toString()
+}
 
 const starterSource = `<script setup lang="ts">
 import { ref } from 'vue'

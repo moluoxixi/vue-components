@@ -110,7 +110,7 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
                   <ElColorPicker
                     v-model="draft.colors![entry.key]"
                     :aria-label="locale.t(`theme.color.${entry.key}`, entry.label)"
-                    :disabled="readonly"
+                    :disabled="props.readonly"
                     show-alpha
                     color-format="hex"
                   />
@@ -126,27 +126,27 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
           <div class="designer-theme-field-grid designer-theme-type-grid">
             <label class="designer-theme-field project-theme-wide-field">
               <span>{{ locale.t('theme.fontFamily', 'Font family') }}</span>
-              <ElSelect v-model="draft.typography!.family" :disabled="readonly" append-to="#workbench-overlays">
+              <ElSelect v-model="draft.typography!.family" :disabled="props.readonly" append-to="#workbench-overlays">
                 <ElOption v-for="option in fontFamilies" :key="option.value" :label="locale.t(`theme.font.${option.value}`, option.label)" :value="option.value" />
               </ElSelect>
             </label>
             <label class="designer-theme-field">
               <span>{{ locale.t('theme.baseSize', 'Base size') }} <small>px</small></span>
-              <ElInputNumber v-model="draft.typography!.baseSize" :disabled="readonly" :controls="false" :min="10" :max="32" :step="1" />
+              <ElInputNumber v-model="draft.typography!.baseSize" :disabled="props.readonly" :controls="false" :min="10" :max="32" :step="1" />
             </label>
             <label class="designer-theme-field">
               <span>{{ locale.t('theme.lineHeight', 'Line height') }}</span>
-              <ElInputNumber v-model="draft.typography!.lineHeight" :disabled="readonly" :controls="false" :min="1" :max="3" :step="0.1" :precision="1" />
+              <ElInputNumber v-model="draft.typography!.lineHeight" :disabled="props.readonly" :controls="false" :min="1" :max="3" :step="0.1" :precision="1" />
             </label>
             <label class="designer-theme-field">
               <span>{{ locale.t('theme.bodyWeight', 'Body weight') }}</span>
-              <ElSelect v-model="draft.typography!.bodyWeight" :disabled="readonly" append-to="#workbench-overlays">
+              <ElSelect v-model="draft.typography!.bodyWeight" :disabled="props.readonly" append-to="#workbench-overlays">
                 <ElOption v-for="option in weights" :key="option.value" :label="option.label" :value="option.value" />
               </ElSelect>
             </label>
             <label class="designer-theme-field">
               <span>{{ locale.t('theme.headingWeight', 'Heading weight') }}</span>
-              <ElSelect v-model="draft.typography!.headingWeight" :disabled="readonly" append-to="#workbench-overlays">
+              <ElSelect v-model="draft.typography!.headingWeight" :disabled="props.readonly" append-to="#workbench-overlays">
                 <ElOption v-for="option in weights" :key="option.value" :label="option.label" :value="option.value" />
               </ElSelect>
             </label>
@@ -162,7 +162,7 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
               <div class="designer-theme-field-grid designer-theme-shape-grid">
                 <label v-for="key in spacingKeys" :key="key" class="designer-theme-field">
                   <span>{{ key }}</span>
-                  <ElInputNumber v-model="draft.spacing![key]" :aria-label="locale.t('theme.spacing', 'Space {key}', { key })" :disabled="readonly" :controls="false" :min="0" :max="128" />
+                  <ElInputNumber v-model="draft.spacing![key]" :aria-label="locale.t('theme.spacing', 'Space {key}', { key })" :disabled="props.readonly" :controls="false" :min="0" :max="128" />
                 </label>
               </div>
             </section>
@@ -171,7 +171,7 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
               <div class="designer-theme-field-grid designer-theme-shape-grid">
                 <label v-for="key in radiusKeys" :key="key" class="designer-theme-field">
                   <span>{{ key }}</span>
-                  <ElInputNumber v-model="draft.radius![key]" :aria-label="locale.t('theme.radius', 'Radius {key}', { key })" :disabled="readonly" :controls="false" :min="0" :max="64" />
+                  <ElInputNumber v-model="draft.radius![key]" :aria-label="locale.t('theme.radius', 'Radius {key}', { key })" :disabled="props.readonly" :controls="false" :min="0" :max="64" />
                 </label>
               </div>
             </section>
@@ -180,11 +180,11 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
               <div class="designer-theme-field-grid designer-theme-shape-grid">
                 <label class="designer-theme-field">
                   <span>{{ locale.t('theme.borderWidth', 'Border width') }} <small>px</small></span>
-                  <ElInputNumber v-model="draft.border!.width" :disabled="readonly" :controls="false" :min="0" :max="12" />
+                  <ElInputNumber v-model="draft.border!.width" :disabled="props.readonly" :controls="false" :min="0" :max="12" />
                 </label>
                 <label class="designer-theme-field">
                   <span>{{ locale.t('theme.borderStyle', 'Border style') }}</span>
-                  <ElSelect v-model="draft.border!.style" :disabled="readonly" append-to="#workbench-overlays">
+                  <ElSelect v-model="draft.border!.style" :disabled="props.readonly" append-to="#workbench-overlays">
                     <ElOption v-for="option in borderStyles" :key="option.value" :label="locale.t(`theme.borderStyle.${option.value}`, option.label)" :value="option.value" />
                   </ElSelect>
                 </label>
@@ -205,7 +205,7 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
               <div class="designer-theme-field-grid project-theme-shadow-grid">
                 <label v-for="property in (['x', 'y', 'blur', 'spread'] as const)" :key="property" class="designer-theme-field">
                   <span>{{ locale.t(`theme.shadow.${property}`, property) }} <small>px</small></span>
-                  <ElInputNumber v-model="draft.shadows![key]![property]" :disabled="readonly" :controls="false" :min="0" :max="128" />
+                  <ElInputNumber v-model="draft.shadows![key]![property]" :disabled="props.readonly" :controls="false" :min="0" :max="128" />
                 </label>
               </div>
               <div class="project-theme-color project-theme-shadow-color">
@@ -213,7 +213,7 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
                   <span>{{ locale.t('theme.shadow.color', 'Color') }}</span>
                   <code>{{ draft.shadows![key]!.color }}</code>
                 </span>
-                <ElColorPicker v-model="draft.shadows![key]!.color" :aria-label="locale.t('theme.shadow.color', 'Color')" :disabled="readonly" show-alpha color-format="hex" />
+                <ElColorPicker v-model="draft.shadows![key]!.color" :aria-label="locale.t('theme.shadow.color', 'Color')" :disabled="props.readonly" show-alpha color-format="hex" />
               </div>
             </fieldset>
           </div>
@@ -223,13 +223,13 @@ function shadowPreview(key: ProjectThemeShadowKey): string {
 
     <footer class="project-theme-actions">
       <WorkbenchCommandHint detached :label="locale.t('theme.resetHint', 'Restore the default colors, typography and styles for this project')" :disabled-reason="readonlyReason">
-        <ElButton native-type="button" :disabled="readonly" @click="reset">
+        <ElButton native-type="button" :disabled="props.readonly" @click="reset">
           <RotateCcw :size="14" aria-hidden="true" />
           <span>{{ locale.t('theme.reset', 'Restore defaults') }}</span>
         </ElButton>
       </WorkbenchCommandHint>
       <WorkbenchCommandHint detached :label="locale.t('theme.applyHint', 'Apply theme changes to all pages in this project')" :disabled-reason="applyUnavailableReason">
-        <ElButton type="primary" native-type="button" :disabled="readonly || !dirty" @click="apply">
+        <ElButton type="primary" native-type="button" :disabled="props.readonly || !dirty" @click="apply">
           <Check :size="14" aria-hidden="true" />
           <span>{{ locale.t('action.apply', 'Apply') }}</span>
         </ElButton>

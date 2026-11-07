@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { RequestStatus } from '../../state'
 import type { PreviewResponse } from '../../../../shared/protocol'
-import { computed, nextTick, ref } from 'vue'
+import type { RequestStatus } from '../../state'
 import { Check, FileDiff, RefreshCw } from '@lucide/vue'
+import { computed, nextTick, ref } from 'vue'
 
 const props = defineProps<{
   applyStatus: RequestStatus
@@ -48,7 +48,9 @@ function restoreApplyFocus(): void {
   >
     <header class="view-heading">
       <div>
-        <h2 id="changes-heading">Changes</h2>
+        <h2 id="changes-heading">
+          Changes
+        </h2>
         <p>Inspect every file operation before writing to disk.</p>
       </div>
       <div class="heading-actions">
@@ -59,8 +61,8 @@ function restoreApplyFocus(): void {
         <span ref="applyTrigger" class="focus-wrapper">
           <el-button
             type="primary"
-            :disabled="!preview?.previewToken || previewStatus !== 'ready'"
-            :loading="applyStatus === 'loading'"
+            :disabled="!props.preview?.previewToken || props.previewStatus !== 'ready'"
+            :loading="props.applyStatus === 'loading'"
             @click="confirmOpen = true"
           >
             <Check :size="17" aria-hidden="true" />
@@ -70,12 +72,12 @@ function restoreApplyFocus(): void {
       </div>
     </header>
 
-    <div v-if="previewStatus === 'loading'" class="view-state" role="status">
+    <div v-if="props.previewStatus === 'loading'" class="view-state" role="status">
       <el-skeleton :rows="6" animated />
     </div>
 
-    <div v-else-if="preview?.files.length" class="diff-list">
-      <article v-for="file in preview.files" :key="file.resourceId" class="diff-item">
+    <div v-else-if="props.preview?.files.length" class="diff-list">
+      <article v-for="file in props.preview.files" :key="file.resourceId" class="diff-item">
         <header>
           <FileDiff :size="18" aria-hidden="true" />
           <code>{{ file.relativePath }}</code>
@@ -104,8 +106,8 @@ function restoreApplyFocus(): void {
     <div
       v-else
       class="view-state"
-      :class="{ 'is-error': previewStatus === 'error' }"
-      :role="previewStatus === 'error' ? 'alert' : 'status'"
+      :class="{ 'is-error': props.previewStatus === 'error' }"
+      :role="props.previewStatus === 'error' ? 'alert' : 'status'"
     >
       No valid preview is available.
     </div>
@@ -118,7 +120,7 @@ function restoreApplyFocus(): void {
       @opened="focusDialog"
       @closed="restoreApplyFocus"
     >
-      <p>This will write {{ operationCount }} translations across {{ preview?.files.length ?? 0 }} files.</p>
+      <p>This will write {{ operationCount }} translations across {{ props.preview?.files.length ?? 0 }} files.</p>
       <p v-if="overwriteCount" class="dialog-warning">
         {{ overwriteCount }} existing translations will be overwritten.
       </p>
@@ -126,7 +128,9 @@ function restoreApplyFocus(): void {
         <span ref="cancelTarget" class="focus-wrapper">
           <el-button autofocus @click="confirmOpen = false">Cancel</el-button>
         </span>
-        <el-button type="primary" @click="confirmApply">Confirm write</el-button>
+        <el-button type="primary" @click="confirmApply">
+          Confirm write
+        </el-button>
       </template>
     </el-dialog>
   </section>

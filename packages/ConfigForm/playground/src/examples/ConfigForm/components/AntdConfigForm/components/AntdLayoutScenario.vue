@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { AntdKnownValues } from '../types'
-import { defineFields } from '@moluoxixi/config-form-headless'
 import { AntdConfigForm } from '@moluoxixi/config-form-antd-vue'
+import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-headless'
 import { Button as AButton, Switch as ASwitch } from 'ant-design-vue'
 import { computed, shallowRef } from 'vue'
 import { createAntdKnownFields, createAntdKnownValues } from '../services'

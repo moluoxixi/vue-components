@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectTemplateCatalogEntry } from '../../../../../../project'
-import { ArrowRight, Copy, Eye, File, LibraryBig, PanelRight, PanelsTopLeft, Pencil, Plus, Search, Trash2 } from '@lucide/vue'
+import { ArrowRight, Copy, Download, Eye, File, LibraryBig, PanelRight, PanelsTopLeft, Pencil, Plus, Search, Trash2, Upload } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import BrowseViewToggle from '../../../../../../components/BrowseViewToggle.vue'
@@ -15,6 +15,7 @@ const props = defineProps<{
   loading: boolean
   busy: boolean
   error: string
+  notice?: string
 }>()
 const emit = defineEmits<{
   create: []
@@ -23,10 +24,23 @@ const emit = defineEmits<{
   duplicate: [entry: ProjectTemplateCatalogEntry]
   delete: [entry: ProjectTemplateCatalogEntry]
   retry: []
+  import: [file: File]
+  export: [entry?: ProjectTemplateCatalogEntry]
 }>()
 const locale = computed(() => createDesignerLocale(props.locale))
 const busyReason = computed(() => props.busy ? locale.value.t('library.busyReason', 'A template operation is in progress. Try again when it finishes.') : undefined)
 const createDisabledReason = computed(() => props.loading ? locale.value.t('library.loadingReason', 'Templates are loading. You can create a template when loading finishes.') : busyReason.value)
+const importInput = useTemplateRef<HTMLInputElement>('importInput')
+
+function importFile(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file && !props.busy && !props.loading)
+    emit('import', file)
+}
+
+const exportDisabledReason = computed(() => createDisabledReason.value || (!props.templates.some(entry => entry.providerId === 'personal') ? locale.value.t('library.exportEmpty', 'Create or import a personal template before exporting.') : undefined))
 const query = ref('')
 const browseView = useBrowseView('templates', 'cards')
 const adapter = ref('all')
@@ -88,16 +102,32 @@ function clearFilters(): void {
 <template>
   <main class="template-manager" :aria-label="locale.t('management.templates', 'Template management')">
     <div class="template-manager__content">
-      <header class="template-manager__heading flex items-center justify-between gap-4 mb-4">
+      <header class="template-manager__heading flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
           <h1>{{ locale.t('library.title', 'Template library') }}</h1>
         </div>
-        <WorkbenchCommandHint detached :label="locale.t('library.new', 'New template')" :disabled-reason="createDisabledReason">
-          <ElButton type="primary" :disabled="props.busy || props.loading" @click="emit('create')">
-            <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}
-          </ElButton>
-        </WorkbenchCommandHint>
+        <div class="flex flex-wrap items-center gap-2 ml-auto">
+          <WorkbenchCommandHint detached :label="locale.t('library.import', 'Import templates')" :disabled-reason="createDisabledReason">
+            <input ref="importInput" type="file" hidden accept=".json,application/json" :disabled="props.busy || props.loading" @change="importFile">
+            <ElButton :disabled="props.busy || props.loading" @click="importInput?.click()">
+              <Upload :size="16" aria-hidden="true" />{{ locale.t('library.import', 'Import templates') }}
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('library.exportAll', 'Back up my templates')" :disabled-reason="exportDisabledReason">
+            <ElButton :disabled="Boolean(exportDisabledReason)" @click="emit('export')">
+              <Download :size="16" aria-hidden="true" />{{ locale.t('library.exportAll', 'Back up my templates') }}
+            </ElButton>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint detached :label="locale.t('library.new', 'New template')" :disabled-reason="createDisabledReason">
+            <ElButton type="primary" :disabled="props.busy || props.loading" @click="emit('create')">
+              <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}
+            </ElButton>
+          </WorkbenchCommandHint>
+        </div>
       </header>
+      <p class="mb-4 mt-0 text-xs text-[var(--wb-muted)]">
+        {{ locale.t('library.storageHint', 'Personal templates are stored in this browser. Export a backup to move them; importing creates new copies without replacing existing templates.') }}
+      </p>
       <div class="template-manager__controls">
         <div class="template-manager__filters">
           <ElInput ref="searchInput" v-model="query" type="search" clearable :aria-label="locale.t('template.search', 'Search templates')" :placeholder="locale.t('template.search', 'Search templates')">
@@ -133,6 +163,9 @@ function clearFilters(): void {
           {{ locale.t('template.retryCatalog', 'Retry catalog') }}
         </ElButton>
       </ElAlert>
+      <p v-if="props.notice" role="status" class="my-3 text-sm text-[var(--wb-positive)]">
+        {{ props.notice }}
+      </p>
       <p v-if="props.loading" class="template-manager__empty" role="status">
         {{ locale.t('template.loading', 'Loading templates') }}
       </p>
@@ -178,6 +211,11 @@ function clearFilters(): void {
             <WorkbenchCommandHint v-if="entry.providerId === 'personal'" detached :label="locale.t('library.deleteFor', 'Delete {name}', { name: templateName(entry) })" :disabled-reason="busyReason">
               <ElButton class="template-card__icon-action" text type="danger" :disabled="props.busy" :aria-label="locale.t('library.deleteFor', 'Delete {name}', { name: templateName(entry) })" @click="emit('delete', entry)">
                 <Trash2 :size="16" aria-hidden="true" />
+              </ElButton>
+            </WorkbenchCommandHint>
+            <WorkbenchCommandHint v-if="entry.providerId === 'personal'" detached :label="locale.t('library.exportOne', 'Export template')" :disabled-reason="busyReason">
+              <ElButton class="template-card__icon-action" text :disabled="props.busy" :aria-label="locale.t('library.exportOne', 'Export template')" @click="emit('export', entry)">
+                <Download :size="16" aria-hidden="true" />
               </ElButton>
             </WorkbenchCommandHint>
           </footer>

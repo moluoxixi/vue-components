@@ -598,7 +598,7 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
       </div>
       <div class="dataset-table-footer">
         <span class="dataset-table-range">{{ rangeStart }}–{{ rangeEnd }} / {{ filtered.length.toLocaleString() }} {{ chinese ? '行' : 'rows' }}<template v-if="query"> · {{ chinese ? `共 ${rows.length} 行` : `${rows.length} total` }}</template> · {{ columns.length }} {{ chinese ? '列' : 'columns' }}</span>
-        <span v-if="modified || dirty" class="dataset-table-changes dataset-table-status" role="status" :title="chinese ? `${modified} 格已修改，尚未保存` : `${modified} edited cells · unsaved`">{{ chinese ? '未保存' : 'Unsaved' }}</span>
+        <span v-if="modified || props.dirty" class="dataset-table-changes dataset-table-status" role="status" :title="chinese ? `${modified} 格已修改，尚未保存` : `${modified} edited cells · unsaved`">{{ chinese ? '未保存' : 'Unsaved' }}</span>
         <slot name="footer-actions" />
         <div v-if="rows.length" class="dataset-table-pagination">
           <ElSelect v-model="size" :aria-label="chinese ? '每页行数' : 'Page size'" append-to="#workbench-overlays">
@@ -616,9 +616,9 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
             </ElButton>
           </WorkbenchCommandHint>
         </div>
-        <WorkbenchCommandHint detached anchor-class="dataset-table-save-hint" :label="chinese ? '保存数据' : 'Save data'" :disabled-reason="saving ? (chinese ? '正在保存，请稍候' : 'Saving changes; please wait') : !modified && !dirty ? (chinese ? '没有待保存的修改；编辑数据后即可保存' : 'No pending changes; edit the data to save') : undefined">
-          <ElButton type="primary" :disabled="saving || (!modified && !dirty)" :loading="saving" data-dataset-table-save :aria-label="chinese ? '保存数据' : 'Save data'" @click="save">
-            {{ saving ? (chinese ? '保存中' : 'Saving') : (chinese ? '保存数据' : 'Save data') }}<span v-if="modified" class="dataset-save-count" aria-hidden="true">{{ modified }}</span>
+        <WorkbenchCommandHint detached anchor-class="dataset-table-save-hint" :label="chinese ? '保存数据' : 'Save data'" :disabled-reason="props.saving ? (chinese ? '正在保存，请稍候' : 'Saving changes; please wait') : !modified && !props.dirty ? (chinese ? '没有待保存的修改；编辑数据后即可保存' : 'No pending changes; edit the data to save') : undefined">
+          <ElButton type="primary" :disabled="props.saving || (!modified && !props.dirty)" :loading="props.saving" data-dataset-table-save :aria-label="chinese ? '保存数据' : 'Save data'" @click="save">
+            {{ props.saving ? (chinese ? '保存中' : 'Saving') : (chinese ? '保存数据' : 'Save data') }}<span v-if="modified" class="dataset-save-count" aria-hidden="true">{{ modified }}</span>
           </ElButton>
         </WorkbenchCommandHint>
       </div>

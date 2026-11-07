@@ -9,14 +9,14 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<ElementCheckboxFieldProps>()
 
+const emit = defineEmits<ElementCheckboxFieldEmits>()
+
 const checkboxOptions = computed(() => normalizeElementPlusOptions(
   props.options,
   DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
 ).filter(
   (option): option is ElementPlusDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
-
-const emit = defineEmits<ElementCheckboxFieldEmits>()
 
 function updateModelValue(value: Array<string | number>): void {
   emit('update:modelValue', value)
@@ -25,7 +25,7 @@ function updateModelValue(value: Array<string | number>): void {
 
 <template>
   <span class="mx-element-designer-choice-field">
-    <ElCheckboxGroup v-bind="$attrs" :model-value="modelValue" @update:model-value="updateModelValue">
+    <ElCheckboxGroup v-bind="$attrs" :model-value="props.modelValue" @update:model-value="updateModelValue">
       <ElCheckbox
         v-for="(option, index) in checkboxOptions"
         :key="elementPlusOptionKey(option.value, index)"

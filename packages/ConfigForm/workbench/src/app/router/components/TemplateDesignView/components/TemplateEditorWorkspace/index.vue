@@ -123,7 +123,7 @@ defineExpose({ hasChanges, saving })
         <ArrowLeft :size="18" aria-hidden="true" />
       </ElButton>
       <div class="template-editor__identity">
-        <span>{{ locale.t('library.editor', 'Template designer') }} · {{ template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ locale.t(`surface.kind.${template.surface.kind}`, template.surface.kind) }}</span>
+        <span>{{ locale.t('library.editor', 'Template designer') }} · {{ props.template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ locale.t(`surface.kind.${props.template.surface.kind}`, props.template.surface.kind) }}</span>
         <ElInput v-model="name" :disabled="saving" maxlength="100" :aria-label="locale.t('library.name', 'Template name')" />
       </div>
       <div class="template-editor__actions">
@@ -164,10 +164,10 @@ defineExpose({ hasChanges, saving })
           <StudioDesignToolbar :scope="scope" :locale="localeOptions" :show-compare="false" />
         </template>
         <template #runtime="scope">
-          <StudioDesignRuntime :surface="surface as ProjectSurface" :scope="scope" :adapter="template.manifest.adapter" :locale="locale.locale" :namespace="adapter.designerRegistry.rendererNamespace" :resolve-compilation="design.getCompilation" :title="locale.t('canvas.runtimeFrame', 'Design runtime')" @error="saveError = $event.message" />
+          <StudioDesignRuntime :surface="surface as ProjectSurface" :scope="scope" :adapter="props.template.manifest.adapter" :locale="locale.locale" :namespace="adapter.designerRegistry.rendererNamespace" :resolve-compilation="design.getCompilation" :title="locale.t('canvas.runtimeFrame', 'Design runtime')" @error="saveError = $event.message" />
         </template>
         <template #dragVisual="scope">
-          <DesignRuntimeHostFrame :adapter="template.manifest.adapter" :breakpoint="scope.breakpoint" :camera-scale="scope.cameraScale" :candidate-id="scope.candidateId" :candidate-uses-fallback="scope.candidateUsesFallback" :canvas-width="scope.canvasWidth" :command="scope.command" :locale="locale.locale" :model-value="scope.model" :namespace="adapter.designerRegistry.rendererNamespace" :resolve-compilation="design.getCompilation" :title="locale.t('canvas.dragVisualFrame', 'Drag preview runtime')" variant="drag-visual" @error="saveError = $event.message" />
+          <DesignRuntimeHostFrame :adapter="props.template.manifest.adapter" :breakpoint="scope.breakpoint" :camera-scale="scope.cameraScale" :candidate-id="scope.candidateId" :candidate-uses-fallback="scope.candidateUsesFallback" :canvas-width="scope.canvasWidth" :command="scope.command" :locale="locale.locale" :model-value="scope.model" :namespace="adapter.designerRegistry.rendererNamespace" :resolve-compilation="design.getCompilation" :title="locale.t('canvas.dragVisualFrame', 'Drag preview runtime')" variant="drag-visual" @error="saveError = $event.message" />
         </template>
       </DesignSurface>
     </section>

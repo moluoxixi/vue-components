@@ -4,7 +4,7 @@ import type { RichTextEditorBlockType, RichTextEditorCommandId, RichTextEditorCo
 import { AlignCenter, AlignLeft, AlignRight, Bold, ChevronDown, Code2, Italic, Link2, List, ListOrdered, Minus, Quote, Redo2, RemoveFormatting, Strikethrough, Underline, Undo2 } from '@lucide/vue'
 import { computed } from 'vue'
 import { richTextCommandIds } from '../../../services'
-import RichTextEditorControlHint from './RichTextEditorControlHint.vue'
+import RichTextEditorControlHint from './RichTextEditorToolbar/components/RichTextEditorControlHint.vue'
 
 const props = defineProps<{
   commands: RichTextEditorCommands
@@ -55,10 +55,10 @@ function setBlockType(event: Event): void {
 </script>
 
 <template>
-  <RichTextEditorControlHint :disabled="!state.editable" :message="editingHint">
+  <RichTextEditorControlHint :disabled="!props.state.editable" :message="editingHint">
     <span class="mx-rich-text-editor__block-control">
-      <select class="mx-rich-text-editor__block-select" :value="state.blockType" :disabled="!state.editable" aria-label="文本样式" @change="setBlockType">
-        <option v-for="block in blocks" :key="block.type" :value="block.type" :disabled="!state.blocks[block.type]">{{ block.label }}</option>
+      <select class="mx-rich-text-editor__block-select" :value="props.state.blockType" :disabled="!props.state.editable" aria-label="文本样式" @change="setBlockType">
+        <option v-for="block in blocks" :key="block.type" :value="block.type" :disabled="!props.state.blocks[block.type]">{{ block.label }}</option>
       </select>
       <ChevronDown class="mx-rich-text-editor__block-chevron" :size="14" aria-hidden="true" />
     </span>
@@ -66,21 +66,25 @@ function setBlockType(event: Event): void {
   <RichTextEditorControlHint
     v-for="id in items"
     :key="id"
-    :disabled="!state.commands[id].enabled"
+    :disabled="!props.state.commands[id].enabled"
     :message="disabledHint(id)"
   >
     <button
       class="mx-rich-text-editor__tool"
-      :class="{ 'is-active': state.commands[id].active }"
+      :class="{ 'is-active': props.state.commands[id].active }"
       type="button"
-      :title="state.commands[id].enabled ? appearance[id].label : undefined"
+      :title="props.state.commands[id].enabled ? appearance[id].label : undefined"
       :aria-label="appearance[id].label"
-      :aria-pressed="state.commands[id].active"
-      :disabled="!state.commands[id].enabled"
-      @click="commands.execute(id)"
-    ><component :is="appearance[id].icon" :size="17" aria-hidden="true" /></button>
+      :aria-pressed="props.state.commands[id].active"
+      :disabled="!props.state.commands[id].enabled"
+      @click="props.commands.execute(id)"
+    >
+      <component :is="appearance[id].icon" :size="17" aria-hidden="true" />
+    </button>
   </RichTextEditorControlHint>
-  <RichTextEditorControlHint :disabled="!state.link.enabled" :message="disabledHint('link')">
-    <button class="mx-rich-text-editor__tool" :class="{ 'is-active': state.link.active }" type="button" :title="state.link.enabled ? '链接' : undefined" aria-label="链接" :aria-pressed="state.link.active" :disabled="!state.link.enabled" @click="emit('link', $event)"><Link2 :size="17" aria-hidden="true" /></button>
+  <RichTextEditorControlHint :disabled="!props.state.link.enabled" :message="disabledHint('link')">
+    <button class="mx-rich-text-editor__tool" :class="{ 'is-active': props.state.link.active }" type="button" :title="props.state.link.enabled ? '链接' : undefined" aria-label="链接" :aria-pressed="props.state.link.active" :disabled="!props.state.link.enabled" @click="emit('link', $event)">
+      <Link2 :size="17" aria-hidden="true" />
+    </button>
   </RichTextEditorControlHint>
 </template>

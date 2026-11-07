@@ -1,7 +1,12 @@
-import type { AiRuntimeStatus, EmbeddingProviderId } from '@moluoxixi/ai-provider/shared'
 import type { UIMessage } from 'ai'
 
 /** 前后端共享协议层；仅包含 browser-safe 类型与常量。 */
+export type ChatProvider = 'openai' | 'anthropic' | 'google' | 'openai-compatible'
+export type EmbeddingProviderId = Exclude<ChatProvider, 'anthropic'>
+export interface AiRuntimeStatus {
+  chat: { availability: 'configured' | 'missing', provider: ChatProvider | null, model: string | null }
+  embedding: { availability: 'configured' | 'missing', provider: EmbeddingProviderId | null, model: string | null }
+}
 
 /** 检索无命中阈值：top1 归一化 score 低于此值视为无依据，触发兜底（不输出示例）。 */
 export const NO_MATCH_SCORE_THRESHOLD = 0.3

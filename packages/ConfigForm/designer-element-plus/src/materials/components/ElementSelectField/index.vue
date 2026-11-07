@@ -9,9 +9,9 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<ElementSelectFieldProps>()
 
-const options = computed(() => normalizeElementPlusOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
-
 const emit = defineEmits<ElementSelectFieldEmits>()
+
+const options = computed(() => normalizeElementPlusOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
 
 function updateModelValue(value: ElementSelectValue): void {
   emit('update:modelValue', value)
@@ -20,7 +20,7 @@ function updateModelValue(value: ElementSelectValue): void {
 
 <template>
   <span class="mx-element-designer-choice-field">
-    <ElSelect v-bind="$attrs" :model-value="modelValue" @update:model-value="updateModelValue">
+    <ElSelect v-bind="$attrs" :model-value="props.modelValue" @update:model-value="updateModelValue">
       <ElOption
         v-for="(option, index) in options"
         :key="elementPlusOptionKey(option.value, index)"

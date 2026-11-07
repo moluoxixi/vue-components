@@ -5,7 +5,7 @@ import { nextTick, useTemplateRef } from 'vue'
 
 export type WorkspaceView = 'chat' | 'knowledge'
 
-defineProps<{
+const props = defineProps<{
   view: WorkspaceView
   statusLabel: string
   statusTone: 'neutral' | 'working' | 'success' | 'error'
@@ -68,7 +68,9 @@ function onFileChange(event: Event): void {
   <header class="workspace-topbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"><Sparkles :size="17" /></span>
-      <h1 data-testid="app-title">AI 文档助手</h1>
+      <h1 data-testid="app-title">
+        AI 文档助手
+      </h1>
     </div>
 
     <nav class="workspace-tabs" role="tablist" aria-label="工作区视图">
@@ -76,12 +78,12 @@ function onFileChange(event: Event): void {
         id="workspace-chat-tab"
         ref="chatTab"
         class="workspace-tab"
-        :class="{ active: view === 'chat' }"
+        :class="{ active: props.view === 'chat' }"
         type="button"
         role="tab"
         aria-controls="workspace-chat-panel"
-        :aria-selected="view === 'chat'"
-        :tabindex="view === 'chat' ? 0 : -1"
+        :aria-selected="props.view === 'chat'"
+        :tabindex="props.view === 'chat' ? 0 : -1"
         data-testid="workspace-chat-tab"
         @click="selectView('chat')"
         @keydown="onTabKeydown"
@@ -93,12 +95,12 @@ function onFileChange(event: Event): void {
         id="workspace-knowledge-tab"
         ref="knowledgeTab"
         class="workspace-tab"
-        :class="{ active: view === 'knowledge' }"
+        :class="{ active: props.view === 'knowledge' }"
         type="button"
         role="tab"
         aria-controls="workspace-knowledge-panel"
-        :aria-selected="view === 'knowledge'"
-        :tabindex="view === 'knowledge' ? 0 : -1"
+        :aria-selected="props.view === 'knowledge'"
+        :tabindex="props.view === 'knowledge' ? 0 : -1"
         data-testid="workspace-knowledge-tab"
         @click="selectView('knowledge')"
         @keydown="onTabKeydown"
@@ -109,28 +111,28 @@ function onFileChange(event: Event): void {
     </nav>
 
     <div class="workspace-actions">
-      <ElTooltip :content="statusDetail" placement="bottom">
-        <span class="status-pill" :class="`tone-${statusTone}`" role="status" data-testid="index-chip">
+      <ElTooltip :content="props.statusDetail" placement="bottom">
+        <span class="status-pill" :class="`tone-${props.statusTone}`" role="status" data-testid="index-chip">
           <span class="status-dot" aria-hidden="true" />
-          {{ statusLabel }}
+          {{ props.statusLabel }}
         </span>
       </ElTooltip>
-      <ElTooltip v-if="chatMissing" content="未配置 AI 对话服务" placement="bottom">
+      <ElTooltip v-if="props.chatMissing" content="未配置 AI 对话服务" placement="bottom">
         <span class="chat-warning" role="status" data-testid="chat-warning">
           <CircleAlert :size="16" />
           <span class="wide-label">Chat 未配置</span>
         </span>
       </ElTooltip>
-      <ElTooltip v-if="showBuildAction" :content="buildLabel" placement="bottom">
+      <ElTooltip v-if="props.showBuildAction" :content="props.buildLabel" placement="bottom">
         <button
           class="icon-command"
           type="button"
-          :aria-label="buildLabel"
+          :aria-label="props.buildLabel"
           data-testid="build-btn"
-          :disabled="building"
+          :disabled="props.building"
           @click="emit('build')"
         >
-          <RefreshCw :size="17" :class="{ spinning: building }" />
+          <RefreshCw :size="17" :class="{ spinning: props.building }" />
         </button>
       </ElTooltip>
       <ElTooltip content="导入外部知识库 JSON" placement="bottom">
@@ -139,7 +141,7 @@ function onFileChange(event: Event): void {
           type="button"
           aria-label="导入外部知识库 JSON"
           data-testid="import-trigger"
-          :disabled="importing"
+          :disabled="props.importing"
           @click="chooseImportFile"
         >
           <Upload :size="17" />

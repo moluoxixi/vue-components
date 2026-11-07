@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
-import { withBase } from 'vitepress'
 import { ExternalLink } from '@lucide/vue'
+import { withBase } from 'vitepress'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { isExternal } from '../../utils'
 
-defineProps<{
+const props = defineProps<{
   href?: string
   noIcon?: boolean
 }>()
@@ -13,15 +13,15 @@ provideDocsUi()
 
 <template>
   <component
-    :is="href ? 'a' : 'span'"
+    :is="props.href ? 'a' : 'span'"
     class="link-item"
-    :class="{ link: href }"
-    :href="withBase(href ?? '')"
-    :target="isExternal(href) ? '_blank' : undefined"
-    :rel="isExternal(href) ? 'noopener noreferrer' : undefined"
+    :class="{ link: props.href }"
+    :href="withBase(props.href ?? '')"
+    :target="isExternal(props.href) ? '_blank' : undefined"
+    :rel="isExternal(props.href) ? 'noopener noreferrer' : undefined"
   >
     <slot />
-    <ElIcon v-if="isExternal(href) && !noIcon">
+    <ElIcon v-if="isExternal(props.href) && !props.noIcon">
       <ExternalLink class="link-icon" />
     </ElIcon>
   </component>

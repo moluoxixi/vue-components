@@ -9,14 +9,14 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<AntdAutoCompleteFieldProps>()
 
+const emit = defineEmits<AntdAutoCompleteFieldEmits>()
+
 const autoCompleteOptions = computed(() => normalizeAntdVueOptions(
   props.options,
   DESIGNER_TEXT_NUMBER_OPTION_VALUE_TYPES,
 ).filter(
   (option): option is AntdVueDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
-
-const emit = defineEmits<AntdAutoCompleteFieldEmits>()
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const emit = defineEmits<AntdAutoCompleteFieldEmits>()
     <AutoComplete
       v-bind="$attrs"
       data-designer-selection-target
-      :value="value"
+      :value="props.value"
       :options="autoCompleteOptions"
       @update:value="emit('update:value', $event as AntdAutoCompleteValue)"
     />

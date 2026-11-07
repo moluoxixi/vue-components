@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { MissingWorkspaceType } from '@fixture/not-installed'
 import type { CycleA, SharedWorkspaceType } from '@fixture/contracts'
+import type { MissingWorkspaceType } from '@fixture/not-installed'
 import type { ComponentPublicInstance } from 'vue'
 
 interface Props {
@@ -9,12 +9,12 @@ interface Props {
   shared: SharedWorkspaceType
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 defineEmits<{
   change: [payload: SharedWorkspaceType]
 }>()
 defineSlots<{
-  default(props: { item: SharedWorkspaceType }): unknown
+  default: (props: { item: SharedWorkspaceType }) => unknown
 }>()
 
 function inspect(value: SharedWorkspaceType): CycleA {
@@ -25,5 +25,5 @@ defineExpose({ inspect })
 </script>
 
 <template>
-  <slot :item="shared" />
+  <slot :item="props.shared" />
 </template>

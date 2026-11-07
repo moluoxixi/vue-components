@@ -9,9 +9,9 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<ElementRadioFieldProps>()
 
-const options = computed(() => normalizeElementPlusOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
-
 const emit = defineEmits<ElementRadioFieldEmits>()
+
+const options = computed(() => normalizeElementPlusOptions(props.options, DESIGNER_OPTION_VALUE_TYPES))
 
 function updateModelValue(value: string | number | boolean | undefined): void {
   emit('update:modelValue', value)
@@ -20,7 +20,7 @@ function updateModelValue(value: string | number | boolean | undefined): void {
 
 <template>
   <span class="mx-element-designer-choice-field">
-    <ElRadioGroup v-bind="$attrs" :model-value="modelValue" @update:model-value="updateModelValue">
+    <ElRadioGroup v-bind="$attrs" :model-value="props.modelValue" @update:model-value="updateModelValue">
       <ElRadio
         v-for="(option, index) in options"
         :key="elementPlusOptionKey(option.value, index)"

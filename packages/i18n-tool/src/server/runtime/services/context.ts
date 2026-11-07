@@ -1,4 +1,3 @@
-import type { LanguageModelTarget } from '@moluoxixi/ai-provider/server'
 import type { LanguageModel } from 'ai'
 import type { ResolvedI18nToolConfig } from '../../../config'
 import type { LocaleAdapter, ResourceDocument, TranslationCandidate, TranslationUnit } from '../../../core'
@@ -19,7 +18,10 @@ import { randomUUID } from 'node:crypto'
 import { readFile, rm } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import process from 'node:process'
-import { createLanguageModel } from '@moluoxixi/ai-provider/server'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createGoogle } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import {
   analyzeTranslationGaps,
   applyOperationsAndValidate,
@@ -64,29 +66,6 @@ export interface ServerContextOptions {
   model?: LanguageModel
   now?: () => number
   writeText?: AtomicWriter
-}
-
-function loadI18nLanguageModelTarget(
-  config: ResolvedI18nToolConfig,
-  env: Readonly<Record<string, string | undefined>>,
-): LanguageModelTarget | null {
-  const apiKey = env[config.ai.apiKeyEnv]
-  if (!apiKey?.trim())
-    return null
-
-  if (config.ai.provider === 'openai-compatible') {
-    return {
-      apiKey,
-      baseURL: config.ai.baseUrl,
-      model: config.ai.model,
-      provider: config.ai.provider,
-    }
-  }
-  return {
-    apiKey,
-    model: config.ai.model,
-    provider: config.ai.provider,
-  }
 }
 
 function textDiff(before: string, after: string): string {
@@ -172,8 +151,17 @@ export class ServerContext {
     this.now = options.now ?? Date.now
     this.writeText = options.writeText ?? writeTextAtomically
     this.pathGuard = createPathGuard(options.config.root)
-    const target = loadI18nLanguageModelTarget(options.config, options.env ?? process.env)
-    this.languageModel = target ? options.model ?? createLanguageModel(target) : null
+    const ai = options.config.ai
+    const apiKey = (options.env ?? process.env)[ai.apiKeyEnv]?.trim()
+    this.languageModel = !apiKey
+      ? null
+      : options.model ?? (ai.provider === 'openai'
+        ? createOpenAI({ apiKey }).responses(ai.model)
+        : ai.provider === 'anthropic'
+          ? createAnthropic({ apiKey })(ai.model)
+          : ai.provider === 'google'
+            ? createGoogle({ apiKey })(ai.model)
+            : createOpenAICompatible({ apiKey, baseURL: ai.baseUrl!, name: 'openai-compatible' })(ai.model))
   }
 
   sanitizedConfig(): SanitizedConfigResponse {

@@ -86,18 +86,17 @@ watch(
 )
 
 function syncBinding(): void {
-  const binding = props.binding
   const firstDataset = props.datasets[0]
-  datasetId.value = binding?.datasetId ?? firstDataset?.id ?? ''
+  datasetId.value = props.binding?.datasetId ?? firstDataset?.id ?? ''
   const dataset = props.datasets.find(candidate => candidate.id === datasetId.value)
-  projection.value = binding
-    ? cloneProjection(binding.projection)
+  projection.value = props.binding
+    ? cloneProjection(props.binding.projection)
     : projectionFor(dataset, props.capability.projectionKinds[0] ?? 'options')
-  filterJson.value = binding?.query?.filter ? JSON.stringify(binding.query.filter, null, 2) : ''
-  sortRules.value = binding?.query?.sort?.map(rule => ({ path: [...rule.path], direction: rule.direction })) ?? []
-  pageEnabled.value = binding?.query?.page !== undefined
-  pageIndex.value = binding?.query?.page?.index ?? 0
-  pageSize.value = binding?.query?.page?.size ?? 10
+  filterJson.value = props.binding?.query?.filter ? JSON.stringify(props.binding.query.filter, null, 2) : ''
+  sortRules.value = props.binding?.query?.sort?.map(rule => ({ path: [...rule.path], direction: rule.direction })) ?? []
+  pageEnabled.value = props.binding?.query?.page !== undefined
+  pageIndex.value = props.binding?.query?.page?.index ?? 0
+  pageSize.value = props.binding?.query?.page?.size ?? 10
   error.value = ''
 }
 
@@ -452,47 +451,47 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
 </script>
 
 <template>
-  <section class="mx-config-form-designer__data-binding-section" :data-dataset-binding="capability.key">
+  <section class="mx-config-form-designer__data-binding-section" :data-dataset-binding="props.capability.key">
     <div class="mx-config-form-designer__data-binding-title">
       <strong>{{ locale.t('data.dataset.title', 'Dataset') }}</strong>
-      <code>{{ capability.key }}</code>
+      <code>{{ props.capability.key }}</code>
     </div>
 
-    <template v-if="hasInlineOptions && !binding">
+    <template v-if="props.hasInlineOptions && !props.binding">
       <div class="mx-config-form-designer__data-binding-field">
         <label>{{ locale.t('data.options.datasetName', 'Dataset name') }}</label>
-        <ElInput v-model="optionsName" :disabled="readonly" :aria-label="locale.t('data.options.datasetName', 'Dataset name')" />
+        <ElInput v-model="optionsName" :disabled="props.readonly" :aria-label="locale.t('data.options.datasetName', 'Dataset name')" />
       </div>
-      <ElButton size="small" :disabled="readonly" data-save-options-dataset @click="saveOptions">
+      <ElButton size="small" :disabled="props.readonly" data-save-options-dataset @click="saveOptions">
         {{ locale.t('data.options.save', 'Save inline options as Dataset') }}
       </ElButton>
     </template>
 
-    <template v-if="datasets.length">
+    <template v-if="props.datasets.length">
       <div class="mx-config-form-designer__data-binding-field">
         <label>{{ locale.t('data.dataset.asset', 'Dataset') }}</label>
         <ElSelect
           :model-value="datasetId"
-          :disabled="readonly"
+          :disabled="props.readonly"
           filterable
           :aria-label="locale.t('data.dataset.asset', 'Dataset')"
           data-dataset-select
           @update:model-value="selectDataset"
         >
-          <ElOption v-for="dataset in datasets" :key="dataset.id" :value="dataset.id" :label="dataset.name" />
+          <ElOption v-for="dataset in props.datasets" :key="dataset.id" :value="dataset.id" :label="dataset.name" />
         </ElSelect>
       </div>
 
-      <div v-if="capability.projectionKinds.length > 1" class="mx-config-form-designer__data-binding-field">
+      <div v-if="props.capability.projectionKinds.length > 1" class="mx-config-form-designer__data-binding-field">
         <label>{{ locale.t('data.projection.kind', 'Projection') }}</label>
         <ElSelect
           :model-value="projection.kind"
-          :disabled="readonly"
+          :disabled="props.readonly"
           :aria-label="locale.t('data.projection.kind', 'Projection')"
           data-projection-kind
           @update:model-value="selectProjectionKind"
         >
-          <ElOption v-for="kind in capability.projectionKinds" :key="kind" :value="kind" :label="kind" />
+          <ElOption v-for="kind in props.capability.projectionKinds" :key="kind" :value="kind" :label="kind" />
         </ElSelect>
       </div>
 
@@ -503,40 +502,40 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
       <div v-if="projection.kind === 'options'" class="mx-config-form-designer__data-binding-fields" data-options-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.labelPath', 'Label path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.labelPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.labelPath', 'Label path')" @change="updateOptionsPath('labelPath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.labelPath" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.projection.labelPath', 'Label path')" @change="updateOptionsPath('labelPath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.valuePath', 'Value path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.valuePath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.valuePath', 'Value path')" @change="updateOptionsPath('valuePath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.valuePath" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.projection.valuePath', 'Value path')" @change="updateOptionsPath('valuePath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.disabledPath', 'Disabled path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.disabledPath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.disabledPath', 'Disabled path')" @change="updateOptionsPath('disabledPath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.disabledPath" :options="pathOptions" :readonly="props.readonly" :required="false" :label="locale.t('data.projection.disabledPath', 'Disabled path')" @change="updateOptionsPath('disabledPath', $event)" @validation="updatePathValidity" />
         </div>
       </div>
 
       <div v-else-if="projection.kind === 'table'" class="mx-config-form-designer__data-binding-fields" data-table-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.rowKeyPath', 'Row key path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.rowKeyPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.rowKeyPath', 'Row key path')" @change="updateTableRowKey" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.rowKeyPath" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.projection.rowKeyPath', 'Row key path')" @change="updateTableRowKey" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-list">
           <div class="mx-config-form-designer__data-binding-row-heading">
             <label>{{ locale.t('data.projection.columns', 'Columns') }}</label>
-            <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.projection.addColumn', 'Add column')" @click="addColumn">
+            <ElButton text circle :disabled="props.readonly" :aria-label="locale.t('data.projection.addColumn', 'Add column')" @click="addColumn">
               <Plus :size="14" aria-hidden="true" />
             </ElButton>
           </div>
           <div v-for="(column, index) in projection.columns" :key="pathRowKey(column)" class="mx-config-form-designer__data-binding-row">
             <div class="mx-config-form-designer__data-binding-field">
               <label>{{ locale.t('data.projection.columnKey', 'Column key') }}</label>
-              <ElInput :model-value="column.key" :disabled="readonly" :aria-label="locale.t('data.projection.columnKey', 'Column key')" @update:model-value="updateColumn(index, { key: $event })" />
+              <ElInput :model-value="column.key" :disabled="props.readonly" :aria-label="locale.t('data.projection.columnKey', 'Column key')" @update:model-value="updateColumn(index, { key: $event })" />
             </div>
             <div class="mx-config-form-designer__data-binding-field">
               <label>{{ locale.t('data.projection.columnPath', 'Value path') }}</label>
-              <DesignerDatasetPathEditor :model-value="column.valuePath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.columnPath', 'Value path')" @change="updateColumn(index, { valuePath: normalizePath($event) ?? column.valuePath })" @validation="updatePathValidity" />
+              <DesignerDatasetPathEditor :model-value="column.valuePath" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.projection.columnPath', 'Value path')" @change="updateColumn(index, { valuePath: normalizePath($event) ?? column.valuePath })" @validation="updatePathValidity" />
             </div>
-            <ElButton text circle :disabled="readonly || projection.columns.length === 1" :aria-label="locale.t('data.projection.removeColumn', 'Remove column')" @click="removeColumn(index)">
+            <ElButton text circle :disabled="props.readonly || projection.columns.length === 1" :aria-label="locale.t('data.projection.removeColumn', 'Remove column')" @click="removeColumn(index)">
               <Trash2 :size="14" aria-hidden="true" />
             </ElButton>
           </div>
@@ -546,43 +545,43 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
       <div v-else class="mx-config-form-designer__data-binding-fields" data-list-projection>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.itemKeyPath', 'Item key path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.itemKeyPath" :options="pathOptions" :readonly="readonly" :label="locale.t('data.projection.itemKeyPath', 'Item key path')" @change="updateListPath('itemKeyPath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.itemKeyPath" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.projection.itemKeyPath', 'Item key path')" @change="updateListPath('itemKeyPath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.titlePath', 'Title path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.titlePath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.titlePath', 'Title path')" @change="updateListPath('titlePath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.titlePath" :options="pathOptions" :readonly="props.readonly" :required="false" :label="locale.t('data.projection.titlePath', 'Title path')" @change="updateListPath('titlePath', $event)" @validation="updatePathValidity" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.projection.descriptionPath', 'Description path') }}</label>
-          <DesignerDatasetPathEditor :model-value="projection.descriptionPath" :options="pathOptions" :readonly="readonly" :required="false" :label="locale.t('data.projection.descriptionPath', 'Description path')" @change="updateListPath('descriptionPath', $event)" @validation="updatePathValidity" />
+          <DesignerDatasetPathEditor :model-value="projection.descriptionPath" :options="pathOptions" :readonly="props.readonly" :required="false" :label="locale.t('data.projection.descriptionPath', 'Description path')" @change="updateListPath('descriptionPath', $event)" @validation="updatePathValidity" />
         </div>
       </div>
 
       <div class="mx-config-form-designer__data-binding-field">
         <label>{{ locale.t('data.query.filter', 'Filter expression JSON') }}</label>
-        <ElInput v-model="filterJson" class="mx-config-form-designer__data-binding-filter" type="textarea" :rows="3" :disabled="readonly" :aria-label="locale.t('data.query.filter', 'Filter expression JSON')" />
+        <ElInput v-model="filterJson" class="mx-config-form-designer__data-binding-filter" type="textarea" :rows="3" :disabled="props.readonly" :aria-label="locale.t('data.query.filter', 'Filter expression JSON')" />
       </div>
 
       <div class="mx-config-form-designer__data-binding-list" data-query-sort>
         <div class="mx-config-form-designer__data-binding-row-heading">
           <label>{{ locale.t('data.query.sort', 'Local sort') }}</label>
-          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.addSort', 'Add sort rule')" @click="addSortRule">
+          <ElButton text circle :disabled="props.readonly" :aria-label="locale.t('data.query.addSort', 'Add sort rule')" @click="addSortRule">
             <Plus :size="14" aria-hidden="true" />
           </ElButton>
         </div>
         <div v-for="(rule, index) in sortRules" :key="pathRowKey(rule)" class="mx-config-form-designer__data-binding-row">
           <div class="mx-config-form-designer__data-binding-field">
             <label>{{ locale.t('data.query.sortPath', 'Sort path') }}</label>
-            <DesignerDatasetPathEditor :model-value="rule.path" :options="pathOptions" :readonly="readonly" :label="locale.t('data.query.sortPath', 'Sort path')" @change="updateSortRule(index, { path: normalizePath($event) ?? rule.path })" @validation="updatePathValidity" />
+            <DesignerDatasetPathEditor :model-value="rule.path" :options="pathOptions" :readonly="props.readonly" :label="locale.t('data.query.sortPath', 'Sort path')" @change="updateSortRule(index, { path: normalizePath($event) ?? rule.path })" @validation="updatePathValidity" />
           </div>
           <div class="mx-config-form-designer__data-binding-field">
             <label>{{ locale.t('data.query.direction', 'Direction') }}</label>
-            <ElSelect :model-value="rule.direction" :disabled="readonly" :aria-label="locale.t('data.query.direction', 'Direction')" @update:model-value="updateSortRule(index, { direction: $event })">
+            <ElSelect :model-value="rule.direction" :disabled="props.readonly" :aria-label="locale.t('data.query.direction', 'Direction')" @update:model-value="updateSortRule(index, { direction: $event })">
               <ElOption value="asc" :label="locale.t('data.query.asc', 'Ascending')" />
               <ElOption value="desc" :label="locale.t('data.query.desc', 'Descending')" />
             </ElSelect>
           </div>
-          <ElButton text circle :disabled="readonly" :aria-label="locale.t('data.query.removeSort', 'Remove sort rule')" @click="removeSortRule(index)">
+          <ElButton text circle :disabled="props.readonly" :aria-label="locale.t('data.query.removeSort', 'Remove sort rule')" @click="removeSortRule(index)">
             <Trash2 :size="14" aria-hidden="true" />
           </ElButton>
         </div>
@@ -590,27 +589,27 @@ function createPathOptions(rows: readonly DeepReadonly<Record<string, ModelJsonV
 
       <div class="mx-config-form-designer__data-binding-field">
         <label>{{ locale.t('data.query.pagination', 'Local pagination') }}</label>
-        <ElSwitch v-model="pageEnabled" :disabled="readonly" :aria-label="locale.t('data.query.pagination', 'Local pagination')" />
+        <ElSwitch v-model="pageEnabled" :disabled="props.readonly" :aria-label="locale.t('data.query.pagination', 'Local pagination')" />
       </div>
       <div v-if="pageEnabled" class="mx-config-form-designer__data-binding-row" data-query-page>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.query.pageIndex', 'Page index') }}</label>
-          <ElInputNumber v-model="pageIndex" :min="0" :precision="0" :disabled="readonly" :aria-label="locale.t('data.query.pageIndex', 'Page index')" />
+          <ElInputNumber v-model="pageIndex" :min="0" :precision="0" :disabled="props.readonly" :aria-label="locale.t('data.query.pageIndex', 'Page index')" />
         </div>
         <div class="mx-config-form-designer__data-binding-field">
           <label>{{ locale.t('data.query.pageSize', 'Page size') }}</label>
-          <ElInputNumber v-model="pageSize" :min="1" :precision="0" :disabled="readonly" :aria-label="locale.t('data.query.pageSize', 'Page size')" />
+          <ElInputNumber v-model="pageSize" :min="1" :precision="0" :disabled="props.readonly" :aria-label="locale.t('data.query.pageSize', 'Page size')" />
         </div>
       </div>
 
       <div class="mx-config-form-designer__data-binding-actions">
-        <ElButton type="primary" size="small" :disabled="readonly" data-apply-dataset-binding @click="apply">
-          {{ binding ? locale.t('data.dataset.update', 'Update binding') : locale.t('data.dataset.bind', 'Bind Dataset') }}
+        <ElButton type="primary" size="small" :disabled="props.readonly" data-apply-dataset-binding @click="apply">
+          {{ props.binding ? locale.t('data.dataset.update', 'Update binding') : locale.t('data.dataset.bind', 'Bind Dataset') }}
         </ElButton>
-        <ElButton v-if="binding?.projection.kind === 'options'" size="small" :disabled="readonly" data-materialize-options @click="emit('materialize')">
+        <ElButton v-if="props.binding?.projection.kind === 'options'" size="small" :disabled="props.readonly" data-materialize-options @click="emit('materialize')">
           {{ locale.t('data.options.materialize', 'Detach as inline options') }}
         </ElButton>
-        <ElButton v-else-if="binding" size="small" :disabled="readonly" data-remove-dataset-binding @click="emit('remove')">
+        <ElButton v-else-if="props.binding" size="small" :disabled="props.readonly" data-remove-dataset-binding @click="emit('remove')">
           {{ locale.t('data.dataset.remove', 'Remove binding') }}
         </ElButton>
       </div>

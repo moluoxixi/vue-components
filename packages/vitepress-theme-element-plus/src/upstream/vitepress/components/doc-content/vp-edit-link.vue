@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { ExternalLink } from '@lucide/vue'
+import { provideDocsUi } from '../../../../runtime/provide-docs-ui'
 import { useEditLink } from '../../composables/edit-link'
 
 const { url, text } = useEditLink()

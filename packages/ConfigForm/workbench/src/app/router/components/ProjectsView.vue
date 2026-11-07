@@ -75,6 +75,7 @@ function openCurrentProject(): void {
       :ui="ui"
       @create="createProject"
       @quick-create="createForm"
+      @assistant="router.push('/assistant/new')"
       @open="openCurrentProject"
     />
     <ElDialog

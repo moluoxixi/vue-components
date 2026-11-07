@@ -1,4 +1,4 @@
-import type { EmbeddingProviderId } from '@moluoxixi/ai-provider/shared'
+import type { EmbeddingProviderId } from '../../../shared/protocol'
 import type { ComponentContract } from '../../types'
 import { createHash } from 'node:crypto'
 

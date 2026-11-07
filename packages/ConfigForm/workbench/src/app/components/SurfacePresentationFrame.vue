@@ -21,8 +21,8 @@ const presentationStyle = computed<CSSProperties>(() => {
 <template>
   <div
     class="surface-presentation-shell"
-    :class="[`is-${surface?.kind ?? 'page'}`, surface?.kind === 'drawer' ? `is-${surface.presentation.placement}` : '']"
-    :data-surface-presentation="surface?.kind"
+    :class="[`is-${props.surface?.kind ?? 'page'}`, props.surface?.kind === 'drawer' ? `is-${props.surface.presentation.placement}` : '']"
+    :data-surface-presentation="props.surface?.kind"
     :style="presentationStyle"
   >
     <div v-if="overlay?.presentation.mask" class="surface-presentation-mask" aria-hidden="true" />
@@ -36,8 +36,8 @@ const presentationStyle = computed<CSSProperties>(() => {
         <span v-if="overlay.presentation.close.button" aria-hidden="true"><X :size="16" /></span>
       </header>
       <slot />
-      <div v-if="overlay && !overlay.graph.root.length && emptyHint" class="surface-presentation-empty">
-        {{ emptyHint }}
+      <div v-if="overlay && !overlay.graph.root.length && props.emptyHint" class="surface-presentation-empty">
+        {{ props.emptyHint }}
       </div>
     </component>
   </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { ExampleDefinition } from './example-registry'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { examples } from './example-registry'
 
 interface ExampleGroup {

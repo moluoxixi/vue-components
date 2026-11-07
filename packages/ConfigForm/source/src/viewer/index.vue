@@ -31,7 +31,8 @@ const treeNodes = computed(() => buildSourceFileTree(fileEntries.value))
 const selectedFile = computed(() => fileEntries.value.find(file => file.path === props.selectedPath))
 const selectedLanguage = computed(() => {
   const file = selectedFile.value
-  if (!file) return ''
+  if (!file)
+    return ''
   return file.kind === 'text' ? sourceLanguageLabel(file.language) : 'Binary'
 })
 const selectedByteLength = computed(() => {
@@ -44,7 +45,8 @@ watch(
   ([path, file]) => {
     if (path && file) {
       activePane.value = 'code'
-      if (!openPaths.value.includes(path)) openPaths.value.push(path)
+      if (!openPaths.value.includes(path))
+        openPaths.value.push(path)
       void nextTick(() => tabButtons.get(path)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }))
     }
   },
@@ -59,20 +61,23 @@ function selectFile(path: string): void {
 }
 
 function setTabRef(path: string, element: unknown): void {
-  if (element instanceof HTMLButtonElement) tabButtons.set(path, element)
+  if (element instanceof HTMLButtonElement)
+    tabButtons.set(path, element)
   else tabButtons.delete(path)
 }
 
 function closeFile(path: string): void {
   const files = openFiles.value
   const index = files.findIndex(file => file.path === path)
-  if (files.length < 2 || index < 0) return
+  if (files.length < 2 || index < 0)
+    return
   openPaths.value = openPaths.value.filter(item => item !== path)
   if (path === props.selectedPath) {
     const next = files[index + 1] ?? files[index - 1]!
     selectFile(next.path)
     void nextTick(() => tabButtons.get(next.path)?.focus())
-  } else {
+  }
+  else {
     void nextTick(() => tabButtons.get(props.selectedPath)?.focus())
   }
 }
@@ -86,14 +91,19 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
     return
   }
   let target: number
-  if (event.key === 'ArrowLeft') target = (index - 1 + files.length) % files.length
-  else if (event.key === 'ArrowRight') target = (index + 1) % files.length
-  else if (event.key === 'Home') target = 0
-  else if (event.key === 'End') target = files.length - 1
+  if (event.key === 'ArrowLeft')
+    target = (index - 1 + files.length) % files.length
+  else if (event.key === 'ArrowRight')
+    target = (index + 1) % files.length
+  else if (event.key === 'Home')
+    target = 0
+  else if (event.key === 'End')
+    target = files.length - 1
   else return
   event.preventDefault()
   const file = files[target]
-  if (!file) return
+  if (!file)
+    return
   selectFile(file.path)
   tabButtons.get(file.path)?.focus()
 }
@@ -103,7 +113,7 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
   <section
     class="config-form-source-viewer"
     :data-active-pane="activePane"
-    :data-theme="theme"
+    :data-theme="props.theme"
     aria-label="Generated source viewer"
   >
     <template v-if="fileEntries.length > 0">
@@ -134,7 +144,7 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
             <span><Files :size="14" aria-hidden="true" />{{ labels.files }}</span>
             <span aria-label="File count">{{ fileEntries.length }}</span>
           </header>
-          <SourceFileTree :nodes="treeNodes" :selected-path="selectedPath" @select="selectFile" />
+          <SourceFileTree :nodes="treeNodes" :selected-path="props.selectedPath" @select="selectFile" />
         </aside>
 
         <section :id="codePaneId" class="config-form-source-viewer__code-pane" aria-label="Source code">
@@ -143,15 +153,15 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
               v-for="file in openFiles"
               :key="file.path"
               class="config-form-source-viewer__tab"
-              :class="{ 'is-active': file.path === selectedPath }"
+              :class="{ 'is-active': file.path === props.selectedPath }"
             >
               <button
                 :ref="(element: unknown) => setTabRef(file.path, element)"
                 type="button"
                 role="tab"
-                :aria-selected="file.path === selectedPath"
+                :aria-selected="file.path === props.selectedPath"
                 :aria-controls="fileContentId"
-                :tabindex="file.path === selectedPath ? 0 : -1"
+                :tabindex="file.path === props.selectedPath ? 0 : -1"
                 :title="file.path"
                 @click="selectFile(file.path)"
                 @keydown="handleTabKeydown($event, file.path)"
@@ -177,8 +187,8 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
           </nav>
           <header class="config-form-source-viewer__path-bar">
             <Code2 :size="15" aria-hidden="true" />
-            <span class="config-form-source-viewer__path" :title="selectedPath || 'No file selected'">
-              {{ selectedPath || 'No file selected' }}
+            <span class="config-form-source-viewer__path" :title="props.selectedPath || 'No file selected'">
+              {{ props.selectedPath || 'No file selected' }}
             </span>
             <span v-if="selectedLanguage" class="config-form-source-viewer__language">
               {{ selectedLanguage }}
@@ -190,13 +200,13 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
             :id="fileContentId"
             class="config-form-source-viewer__file-content"
             role="tabpanel"
-            :aria-label="selectedPath || labels.code"
+            :aria-label="props.selectedPath || labels.code"
           >
             <SourceTextViewer
               v-if="selectedFile?.kind === 'text'"
               :file="selectedFile"
-              :theme="theme"
-              :wrap-lines="wrapLines"
+              :theme="props.theme"
+              :wrap-lines="props.wrapLines"
             />
 
             <div
@@ -225,9 +235,13 @@ function handleTabKeydown(event: KeyboardEvent, path: string): void {
 
             <div v-else class="config-form-source-viewer__missing-state" role="status">
               <Code2 :size="28" aria-hidden="true" />
-              <h2>{{ selectedPath ? 'File unavailable' : 'No file selected' }}</h2>
-              <p v-if="selectedPath" :title="selectedPath">The selected path is not part of this file set.</p>
-              <p v-else>No source file is selected.</p>
+              <h2>{{ props.selectedPath ? 'File unavailable' : 'No file selected' }}</h2>
+              <p v-if="props.selectedPath" :title="props.selectedPath">
+                The selected path is not part of this file set.
+              </p>
+              <p v-else>
+                No source file is selected.
+              </p>
             </div>
           </div>
         </section>

@@ -117,17 +117,17 @@ const filteredTemplates = computed(() => {
 const creationTitle = computed(() => props.quickStart
   ? locale.value.t('projects.quickForm', 'Create a form')
   : props.target === 'project'
-  ? locale.value.t('template.createProject', 'Create project')
-  : locale.value.t('pages.fromTemplate', 'From template'))
+    ? locale.value.t('template.createProject', 'Create project')
+    : locale.value.t('pages.fromTemplate', 'From template'))
 const createLabel = computed(() => props.quickStart
   ? locale.value.t('projects.startDesigning', 'Start designing')
   : props.target === 'project'
-  ? locale.value.t('template.createProjectAction', 'Create project')
-  : creationSurfaceKind.value === 'dialog'
-    ? locale.value.t('pages.createDialogAction', 'Create dialog')
-    : creationSurfaceKind.value === 'drawer'
-      ? locale.value.t('pages.createDrawerAction', 'Create drawer')
-      : locale.value.t('pages.createFormAction', 'Create page'))
+    ? locale.value.t('template.createProjectAction', 'Create project')
+    : creationSurfaceKind.value === 'dialog'
+      ? locale.value.t('pages.createDialogAction', 'Create dialog')
+      : creationSurfaceKind.value === 'drawer'
+        ? locale.value.t('pages.createDrawerAction', 'Create drawer')
+        : locale.value.t('pages.createFormAction', 'Create page'))
 const createUnavailableReason = computed(() => {
   if (loadingPreview.value || loadingCatalog.value)
     return locale.value.t('template.checkingEligibility', 'Preparing template')
@@ -476,7 +476,7 @@ onBeforeUnmount(() => {
     <header class="template-workspace-header">
       <div class="template-workspace-heading">
         <ElButton
-          v-if="canClose"
+          v-if="props.canClose"
           native-type="button"
           text
           circle
@@ -644,8 +644,12 @@ onBeforeUnmount(() => {
                 <ArrowLeft :size="16" aria-hidden="true" />
                 {{ locale.t('template.catalog', 'Catalog') }}
               </button>
-              <h2 :title="templateName(selectedTemplate)">{{ templateName(selectedTemplate) }}</h2>
-              <p :title="templateDescription(selectedTemplate)">{{ templateDescription(selectedTemplate) }}</p>
+              <h2 :title="templateName(selectedTemplate)">
+                {{ templateName(selectedTemplate) }}
+              </h2>
+              <p :title="templateDescription(selectedTemplate)">
+                {{ templateDescription(selectedTemplate) }}
+              </p>
             </div>
           </header>
 
@@ -790,6 +794,6 @@ onBeforeUnmount(() => {
         @update:query="query = $event"
       />
     </ElDrawer>
-    <JsonImportPane v-if="creationMode === 'json'" :locale="props.locale" :target="target" @created="emit('created')" />
+    <JsonImportPane v-if="creationMode === 'json'" :locale="props.locale" :target="props.target" @created="emit('created')" />
   </main>
 </template>

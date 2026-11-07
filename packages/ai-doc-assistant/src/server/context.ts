@@ -3,7 +3,7 @@ import type { ComponentContract } from '../core'
 import type { RetrievalMode, RetrievalStrategy } from '../core/retrieval'
 import type { QdrantConfig, VectorStoreConfig, VectorStoreKind } from '../core/vector'
 import type { KnowledgeImportPayload, KnowledgeImportResult } from '../shared/protocol'
-import type { AiDocProviderConfig, EmbeddingIdentitySeed } from './ai-provider'
+import type { AiDocProviderConfig, EmbeddingIdentitySeed } from './model-config'
 /**
  * Server 运行时上下文：聚合 provider 配置、索引状态机、组件契约与检索策略。
  * 由 plugin/standalone 入口构造一次，注入各路由处理器，避免散落的全局态。
@@ -16,14 +16,17 @@ import type { AiDocProviderConfig, EmbeddingIdentitySeed } from './ai-provider'
  */
 import { join } from 'node:path'
 import process from 'node:process'
-import { createEmbeddingModel, createLanguageModel } from '@moluoxixi/ai-provider/server'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createGoogle } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { discoverComponentSources } from '../core/discovery'
 import { extractContracts } from '../core/extraction'
 import { IndexStateManager, loadIndex, persistIndex, readMeta, sourceHashOf } from '../core/indexing'
 import { contractKnowledgeKey, importExternalContract } from '../core/knowledge'
 import { createStrategy, RETRIEVAL_MODES } from '../core/retrieval'
 import { VECTOR_STORE_KINDS } from '../core/vector'
-import { embeddingIdentitySeedOf, loadProviderConfig } from './ai-provider'
+import { embeddingIdentitySeedOf, loadProviderConfig } from './model-config'
 
 /** 上下文构造选项。 */
 export interface ServerContextOptions {
@@ -156,8 +159,24 @@ export class ServerContext {
   constructor(private readonly opts: ServerContextOptions) {
     const env = opts.env ?? process.env
     this.config = loadProviderConfig(env)
-    this.languageModel = this.config.chat ? createLanguageModel(this.config.chat) : null
-    this.embeddingModel = this.config.embedding ? createEmbeddingModel(this.config.embedding) : null
+    const chat = this.config.chat
+    this.languageModel = !chat
+      ? null
+      : chat.provider === 'openai'
+        ? createOpenAI({ apiKey: chat.apiKey }).responses(chat.model)
+        : chat.provider === 'anthropic'
+          ? createAnthropic({ apiKey: chat.apiKey })(chat.model)
+          : chat.provider === 'google'
+            ? createGoogle({ apiKey: chat.apiKey })(chat.model)
+            : createOpenAICompatible({ apiKey: chat.apiKey, baseURL: chat.baseURL, name: 'openai-compatible' })(chat.model)
+    const embedding = this.config.embedding
+    this.embeddingModel = !embedding
+      ? null
+      : embedding.provider === 'openai'
+        ? createOpenAI({ apiKey: embedding.apiKey }).embeddingModel(embedding.model)
+        : embedding.provider === 'google'
+          ? createGoogle({ apiKey: embedding.apiKey }).embeddingModel(embedding.model)
+          : createOpenAICompatible({ apiKey: embedding.apiKey, baseURL: embedding.baseURL, name: 'openai-compatible' }).embeddingModel(embedding.model)
     this.embeddingIdentity = this.config.embedding
       ? embeddingIdentitySeedOf(this.config.embedding)
       : undefined

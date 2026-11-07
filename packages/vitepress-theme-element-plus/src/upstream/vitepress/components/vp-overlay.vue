@@ -1,12 +1,12 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   show: boolean
 }>()
 </script>
 
 <template>
   <Transition name="epd-fade-in">
-    <div v-if="show" class="overlay" />
+    <div v-if="props.show" class="overlay" />
   </Transition>
 </template>
 
@@ -21,5 +21,4 @@ defineProps<{
   transition: opacity 0.5s;
   z-index: var(--ep-docs-overlay-z-index);
 }
-
 </style>

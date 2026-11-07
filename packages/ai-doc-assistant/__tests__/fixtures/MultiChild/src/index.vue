@@ -2,7 +2,7 @@
 import A from './a/index.vue'
 import B from './b/index.vue'
 
-defineProps<{ own?: boolean }>()
+const props = defineProps<{ own?: boolean }>()
 </script>
 
 <template>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import ElementPlusDocsTypeCell from './ElementPlusDocsTypeCell.vue'
 import type {
   ElementPlusDocsApiMessages,
   ElementPlusDocsApiRow,
   ElementPlusDocsApiSection,
 } from './types'
+import { computed } from 'vue'
+import ElementPlusDocsTypeCell from './ElementPlusDocsTypeCell.vue'
 
 const props = defineProps<{
   data: ElementPlusDocsApiRow[]
@@ -38,21 +38,31 @@ function typeDetailsLabel(type: string): string {
       <colgroup>
         <col style="width: 160px">
         <col style="width: 240px">
-        <col v-if="type === 'props'" style="width: 120px">
-        <col v-if="type === 'props'" style="width: 88px">
+        <col v-if="props.type === 'props'" style="width: 120px">
+        <col v-if="props.type === 'props'" style="width: 88px">
         <col>
       </colgroup>
       <thead>
         <tr>
-          <th scope="col">{{ messages.name }}</th>
-          <th scope="col">{{ typeColumnLabel }}</th>
-          <th v-if="type === 'props'" scope="col">{{ messages.defaultValue }}</th>
-          <th v-if="type === 'props'" scope="col">{{ messages.required }}</th>
-          <th scope="col">{{ messages.description }}</th>
+          <th scope="col">
+            {{ props.messages.name }}
+          </th>
+          <th scope="col">
+            {{ typeColumnLabel }}
+          </th>
+          <th v-if="props.type === 'props'" scope="col">
+            {{ props.messages.defaultValue }}
+          </th>
+          <th v-if="props.type === 'props'" scope="col">
+            {{ props.messages.required }}
+          </th>
+          <th scope="col">
+            {{ props.messages.description }}
+          </th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in data" :key="row.name">
+        <tr v-for="row in props.data" :key="row.name">
           <td><span class="prop-name">{{ row.name }}</span></td>
           <td>
             <ElementPlusDocsTypeCell
@@ -61,11 +71,11 @@ function typeDetailsLabel(type: string): string {
               :type-details-label="typeDetailsLabel(row.type)"
             />
           </td>
-          <td v-if="type === 'props'">
+          <td v-if="props.type === 'props'">
             <span class="prop-default">{{ row.default ?? '—' }}</span>
           </td>
-          <td v-if="type === 'props'">
-            <span v-if="row.required" class="prop-required" :aria-label="messages.required">{{ messages.yes }}</span>
+          <td v-if="props.type === 'props'">
+            <span v-if="row.required" class="prop-required" :aria-label="props.messages.required">{{ props.messages.yes }}</span>
             <span v-else class="prop-empty">—</span>
           </td>
           <td><span class="prop-desc">{{ row.description }}</span></td>

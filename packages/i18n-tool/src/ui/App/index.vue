@@ -3,6 +3,13 @@ import type { WorkbenchAction, WorkbenchView } from './state'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { protectedTokensEqual } from '../../core'
 import {
+  ChangesView,
+  ResourcesView,
+  TranslateView,
+  WorkspaceTabs,
+  WorkspaceTopbar,
+} from './components'
+import {
   ApiError,
   applyPreview,
   createPreview,
@@ -14,13 +21,6 @@ import {
   createInitialState,
   reduceWorkbenchState,
 } from './state'
-import {
-  ChangesView,
-  ResourcesView,
-  TranslateView,
-  WorkspaceTabs,
-  WorkspaceTopbar,
-} from './components'
 
 const state = ref(createInitialState())
 let translationController: AbortController | undefined

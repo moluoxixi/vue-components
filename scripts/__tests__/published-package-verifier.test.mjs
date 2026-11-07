@@ -11,7 +11,6 @@ import {
   createPackedConsumerManifest,
   createPnpmInvocation,
   createTypeSmokeSource,
-  getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
   getNodeRuntimeSpecifiers,
   getPackedBrowserApplications,
@@ -79,10 +78,6 @@ describe('published package verifier helpers', () => {
       .toEqual(['./protocol', './api-contract'])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/ai-doc-assistant'])
       .toEqual(['.', './plugin'])
-    expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/ai-provider'])
-      .toEqual(['.', './shared'])
-    expect(browserJavaScriptEntrypointExclusions['@moluoxixi/ai-provider'])
-      .toEqual(['./server'])
     expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/config-form-antd-vue'])
       .toEqual(['.'])
     expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/config-form-element'])
@@ -115,15 +110,6 @@ describe('published package verifier helpers', () => {
           './plugin': {
             import: './dist/plugin.js',
             types: './dist/src/server/plugin.d.ts',
-          },
-        },
-      },
-      {
-        name: '@moluoxixi/ai-provider',
-        exports: {
-          './server': {
-            import: './dist/server.js',
-            types: './dist/server.d.ts',
           },
         },
       },
@@ -164,7 +150,6 @@ describe('published package verifier helpers', () => {
       },
     ])).toEqual([
       '@moluoxixi/ai-doc-assistant/plugin',
-      '@moluoxixi/ai-provider/server',
       '@moluoxixi/config-form-local',
       '@moluoxixi/config-form-local/mcp',
       '@moluoxixi/config-form-studio',
@@ -321,40 +306,6 @@ describe('published package verifier helpers', () => {
     expect(createBrowserViteConfigSource([
       '@moluoxixi/components',
     ])).toBe('export default {"resolve":{"alias":[]}}')
-  })
-
-  it('classifies AI provider browser safety and Node runtime entries', () => {
-    const manifest = {
-      name: '@moluoxixi/ai-provider',
-      exports: {
-        '.': { import: './dist/index.js', types: './dist/index.d.ts' },
-        './server': { import: './dist/server.js', types: './dist/server.d.ts' },
-        './shared': { import: './dist/shared.js', types: './dist/shared.d.ts' },
-      },
-    }
-
-    expect(getBrowserConsumerSpecifiers([manifest], {
-      '@moluoxixi/ai-provider': ['.', './shared'],
-    }, {})).toEqual({
-      javaScript: ['@moluoxixi/ai-provider', '@moluoxixi/ai-provider/shared'],
-      stylesheets: [],
-    })
-    expect(getNodeRuntimeSpecifiers([manifest], {
-      '@moluoxixi/ai-provider': ['./server'],
-    })).toEqual(['@moluoxixi/ai-provider/server'])
-    expect(getBrowserBundleForbiddenFragments([manifest], {
-      '@moluoxixi/ai-provider': [
-        'createLanguageModel',
-        'createEmbeddingModel',
-        'getAiProviderErrorCause',
-        'apiKey',
-      ],
-    })).toEqual([
-      'createLanguageModel',
-      'createEmbeddingModel',
-      'getAiProviderErrorCause',
-      'apiKey',
-    ])
   })
 
   it('classifies i18n-tool protocol and Node-only entries', () => {

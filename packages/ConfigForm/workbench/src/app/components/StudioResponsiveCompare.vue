@@ -54,7 +54,7 @@ const viewports: { id: DesignRuntimeHostFrameProps['breakpoint'], width: number 
 
 <template>
   <ElDialog
-    :model-value="modelValue"
+    :model-value="props.modelValue"
     :title="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
     width="min(1400px, 96vw)"
     class="studio-responsive-compare"

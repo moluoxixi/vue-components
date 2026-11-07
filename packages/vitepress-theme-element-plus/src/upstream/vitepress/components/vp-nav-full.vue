@@ -3,9 +3,11 @@ import { ref } from 'vue'
 import { useLockScreen } from '../composables/lock-screen'
 import VPFullScreenMenu from './full-screen/vp-menu.vue'
 
-defineProps<{
+const props = defineProps<{
   fullScreen: boolean
 }>()
+
+const emit = defineEmits<{ close: [] }>()
 
 const { lock, cleanup } = useLockScreen()
 const fullscreen = ref()
@@ -13,9 +15,9 @@ const fullscreen = ref()
 
 <template>
   <Transition name="el-fade-in" @enter="lock" @after-leave="cleanup">
-    <div v-if="fullScreen" id="full-screen" ref="fullscreen">
+    <div v-if="props.fullScreen" id="full-screen" ref="fullscreen">
       <div class="full-screen-container">
-        <VPFullScreenMenu @close="$emit('close')" />
+        <VPFullScreenMenu @close="emit('close')" />
       </div>
     </div>
   </Transition>

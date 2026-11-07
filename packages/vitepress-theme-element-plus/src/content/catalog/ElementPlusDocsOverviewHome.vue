@@ -4,7 +4,7 @@ import type { ElementPlusDocsCatalogGroup, ElementPlusDocsOverviewData } from '.
 import { ArrowRight, BookOpen } from '@lucide/vue'
 import ElementPlusDocsComponentOverview from './ElementPlusDocsComponentOverview.vue'
 
-defineProps<{
+const props = defineProps<{
   data: ElementPlusDocsOverviewData
   groups: readonly ElementPlusDocsCatalogGroup[]
   messages: ElementPlusDocsOverviewMessages
@@ -15,45 +15,46 @@ defineProps<{
   <main data-docs-ui class="overview-page">
     <header class="overview-header">
       <div class="overview-brand-lockup">
-        <img :src="data.logo.src" width="56" height="56" :alt="data.logo.alt">
+        <img :src="props.data.logo.src" width="56" height="56" :alt="props.data.logo.alt">
         <div>
-          <p class="overview-kicker">{{ messages.brandKicker }}</p>
-          <h1>{{ data.siteTitle }}</h1>
+          <p class="overview-kicker">
+            {{ props.messages.brandKicker }}
+          </p>
+          <h1>{{ props.data.siteTitle }}</h1>
         </div>
       </div>
       <p class="overview-intro">
-        {{ messages.intro }}
+        {{ props.messages.intro }}
       </p>
       <div class="overview-actions">
-        <a class="overview-action is-primary" :href="data.gettingStartedHref">
+        <a class="overview-action is-primary" :href="props.data.gettingStartedHref">
           <BookOpen :size="17" aria-hidden="true" />
-          {{ messages.gettingStarted }}
+          {{ props.messages.gettingStarted }}
         </a>
         <a class="overview-action" href="#component-catalog">
-          {{ messages.browseComponents }}
+          {{ props.messages.browseComponents }}
           <ArrowRight :size="17" aria-hidden="true" />
         </a>
       </div>
     </header>
 
-    <div class="overview-facts" :aria-label="messages.factsAria">
-      <div v-for="fact in data.facts" :key="`${fact.value}-${fact.label}`">
+    <div class="overview-facts" :aria-label="props.messages.factsAria">
+      <div v-for="fact in props.data.facts" :key="`${fact.value}-${fact.label}`">
         <strong>{{ fact.value }}</strong><span>{{ fact.label }}</span>
       </div>
     </div>
 
     <section id="component-catalog" class="overview-catalog">
       <div class="overview-catalog-heading">
-        <p>{{ messages.catalogKicker }}</p>
-        <h2>{{ messages.title }}</h2>
+        <p>{{ props.messages.catalogKicker }}</p>
+        <h2>{{ props.messages.title }}</h2>
       </div>
-      <ElementPlusDocsComponentOverview :groups="groups" :messages="messages" />
+      <ElementPlusDocsComponentOverview :groups="props.groups" :messages="props.messages" />
     </section>
   </main>
 </template>
 
 <style scoped>
-
 .overview-page {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -282,5 +283,4 @@ defineProps<{
     padding: 10px 12px;
   }
 }
-
 </style>

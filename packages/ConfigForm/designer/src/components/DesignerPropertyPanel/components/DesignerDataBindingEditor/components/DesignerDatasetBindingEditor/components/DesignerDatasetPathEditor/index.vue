@@ -81,25 +81,25 @@ function selectPath(value: unknown): void {
     <ElInput
       v-if="manual"
       :model-value="draft"
-      :disabled="readonly"
-      :aria-label="label"
-      :aria-required="required"
+      :disabled="props.readonly"
+      :aria-label="props.label"
+      :aria-required="props.required"
       :aria-invalid="!parsed.valid"
       :aria-describedby="!parsed.valid ? errorId : undefined"
-      :clearable="!required"
+      :clearable="!props.required"
       placeholder="[&quot;address&quot;,&quot;city&quot;]"
       data-manual-dataset-path
       @update:model-value="updateDraft"
     />
     <ElCascader
       v-else
-      :model-value="modelValue"
-      :options="options"
+      :model-value="props.modelValue"
+      :options="props.options"
       :props="cascaderProps"
       filterable
-      :clearable="!required"
-      :disabled="readonly"
-      :aria-label="label"
+      :clearable="!props.required"
+      :disabled="props.readonly"
+      :aria-label="props.label"
       @change="selectPath"
     />
     <p v-if="manual && !parsed.valid" :id="errorId" class="mx-config-form-designer__data-binding-error" role="alert">

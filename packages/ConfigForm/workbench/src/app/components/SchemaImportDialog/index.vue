@@ -4,6 +4,7 @@ import type { UploadFile } from 'element-plus'
 import type { SchemaImportDialogProps, SchemaImportPreview } from '../../../features/schema'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef, watch } from 'vue'
+import WorkbenchCommandHint from '../../../components/WorkbenchCommandHint/index.vue'
 import { previewJsonSchema } from '../../../features/schema'
 
 const props = defineProps<SchemaImportDialogProps>()
@@ -19,6 +20,14 @@ const applicable = computed(
     && preview.value.fields.length > 0
     && !preview.value.diagnostics.some(item => item.severity === 'error'),
 )
+const reviewReason = computed(() => !text.value.trim() ? (chinese.value ? '先输入 Schema 或读取 JSON 文件，再检查映射。' : 'Enter a schema or read a JSON file to review its mapping.') : undefined)
+const applyReason = computed(() => applicable.value
+  ? undefined
+  : !preview.value
+      ? (chinese.value ? '先检查映射，通过后即可生成字段。' : 'Review the mapping before generating fields.')
+      : preview.value.fields.length === 0
+        ? (chinese.value ? '没有可生成的字段，请添加支持的字段后重新检查。' : 'Add supported fields and review the mapping again.')
+        : (chinese.value ? '修复映射中的错误并重新检查后，即可生成字段。' : 'Resolve mapping errors and review again to generate fields.'))
 watch(
   text,
   () => {
@@ -81,9 +90,10 @@ function example(): void {
 
 <template>
   <ElDialog
-    :model-value="modelValue"
+    :model-value="props.modelValue"
     :title="chinese ? '从 JSON Schema 生成字段' : 'Generate fields from JSON Schema'"
-    width="min(960px, 94vw)"
+    width="min(60rem, calc(var(--wb-viewport-width) - 2rem))"
+    top="1rem"
     class="schema-import-dialog"
     append-to="#workbench-overlays"
     :close-on-click-modal="false"
@@ -107,7 +117,7 @@ function example(): void {
       <ElInput
         v-model="text"
         type="textarea"
-        :rows="16"
+        :rows="10"
         aria-label="JSON Schema"
         placeholder="{ &quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: { ... } }"
       />
@@ -147,22 +157,37 @@ function example(): void {
     <template #footer>
       <ElButton @click="emit('update:modelValue', false)">
         {{ chinese ? '取消' : 'Cancel' }}
-      </ElButton><ElButton :disabled="!text.trim()" @click="analyze">
-        {{ chinese ? '检查映射' : 'Review mapping' }}
-      </ElButton><ElButton
-        type="primary"
-        :disabled="!applicable"
-        data-schema-apply
-        @click="preview && emit('apply', preview.subgraph)"
-      >
-        {{ chinese ? '生成字段' : 'Generate fields' }}
       </ElButton>
+      <WorkbenchCommandHint detached :label="chinese ? '检查映射' : 'Review mapping'" :disabled-reason="reviewReason">
+        <ElButton :disabled="!text.trim()" @click="analyze">
+          {{ chinese ? '检查映射' : 'Review mapping' }}
+        </ElButton>
+      </WorkbenchCommandHint>
+      <WorkbenchCommandHint detached :label="chinese ? '生成字段' : 'Generate fields'" :disabled-reason="applyReason">
+        <ElButton
+          type="primary"
+          :disabled="!applicable"
+          data-schema-apply
+          @click="preview && emit('apply', preview.subgraph)"
+        >
+          {{ chinese ? '生成字段' : 'Generate fields' }}
+        </ElButton>
+      </WorkbenchCommandHint>
     </template>
   </ElDialog>
 </template>
 
 <style scoped>
 @reference "../../../styles/tailwind.css";
+
+:global(.schema-import-dialog.el-dialog) {
+  @apply flex flex-col overflow-hidden my-4;
+  max-height: calc(var(--wb-viewport-height) - 2rem);
+}
+:global(.schema-import-dialog .el-dialog__header) { @apply shrink-0 pb-4; }
+:global(.schema-import-dialog .el-dialog__body) { @apply min-h-0 overflow-y-auto; overscroll-behavior: contain; }
+:global(.schema-import-dialog .el-dialog__footer) { @apply flex flex-wrap justify-end gap-2 shrink-0 pt-4; }
+:global(.schema-import-dialog .el-dialog__footer .el-button + .el-button) { @apply ml-0; }
 
 .schema-import-intro {
   color: var(--wb-muted);

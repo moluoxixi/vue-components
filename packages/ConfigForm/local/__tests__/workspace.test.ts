@@ -1,4 +1,5 @@
 import type { PersistedProjectEnvelope } from '@moluoxixi/config-form-model'
+import type { LivePreviewSession } from '@moluoxixi/config-form-studio/client'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
@@ -45,7 +46,7 @@ describe('shared workspace HTTP and MCP', () => {
     await client.connect(transport)
     cleanup(() => client.close())
     const tools = await client.listTools()
-    expect(tools.tools.map(tool => tool.name)).toEqual(expect.arrayContaining(['create_project', 'create_node', 'apply_operations', 'generate_source', 'export_source']))
+    expect(tools.tools.map(tool => tool.name)).toEqual(expect.arrayContaining(['create_project', 'create_node', 'apply_operations', 'generate_source', 'export_source', 'open_live_preview', 'get_live_preview', 'apply_preview_operations', 'save_live_preview']))
     async function call<T>(name: string, args: Record<string, unknown>): Promise<T> {
       const result = await client.callTool({ name, arguments: args })
       const text = (result.content as Array<{ type: string, text: string }>)[0]!.text
@@ -53,6 +54,13 @@ describe('shared workspace HTTP and MCP', () => {
         throw new Error(text)
       return JSON.parse(text) as T
     }
+    const draft = await call<LivePreviewSession & { previewUrl: string }>('open_live_preview', { preset: 'antd-vue', name: 'Live MCP draft' })
+    expect(draft.previewUrl).toBe(`${service.url}/#/assistant/${draft.id}`)
+    await call('apply_preview_operations', { sessionId: draft.id, expectedSessionRevision: 0, commandId: 'live-rename', label: 'Rename draft', operations: [{ type: 'project.rename', name: 'Live MCP form' }] })
+    expect(await call('get_live_preview', { sessionId: draft.id })).toMatchObject({ revision: 1, dirty: true, document: { name: 'Live MCP form' } })
+    expect(await service.repository.get(draft.document.id)).toBeUndefined()
+    await call('save_live_preview', { sessionId: draft.id, expectedSessionRevision: 1 })
+    expect((await service.repository.get(draft.document.id))?.document.name).toBe('Live MCP form')
     expect((await call<unknown[]>('list_materials', { preset: 'element-plus' })).length).toBeGreaterThan(20)
     await call('create_project', { id: 'mcp-account', name: 'Account', preset: 'element-plus', templateId: 'element-profile' })
     const initial = await call<PersistedProjectEnvelope>('get_project', { projectId: 'mcp-account' })

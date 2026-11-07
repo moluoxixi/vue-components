@@ -28,10 +28,10 @@ function nestingDepth(node: SafeExpressionNode): number {
 }
 const canWrap = computed(() => props.depth + nestingDepth(props.modelValue) < 6)
 const selectedFieldId = computed(() => {
-  const node = props.modelValue
-  return node.kind === 'binary' && node.left.kind === 'reference'
-    ? props.fields.find(field => field.field === (node.left.kind === 'reference' ? node.left.path[0] : undefined))?.id
-    : undefined
+  if (props.modelValue.kind !== 'binary' || props.modelValue.left.kind !== 'reference')
+    return undefined
+  const fieldName = props.modelValue.left.path[0]
+  return props.fields.find(field => field.field === fieldName)?.id
 })
 const draft = ref('')
 const error = ref('')
@@ -93,26 +93,26 @@ function negate(): void {
 </script>
 
 <template>
-  <div class="mx-config-form-designer__condition-tree" :data-depth="depth">
-    <template v-if="modelValue.kind === 'unary' && modelValue.operator === '!'">
+  <div class="mx-config-form-designer__condition-tree" :data-depth="props.depth">
+    <template v-if="props.modelValue.kind === 'unary' && props.modelValue.operator === '!'">
       <header>
-        <strong>{{ chinese ? '取反' : 'NOT' }}</strong><button type="button" :disabled="disabled" @click="emit('update:modelValue', modelValue.operand)">
+        <strong>{{ chinese ? '取反' : 'NOT' }}</strong><button type="button" :disabled="props.disabled" @click="emit('update:modelValue', props.modelValue.operand)">
           {{ chinese ? '取消取反' : 'Remove NOT' }}
         </button>
       </header>
       <DesignerConditionTree
-        :model-value="modelValue.operand"
-        :fields="fields"
-        :disabled="disabled"
-        :depth="depth + 1"
+        :model-value="props.modelValue.operand"
+        :fields="props.fields"
+        :disabled="props.disabled"
+        :depth="props.depth + 1"
         @update:model-value="emit('update:modelValue', { kind: 'unary', operator: '!', operand: $event })"
       />
     </template>
-    <template v-else-if="grouped && modelValue.kind === 'binary'">
+    <template v-else-if="grouped && props.modelValue.kind === 'binary'">
       <header>
         <ElSelect
-          :model-value="modelValue.operator"
-          :disabled="disabled"
+          :model-value="props.modelValue.operator"
+          :disabled="props.disabled"
           :aria-label="chinese ? '条件组逻辑' : 'Condition group logic'"
           @update:model-value="operatorChanged"
         >
@@ -123,47 +123,47 @@ function negate(): void {
         </ElSelect>
       </header>
       <DesignerConditionTree
-        :model-value="modelValue.left"
-        :fields="fields"
-        :disabled="disabled"
-        :depth="depth + 1"
+        :model-value="props.modelValue.left"
+        :fields="props.fields"
+        :disabled="props.disabled"
+        :depth="props.depth + 1"
         @update:model-value="patchSide('left', $event)"
       />
-      <button type="button" :disabled="disabled" @click="emit('update:modelValue', modelValue.right)">
+      <button type="button" :disabled="props.disabled" @click="emit('update:modelValue', props.modelValue.right)">
         {{ chinese ? '移除上方条件' : 'Remove first condition' }}
       </button>
       <DesignerConditionTree
-        :model-value="modelValue.right"
-        :fields="fields"
-        :disabled="disabled"
-        :depth="depth + 1"
+        :model-value="props.modelValue.right"
+        :fields="props.fields"
+        :disabled="props.disabled"
+        :depth="props.depth + 1"
         @update:model-value="patchSide('right', $event)"
       />
-      <button type="button" :disabled="disabled" @click="emit('update:modelValue', modelValue.left)">
+      <button type="button" :disabled="props.disabled" @click="emit('update:modelValue', props.modelValue.left)">
         {{ chinese ? '移除下方条件' : 'Remove second condition' }}
       </button>
     </template>
     <template
       v-else-if="
-        modelValue.kind === 'binary'
-          && ['==', '!=', '>', '>=', '<', '<='].includes(modelValue.operator)
-          && modelValue.left.kind === 'reference'
-          && modelValue.left.scope === 'values'
-          && modelValue.left.path.length === 1
-          && modelValue.right.kind === 'literal'
+        props.modelValue.kind === 'binary'
+          && ['==', '!=', '>', '>=', '<', '<='].includes(props.modelValue.operator)
+          && props.modelValue.left.kind === 'reference'
+          && props.modelValue.left.scope === 'values'
+          && props.modelValue.left.path.length === 1
+          && props.modelValue.right.kind === 'literal'
       "
     >
       <ElSelect
         :model-value="selectedFieldId"
-        :disabled="disabled"
+        :disabled="props.disabled"
         :aria-label="chinese ? '条件字段' : 'Condition field'"
         @update:model-value="fieldChanged"
       >
-        <ElOption v-for="field in fields" :key="field.id" :value="field.id" :label="field.label" />
+        <ElOption v-for="field in props.fields" :key="field.id" :value="field.id" :label="field.label" />
       </ElSelect>
       <ElSelect
-        :model-value="modelValue.operator"
-        :disabled="disabled"
+        :model-value="props.modelValue.operator"
+        :disabled="props.disabled"
         :aria-label="chinese ? '条件运算符' : 'Condition operator'"
         @update:model-value="operatorChanged"
       >
@@ -176,7 +176,7 @@ function negate(): void {
       </ElSelect>
       <ElInput
         v-model="draft"
-        :disabled="disabled"
+        :disabled="props.disabled"
         :aria-label="chinese ? '条件 JSON 值' : 'Condition JSON value'"
         @blur="literalChanged"
         @keydown.enter.prevent="literalChanged"
@@ -193,14 +193,14 @@ function negate(): void {
             : 'Edit this expression in Advanced JSON. Groups preserve it in full.'
         }}
       </p>
-      <pre>{{ JSON.stringify(modelValue, null, 2) }}</pre>
+      <pre>{{ JSON.stringify(props.modelValue, null, 2) }}</pre>
     </div>
-    <footer v-if="depth < 6">
-      <button type="button" :disabled="disabled || !canWrap || fields.length === 0" @click="group">
+    <footer v-if="props.depth < 6">
+      <button type="button" :disabled="props.disabled || !canWrap || props.fields.length === 0" @click="group">
         {{ chinese ? '+ 嵌套条件组' : '+ Group condition' }}
       </button><button
         type="button"
-        :disabled="disabled || !canWrap"
+        :disabled="props.disabled || !canWrap"
         @click="negate"
       >
         {{ chinese ? '取反' : 'Negate' }}

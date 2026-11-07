@@ -8,7 +8,6 @@ function isStylesheetTarget(target) {
 
 export const browserJavaScriptEntrypointAllowlist = Object.freeze({
   '@moluoxixi/ai-doc-assistant': ['./protocol', './api-contract'],
-  '@moluoxixi/ai-provider': ['.', './shared'],
   '@moluoxixi/config-form-antd-vue': ['.'],
   '@moluoxixi/config-form-element': ['.'],
   '@moluoxixi/config-form-studio': ['.', './client'],
@@ -34,7 +33,6 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
 
 export const browserJavaScriptEntrypointExclusions = Object.freeze({
   '@moluoxixi/ai-doc-assistant': ['.', './plugin'],
-  '@moluoxixi/ai-provider': ['./server'],
   '@moluoxixi/config-form-local': ['.', './mcp'],
   '@moluoxixi/i18n-tool': ['.', './config', './core', './server'],
   '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './node', './repository/node'],
@@ -52,7 +50,6 @@ export const browserStylesheetEntrypointAllowlist = Object.freeze({
 
 export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
   '@moluoxixi/ai-doc-assistant': ['./plugin'],
-  '@moluoxixi/ai-provider': ['./server'],
   '@moluoxixi/config-form-local': ['.', './mcp'],
   '@moluoxixi/config-form-studio': ['.', './client'],
   '@moluoxixi/i18n-tool': ['./config', './core', './server'],
@@ -61,19 +58,13 @@ export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
 
 export const browserBundleForbiddenFragments = Object.freeze({
   '@moluoxixi/ai-doc-assistant': [
-    'createLanguageModel',
-    'createEmbeddingModel',
+    'createOpenAI',
+    'createGoogleGenerativeAI',
     'loadProviderConfig',
     'ServerContext',
     'AI_DOC_CHAT_API_KEY',
     'AI_DOC_EMBEDDING_API_KEY',
     'node:crypto',
-    'apiKey',
-  ],
-  '@moluoxixi/ai-provider': [
-    'createLanguageModel',
-    'createEmbeddingModel',
-    'getAiProviderErrorCause',
     'apiKey',
   ],
   '@moluoxixi/i18n-tool': [

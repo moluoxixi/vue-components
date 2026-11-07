@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 
 defineOptions({ name: 'DesignerCommandHint' })
 
-defineProps<{
+const props = defineProps<{
   disabledReason?: string
   label: string
   renderer?: Component
@@ -13,11 +13,11 @@ defineProps<{
 
 <template>
   <component
-    :is="renderer"
-    v-if="renderer"
-    :disabled-reason="disabledReason"
-    :label="label"
-    :shortcut="shortcut"
+    :is="props.renderer"
+    v-if="props.renderer"
+    :disabled-reason="props.disabledReason"
+    :label="props.label"
+    :shortcut="props.shortcut"
   >
     <slot />
   </component>

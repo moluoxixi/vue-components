@@ -105,11 +105,11 @@ defineExpose({ focusSearch, focusTemplate })
     <div class="template-catalog-filters">
       <ElInput
         ref="searchInput"
-        :model-value="query"
+        :model-value="props.query"
         type="search"
         clearable
-        :placeholder="locale.t('template.search', 'Search templates')"
-        :aria-label="locale.t('template.search', 'Search templates')"
+        :placeholder="props.locale.t('template.search', 'Search templates')"
+        :aria-label="props.locale.t('template.search', 'Search templates')"
         @update:model-value="emit('update:query', $event)"
       >
         <template #prefix>
@@ -118,70 +118,70 @@ defineExpose({ focusSearch, focusTemplate })
       </ElInput>
       <div>
         <ElSelect
-          :model-value="category"
-          :aria-label="locale.t('template.category', 'Template category')"
+          :model-value="props.category"
+          :aria-label="props.locale.t('template.category', 'Template category')"
           append-to="#workbench-overlays"
           @update:model-value="emit('update:category', $event)"
         >
-          <ElOption value="all" :label="locale.t('template.categoryAll', 'All categories')" />
-          <ElOption value="blank" :label="locale.t('template.categoryBlank', 'Blank')" />
-          <ElOption value="starter" :label="locale.t('template.categoryStarter', 'Starter')" />
+          <ElOption value="all" :label="props.locale.t('template.categoryAll', 'All categories')" />
+          <ElOption value="blank" :label="props.locale.t('template.categoryBlank', 'Blank')" />
+          <ElOption value="starter" :label="props.locale.t('template.categoryStarter', 'Starter')" />
         </ElSelect>
         <ElSelect
-          :model-value="providerId"
-          :aria-label="locale.t('template.provider', 'Template source')"
+          :model-value="props.providerId"
+          :aria-label="props.locale.t('template.provider', 'Template source')"
           append-to="#workbench-overlays"
           @update:model-value="emit('update:providerId', $event)"
         >
-          <ElOption value="all" :label="locale.t('template.providerAll', 'All templates')" />
-          <ElOption v-for="provider in providerOptions" :key="provider" :value="provider" :label="provider === 'built-in' ? locale.t('library.builtIn', 'Built-in templates') : locale.t('library.personal', 'My templates')" />
+          <ElOption value="all" :label="props.locale.t('template.providerAll', 'All templates')" />
+          <ElOption v-for="provider in props.providerOptions" :key="provider" :value="provider" :label="provider === 'built-in' ? props.locale.t('library.builtIn', 'Built-in templates') : props.locale.t('library.personal', 'My templates')" />
         </ElSelect>
       </div>
       <span class="template-catalog-count" aria-live="polite">
-        {{ locale.t('template.resultCount', '{count} templates', { count: filteredTemplates.length }) }}
+        {{ props.locale.t('template.resultCount', '{count} templates', { count: props.filteredTemplates.length }) }}
       </span>
     </div>
 
     <div class="template-catalog-results">
-      <p v-if="loading" class="template-state" role="status">
-        {{ locale.t('template.loading', 'Loading templates') }}
+      <p v-if="props.loading" class="template-state" role="status">
+        {{ props.locale.t('template.loading', 'Loading templates') }}
       </p>
 
-      <div v-else-if="fatalError" class="template-catalog-fatal" role="alert">
-        <strong>{{ locale.t('template.catalogFailed', 'Template catalog unavailable') }}</strong>
-        <span>{{ fatalError }}</span>
+      <div v-else-if="props.fatalError" class="template-catalog-fatal" role="alert">
+        <strong>{{ props.locale.t('template.catalogFailed', 'Template catalog unavailable') }}</strong>
+        <span>{{ props.fatalError }}</span>
         <ElButton native-type="button" @click="emit('retry')">
-          {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+          {{ props.locale.t('template.retryCatalog', 'Retry catalog') }}
         </ElButton>
       </div>
 
       <template v-else>
-        <div v-if="catalogDiagnostics.length" class="template-provider-error" role="alert">
-          <strong>{{ locale.t('template.providerWarning', 'Some templates could not be loaded') }}</strong>
-          <p v-for="diagnostic in catalogDiagnostics" :key="diagnostic">
+        <div v-if="props.catalogDiagnostics.length" class="template-provider-error" role="alert">
+          <strong>{{ props.locale.t('template.providerWarning', 'Some templates could not be loaded') }}</strong>
+          <p v-for="diagnostic in props.catalogDiagnostics" :key="diagnostic">
             {{ diagnostic }}
           </p>
           <ElButton native-type="button" size="small" @click="emit('retry')">
-            {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+            {{ props.locale.t('template.retryCatalog', 'Retry catalog') }}
           </ElButton>
         </div>
 
         <div
-          v-if="filteredTemplates.length"
+          v-if="props.filteredTemplates.length"
           class="template-catalog-list"
           role="listbox"
-          :aria-label="locale.t('template.available', 'Available templates')"
+          :aria-label="props.locale.t('template.available', 'Available templates')"
         >
           <button
-            v-for="template in filteredTemplates"
+            v-for="template in props.filteredTemplates"
             :key="template.manifest.id"
             type="button"
             role="option"
             class="template-catalog-item"
-            :class="{ 'is-selected': selectedId === template.manifest.id }"
-            :aria-selected="selectedId === template.manifest.id"
+            :class="{ 'is-selected': props.selectedId === template.manifest.id }"
+            :aria-selected="props.selectedId === template.manifest.id"
             :data-template-id="template.manifest.id"
-            :tabindex="selectedId === template.manifest.id ? 0 : -1"
+            :tabindex="props.selectedId === template.manifest.id ? 0 : -1"
             @click="activateTemplate(template.manifest.id)"
             @keydown="moveSelection($event, template.manifest.id)"
           >
@@ -189,31 +189,31 @@ defineExpose({ focusSearch, focusTemplate })
             <span class="template-catalog-copy">
               <strong>{{ templateName(template) }}</strong>
               <span>{{ templateDescription(template) }}</span>
-              <small>{{ locale.t(`surface.kind.${template.surface.kind}`, template.surface.kind) }} · {{ template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ template.providerId === 'built-in' ? locale.t('library.builtIn', 'Built-in templates') : locale.t('library.personal', 'My templates') }}</small>
+              <small>{{ props.locale.t(`surface.kind.${template.surface.kind}`, template.surface.kind) }} · {{ template.manifest.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} · {{ template.providerId === 'built-in' ? props.locale.t('library.builtIn', 'Built-in templates') : props.locale.t('library.personal', 'My templates') }}</small>
             </span>
             <span
-              v-if="eligibilityStatuses[template.manifest.id] && eligibilityStatuses[template.manifest.id] !== 'eligible'"
+              v-if="props.eligibilityStatuses[template.manifest.id] && props.eligibilityStatuses[template.manifest.id] !== 'eligible'"
               class="template-catalog-status"
-              :data-status="eligibilityStatuses[template.manifest.id] ?? 'pending'"
+              :data-status="props.eligibilityStatuses[template.manifest.id] ?? 'pending'"
             >
-              {{ eligibilityLabel(eligibilityStatuses[template.manifest.id] ?? 'pending') }}
+              {{ eligibilityLabel(props.eligibilityStatuses[template.manifest.id] ?? 'pending') }}
             </span>
           </button>
         </div>
 
-        <div v-else-if="templates.length" class="template-empty-state" role="status">
-          <strong>{{ locale.t('template.noResults', 'No templates match these filters') }}</strong>
-          <span>{{ locale.t('template.noResultsHint', 'Clear search or choose another category or provider.') }}</span>
+        <div v-else-if="props.templates.length" class="template-empty-state" role="status">
+          <strong>{{ props.locale.t('template.noResults', 'No templates match these filters') }}</strong>
+          <span>{{ props.locale.t('template.noResultsHint', 'Clear search or choose another category or provider.') }}</span>
           <ElButton native-type="button" @click="emit('clearFilters')">
-            {{ locale.t('template.clearFilters', 'Clear filters') }}
+            {{ props.locale.t('template.clearFilters', 'Clear filters') }}
           </ElButton>
         </div>
 
         <div v-else class="template-empty-state" role="status">
-          <strong>{{ locale.t('template.noTemplates', 'No templates are available') }}</strong>
-          <span>{{ locale.t('template.noTemplatesHint', 'Retry the catalog providers to load templates.') }}</span>
+          <strong>{{ props.locale.t('template.noTemplates', 'No templates are available') }}</strong>
+          <span>{{ props.locale.t('template.noTemplatesHint', 'Retry the catalog providers to load templates.') }}</span>
           <ElButton native-type="button" @click="emit('retry')">
-            {{ locale.t('template.retryCatalog', 'Retry catalog') }}
+            {{ props.locale.t('template.retryCatalog', 'Retry catalog') }}
           </ElButton>
         </div>
       </template>

@@ -8,12 +8,12 @@ import type {
 } from '../types'
 import { ElInput, ElPagination } from 'element-plus'
 import { computed, useTemplateRef } from 'vue'
-import { PopoverTableSelectBase } from './components'
 import {
   usePopoverTableSelectInput,
   usePopoverTableSelectRequest,
   usePopoverTableSelectScheduling,
 } from '../composables'
+import { PopoverTableSelectBase } from './components'
 
 defineOptions({
   name: 'PopoverTableSelect',

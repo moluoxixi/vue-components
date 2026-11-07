@@ -39,11 +39,11 @@ function formatDate(date: string): string {
 
 <template>
   <ol
-    v-if="commits.length"
+    v-if="props.commits.length"
     class="component-commit-timeline"
-    :aria-label="formatElementPlusDocsMessage(messages.changelog.aria, { name })"
+    :aria-label="formatElementPlusDocsMessage(props.messages.changelog.aria, { name: props.name })"
   >
-    <li v-for="commit in commits" :key="commit.sha" class="component-commit">
+    <li v-for="commit in props.commits" :key="commit.sha" class="component-commit">
       <span class="component-commit-marker" aria-hidden="true" />
       <div data-docs-ui class="component-commit-content">
         <a class="component-commit-message" :href="commit.url" target="_blank" rel="noreferrer">
@@ -74,19 +74,18 @@ function formatDate(date: string): string {
             :href="commit.url"
             target="_blank"
             rel="noreferrer"
-            :aria-label="formatElementPlusDocsMessage(messages.changelog.commitLink, { sha: commit.shortSha })"
+            :aria-label="formatElementPlusDocsMessage(props.messages.changelog.commitLink, { sha: commit.shortSha })"
           >{{ commit.shortSha }}</a>
         </div>
       </div>
     </li>
   </ol>
   <p v-else class="component-commit-empty">
-    {{ messages.changelog.empty }}
+    {{ props.messages.changelog.empty }}
   </p>
 </template>
 
 <style scoped>
-
 .component-commit-timeline {
   margin: 16px 0 28px !important;
   padding: 0 !important;
@@ -198,5 +197,4 @@ function formatDate(date: string): string {
   color: var(--ep-docs-text-color-lighter);
   font-size: 13px;
 }
-
 </style>

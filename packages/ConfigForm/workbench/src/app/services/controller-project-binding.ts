@@ -382,6 +382,8 @@ export function createWorkbenchProjectBinding(options: {
       openedRepository.subscribeConnection(connected => options.storageInfo.value = { ...options.storageInfo.value, connected })
       let changes: Promise<void> = Promise.resolve()
       openedRepository.subscribeChanges((change) => {
+        if (change.kind === 'preview')
+          return
         changes = changes.then(async () => {
           if (isDisposed() || repository.value !== openedRepository)
             return

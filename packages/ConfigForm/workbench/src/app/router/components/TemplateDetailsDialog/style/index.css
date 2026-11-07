@@ -45,7 +45,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   @apply gap-3;
 }
-.template-kind-options > .el-button {
+.template-kind-options :deep(.el-button) {
   display: block;
   width: 100%;
   height: auto;
@@ -68,7 +68,7 @@
   @apply pb-1;
   font-size: 12px;
 }
-.template-kind-options > .el-button.is-selected {
+.template-kind-options :deep(.el-button.is-selected) {
   border-color: var(--wb-accent);
   box-shadow: 0 0 0 1px var(--wb-accent);
   color: var(--wb-accent-text);

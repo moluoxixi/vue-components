@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ArrowUp } from '@lucide/vue'
-import { useSidebar } from '../composables/sidebar'
 import { useBackTop } from '../composables/back-top'
 import { useNavbarLocale } from '../composables/navbar-locale'
+import { useSidebar } from '../composables/sidebar'
 import ToggleSidebarBtn from './subnav/toggle-sidebar-btn.vue'
 
-defineProps<{
+const props = defineProps<{
   isSidebarOpen: boolean
 }>()
 defineEmits(['open-menu'])
@@ -16,10 +16,10 @@ const locale = useNavbarLocale()
 </script>
 
 <template>
-  <div class="sub-nav" data-docs-ui >
+  <div class="sub-nav" data-docs-ui>
     <ToggleSidebarBtn
       v-if="hasSidebar"
-      :aria-expanded="isSidebarOpen"
+      :aria-expanded="props.isSidebarOpen"
       @click="$emit('open-menu')"
     />
     <button
@@ -36,7 +36,6 @@ const locale = useNavbarLocale()
 
 <style scoped lang="scss">
 @use '../styles/mixins' as *;
-
 
 .sub-nav {
   @include with-border;
@@ -74,5 +73,4 @@ const locale = useNavbarLocale()
     display: none !important;
   }
 }
-
 </style>

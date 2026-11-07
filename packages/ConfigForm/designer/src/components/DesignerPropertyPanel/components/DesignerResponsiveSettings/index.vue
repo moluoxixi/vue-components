@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<DesignerResponsiveSettingsProps>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: ConfigFormResponsiveLayout | undefined]
   'updateForm': [value: Partial<FormSettings>]
-  commit: [value: ConfigFormResponsiveLayout | undefined]
+  'commit': [value: ConfigFormResponsiveLayout | undefined]
 }>()
 
 const { entries, layout } = useDesignerResponsiveSettings(props, {
@@ -28,9 +28,9 @@ const { entries, layout } = useDesignerResponsiveSettings(props, {
   <DesignerPropertyForm
     :entries="entries"
     :layout="layout"
-    :components="components"
-    :controls="controls"
-    :readonly="disabled || readonly"
-    :renderer="renderer"
+    :components="props.components"
+    :controls="props.controls"
+    :readonly="props.disabled || props.readonly"
+    :renderer="props.renderer"
   />
 </template>

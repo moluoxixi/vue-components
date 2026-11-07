@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ValidateTrigger } from '@moluoxixi/config-form-model'
+import { useDesignerLocale } from '@designer/locale'
 import { ElCheckbox, ElCheckboxGroup } from 'element-plus'
 import { computed } from 'vue'
-import { useDesignerLocale } from '@designer/locale'
 
 const props = defineProps<{
   modelValue: unknown
@@ -34,9 +34,15 @@ function commit(values: Array<string | number>): void {
 </script>
 
 <template>
-  <ElCheckboxGroup class="mx-config-form-designer__validate-on" :model-value="selected" :disabled="disabled" @update:model-value="commit">
-    <ElCheckbox value="change">{{ locale.t('validation.trigger.change', 'Change') }}</ElCheckbox>
-    <ElCheckbox value="blur">{{ locale.t('validation.trigger.blur', 'Blur') }}</ElCheckbox>
-    <ElCheckbox value="submit">{{ locale.t('validation.trigger.submit', 'Submit') }}</ElCheckbox>
+  <ElCheckboxGroup class="mx-config-form-designer__validate-on" :model-value="selected" :disabled="props.disabled" @update:model-value="commit">
+    <ElCheckbox value="change">
+      {{ locale.t('validation.trigger.change', 'Change') }}
+    </ElCheckbox>
+    <ElCheckbox value="blur">
+      {{ locale.t('validation.trigger.blur', 'Blur') }}
+    </ElCheckbox>
+    <ElCheckbox value="submit">
+      {{ locale.t('validation.trigger.submit', 'Submit') }}
+    </ElCheckbox>
   </ElCheckboxGroup>
 </template>

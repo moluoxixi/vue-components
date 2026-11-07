@@ -21,5 +21,4 @@ const navs = useNav()
     display: flex;
   }
 }
-
 </style>

@@ -4,6 +4,7 @@ import type { StudioPresetId } from '@moluoxixi/config-form-studio'
 import type { RepositoryMethod, WorkspaceChange } from '@moluoxixi/config-form-studio/client'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import type { WorkspaceAssistantOptions } from '../types'
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { readFile, realpath } from 'node:fs/promises'
@@ -16,7 +17,9 @@ import {
 } from '@moluoxixi/config-form-model'
 import { createStudioNode, createStudioProject, generateProjectSource, getStudioCatalog, getStudioPreset } from '@moluoxixi/config-form-studio'
 import { mapRepositoryArguments, mapRepositoryResult, WORKSPACE_API_PATH, WORKSPACE_REQUEST_HEADER } from '@moluoxixi/config-form-studio/client'
+import { createWorkspaceAssistant } from './assistant'
 import { openFileProjectRepository } from './file-repository'
+import { createPreviewSessions } from './preview-sessions'
 import { createSourceZip, exportSourceArtifact, readSourceArtifact, saveSourceArtifact, sourceFileBytes } from './source-files'
 
 const methods = new Set<RepositoryMethod>(['create', 'get', 'list', 'commit', 'delete', 'getVersion', 'listVersions', 'pruneVersions', 'readEmbedded', 'setVersionLabel'])
@@ -64,6 +67,7 @@ export async function startLocalWorkspace(options: {
   port?: number
   staticDirectory?: string
   allowOrigins?: string[]
+  assistant?: WorkspaceAssistantOptions
 }) {
   const repository = await openFileProjectRepository(options.directory)
   const root = await realpath(options.directory)
@@ -75,6 +79,8 @@ export async function startLocalWorkspace(options: {
     const event = `data: ${JSON.stringify(change)}\n\n`
     subscribers.forEach(response => response.write(event))
   }
+  const previewSessions = createPreviewSessions(repository, publish)
+  const assistant = createWorkspaceAssistant(previewSessions, options.assistant)
   async function getProject(id: unknown, expected?: unknown) {
     if (typeof id !== 'string' || !id)
       throw new WorkspaceError('WORKSPACE_PROJECT_REQUIRED', 'projectId is required.')
@@ -86,6 +92,28 @@ export async function startLocalWorkspace(options: {
     return project
   }
   async function handleApi(path: string, input: Record<string, unknown>): Promise<unknown> {
+    if (path === '/ai/status')
+      return assistant.status
+    if (path === '/preview-session/create') {
+      const session = await previewSessions.create(input as Parameters<typeof previewSessions.create>[0])
+      return { ...session, previewUrl: `${url}/#/assistant/${session.id}` }
+    }
+    if (path === '/preview-session/read')
+      return previewSessions.read(String(input.sessionId))
+    if (path === '/preview-session/apply')
+      return previewSessions.apply(input as Parameters<typeof previewSessions.apply>[0])
+    if (path === '/preview-session/undo')
+      return previewSessions.undo(String(input.sessionId), Number(input.expectedSessionRevision))
+    if (path === '/preview-session/save')
+      return previewSessions.save(String(input.sessionId), Number(input.expectedSessionRevision))
+    if (path === '/preview-session/stop') {
+      previewSessions.get(input.sessionId).abort?.abort()
+      return { stopped: true }
+    }
+    if (path === '/preview-session/close') {
+      previewSessions.close(String(input.sessionId))
+      return { closed: true }
+    }
     if (path === '/health')
       return { protocol: 1, workspaceName: basename(root), workspaceId: createHash('sha256').update(root).digest('hex'), persistence: 'durable' }
     if (path === '/repository') {
@@ -230,7 +258,21 @@ export async function startLocalWorkspace(options: {
       if (path.startsWith(`${WORKSPACE_API_PATH}/`) && request.method === 'POST') {
         if (request.headers[WORKSPACE_REQUEST_HEADER.toLowerCase()] !== '1')
           throw new WorkspaceError('WORKSPACE_HEADER_REQUIRED', 'Workspace API requests require X-Config-Form: 1.', undefined, 403)
-        json(response, { data: await handleApi(path.slice(WORKSPACE_API_PATH.length), await body(request)) })
+        const input = await body(request)
+        if (path === `${WORKSPACE_API_PATH}/ai/chat`) {
+          const abort = new AbortController()
+          response.on('close', () => abort.abort())
+          await assistant.chat(input as Parameters<typeof assistant.chat>[0], (event) => {
+            if (response.destroyed)
+              return
+            if (!response.headersSent)
+              response.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' })
+            response.write(`${JSON.stringify(event)}\n`)
+          }, abort.signal)
+          response.end()
+          return
+        }
+        json(response, { data: await handleApi(path.slice(WORKSPACE_API_PATH.length), input) })
         return
       }
       if (request.method !== 'GET' || !staticRoot)
@@ -271,6 +313,7 @@ export async function startLocalWorkspace(options: {
     repository,
     async close() {
       clearInterval(heartbeat)
+      previewSessions.dispose()
       subscribers.forEach(response => response.end())
       subscribers.clear()
       await new Promise<void>((accept, reject) => server.close(error => error ? reject(error) : accept()))

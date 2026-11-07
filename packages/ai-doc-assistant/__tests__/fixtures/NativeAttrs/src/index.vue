@@ -1,7 +1,9 @@
 <script setup lang="ts">
-defineProps<{ label: string }>()
+const props = defineProps<{ label: string }>()
 </script>
 
 <template>
-  <div v-bind="$attrs">{{ label }}</div>
+  <div v-bind="$attrs">
+    {{ props.label }}
+  </div>
 </template>

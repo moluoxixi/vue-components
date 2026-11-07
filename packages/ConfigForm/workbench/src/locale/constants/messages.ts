@@ -1,6 +1,18 @@
 import type { WorkbenchLocaleId, WorkbenchMessageCatalog } from '../types'
 
 export const WORKBENCH_EN_US_MESSAGES = {
+  'projects.aiCreate': 'AI form',
+  'assistant.edit': 'Edit with AI',
+  'assistant.saveFirst': 'Save or resolve the current draft before opening AI editing.',
+  'library.import': 'Import templates',
+  'library.exportAll': 'Back up my templates',
+  'library.exportOne': 'Export template',
+  'library.exportEmpty': 'Create or import a personal template before exporting.',
+  'library.storageHint': 'Personal templates are stored in this browser. Export a backup to move them; importing creates new copies without replacing existing templates.',
+  'library.imported': 'Imported {count} templates as new copies.',
+  'library.fileTooLarge': 'Template archives are limited to 5 MB.',
+  'library.nameRequired': 'Enter a template name to continue.',
+
   'save.versionContent': 'Version content',
   'save.source.create': 'Project created',
   'save.source.manual': 'Manual save',
@@ -794,6 +806,18 @@ export const WORKBENCH_EN_US_MESSAGES = {
 } as const
 
 export const WORKBENCH_ZH_CN_MESSAGES: WorkbenchMessageCatalog = {
+  'projects.aiCreate': 'AI 生成',
+  'assistant.edit': 'AI 修改',
+  'assistant.saveFirst': '请先保存当前修改或解决配置错误，再打开 AI 编辑。',
+  'library.import': '导入模板',
+  'library.exportAll': '备份个人模板',
+  'library.exportOne': '导出模板',
+  'library.exportEmpty': '创建或导入个人模板后，即可备份。',
+  'library.storageHint': '个人模板保存在本浏览器，可导出备份或迁移；导入会创建新副本，不覆盖已有模板。',
+  'library.imported': '已导入 {count} 个模板，已有模板保持不变。',
+  'library.fileTooLarge': '模板备份文件上限为 5 MB。',
+  'library.nameRequired': '填写模板名称后即可继续。',
+
   'save.versionContent': '版本内容',
   'save.source.create': '项目创建',
   'save.source.manual': '手动保存',

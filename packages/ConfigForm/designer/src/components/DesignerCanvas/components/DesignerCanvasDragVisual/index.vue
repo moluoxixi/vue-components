@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   overlayStyle?: CSSProperties
 }>()
 </script>
 
 <template>
   <div
-    v-show="overlayStyle"
+    v-show="props.overlayStyle"
     class="mx-config-form-designer__drag-overlay"
-    :style="overlayStyle"
+    :style="props.overlayStyle"
     aria-hidden="true"
     inert
     data-designer-drag-overlay
