@@ -211,13 +211,16 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           <ElButton
             ref="saveTrigger"
             native-type="button"
+            class="save-menu-trigger"
             :class="{ 'is-command-disabled': Boolean(saveUnavailableReason) }"
             :aria-label="saveAccessibleLabel"
             :aria-disabled="saveUnavailableReason ? 'true' : undefined"
           >
-            <Save :size="16" aria-hidden="true" />
-            <span class="topbar-command-label">{{ locale.t('action.save', 'Save') }}</span>
-            <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
+            <span class="save-menu-trigger__content">
+              <Save :size="15" aria-hidden="true" />
+              <span class="topbar-command-label">{{ locale.t('action.save', 'Save') }}</span>
+              <ChevronDown class="export-chevron" :size="12" aria-hidden="true" />
+            </span>
           </ElButton>
           <template #dropdown>
             <ElDropdownMenu class="export-menu-popover save-menu-popover" data-save-menu>

@@ -198,10 +198,51 @@
   display: inline-flex;
   width: auto;
   min-width: 58px;
-  padding: 0 8px;
+  padding: 0 10px;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-separator);
+  border-radius: 6px;
+  background: var(--wb-surface-raised);
+}
+
+.save-menu-trigger__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.save-menu-trigger__content > svg {
+  flex: none;
+}
+
+.save-menu-trigger__content .topbar-command-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.save-menu-trigger__content .export-chevron {
+  color: var(--wb-muted);
+}
+
+.topbar-actions .save-menu-trigger:hover:not([aria-disabled='true']) {
+  border-color: var(--wb-control-border);
+}
+
+.topbar-actions .export-menu > .save-menu-trigger[aria-expanded='true'] {
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+}
+
+.save-menu-trigger[aria-expanded='true'] .export-chevron {
+  transform: rotate(180deg);
+}
+
+.topbar-actions .save-menu-trigger[aria-disabled='true'] {
+  color: var(--wb-disabled);
 }
 
 .export-menu-popover {
@@ -363,6 +404,9 @@
 
 @media (max-width: 640px) {
   .topbar-command-label {
+    display: none;
+  }
+  .save-menu-trigger__content .export-chevron {
     display: none;
   }
   .topbar-actions .export-menu > button,
