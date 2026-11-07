@@ -45,16 +45,16 @@ body {
   overflow: hidden;
 }
 
-.runtime-host-root[data-mode="design"] .page-design-form {
+.runtime-host-root[data-mode="design"] .surface-design-form {
   width: 100%;
   margin: 0;
 }
 
 /* Editor geometry must be deterministic. Runtime transitions remain enabled in Preview. */
-.runtime-host-root[data-mode="design"] .page-design-form,
-.runtime-host-root[data-mode="design"] .page-design-form *,
-.runtime-host-root[data-mode="design"] .page-design-form *::before,
-.runtime-host-root[data-mode="design"] .page-design-form *::after {
+.runtime-host-root[data-mode="design"] .surface-design-form,
+.runtime-host-root[data-mode="design"] .surface-design-form *,
+.runtime-host-root[data-mode="design"] .surface-design-form *::before,
+.runtime-host-root[data-mode="design"] .surface-design-form *::after {
   scroll-behavior: auto !important;
   animation-delay: 0s !important;
   animation-duration: 0s !important;
@@ -62,20 +62,20 @@ body {
   transition-duration: 0s !important;
 }
 
-.runtime-host-root[data-mode="design"] .page-design-form[inert],
-.runtime-host-root[data-mode="design"] .page-design-form[inert] * {
+.runtime-host-root[data-mode="design"] .surface-design-form[inert],
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] * {
   pointer-events: none !important;
   user-select: none !important;
   -webkit-user-select: none !important;
   -webkit-user-drag: none !important;
 }
 
-.runtime-host-root[data-mode="design"] .page-design-form[inert] input,
-.runtime-host-root[data-mode="design"] .page-design-form[inert] textarea,
-.runtime-host-root[data-mode="design"] .page-design-form[inert] select,
-.runtime-host-root[data-mode="design"] .page-design-form[inert] button,
-.runtime-host-root[data-mode="design"] .page-design-form[inert] [role],
-.runtime-host-root[data-mode="design"] .page-design-form[inert] [contenteditable="true"] {
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] input,
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] textarea,
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] select,
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] button,
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] [role],
+.runtime-host-root[data-mode="design"] .surface-design-form[inert] [contenteditable="true"] {
   caret-color: transparent;
   cursor: default !important;
 }
@@ -122,14 +122,14 @@ body {
   visibility: visible !important;
 }
 
-.page-preview-form {
-  width: min(760px, 100%);
-  margin: 0 auto;
-  padding: 24px;
-  border: var(--demo-border-width, 1px) var(--demo-border-style, solid) var(--demo-color-border, #d5dce5);
-  border-radius: var(--demo-radius-md, 6px);
-  background: var(--demo-color-surface, #fff);
-  box-shadow: var(--demo-shadow-sm, none);
+/* The page inset matches the designer sheet; overlays own their own padding. */
+.runtime-host-experience-instance[data-surface-kind="page"] {
+  padding: 28px;
+}
+
+.surface-experience-form {
+  width: 100%;
+  margin: 0;
 }
 
 .runtime-host-error {
@@ -151,10 +151,4 @@ body {
 .runtime-host-error p {
   margin-top: 6px;
   white-space: pre-wrap;
-}
-
-@media (max-width: 700px) {
-  .page-preview-form {
-    padding: 14px;
-  }
 }

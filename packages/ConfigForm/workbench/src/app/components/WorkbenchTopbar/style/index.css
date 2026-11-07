@@ -146,7 +146,10 @@
   white-space: nowrap;
 }
 
-.mobile-action-popover .topbar-status-item {
+.workbench-overlays .topbar-status-item {
+  display: flex;
+  padding: 8px;
+  align-items: center;
   height: auto;
   min-height: 34px;
   color: var(--wb-muted);
@@ -381,7 +384,7 @@
     gap: 1px;
   }
   .topbar-actions > button,
-.topbar-actions > .mobile-action-menu > button {
+.topbar-actions > .mobile-action-menu > .el-dropdown > button {
     width: 28px;
     height: 28px;
   }
@@ -400,7 +403,7 @@
 
 @media (max-width: 720px) and (pointer: coarse) {
   .topbar-actions > button,
-.topbar-actions > .mobile-action-menu > button,
+.topbar-actions > .mobile-action-menu > .el-dropdown > button,
 .topbar-actions .export-menu > button,
 .export-menu-popover .el-dropdown-menu__item,
 .mobile-action-popover .el-dropdown-menu__item {
@@ -411,7 +414,7 @@
 @media (max-width: 640px) and (pointer: coarse) {
   .workbench-view-switch { height: 44px; padding: 0; grid-template-columns: repeat(3, 44px); }
   .topbar-actions > button,
-.topbar-actions > .mobile-action-menu > button,
+.topbar-actions > .mobile-action-menu > .el-dropdown > button,
 .topbar-actions .export-menu > button {
     width: 44px;
     min-width: 44px;

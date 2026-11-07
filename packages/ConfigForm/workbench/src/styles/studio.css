@@ -170,15 +170,21 @@
 }
 
 .preview-canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   min-width: 0;
   min-height: 0;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
   color: var(--wb-canvas-ink);
   background: var(--wb-canvas-backdrop);
 }
 
 .preview-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -187,31 +193,31 @@
 .preview-stage {
   position: relative;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  width: 100%;
+  width: min(900px, 100%);
   min-width: 0;
-  min-height: 100%;
-  margin: 0 auto;
+  min-height: 0;
+  overflow: hidden;
   background: var(--wb-canvas-sheet);
   border: 1px solid var(--wb-canvas-frame);
+  border-radius: 8px;
   box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 }
 
 .preview-stage[data-viewport='tablet'] {
-  width: min(768px, 100%);
-  border-inline: 1px solid var(--wb-canvas-frame);
+  width: min(720px, 100%);
 }
 
 .preview-stage[data-viewport='mobile'] {
   width: min(390px, 100%);
-  border-inline: 1px solid var(--wb-canvas-frame);
 }
 
 .preview-runtime-host {
   display: block;
-  flex: 1 1 auto;
+  flex: 1;
   width: 100%;
-  min-height: 420px;
+  min-height: 0;
   border: 0;
   background: var(--wb-canvas-sheet);
 }

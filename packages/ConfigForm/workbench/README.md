@@ -109,6 +109,9 @@ SurfaceGraph v3、Canonical IR v7 和 Compiler 8.0.0；字段 Required 独立于
 旧、未来、缺失、畸形或混合版本均 fail closed；不提供迁移器、兼容别名、deprecated
 wrapper 或双读。
 
+工作区采用设计、体验、交付三个独立视图。体验使用 `PreviewWorkspace`，不再保留旧弹窗的
+展开/恢复状态或兼容入口；页面预览和设计画布使用一致的内容内边距及设备宽度。
+
 源码迁移采用同样硬切策略：旧 Workbench generator、文件树、Monaco editor、wrapper
 和 re-export 已删除；Prototype Interaction 不转换成原始事件、动作链或 Flow。
 

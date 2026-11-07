@@ -11,10 +11,9 @@ import type { PreviewInstanceStateMap } from '../../session/types/preview'
 
 export type PreviewViewport = 'desktop' | 'mobile' | 'tablet'
 
-export interface PreviewDrawerProps {
+export interface PreviewWorkspaceProps {
   adapter?: WorkbenchAdapterId
   compilation?: ProjectCompilation
-  expanded?: boolean
   locale?: DesignerLocaleOptions
   namespace?: string
   open: boolean
@@ -23,11 +22,10 @@ export interface PreviewDrawerProps {
   sessionId: string
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
-  viewportPinned?: boolean
   instanceStates?: PreviewInstanceStateMap
 }
 
-export interface PreviewDrawerEmits {
+export interface PreviewWorkspaceEmits {
   'close': []
   'reset': []
   'error': [error: Error]
@@ -35,6 +33,5 @@ export interface PreviewDrawerEmits {
   'mounted': [event: ExperienceRuntimeHostIdentityEvent]
   'ready': [event: ExperienceRuntimeHostIdentityEvent]
   'session': [event: ExperienceRuntimeSessionEvent]
-  'update:expanded': [expanded: boolean]
   'update:viewport': [viewport: PreviewViewport]
 }

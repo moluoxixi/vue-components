@@ -5,7 +5,7 @@ import type { Component } from 'vue'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import { PreviewDrawer } from '../../app'
+import { PreviewWorkspace } from '../../app'
 
 const RuntimeStub = defineComponent({
   name: 'PreviewRuntimeHostFrameStub',
@@ -17,7 +17,6 @@ function props() {
   return {
     adapter: 'element-plus' as const,
     compilation: {} as never,
-    expanded: false,
     open: true,
     revision: 'revision-1',
     session: {} as never,
@@ -27,7 +26,7 @@ function props() {
   }
 }
 
-function mountPreviewDrawer(componentProps: Record<string, unknown>): {
+function mountPreviewWorkspace(componentProps: Record<string, unknown>): {
   root: DOMWrapper<Element>
   target: HTMLElement
   wrapper: VueWrapper
@@ -37,7 +36,7 @@ function mountPreviewDrawer(componentProps: Record<string, unknown>): {
   target.className = 'workbench-overlays'
   target.dataset.theme = 'dark'
   document.body.append(target)
-  const wrapper = mount(PreviewDrawer as Component, {
+  const wrapper = mount(PreviewWorkspace as Component, {
     attachTo: target,
     props: componentProps,
     global: { stubs: { PreviewRuntimeHostFrame: RuntimeStub } },
@@ -45,15 +44,16 @@ function mountPreviewDrawer(componentProps: Record<string, unknown>): {
   return { root: new DOMWrapper(target), target, wrapper }
 }
 
-describe('preview drawer', () => {
+describe('preview workspace', () => {
   it('renders the revision-bound Experience host and accepts ready only for its current identity', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer(props())
+    const { root, target, wrapper } = mountPreviewWorkspace(props())
 
     await flushPromises()
 
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
     expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Page preview')
     const runtime = wrapper.findComponent(RuntimeStub)
+    expect(runtime.attributes('breakpoint')).toBe('desktop')
     const identity = {
       hostId: 'host-1',
       projectId: 'project',
@@ -65,20 +65,20 @@ describe('preview drawer', () => {
     runtime.vm.$emit('ready', identity)
     expect(wrapper.emitted('ready')).toEqual([[identity]])
 
-    await wrapper.setProps({ expanded: true })
-    await nextTick()
-    expect(wrapper.get('.preview-dialog-shell').classes()).toContain('is-expanded')
     wrapper.unmount()
     target.remove()
   })
 
-  it('presents Preview as one centered modal without the removed submission panel', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer(props())
+  it('presents Preview as an inline workspace without a modal focus trap', async () => {
+    const { root, target, wrapper } = mountPreviewWorkspace(props())
 
     await flushPromises()
 
-    expect(root.find('.preview-dialog-shell').exists()).toBe(true)
-    expect(root.find('.el-drawer').exists()).toBe(false)
+    expect(root.find('.preview-workspace').exists()).toBe(true)
+    expect(root.find('[role="dialog"]').exists()).toBe(false)
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    root.get('.preview-toolbar button:last-child').element.dispatchEvent(tab)
+    expect(tab.defaultPrevented).toBe(false)
     expect(root.get('[role="complementary"]').attributes('aria-label')).toBe('Page preview')
     expect(root.find('[data-preview-results]').exists()).toBe(false)
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
@@ -88,7 +88,7 @@ describe('preview drawer', () => {
   })
 
   it('shows an unavailable state until all Experience inputs exist', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer({ ...props(), session: undefined })
+    const { root, target, wrapper } = mountPreviewWorkspace({ ...props(), session: undefined })
 
     await flushPromises()
 
@@ -107,10 +107,10 @@ describe('preview drawer', () => {
   })
 
   it('keeps the runtime mounted while the embedded preview is resized', async () => {
-    const { root, target, wrapper } = mountPreviewDrawer({ ...props(), expanded: true })
+    const { root, target, wrapper } = mountPreviewWorkspace(props())
     await flushPromises()
     const runtime = root.get('[data-runtime-stub]').element
-    await wrapper.setProps({ expanded: false })
+    await wrapper.setProps({ viewport: 'mobile' })
     expect(root.get('[data-runtime-stub]').element).toBe(runtime)
     wrapper.unmount()
     target.remove()

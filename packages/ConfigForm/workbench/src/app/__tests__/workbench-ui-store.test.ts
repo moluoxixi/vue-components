@@ -46,7 +46,7 @@ describe('workbench UI store', () => {
     await nextTick()
 
     expect(ui.exportDialogLoaded.value).toBe(true)
-    expect(ui.exportPreviewMode.value).toBe('source')
+    expect(ui.exportPreviewMode.value).toBeUndefined()
     expect(ui.creationOrigin.value).toEqual({
       focusKey: 'topbar-new-surface',
       path: '/projects/project-a/design/home',
@@ -103,16 +103,23 @@ describe('workbench UI store', () => {
     })
   })
 
-  it('closes preview expansion and clears the creation origin through explicit UI operations', () => {
+  it('returns from handoff to the requested mobile design panel', () => {
+    const ui = createWorkbenchUiStore({})
+    ui.openExportPreview('source')
+    ui.selectMobileStudioView('layers')
+    expect(ui.mode.value).toBe('design')
+    expect(ui.mobileStudioView.value).toBe('layers')
+    expect(ui.studioLeftView.value).toBe('layers')
+  })
+
+  it('closes preview and clears the creation origin through explicit UI operations', () => {
     const ui = createWorkbenchUiStore({})
     ui.togglePreview()
-    ui.previewExpanded.value = true
     ui.togglePreview()
     ui.setCreationOrigin({ path: '/projects' })
     ui.clearCreationOrigin()
 
     expect(ui.previewOpen.value).toBe(false)
-    expect(ui.previewExpanded.value).toBe(false)
     expect(ui.creationOrigin.value).toBeUndefined()
   })
 

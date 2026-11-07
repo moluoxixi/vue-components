@@ -14,7 +14,7 @@ import { useRouter } from 'vue-router'
 import { downloadProjectTransfer, downloadSurfaceTransfer } from '../project'
 import {
   DesignRuntimeHostFrame,
-  PreviewDrawer,
+  PreviewWorkspace,
   ProjectThemeEditor,
   StudioLeftPanel,
   WorkbenchCommandHint,
@@ -125,10 +125,8 @@ const {
   openExportPreview,
   openAppearanceDrawer,
   paletteFamily,
-  previewExpanded,
   previewOpen,
   previewViewport,
-  previewViewportPinned,
   resolvedTheme,
   selectMobileStudioView: selectMobileView,
   setPaletteFamily,
@@ -542,19 +540,12 @@ watch(
       v-if="currentProject"
       id="workspace-panel"
       class="workbench-layout"
-      :class="{
-        'is-preview-collapsed': !previewOpen,
-        'is-preview-expanded': previewExpanded,
-        'show-mobile-preview': previewOpen,
-      }"
     >
       <section
         v-show="!previewOpen && !exportPreviewMode"
         id="page-editor-panel"
         class="editor-pane"
-        :aria-hidden="previewExpanded ? 'true' : undefined"
         :aria-label="workbenchLocale.t('workbench.designEditor', 'Design editor')"
-        :inert="previewExpanded ? true : undefined"
       >
         <div class="provider-surface">
           <DesignSurface
@@ -666,9 +657,8 @@ watch(
         />
       </section>
 
-      <PreviewDrawer
+      <PreviewWorkspace
         v-if="previewOpen"
-        v-model:expanded="previewExpanded"
         :viewport="previewViewport"
         :adapter="getCurrentAdapterId()"
         :compilation="previewCompilation"
@@ -679,7 +669,6 @@ watch(
         :session="previewPrototypeSession"
         :session-id="previewSessionId"
         :state="previewState"
-        :viewport-pinned="previewViewportPinned"
         :instance-states="previewSession.instanceStates.value"
         @reset="resetExperience"
         @close="togglePreview"
@@ -714,20 +703,20 @@ watch(
       role="tablist"
       :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')"
     >
-      <button
-        v-for="view in mobileStudioViews"
-        :key="view.id"
-        type="button"
-        role="tab"
-        :aria-selected="mobileStudioView === view.id"
-        :data-mobile-studio-tab="view.id"
-        :tabindex="mobileStudioView === view.id ? 0 : -1"
-        @click="selectMobileStudioView(view.id)"
-        @keydown="handleMobileStudioKeydown($event, view.id)"
-      >
-        <component :is="view.icon" :size="17" aria-hidden="true" />
-        <span>{{ view.label }}</span>
-      </button>
+      <WorkbenchCommandHint v-for="view in mobileStudioViews" :key="view.id" :label="`${workbenchLocale.locale === 'zh-CN' ? '打开设计面板：' : 'Open design panel: '}${view.label}`">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="mobileStudioView === view.id"
+          :data-mobile-studio-tab="view.id"
+          :tabindex="mobileStudioView === view.id ? 0 : -1"
+          @click="selectMobileStudioView(view.id)"
+          @keydown="handleMobileStudioKeydown($event, view.id)"
+        >
+          <component :is="view.icon" :size="17" aria-hidden="true" />
+          <span>{{ view.label }}</span>
+        </button>
+      </WorkbenchCommandHint>
     </nav>
 
     <AssetManagerDialog

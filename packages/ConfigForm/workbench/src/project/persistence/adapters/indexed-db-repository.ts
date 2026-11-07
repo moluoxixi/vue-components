@@ -143,9 +143,7 @@ export class IndexedDBProjectRepository implements ProjectRepository {
   private readonly storeName: string
 
   constructor(options: IndexedDBProjectRepositoryOptions) {
-    // Development storage intentionally starts clean after the interaction
-    // graph contract changed. Do not migrate malformed templates from the
-    // previous local database while the workbench is still evolving.
+    // The storage identity is stable; readers accept only the current document contract.
     this.dbName = options.dbName ?? 'moluoxixi-config-form-workbench-dev-reset'
     this.receiptLimit = options.receiptLimit ?? 256
     this.now = options.now ?? (() => new Date().toISOString())

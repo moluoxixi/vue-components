@@ -35,7 +35,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const mobileStudioView = ref<MobileStudioView>('canvas')
   const studioLeftView = ref<StudioLeftView>('components')
   const previewOpen = ref(false)
-  const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
   const previewViewportPinned = ref(false)
   const creationOrigin = shallowRef<WorkbenchCreationOrigin>()
@@ -105,7 +104,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   function openExportPreview(mode: 'source' | 'config'): void {
     exportDialogLoaded.value = true
     previewOpen.value = false
-    previewExpanded.value = false
     exportPreviewMode.value = mode
   }
 
@@ -124,7 +122,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   function selectMobileStudioView(view: MobileStudioView): void {
     previewOpen.value = false
-    previewExpanded.value = false
+    closeExportPreview()
     mobileStudioView.value = view
     if (view === 'components' || view === 'layers' || view === 'pages' || view === 'data' || view === 'theme')
       studioLeftView.value = view
@@ -136,8 +134,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
       previewViewport.value = width <= 960 ? 'mobile' : width <= 1200 ? 'tablet' : 'desktop'
     }
     previewOpen.value = !previewOpen.value
-    if (!previewOpen.value)
-      previewExpanded.value = false
   }
 
   function setPreviewViewport(value: PreviewViewport): void {
@@ -248,7 +244,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     openAppearanceDrawer,
     openExportPreview,
     paletteFamily,
-    previewExpanded,
     previewOpen,
     previewViewport,
     previewViewportPinned,

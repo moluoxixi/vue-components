@@ -439,6 +439,8 @@ button.studio-issue-main:hover {
   flex: none;
 }
 .experience-inspector {
+  min-width: 0;
+  min-height: 0;
   border-left: 1px solid var(--wb-separator);
   background: var(--wb-surface);
   color: var(--wb-text);
@@ -639,9 +641,11 @@ button.studio-issue-main:hover {
 @media (max-width: 900px) {
   .preview-body.has-inspector {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 35%);
   }
   .experience-inspector {
-    display: none;
+    border-top: 1px solid var(--wb-separator);
+    border-left: 0;
   }
   .studio-command-trigger kbd,
   .studio-issues-hint {

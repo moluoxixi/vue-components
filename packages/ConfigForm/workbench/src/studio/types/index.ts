@@ -1,2 +1,2 @@
 export type * from './left-panel'
-export type * from './preview-drawer'
+export type * from './preview-workspace'

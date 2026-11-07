@@ -141,23 +141,43 @@ function runCompactCommand(command: string): void {
         </button>
       </WorkbenchCommandHint>
     </div>
-    <button
-      v-if="showCompare"
-      type="button"
-      class="mx-config-form-designer__icon-button studio-compare-command"
-      :aria-label="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
-      :title="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
-      @click="emit('compare')"
-    >
-      <Columns2 :size="16" />
-    </button>
-    <ElDropdown class="studio-compact-canvas-actions" trigger="click" append-to="#workbench-overlays" @command="runCompactCommand">
-      <button type="button" class="mx-config-form-designer__icon-button" :aria-label="locale.t('designer.commands', 'Designer commands')" :title="locale.t('designer.commands', 'Designer commands')"><MoreHorizontal :size="17" aria-hidden="true" /></button>
-      <template #dropdown><ElDropdownMenu>
-        <ElDropdownItem command="copy" :disabled="!scope.canEditSelection"><Copy :size="15" aria-hidden="true" />{{ locale.t('node.copySelection', 'Copy selection') }}</ElDropdownItem>
-        <ElDropdownItem command="delete" :disabled="!scope.canEditSelection"><Trash2 :size="15" aria-hidden="true" />{{ locale.t('node.deleteSelection', 'Delete selection') }}</ElDropdownItem>
-        <ElDropdownItem v-if="showCompare" command="compare"><Columns2 :size="15" aria-hidden="true" />{{ locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts' }}</ElDropdownItem>
-      </ElDropdownMenu></template>
-    </ElDropdown>
+    <WorkbenchCommandHint v-if="showCompare" :label="locale.locale === 'zh-CN' ? '同时查看桌面、平板和手机布局' : 'Compare desktop, tablet and mobile layouts side by side'">
+      <button
+        type="button"
+        class="mx-config-form-designer__icon-button studio-compare-command"
+        :aria-label="locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts'"
+        @click="emit('compare')"
+      >
+        <Columns2 :size="16" />
+      </button>
+    </WorkbenchCommandHint>
+    <WorkbenchCommandHint detached anchor-class="studio-compact-canvas-actions" :label="locale.t('designer.commands', 'Designer commands')">
+      <ElDropdown trigger="click" append-to="#workbench-overlays" @command="runCompactCommand">
+        <button type="button" class="mx-config-form-designer__icon-button" :aria-label="locale.t('designer.commands', 'Designer commands')">
+          <MoreHorizontal :size="17" aria-hidden="true" />
+        </button>
+        <template #dropdown>
+          <ElDropdownMenu>
+            <ElDropdownItem command="copy" :disabled="!scope.canEditSelection">
+              <WorkbenchCommandHint :label="locale.t('node.copySelection', 'Copy selection')" :disabled-reason="!scope.canEditSelection ? locale.t('node.selectionRequired', 'Select a component first') : undefined">
+                <span class="menu-command-content">
+                  <Copy :size="15" aria-hidden="true" />{{ locale.t('node.copySelection', 'Copy selection') }}
+                </span>
+              </WorkbenchCommandHint>
+            </ElDropdownItem>
+            <ElDropdownItem command="delete" :disabled="!scope.canEditSelection">
+              <WorkbenchCommandHint :label="locale.t('node.deleteSelection', 'Delete selection')" :disabled-reason="!scope.canEditSelection ? locale.t('node.selectionRequired', 'Select a component first') : undefined">
+                <span class="menu-command-content">
+                  <Trash2 :size="15" aria-hidden="true" />{{ locale.t('node.deleteSelection', 'Delete selection') }}
+                </span>
+              </WorkbenchCommandHint>
+            </ElDropdownItem>
+            <ElDropdownItem v-if="showCompare" command="compare">
+              <Columns2 :size="15" aria-hidden="true" />{{ locale.locale === 'zh-CN' ? '响应式对照' : 'Compare responsive layouts' }}
+            </ElDropdownItem>
+          </ElDropdownMenu>
+        </template>
+      </ElDropdown>
+    </WorkbenchCommandHint>
   </div>
 </template>

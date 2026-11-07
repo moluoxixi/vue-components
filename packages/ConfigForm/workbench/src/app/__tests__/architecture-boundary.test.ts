@@ -609,7 +609,7 @@ describe('workbench production architecture boundary', () => {
   })
 
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
-    const drawer = readFileSync(new URL('../components/PreviewDrawer/index.vue', import.meta.url), 'utf8')
+    const drawer = readFileSync(new URL('../components/PreviewWorkspace/index.vue', import.meta.url), 'utf8')
     const host = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
     const hostProtocol = readFileSync(
       new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url),
@@ -711,7 +711,6 @@ describe('workbench production architecture boundary', () => {
       'mobileStudioView',
       'studioLeftView',
       'previewOpen',
-      'previewExpanded',
       'previewViewport',
       'exportPreviewMode',
       'appearanceDrawerOpen',

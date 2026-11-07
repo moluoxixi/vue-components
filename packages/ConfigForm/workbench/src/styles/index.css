@@ -8,7 +8,7 @@
 @import url(../app/components/WorkbenchTopbar/style/index.css);
 @import url(../app/router/components/ManagementShell/style/index.css);
 @import url(../app/style/index.css);
-@import url(../app/components/PreviewDrawer/style/index.css);
+@import url(../app/components/PreviewWorkspace/style/index.css);
 @import url(./studio.css);
 @import url(../features/persistence/style/index.css);
 @import url(../features/export/style/index.css);

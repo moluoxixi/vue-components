@@ -373,7 +373,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="runtime-host-experience-instance" @click="handleActivate" @submit="handleSubmit">
+  <div ref="root" class="runtime-host-experience-instance" :data-surface-kind="bindings.surface.kind" @click="handleActivate" @submit="handleSubmit">
     <ConfigFormRenderer
       ref="renderer"
       :model="model"

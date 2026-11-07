@@ -34,8 +34,8 @@ const stylesheetLayers = [
   },
   { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
   {
-    importPath: '../app/components/PreviewDrawer/style/index.css',
-    source: new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url),
+    importPath: '../app/components/PreviewWorkspace/style/index.css',
+    source: new URL('../../app/components/PreviewWorkspace/style/index.css', import.meta.url),
   },
   { importPath: './studio.css', source: new URL('../studio.css', import.meta.url) },
   {
@@ -104,9 +104,8 @@ const pageManagerStylesheet = readFileSync(
   new URL('../../features/pages/components/SurfaceManager/style/index.css', import.meta.url),
   'utf8',
 )
-const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
-const previewDrawerStylesheet = readFileSync(
-  new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url),
+const previewWorkspaceStylesheet = readFileSync(
+  new URL('../../app/components/PreviewWorkspace/style/index.css', import.meta.url),
   'utf8',
 )
 const sourceViewerStylesheet = readFileSync(
@@ -204,9 +203,9 @@ describe('workbench theme contract', () => {
         '.appearance-drawer-shell',
         '.appearance-panel {',
       ],
-      ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-dialog-shell'],
+      ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-workspace'],
       ['../../app/router/components/ManagementShell/style/index.css', '.management-shell', '.workbench-topbar'],
-      ['../../app/components/PreviewDrawer/style/index.css', '.preview-dialog-shell', '.workbench-topbar'],
+      ['../../app/components/PreviewWorkspace/style/index.css', '.preview-workspace', '.workbench-topbar'],
       ['../../features/export/style/index.css', '.source-workspace', '.persistence-dialog'],
       ['../../features/persistence/style/index.css', '.persistence-dialog', '.source-workspace'],
       ['../../features/pages/style/index.css', '.page-manager-page', '.source-workspace'],
@@ -652,42 +651,20 @@ describe('workbench theme contract', () => {
     )
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(stylesheet).not.toContain('@container preview-runtime')
-    expect(runtimeHostStylesheet).toContain('.page-preview-form')
-    expect(runtimeHostStylesheet).toContain('@media (max-width: 700px)')
+    expect(runtimeHostStylesheet).toContain('.surface-experience-form')
+    expect(runtimeHostStylesheet).toContain('.surface-design-form')
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"]')
   })
 
-  it('keeps Preview as an overlay that cannot resize the Design surface', () => {
-    const rules = cssRules(stylesheet)
-    const overlayRule = rules.find(rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay')
-    const shellRule = rules.find(rule => rule.selector === '.preview-dialog-shell')
-    const expandedRule = rules.find(rule => rule.selector === '.preview-dialog-shell.is-expanded')
-
-    expect(selectorBlock('.workbench-layout')).toContain('position: relative;')
-    expect(selectorBlock('.workbench-layout')).toContain('grid-template-columns: minmax(0, 1fr);')
-    expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(
-      true,
-    )
-    // Preview is a centered modal dialog layered over the workbench: bounded in
-    // height, transition-free, and never part of the layout grid.
-    expect(overlayRule?.body).toContain('transition: none !important;')
-    expect(shellRule?.body).toContain('max-height: min(84vh, 900px);')
-    expect(rules.some(rule => rule.selector === '.preview-pane'
-      && rule.body.includes('position: static;'))).toBe(
-      true,
-    )
-    expect(expandedRule?.body).toContain('box-shadow: none;')
-  })
-
-  it('keeps compact desktop Preview as an overlay and reserves replacement mode for mobile', () => {
-    const appMobileStart = appStylesheet.indexOf('@media (max-width: 700px)')
-    const previewMobileStart = previewDrawerStylesheet.indexOf('@media (max-width: 700px)')
-
-    expect(appStylesheet.slice(0, appMobileStart)).not.toContain('show-mobile-preview')
-    expect(previewDrawerStylesheet.slice(0, previewMobileStart)).not.toContain('show-mobile-preview')
-    expect(appStylesheet.slice(appMobileStart)).toContain('.workbench-layout.show-mobile-preview .editor-pane')
-    expect(previewDrawerStylesheet.slice(previewMobileStart)).toContain(
-      '.workbench-layout.show-mobile-preview .preview-pane',
-    )
+  it('bounds Preview to the workspace and gives the iframe the remaining height', () => {
+    expect(selectorBlock('.preview-workspace')).toContain('height: 100%;')
+    expect(selectorBlock('.preview-pane')).toContain('grid-template-rows: 36px minmax(0, 1fr);')
+    expect(selectorBlock('.preview-body')).toContain('display: grid;')
+    expect(selectorBlock('.preview-canvas')).toContain('display: flex;')
+    expect(selectorBlock('.preview-runtime-host')).toContain('min-height: 0;')
+    expect(stylesheet).not.toContain('is-preview-expanded')
+    expect(stylesheet).not.toContain('show-mobile-preview')
+    expect(previewWorkspaceStylesheet).not.toContain('.el-overlay-dialog')
+    expect(runtimeHostStylesheet).not.toContain('.page-preview-form')
   })
 })

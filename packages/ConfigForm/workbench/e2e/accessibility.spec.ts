@@ -6,6 +6,10 @@ import { createProject, openAppearance, setAppearance } from './helpers'
 const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
 async function expectNoAccessibilityViolations(page: Page, state: string): Promise<void> {
+  // Sample the settled colors, not a disabled-to-enabled color transition.
+  await page.evaluate(() => Promise.all(document.getAnimations()
+    .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+    .map(animation => animation.finished.catch(() => undefined))))
   const result = await new AxeBuilder({ page })
     .withTags(wcagTags)
     .analyze()
@@ -157,7 +161,11 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(sourcePane).toBeVisible()
     await sourcePane.getByRole('button', { name: 'Files', exact: true }).click()
     await expect(sourcePane.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
+    await expect(sourcePane.getByRole('radio', { name: 'ConfigForm bindings', exact: true })).toBeEnabled()
     await expectNoAccessibilityViolations(page, `${adapter} mobile source workspace`)
+    await page.getByRole('tab', { name: 'Canvas', exact: true }).click()
+    await expect(sourcePane).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   })
 }
 
@@ -178,15 +186,14 @@ for (const adapter of ['element', 'antd'] as const) {
     await createProject(page, adapter)
     const designSelector = 'iframe[data-design-runtime-variant="canvas"]'
     const previewSelector = 'iframe[data-preview-runtime-host]'
-    // Preview is a modal dialog, so appearance switching happens with the dialog
-    // closed and each fingerprint is taken from a freshly opened preview.
+    // Sample each workspace from a fresh Preview session after changing appearance.
     const openPreview = async (): Promise<void> => {
       await page.getByRole('button', { name: 'Show preview' }).click()
       await expect(page.locator(previewSelector)).toBeVisible()
     }
     const closePreview = async (): Promise<void> => {
       await page.getByRole('button', { name: 'Close preview' }).click()
-      await expect(page.locator('.preview-dialog-shell')).toHaveCount(0)
+      await expect(page.locator('.preview-workspace')).toHaveCount(0)
     }
     const fingerprint = async (): Promise<{ design: unknown, preview: unknown }> => {
       await openPreview()

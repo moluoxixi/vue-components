@@ -1037,7 +1037,7 @@ for (const adapter of [
     // through the dialog command. Reopening proves the appearance switch left
     // the preview runtime alone.
     await page.getByRole('button', { name: 'Close preview' }).click()
-    await expect(page.locator('.preview-dialog-shell')).toHaveCount(0)
+    await expect(page.locator('.preview-workspace')).toHaveCount(0)
     await setAppearance(page, 'light', 'glass')
     await page.getByRole('button', { name: 'Show preview' }).click()
     const reopenedInput = previewRuntime(page).locator('[data-config-node-id^="profile-name-"] input').first()
@@ -1396,6 +1396,65 @@ test('keeps Dataset-authored mock data local in Design and Preview', async ({ pa
   expect(requestUrls).toEqual([])
   expect(await readRuntimeHostErrors(page)).toEqual([])
   expect(browserErrors).toEqual([])
+})
+
+for (const adapter of ['element', 'antd'] as const) {
+  test(`keeps ${adapter} Preview padded, full-height and inspectable on narrow screens`, async ({ page }) => {
+    await createProject(page, adapter)
+    await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+    const designForm = designRuntime(page).locator('.surface-design-form')
+    const designWidth = await designForm.evaluate(element => element.getBoundingClientRect().width)
+    await page.setViewportSize({ width: 667, height: 827 })
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    const preview = page.locator('.preview-workspace')
+    const runtime = previewRuntime(page)
+    const form = runtime.locator('.surface-experience-form')
+    await expect(form).toBeVisible()
+    expect(await form.evaluate(element => element.getBoundingClientRect().width)).toBeCloseTo(designWidth, 0)
+    expect(await runtime.locator('[data-surface-kind="page"]').evaluate(element => getComputedStyle(element).padding)).toBe('28px')
+    const bodyBox = await visibleBox(preview.locator('.preview-body'))
+    const frameBox = await visibleBox(preview.locator('iframe'))
+    expect(frameBox.height).toBeGreaterThan(bodyBox.height - 36)
+    expect(frameBox.y - bodyBox.y).toBeGreaterThanOrEqual(16)
+
+    const name = runtime.getByRole('textbox', { name: 'Name', exact: true })
+    await name.fill('Preview state survives resizing')
+    await preview.getByRole('button', { name: 'Experience state', exact: true }).click()
+    const inspector = preview.getByRole('complementary', { name: 'Experience state', exact: true })
+    await expect(inspector).toBeVisible()
+    await expect(inspector.locator('[data-experience-values]')).toContainText('Preview state survives resizing')
+    await preview.getByRole('button', { name: 'Experience state', exact: true }).click()
+    await expect(inspector).toHaveCount(0)
+    await page.setViewportSize({ width: 320, height: 680 })
+    await expect(name).toHaveValue('Preview state survives resizing')
+    expect(await runtime.locator('html').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+    await expect(preview.getByRole('button', { name: 'Close preview', exact: true })).toBeInViewport()
+    await preview.getByRole('button', { name: 'Close preview', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Show preview' })).toBeFocused()
+  })
+}
+
+test('explains the workspace modes and unavailable save command with real tooltips', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.setViewportSize({ width: 667, height: 827 })
+  for (const [name, explanation] of [
+    ['Design', 'add fields'],
+    ['Show preview', 'try validation'],
+    ['Handoff', 'download Vue source'],
+    ['Command center', 'workspace commands'],
+    ['Save options', 'Save options'],
+    ['More actions', 'appearance settings'],
+  ]) {
+    const trigger = page.getByRole('button', { name, exact: true })
+    await trigger.focus()
+    await expect(page.locator('.workbench-command-tooltip:visible')).toContainText(explanation!)
+    await trigger.blur()
+  }
+  await page.getByRole('button', { name: 'Save options', exact: true }).click()
+  const save = page.getByRole('menuitem', { name: 'Save now', exact: true })
+  await expect(save).toHaveAttribute('aria-disabled', 'true')
+  await save.hover()
+  await expect(page.locator('.workbench-command-tooltip:visible')).toContainText('edit the design to save again')
 })
 
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
@@ -1766,9 +1825,18 @@ test('pins the selected Preview viewport when the host window is wider', async (
   await page.getByRole('button', { name: 'Show preview' }).click()
 
   const preview = page.getByRole('complementary', { name: 'Page preview' })
+  const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
+  await expect(layout).toBeVisible()
+  const initialColumns = await layout.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      active: style.getPropertyValue('--mx-config-form-active-columns').trim(),
+      desktop: style.getPropertyValue('--mx-config-form-columns-desktop').trim(),
+    }
+  })
+  expect(initialColumns.active).toBe(initialColumns.desktop)
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
-  const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
   const activeColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim(),
   )
   const mobileColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-columns-mobile').trim(),
@@ -1796,14 +1864,14 @@ test('recreates an interactive Preview Runtime session after closing and reopeni
   await expect(reopenedInput).toHaveValue('Reopened Preview session')
 })
 
-test('restores Preview focus and removes the closed drawer from Canvas hit testing', async ({ page }) => {
+test('restores Preview focus and removes the closed workspace from Canvas hit testing', async ({ page }) => {
   await createProject(page, 'element')
   const previewTrigger = page.getByRole('button', { name: 'Show preview' })
   await previewTrigger.click()
   await page.getByRole('button', { name: 'Close preview' }).click()
 
   await expect(previewTrigger).toBeFocused()
-  await expect(page.locator('.preview-drawer-overlay')).toHaveCount(0)
+  await expect(page.locator('.preview-workspace')).toHaveCount(0)
   const node = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   const nodeBox = await visibleBox(node)
   const parentHitClasses = await page.evaluate(
@@ -1816,7 +1884,7 @@ test('restores Preview focus and removes the closed drawer from Canvas hit testi
       y: nodeBox.y + nodeBox.height / 2,
     },
   )
-  expect(parentHitClasses.join(' ')).not.toContain('preview-drawer')
+  expect(parentHitClasses.join(' ')).not.toContain('preview-workspace')
 
   await selectCanvasNode(page, node, node.locator('input').first())
   await expect(page.locator('[data-editor-focus-node-id^="profile-name-"]')).toBeFocused()

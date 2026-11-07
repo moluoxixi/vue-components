@@ -168,6 +168,14 @@ export async function openAppearance(page: Page): Promise<void> {
   await expect(page.locator('.appearance-panel:visible')).toBeVisible()
   if (opensPopover)
     await expect(page.locator('.workbench-appearance-popover:visible')).toHaveCSS('opacity', '1', { timeout: 15_000 })
+  // ElSegmented measures its selection after a hidden popover becomes visible.
+  // Wait for that background to cover the selected label before sampling contrast.
+  await expect.poll(() => page.locator('.appearance-panel:visible .appearance-mode-control').evaluate((element) => {
+    const indicator = element.querySelector('.el-segmented__item-selected')?.getBoundingClientRect()
+    const label = element.querySelector('.is-selected .el-segmented__item-label')?.getBoundingClientRect()
+    return !!indicator && !!label && indicator.width > 0
+      && indicator.left <= label.left && indicator.right >= label.right
+  })).toBe(true)
 }
 
 export async function setAppearance(

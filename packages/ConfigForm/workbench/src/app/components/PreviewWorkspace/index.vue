@@ -1,23 +1,26 @@
 <script setup lang="ts">
 import type { ExperienceRuntimeHostIdentityEvent } from '../../../runtime-host'
-import type { PreviewDrawerEmits, PreviewDrawerProps } from '../../../studio'
-import { Maximize2, Minimize2, Monitor, PanelRight, RotateCcw, Smartphone, Tablet, X } from '@lucide/vue'
+import type { PreviewWorkspaceEmits, PreviewWorkspaceProps } from '../../../studio'
+import { Monitor, PanelRight, RotateCcw, Smartphone, Tablet, X } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, ref, useTemplateRef } from 'vue'
-import { useWorkbenchDialogFocus } from '../../../components/composables/dialog-focus'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
 import WorkbenchCommandHint from '../WorkbenchCommandHint/index.vue'
 import StudioExperienceInspector from './components/StudioExperienceInspector.vue'
 
-const props = defineProps<PreviewDrawerProps>()
-const emit = defineEmits<PreviewDrawerEmits>()
+const props = defineProps<PreviewWorkspaceProps>()
+const emit = defineEmits<PreviewWorkspaceEmits>()
 const inspect = ref(false)
-const dialog = useTemplateRef<HTMLElement>('dialog')
-const focus = useWorkbenchDialogFocus(
-  () => props.open,
-  dialog,
-  () => emit('close'),
-)
+const workspace = useTemplateRef<HTMLElement>('workspace')
+let returnFocus: HTMLElement | undefined
+onMounted(() => {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+  workspace.value?.focus()
+})
+onBeforeUnmount(() => {
+  if (workspace.value?.contains(document.activeElement) && returnFocus?.isConnected)
+    returnFocus.focus()
+})
 
 const locale = computed(() => createDesignerLocale(props.locale))
 const runtimeAvailable = computed(() =>
@@ -28,9 +31,9 @@ const runtimeAvailable = computed(() =>
     && props.sessionId),
 )
 const viewports = computed(() => [
-  { icon: Monitor, id: 'desktop' as const, label: locale.value.t('preview.desktop', 'Desktop preview') },
-  { icon: Tablet, id: 'tablet' as const, label: locale.value.t('preview.tablet', 'Tablet preview') },
-  { icon: Smartphone, id: 'mobile' as const, label: locale.value.t('preview.mobile', 'Mobile preview') },
+  { icon: Monitor, id: 'desktop' as const, width: 900, label: locale.value.t('preview.desktop', 'Desktop preview') },
+  { icon: Tablet, id: 'tablet' as const, width: 720, label: locale.value.t('preview.tablet', 'Tablet preview') },
+  { icon: Smartphone, id: 'mobile' as const, width: 390, label: locale.value.t('preview.mobile', 'Mobile preview') },
 ])
 
 function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
@@ -42,93 +45,65 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
 <template>
   <aside
     v-if="open"
-    ref="dialog"
-    class="preview-dialog-shell"
-    :class="{ 'is-expanded': expanded }"
+    ref="workspace"
+    class="preview-workspace"
     :aria-label="locale.t('preview.page', 'Page preview')"
-    aria-labelledby="preview-dialog-title"
-    data-dialog-initial-focus
+    aria-labelledby="preview-workspace-title"
     tabindex="-1"
-    @keydown="focus.handleKeydown"
+    @keydown.esc.prevent="emit('close')"
   >
     <aside
       class="preview-pane"
-      :class="{ 'is-expanded': expanded }"
       role="complementary"
       :aria-label="locale.t('preview.page', 'Page preview')"
     >
       <header class="pane-header">
         <div class="preview-heading">
-          <strong id="preview-dialog-title">{{ locale.t('preview.title', 'Preview') }}</strong>
+          <strong id="preview-workspace-title">{{ locale.t('preview.title', 'Preview') }}</strong>
           <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
             <span aria-hidden="true" />
             {{ state.label }}
           </span>
         </div>
         <div class="preview-toolbar">
-          <button
-            type="button"
-            :title="
-              locale.locale === 'zh-CN' ? '重置体验：恢复首页与初始值' : 'Reset experience to home and initial values'
-            "
-            :aria-label="locale.locale === 'zh-CN' ? '重置体验' : 'Reset experience'"
-            @click="emit('reset')"
-          >
-            <RotateCcw :size="15" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            :aria-pressed="inspect"
-            :title="locale.locale === 'zh-CN' ? '体验状态' : 'Experience state'"
-            :aria-label="locale.locale === 'zh-CN' ? '体验状态' : 'Experience state'"
-            @click="inspect = !inspect"
-          >
-            <PanelRight :size="15" aria-hidden="true" />
-          </button>
+          <WorkbenchCommandHint :label="locale.locale === 'zh-CN' ? '重置体验：回到首页并恢复所有初始值' : 'Reset experience: return home and restore all initial values'">
+            <button
+              type="button"
+              :aria-label="locale.locale === 'zh-CN' ? '重置体验' : 'Reset experience'"
+              @click="emit('reset')"
+            >
+              <RotateCcw :size="15" aria-hidden="true" />
+            </button>
+          </WorkbenchCommandHint>
+          <WorkbenchCommandHint :label="locale.locale === 'zh-CN' ? '查看当前表单值、触达字段和校验错误' : 'Inspect current values, touched fields and validation errors'">
+            <button
+              type="button"
+              :aria-pressed="inspect"
+              :aria-label="locale.locale === 'zh-CN' ? '体验状态' : 'Experience state'"
+              @click="inspect = !inspect"
+            >
+              <PanelRight :size="15" aria-hidden="true" />
+            </button>
+          </WorkbenchCommandHint>
           <div
             class="preview-viewport-switch"
             role="group"
             :aria-label="locale.t('preview.viewport', 'Preview viewport')"
           >
-            <WorkbenchCommandHint v-for="item in viewports" :key="item.id" :label="item.label">
+            <WorkbenchCommandHint v-for="item in viewports" :key="item.id" :label="`${item.label} · ${item.width}px${locale.locale === 'zh-CN' ? '，空间不足时适应可用宽度' : ', fits the available width'}`">
               <button
                 type="button"
                 :aria-label="item.label"
                 :aria-pressed="viewport === item.id"
-                :title="item.label"
                 @click="emit('update:viewport', item.id)"
               >
                 <component :is="item.icon" :size="15" aria-hidden="true" />
               </button>
             </WorkbenchCommandHint>
           </div>
-          <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
-            {{ locale.t('preview.exit', 'Exit preview') }}
-          </button>
-          <WorkbenchCommandHint
-            :label="
-              expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')
-            "
-          >
-            <button
-              class="preview-expand-button"
-              type="button"
-              :title="
-                expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')
-              "
-              :aria-label="
-                expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')
-              "
-              @click="emit('update:expanded', !expanded)"
-            >
-              <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
-              <Maximize2 v-else :size="16" aria-hidden="true" />
-            </button>
-          </WorkbenchCommandHint>
-          <WorkbenchCommandHint :label="locale.t('preview.close', 'Close preview')">
+          <WorkbenchCommandHint :label="locale.locale === 'zh-CN' ? '关闭体验，返回设计画布' : 'Close experience and return to the design canvas'" shortcut="Esc">
             <button
               type="button"
-              :title="locale.t('preview.close', 'Close preview')"
               :aria-label="locale.t('preview.close', 'Close preview')"
               @click="emit('close')"
             >
@@ -145,7 +120,7 @@ function handleRuntimeReady(event: ExperienceRuntimeHostIdentityEvent): void {
               v-if="runtimeAvailable && adapter && compilation && session"
               :key="`${adapter}:${sessionId}:${revision}`"
               :adapter="adapter"
-              :breakpoint="viewportPinned ? viewport : undefined"
+              :breakpoint="viewport"
               :compilation="compilation"
               :locale="locale.locale"
               :namespace="namespace"
