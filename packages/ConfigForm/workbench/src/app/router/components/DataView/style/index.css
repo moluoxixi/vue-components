@@ -6,8 +6,10 @@
   flex: 1;
   grid-template-rows: max-content minmax(0, 1fr);
   overflow: hidden;
+  gap: 16px;
+  padding-bottom: 16px;
   color: var(--wb-text);
-  background: var(--wb-surface);
+  background: var(--wb-bg);
 }
 
 .project-data-state {
@@ -20,5 +22,17 @@
 @media (max-width: 700px) {
   .project-data-back-label {
     display: none;
+  }
+}
+
+.project-data-page :deep(.asset-manager-workspace) {
+  margin-inline: 16px;
+  border: 1px solid var(--wb-separator);
+  border-radius: 8px;
+  background: var(--wb-surface);
+}
+@media (max-width: 700px) {
+  .project-data-page :deep(.asset-manager-workspace) {
+    margin-inline: 8px;
   }
 }

@@ -2,6 +2,7 @@
 import type { DatasetProjection, DeepReadonly, ProjectDataset, SafeExpression } from '@moluoxixi/config-form-model'
 import { projectDatasetSchema, queryDatasetView } from '@moluoxixi/config-form-model'
 import { computed, ref } from 'vue'
+import WorkbenchCommandHint from '../../../../../app/components/WorkbenchCommandHint/index.vue'
 import { collectDatasetPaths } from '../../../services/ingest'
 
 const props = defineProps<{ json: string, dataset: DeepReadonly<ProjectDataset>, locale: string }>()
@@ -174,21 +175,27 @@ const preview = computed(() => {
         </ElSelect>
       </label>
       <label v-for="key in mappingKeys" :key="key">{{ labels[key] }}
-        <ElSelect
-          :model-value="pathValue(key)"
-          :disabled="!!parsedProjection.error"
-          :aria-label="labels[key]"
-          append-to="#workbench-overlays"
-          @update:model-value="updatePath(key, $event)"
+        <WorkbenchCommandHint
+          detached
+          :label="labels[key]!"
+          :disabled-reason="parsedProjection.error ? (chinese ? '先修正高级 JSON 中的映射配置，或重新选择映射类型' : 'Correct the mapping in Advanced JSON, or select a projection type again') : undefined"
         >
-          <ElOption value="" label="—" />
-          <ElOption
-            v-for="path in paths"
-            :key="JSON.stringify(path)"
-            :value="JSON.stringify(path)"
-            :label="path.join(' / ')"
-          />
-        </ElSelect>
+          <ElSelect
+            :model-value="pathValue(key)"
+            :disabled="!!parsedProjection.error"
+            :aria-label="labels[key]"
+            append-to="#workbench-overlays"
+            @update:model-value="updatePath(key, $event)"
+          >
+            <ElOption value="" label="—" />
+            <ElOption
+              v-for="path in paths"
+              :key="JSON.stringify(path)"
+              :value="JSON.stringify(path)"
+              :label="path.join(' / ')"
+            />
+          </ElSelect>
+        </WorkbenchCommandHint>
       </label>
     </div>
     <div v-if="projection?.kind === 'table'" class="dataset-projection-columns">

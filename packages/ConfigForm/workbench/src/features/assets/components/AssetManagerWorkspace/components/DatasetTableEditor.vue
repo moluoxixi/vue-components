@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
 import type { DatasetCellAddress, DatasetTableSort } from '../../../types'
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronLeft, ChevronRight, CircleHelp, Columns3, Copy, Pencil, Rows3, Search, SlidersHorizontal, Pin, List, Table2, Trash2, WrapText, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronLeft, ChevronRight, CircleHelp, Columns3, Copy, List, Pencil, Pin, Rows3, Search, SlidersHorizontal, Table2, Trash2, WrapText, X } from '@lucide/vue'
 import { createDatasetFromRows } from '@moluoxixi/config-form-model'
 import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
+import WorkbenchCommandHint from '../../../../../app/components/WorkbenchCommandHint/index.vue'
 import { useDatasetColumnLayout } from '../../../composables/use-dataset-column-layout'
 import { compareDatasetCells, datasetCellKind, describeDatasetColumns, formatDatasetCell, parseDatasetCell } from '../../../services'
 
 const props = defineProps<{ json: string, locale: string, dirty?: boolean, datasetId?: string }>()
-const emit = defineEmits<{ 'update:json': [value: string], 'save': [] }>()
+const emit = defineEmits<{ 'update:json': [value: string], 'save': [], 'import': [] }>()
 const chinese = computed(() => props.locale === 'zh-CN')
 const query = ref('')
 const columnName = ref('')
 const addingColumn = ref(false)
+const columnInput = useTemplateRef<{ focus: () => void }>('column-input')
 const wrap = ref(false)
 const page = ref(1)
 const size = ref(25)
@@ -214,6 +216,22 @@ async function save(): Promise<void> {
   await nextTick()
   emit('save')
 }
+function flushDrafts(): boolean {
+  const next = applyDrafts()
+  if (!next)
+    return false
+  commit(next)
+  return true
+}
+defineExpose({ flushDrafts })
+
+async function toggleColumnForm(): Promise<void> {
+  addingColumn.value = !addingColumn.value
+  if (addingColumn.value) {
+    await nextTick()
+    columnInput.value?.focus()
+  }
+}
 async function addRow(): Promise<void> {
   const next = applyDrafts()
   if (!next)
@@ -360,25 +378,47 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
         <ElButton :title="chinese ? '文本换行' : 'Wrap text'" :aria-label="chinese ? '文本换行' : 'Wrap text'" :aria-pressed="wrap" :class="{ 'is-active': wrap }" @click="wrap = !wrap">
           <WrapText :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '文本换行' : 'Wrap text' }}</span>
         </ElButton>
-        <ElButton :title="chinese ? '添加行' : 'Add row'" :aria-label="chinese ? '添加行' : 'Add row'" @click="addRow">
-          <Rows3 :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '添加行' : 'Add row' }}</span>
-        </ElButton>
-        <ElButton :title="chinese ? '添加列' : 'Add column'" :aria-label="chinese ? '添加列' : 'Add column'" :aria-expanded="addingColumn" @click="addingColumn = !addingColumn">
+        <WorkbenchCommandHint detached anchor-class="dataset-table-control" :label="chinese ? '添加行' : 'Add row'" :disabled-reason="!columns.length ? (chinese ? '先添加列或导入数据，再添加行' : 'Add a column or import data before adding rows') : undefined">
+          <ElButton :disabled="!columns.length" :aria-label="chinese ? '添加行' : 'Add row'" @click="addRow">
+            <Rows3 :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '添加行' : 'Add row' }}</span>
+          </ElButton>
+        </WorkbenchCommandHint>
+        <ElButton :title="chinese ? '添加列' : 'Add column'" :aria-label="chinese ? '添加列' : 'Add column'" :aria-expanded="addingColumn" @click="toggleColumnForm">
           <Columns3 :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '添加列' : 'Add column' }}</span>
         </ElButton>
         <ElButton :aria-label="chinese ? (records ? '表格视图' : '记录视图') : (records ? 'Table view' : 'Record view')" :title="chinese ? (records ? '表格视图' : '记录视图') : (records ? 'Table view' : 'Record view')" @click="browsing = records ? 'table' : 'records'">
           <Table2 v-if="records" :size="15" aria-hidden="true" /><List v-else :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? (records ? '表格' : '记录') : (records ? 'Table' : 'Records') }}</span>
         </ElButton>
         <ElPopover :width="280" trigger="click" append-to="#workbench-overlays" popper-class="dataset-column-settings">
-          <template #reference><ElButton :aria-label="chinese ? '列设置' : 'Column settings'" :title="chinese ? '列设置' : 'Column settings'"><SlidersHorizontal :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '列设置' : 'Columns' }}</span></ElButton></template>
-          <div class="dataset-column-settings-heading"><strong>{{ chinese ? '显示与固定列' : 'Visible and pinned columns' }}</strong></div>
+          <template #reference>
+            <ElButton :aria-label="chinese ? '列设置' : 'Column settings'" :title="chinese ? '列设置' : 'Column settings'">
+              <SlidersHorizontal :size="15" aria-hidden="true" /><span class="dataset-table-toolbar-label">{{ chinese ? '列设置' : 'Columns' }}</span>
+            </ElButton>
+          </template>
+          <div class="dataset-column-settings-heading">
+            <strong>{{ chinese ? '显示与固定列' : 'Visible and pinned columns' }}</strong>
+          </div>
           <div class="dataset-column-settings-list">
             <div v-for="column in columns" :key="column.key" class="dataset-column-setting">
-              <ElCheckbox :model-value="!hiddenColumns.includes(column.key)" :disabled="!hiddenColumns.includes(column.key) && displayedColumns.length === 1" @change="columnLayout.toggleVisible(column.key)">{{ column.key }}</ElCheckbox>
-              <ElButton text circle :aria-pressed="pinnedColumn === column.key" :aria-label="chinese ? '固定列 ' + column.key : 'Pin column ' + column.key" :title="chinese ? '固定列 ' + column.key : 'Pin column ' + column.key" :disabled="hiddenColumns.includes(column.key)" @click="pinnedColumn = pinnedColumn === column.key ? '' : column.key"><Pin :size="14" aria-hidden="true" /></ElButton>
+              <WorkbenchCommandHint detached :label="column.key" :disabled-reason="!hiddenColumns.includes(column.key) && displayedColumns.length === 1 ? (chinese ? '至少保留一列；显示其他列后可以隐藏此列' : 'Keep at least one column visible; show another column first') : undefined">
+                <ElCheckbox :model-value="!hiddenColumns.includes(column.key)" :disabled="!hiddenColumns.includes(column.key) && displayedColumns.length === 1" @change="columnLayout.toggleVisible(column.key)">
+                  {{ column.key }}
+                </ElCheckbox>
+              </WorkbenchCommandHint>
+              <WorkbenchCommandHint detached :label="chinese ? `固定列 ${column.key}` : `Pin column ${column.key}`" :disabled-reason="hiddenColumns.includes(column.key) ? (chinese ? '先显示此列，再固定它' : 'Show this column before pinning it') : undefined">
+                <ElButton text circle :aria-pressed="pinnedColumn === column.key" :aria-label="chinese ? `固定列 ${column.key}` : `Pin column ${column.key}`" :disabled="hiddenColumns.includes(column.key)" @click="pinnedColumn = pinnedColumn === column.key ? '' : column.key">
+                  <Pin :size="14" aria-hidden="true" />
+                </ElButton>
+              </WorkbenchCommandHint>
             </div>
           </div>
-          <div class="dataset-column-settings-actions"><ElButton size="small" @click="columnLayout.fit()">{{ chinese ? '适应内容' : 'Fit contents' }}</ElButton><ElButton size="small" @click="columnLayout.reset()">{{ chinese ? '恢复默认' : 'Reset columns' }}</ElButton></div>
+          <div class="dataset-column-settings-actions">
+            <ElButton size="small" @click="columnLayout.fit()">
+              {{ chinese ? '适应内容' : 'Fit contents' }}
+            </ElButton><ElButton size="small" @click="columnLayout.reset()">
+              {{ chinese ? '恢复默认' : 'Reset columns' }}
+            </ElButton>
+          </div>
         </ElPopover>
         <ElTooltip :content="chinese ? '单击查看完整内容 · 双击或 F2 编辑 · 点击列名排序 · 拖动列边界调整宽度' : 'Click to read the full value · Double-click or F2 to edit · Click a column name to sort · Drag column edges to resize'" :trigger="['hover', 'focus']">
           <ElButton text circle class="dataset-table-help" :aria-label="chinese ? '表格操作帮助' : 'Table help'">
@@ -387,7 +427,7 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
         </ElTooltip>
       </div>
       <form v-if="addingColumn" class="dataset-column-form" @submit.prevent="addColumn">
-        <ElInput v-model="columnName" :aria-label="chinese ? '新列名' : 'New column name'" :placeholder="chinese ? '输入新列名' : 'Enter a column name'" />
+        <ElInput ref="column-input" v-model="columnName" :aria-label="chinese ? '新列名' : 'New column name'" :placeholder="chinese ? '例如 name、value' : 'e.g. name, value'" />
         <ElButton type="primary" native-type="submit">
           {{ chinese ? '确认添加' : 'Confirm column' }}
         </ElButton>
@@ -400,7 +440,7 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
       </p>
       <div ref="workspace" class="dataset-table-workspace" :class="{ 'has-detail': selected, 'is-overlay': overlayDetail }">
         <div ref="table-scroll" class="dataset-table-scroll" :class="{ 'is-wrapped': wrap }" :inert="selected && overlayDetail ? true : undefined" :aria-hidden="selected && overlayDetail ? true : undefined" :data-view="records ? 'records' : 'table'" data-asset-dataset-table tabindex="0" role="region" :aria-label="chinese ? '数据行' : 'Dataset rows'">
-          <table v-if="!records" :style="{ width: `${tableWidth}px` }">
+          <table v-if="!records && visible.length" :style="{ width: `${tableWidth}px` }">
             <caption class="dataset-table-caption">
               {{ chinese ? '数据集内容' : 'Dataset contents' }}
             </caption>
@@ -423,7 +463,7 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
                       <Trash2 :size="13" aria-hidden="true" />
                     </button>
                   </div>
-                  <span class="dataset-column-resizer" role="separator" tabindex="0" aria-orientation="vertical" :aria-label="chinese ? '调整列宽 ' + column.key : 'Resize column ' + column.key" :aria-valuenow="column.width" :aria-valuemin="100" :aria-valuemax="800" :title="chinese ? '拖动调整列宽，双击适应内容' : 'Drag to resize, double-click to fit contents'" @pointerdown="columnLayout.resize($event, column)" @keydown="columnLayout.resizeWithKeyboard($event, column)" @dblclick="columnLayout.fit(column.key)" />
+                  <span class="dataset-column-resizer" role="separator" tabindex="0" aria-orientation="vertical" :aria-label="chinese ? `调整列宽 ${column.key}` : `Resize column ${column.key}`" :aria-valuenow="column.width" :aria-valuemin="100" :aria-valuemax="800" :title="chinese ? '拖动调整列宽，双击适应内容' : 'Drag to resize, double-click to fit contents'" @pointerdown="columnLayout.resize($event, column)" @keydown="columnLayout.resizeWithKeyboard($event, column)" @dblclick="columnLayout.fit(column.key)" />
                 </th>
                 <th scope="col" class="dataset-row-actions">
                   <span class="dataset-table-caption">{{ chinese ? '行操作' : 'Row actions' }}</span>
@@ -452,17 +492,37 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
           <div v-if="records" class="dataset-records">
             <details v-for="entry in visible" :key="entry.index" class="dataset-record">
               <summary><span class="dataset-record-number">{{ entry.index + 1 }}</span><strong>{{ columns[0] ? cellLabel(entry.index, columns[0].key) : (chinese ? '空记录' : 'Empty record') }}</strong><span>{{ chinese ? '查看记录' : 'View record' }}</span></summary>
-              <dl><div v-for="column in columns" :key="column.key"><dt :title="column.key">{{ column.key }}</dt><dd><button type="button" :data-dataset-cell="cellKey(entry.index, column.key)" :aria-label="entry.index + 1 + ' / ' + column.key" @click="selectCell(entry.index, column.key)"><pre>{{ cellLabel(entry.index, column.key) }}</pre><Pencil :size="13" aria-hidden="true" /></button></dd></div></dl>
-              <ElButton size="small" text type="danger" @click="removeRow(entry.index)"><Trash2 :size="14" aria-hidden="true" />{{ chinese ? '删除记录' : 'Delete record' }}</ElButton>
+              <dl>
+                <div v-for="column in columns" :key="column.key">
+                  <dt :title="column.key">
+                    {{ column.key }}
+                  </dt><dd>
+                    <button type="button" :data-dataset-cell="cellKey(entry.index, column.key)" :aria-label="`${entry.index + 1} / ${column.key}`" @click="selectCell(entry.index, column.key)">
+                      <pre>{{ cellLabel(entry.index, column.key) }}</pre><Pencil :size="13" aria-hidden="true" />
+                    </button>
+                  </dd>
+                </div>
+              </dl>
+              <ElButton size="small" text type="danger" @click="removeRow(entry.index)">
+                <Trash2 :size="14" aria-hidden="true" />{{ chinese ? '删除记录' : 'Delete record' }}
+              </ElButton>
             </details>
           </div>
           <div v-if="!visible.length" class="dataset-table-empty">
             <Search v-if="query" :size="24" aria-hidden="true" />
             <strong>{{ query ? (chinese ? '没有匹配的数据' : 'No matching rows') : (chinese ? '还没有数据' : 'No rows yet') }}</strong>
-            <span>{{ query ? (chinese ? '尝试其他关键词，或清除筛选。' : 'Try another term or clear the filter.') : (chinese ? '添加行，或从「导入数据」开始。' : 'Add a row or open Import data.') }}</span>
+            <span>{{ query ? (chinese ? '尝试其他关键词，或清除筛选。' : 'Try another term or clear the filter.') : (chinese ? '先添加列定义数据，或导入 CSV / JSON。' : 'Start with a column, or import CSV / JSON.') }}</span>
             <ElButton v-if="query" @click="query = ''">
               {{ chinese ? '清除筛选' : 'Clear filter' }}
             </ElButton>
+            <div v-else class="dataset-table-empty-actions">
+              <ElButton @click="toggleColumnForm">
+                {{ chinese ? '添加第一列' : 'Add first column' }}
+              </ElButton>
+              <ElButton type="primary" @click="emit('import')">
+                {{ chinese ? '导入数据' : 'Import data' }}
+              </ElButton>
+            </div>
           </div>
         </div>
         <aside v-if="selected" class="dataset-cell-detail" data-dataset-cell-detail :aria-label="chinese ? '单元格详情' : 'Cell details'" @keydown.esc.stop.prevent="closeDetail">
@@ -494,9 +554,11 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
             <ElButton v-else @click="selectCell(selected.index, selected.key, true)">
               <Pencil :size="14" aria-hidden="true" />{{ chinese ? '编辑内容' : 'Edit value' }}
             </ElButton>
-            <ElButton :disabled="selectedKind === 'missing'" @click="copyCell">
-              <Check v-if="copied" :size="14" aria-hidden="true" /><Copy v-else :size="14" aria-hidden="true" />{{ copied ? (chinese ? '已复制' : 'Copied') : (chinese ? '复制' : 'Copy') }}
-            </ElButton>
+            <WorkbenchCommandHint detached :label="chinese ? '复制内容' : 'Copy value'" :disabled-reason="selectedKind === 'missing' ? (chinese ? '此字段尚未设置；填写内容后即可复制' : 'This field is not set; enter a value before copying') : undefined">
+              <ElButton :disabled="selectedKind === 'missing'" @click="copyCell">
+                <Check v-if="copied" :size="14" aria-hidden="true" /><Copy v-else :size="14" aria-hidden="true" />{{ copied ? (chinese ? '已复制' : 'Copied') : (chinese ? '复制' : 'Copy') }}
+              </ElButton>
+            </WorkbenchCommandHint>
             <ElButton v-if="hasDraft(selected.index, selected.key)" text @click="resetCell">
               {{ chinese ? '撤销本格修改' : 'Revert cell' }}
             </ElButton>
@@ -511,15 +573,23 @@ function handleCellKeydown(event: KeyboardEvent, index: number, key: string): vo
           <ElSelect v-model="size" :aria-label="chinese ? '每页行数' : 'Page size'" append-to="#workbench-overlays">
             <ElOption v-for="value in [25, 50, 100]" :key="value" :value="value" :label="chinese ? `${value} 行 / 页` : `${value} / page`" />
           </ElSelect>
-          <ElButton :disabled="page <= 1" :aria-label="chinese ? '上一页' : 'Previous page'" @click="page--">
-            <ChevronLeft :size="15" aria-hidden="true" />
-          </ElButton><span>{{ page }} / {{ pages }}</span><ElButton :disabled="page >= pages" :aria-label="chinese ? '下一页' : 'Next page'" @click="page++">
-            <ChevronRight :size="15" aria-hidden="true" />
-          </ElButton>
+          <WorkbenchCommandHint detached :label="chinese ? '上一页' : 'Previous page'" :disabled-reason="page <= 1 ? (chinese ? '已是第一页' : 'Already on the first page') : undefined">
+            <ElButton :disabled="page <= 1" :aria-label="chinese ? '上一页' : 'Previous page'" @click="page--">
+              <ChevronLeft :size="15" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
+          <span>{{ page }} / {{ pages }}</span>
+          <WorkbenchCommandHint detached :label="chinese ? '下一页' : 'Next page'" :disabled-reason="page >= pages ? (chinese ? '已是最后一页；新增更多数据后可继续翻页' : 'Already on the last page; add more rows to continue') : undefined">
+            <ElButton :disabled="page >= pages" :aria-label="chinese ? '下一页' : 'Next page'" @click="page++">
+              <ChevronRight :size="15" aria-hidden="true" />
+            </ElButton>
+          </WorkbenchCommandHint>
         </div>
-        <ElButton type="primary" data-dataset-table-save :aria-label="chinese ? '保存数据' : 'Save data'" @click="save">
-          {{ chinese ? '保存数据' : 'Save data' }}<span v-if="modified" class="dataset-save-count" aria-hidden="true">{{ modified }}</span>
-        </ElButton>
+        <WorkbenchCommandHint detached anchor-class="dataset-table-save-hint" :label="chinese ? '保存数据' : 'Save data'" :disabled-reason="!modified && !dirty ? (chinese ? '没有待保存的修改；编辑数据后即可保存' : 'No pending changes; edit the data to save') : undefined">
+          <ElButton type="primary" :disabled="!modified && !dirty" data-dataset-table-save :aria-label="chinese ? '保存数据' : 'Save data'" @click="save">
+            {{ chinese ? '保存数据' : 'Save data' }}<span v-if="modified" class="dataset-save-count" aria-hidden="true">{{ modified }}</span>
+          </ElButton>
+        </WorkbenchCommandHint>
       </div>
     </template>
   </section>

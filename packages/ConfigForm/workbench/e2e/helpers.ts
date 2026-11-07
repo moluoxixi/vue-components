@@ -216,7 +216,5 @@ export async function restoreAppearance(
 }
 
 export async function selectDatasetView(scope: Locator | Page, label: string): Promise<void> {
-  const page = 'goto' in scope ? scope : scope.page()
-  await scope.locator('.asset-manager__view-select').click()
-  await page.getByRole('option', { name: label, exact: true }).click()
+  await scope.locator('.asset-manager__tabs').getByRole('tab', { name: label, exact: true }).click()
 }

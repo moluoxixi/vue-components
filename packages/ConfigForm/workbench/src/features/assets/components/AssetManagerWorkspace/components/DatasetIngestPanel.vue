@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type { UploadFile, UploadInstance } from 'element-plus'
+import { Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
+import WorkbenchCommandHint from '../../../../../app/components/WorkbenchCommandHint/index.vue'
 import { parseDatasetIngest } from '../../../services/ingest'
 
 const props = defineProps<{ locale: string }>()
@@ -24,6 +26,13 @@ const preview = computed(() => {
     return { rows: [], error: error instanceof Error ? error.message : String(error) }
   }
 })
+const previewColumns = computed(() => [...new Set(preview.value.rows.slice(0, 3).flatMap(row => Object.keys(row)))])
+const unavailableReason = computed(() => error.value || preview.value.error
+  ? (chinese.value ? '请先修正导入内容中的错误' : 'Correct the import errors first')
+  : !text.value.trim() ? (chinese.value ? '粘贴数据或选择文件后即可导入' : 'Paste data or choose a file to import') : undefined)
+function displayCell(value: unknown): string {
+  return value === undefined ? '—' : typeof value === 'string' ? value : JSON.stringify(value)
+}
 async function load(uploadFile: UploadFile): Promise<void> {
   const file = uploadFile.raw
   if (!file)
@@ -47,7 +56,7 @@ async function load(uploadFile: UploadFile): Promise<void> {
 <template>
   <section class="dataset-ingest">
     <div class="dataset-editor-toolbar">
-      <ElSelect v-model="format" :aria-label="chinese ? '格式' : 'Format'" append-to="#workbench-overlays">
+      <ElSelect v-model="format" :aria-label="chinese ? '格式' : 'Format'" append-to="#workbench-overlays" @change="error = ''">
         <ElOption value="csv" label="CSV" /><ElOption
           value="json"
           :label="chinese ? 'JSON 对象数组' : 'JSON object array'"
@@ -59,7 +68,9 @@ async function load(uploadFile: UploadFile): Promise<void> {
         :show-file-list="false"
         :on-change="load"
       >
-        <ElButton>{{ chinese ? '选择文件' : 'Choose file' }}</ElButton>
+        <ElButton tag="span">
+          <Upload :size="14" aria-hidden="true" /><span>{{ chinese ? '选择文件' : 'Choose file' }}</span>
+        </ElButton>
       </ElUpload>
     </div>
     <p class="dataset-editor-hint">
@@ -74,17 +85,42 @@ async function load(uploadFile: UploadFile): Promise<void> {
       type="textarea"
       :aria-label="chinese ? '待导入数据' : 'Raw data to import'"
       :placeholder="placeholder"
-      :rows="10"
+      :rows="7"
+      @input="error = ''"
     />
     <p v-if="error || preview.error" role="alert" class="dataset-editor-error">
       {{ error || preview.error }}
     </p>
-    <template v-else-if="text.trim()">
-      <strong>{{ chinese ? '预览' : 'Preview' }} · {{ preview.rows.length }} {{ chinese ? '行' : 'rows' }}</strong>
-      <pre>{{ JSON.stringify(preview.rows.slice(0, 3), null, 2) }}</pre>
-      <ElButton type="primary" data-dataset-ingest-apply @click="emit('apply', preview.rows)">
-        {{ chinese ? '应用数据' : 'Apply data' }}
-      </ElButton>
-    </template>
+    <div v-if="text.trim() && !preview.error && !error" class="dataset-ingest-preview">
+      <header><strong>{{ chinese ? '内容预览' : 'Preview' }}</strong><span>{{ preview.rows.length }} {{ chinese ? '行 · 仅预览前 3 行' : 'rows · first 3 shown' }}</span></header>
+      <div class="dataset-ingest-preview-scroll" tabindex="0" role="region" :aria-label="chinese ? '导入数据预览' : 'Import preview'">
+        <table v-if="preview.rows.length">
+          <thead>
+            <tr>
+              <th v-for="key in previewColumns" :key="key" scope="col">
+                {{ key }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, index) in preview.rows.slice(0, 3)" :key="index">
+              <td v-for="key in previewColumns" :key="key">
+                {{ displayCell(row[key]) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="dataset-editor-hint">
+          {{ chinese ? '导入后将清空当前数据。' : 'Importing this array will clear the current rows.' }}
+        </p>
+      </div>
+    </div>
+    <div class="dataset-ingest-actions">
+      <WorkbenchCommandHint detached :label="chinese ? '导入并替换当前数据' : 'Import and replace current rows'" :disabled-reason="unavailableReason">
+        <ElButton type="primary" :disabled="!!unavailableReason" data-dataset-ingest-apply @click="emit('apply', preview.rows)">
+          {{ chinese ? '应用数据' : 'Apply data' }}
+        </ElButton>
+      </WorkbenchCommandHint>
+    </div>
   </section>
 </template>

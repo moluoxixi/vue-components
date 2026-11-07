@@ -18,6 +18,7 @@ import {
   Pencil,
   Plus,
   Save,
+  Search,
   SlidersHorizontal,
   Table2,
   Trash2,
@@ -26,6 +27,7 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, useTemplateRef, watch } from 'vue'
+import WorkbenchCommandHint from '../../../app/components/WorkbenchCommandHint/index.vue'
 import { DatasetIngestPanel, DatasetProjectionBuilder, DatasetTableEditor } from './AssetManagerWorkspace/components'
 
 const props = withDefaults(defineProps<AssetManagerWorkspaceProps>(), { active: true, fill: false })
@@ -54,6 +56,8 @@ onBeforeUnmount(() => clearTimeout(messageTimer))
 const assetBusy = ref(false)
 const mobilePane = ref<'list' | 'editor'>('list')
 const datasetTab = ref('table')
+const tableEditor = useTemplateRef<InstanceType<typeof DatasetTableEditor>>('dataset-table')
+const datasetNameInput = useTemplateRef<{ focus: () => void }>('dataset-name')
 const sidebarCollapsed = ref(false)
 const collapseButton = useTemplateRef<{ ref: HTMLButtonElement }>('collapse-button')
 const expandButton = useTemplateRef<{ ref: HTMLButtonElement }>('expand-button')
@@ -330,12 +334,27 @@ function parseRows(): unknown | undefined {
   }
 }
 
-function createDataset(): void {
+async function createDataset(view: 'table' | 'ingest' = 'table'): Promise<void> {
   const id = props.commands.createDataset(locale.value.t('assets.dataset', 'Dataset'), [])
-  if (id)
+  if (id) {
     select('dataset', id)
-  else
+    await nextTick()
+    datasetTab.value = view
+    if (view === 'table')
+      datasetNameInput.value?.focus()
+  }
+  else {
     setMessage(locale.value.t('assets.datasetCreateRejected', 'Dataset could not be created.'), 'error')
+  }
+}
+
+function beforeDatasetTabLeave(_next: string | number, current: string | number): boolean {
+  return current !== 'table' || !Object.keys(datasetCells.value).length || tableEditor.value?.flushDrafts() !== false
+}
+
+function openDatasetImport(): void {
+  if (beforeDatasetTabLeave('ingest', datasetTab.value))
+    datasetTab.value = 'ingest'
 }
 
 function saveDatasetRows(): boolean {
@@ -643,7 +662,11 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           data-asset-navigation
         >
           <div class="asset-manager__list-toolbar">
-            <ElInput v-model="assetQuery" clearable :placeholder="locale.t('data.search', 'Search datasets and resources')" :aria-label="locale.t('data.search', 'Search datasets and resources')" />
+            <ElInput v-model="assetQuery" clearable :placeholder="locale.t('data.search', 'Search datasets and resources')" :aria-label="locale.t('data.search', 'Search datasets and resources')">
+              <template #prefix>
+                <Search :size="14" aria-hidden="true" />
+              </template>
+            </ElInput>
             <ElButton v-if="fill" ref="collapse-button" text circle :title="locale.t('data.collapseAssets', 'Collapse asset list')" :aria-label="locale.t('data.collapseAssets', 'Collapse asset list')" aria-controls="asset-list-panel" :aria-expanded="true" @click="toggleSidebar">
               <PanelLeftClose :size="17" aria-hidden="true" />
             </ElButton>
@@ -662,7 +685,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   circle
                   :title="locale.t('assets.newDataset', 'New Dataset')"
                   :aria-label="locale.t('assets.newDataset', 'New Dataset')"
-                  @click="createDataset"
+                  @click="createDataset()"
                 >
                   <Plus :size="15" aria-hidden="true" />
                 </ElButton>
@@ -803,29 +826,52 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
         >
           <header class="asset-manager__editor-header">
             <div class="asset-manager__editor-title">
-              <span>{{ selectedAssetLabel }}</span><ElInput
+              <div class="asset-manager__editor-meta">
+                <Database :size="14" aria-hidden="true" /><span>{{ selectedAssetLabel }}</span><span class="asset-manager__save-state" :class="{ 'is-dirty': datasetDirty }" role="status">{{ datasetDirty ? locale.t('data.pendingChanges', 'Unsaved changes') : locale.t('data.saved', 'Saved') }}</span>
+              </div><ElInput
+                ref="dataset-name"
                 v-model="datasetName"
                 :aria-label="locale.t('assets.datasetName', 'Dataset name')"
                 @change="renameDataset"
               />
             </div>
-            <ElSelect v-model="datasetTab" class="asset-manager__view-select" :aria-label="locale.locale === 'zh-CN' ? '数据视图' : 'Data view'" append-to="#workbench-overlays">
-              <ElOption value="table" :label="locale.t('assets.table', 'Table')" />
-              <ElOption value="json" label="JSON" />
-              <ElOption value="projection" :label="locale.t('assets.defaultProjection', 'Default projection')" />
-              <ElOption value="ingest" :label="locale.locale === 'zh-CN' ? '导入数据' : 'Import data'" />
-            </ElSelect>
             <div class="asset-manager__editor-actions">
-              <ElButton size="small" data-asset-dataset-export :title="locale.t('assets.export', 'Export')" :aria-label="locale.t('assets.export', 'Export')" :disabled="!selectedDataset" @click="exportDataset">
-                <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
-              </ElButton>
-              <ElButton size="small" type="danger" plain :title="locale.t('assets.delete', 'Delete')" :aria-label="locale.t('assets.delete', 'Delete')" @click="removeDataset">
-                <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
-              </ElButton>
+              <WorkbenchCommandHint :label="locale.t('data.exportHint', 'Export the saved dataset; save draft changes first')">
+                <ElButton size="small" data-asset-dataset-export :aria-label="locale.t('assets.export', 'Export')" @click="exportDataset">
+                  <Download :size="13" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.export', 'Export') }}</span>
+                </ElButton>
+              </WorkbenchCommandHint>
+              <WorkbenchCommandHint :label="locale.t('assets.delete', 'Delete')">
+                <ElButton size="small" text type="danger" :aria-label="locale.t('assets.delete', 'Delete')" @click="removeDataset">
+                  <Trash2 :size="14" aria-hidden="true" /><span class="asset-manager__action-label">{{ locale.t('assets.delete', 'Delete') }}</span>
+                </ElButton>
+              </WorkbenchCommandHint>
             </div>
           </header>
           <div class="asset-manager__editor-body asset-manager__dataset-body" :class="{ 'has-table': datasetTab === 'table' }">
-            <ElTabs v-model="datasetTab" class="asset-manager__tabs">
+            <ElTabs v-model="datasetTab" class="asset-manager__tabs" :before-leave="beforeDatasetTabLeave">
+              <ElTabPane name="table" class="dataset-table-pane">
+                <template #label>
+                  <span class="asset-manager__tab-label"><Table2 :size="14" aria-hidden="true" />{{ locale.t('assets.table', 'Table') }}</span>
+                </template>
+                <DatasetTableEditor
+                  ref="dataset-table"
+                  :key="selectedDataset.id"
+                  v-model:json="datasetJson"
+                  v-model:cells="datasetCells"
+                  :dataset-id="`${project.id}:${selectedDataset.id}`"
+                  :dirty="datasetDirty"
+                  :locale="locale.locale"
+                  @save="saveDatasetRows"
+                  @import="openDatasetImport"
+                >
+                  <template #footer-actions>
+                    <ElButton v-if="datasetDirty" size="small" class="dataset-table-discard" :title="locale.t('data.discardDraft', 'Discard draft')" :aria-label="locale.t('data.discardDraft', 'Discard draft')" @click="discardDatasetDraft">
+                      <X :size="14" aria-hidden="true" /><span class="dataset-table-discard-label">{{ locale.t('data.discardDraft', 'Discard draft') }}</span>
+                    </ElButton>
+                  </template>
+                </DatasetTableEditor>
+              </ElTabPane>
               <ElTabPane name="json">
                 <template #label>
                   <span class="asset-manager__tab-label"><Braces :size="14" aria-hidden="true" />JSON</span>
@@ -839,26 +885,6 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
                   resize="none"
                   :aria-label="locale.t('assets.datasetJson', 'Dataset JSON')"
                 />
-              </ElTabPane>
-              <ElTabPane name="table" class="dataset-table-pane">
-                <template #label>
-                  <span class="asset-manager__tab-label"><Table2 :size="14" aria-hidden="true" />{{ locale.t('assets.table', 'Table') }}</span>
-                </template>
-                <DatasetTableEditor
-                  :key="selectedDataset.id"
-                  :dataset-id="project.id + ':' + selectedDataset.id"
-                  v-model:json="datasetJson"
-                  v-model:cells="datasetCells"
-                  :dirty="datasetDirty"
-                  :locale="locale.locale"
-                  @save="saveDatasetRows"
-                >
-                  <template #footer-actions>
-                    <ElButton v-if="datasetDirty" size="small" class="dataset-table-discard" :title="locale.t('data.discardDraft', 'Discard draft')" :aria-label="locale.t('data.discardDraft', 'Discard draft')" @click="discardDatasetDraft">
-                      <X :size="14" aria-hidden="true" /><span class="dataset-table-discard-label">{{ locale.t('data.discardDraft', 'Discard draft') }}</span>
-                    </ElButton>
-                  </template>
-                </DatasetTableEditor>
               </ElTabPane>
               <ElTabPane name="projection">
                 <template #label>
@@ -1012,12 +1038,21 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           <div class="asset-manager__empty-icon">
             <FilePlus2 :size="22" aria-hidden="true" />
           </div>
-          <strong>{{ locale.t('assets.emptyTitle', 'Create your first asset') }}</strong>
+          <strong>{{ locale.t('assets.emptyTitle', 'Bring data into your forms') }}</strong>
+          <p class="asset-manager__empty-description">
+            {{ locale.t('data.emptyDescription', 'Create reusable data for selects, lists and tables, or import a CSV or JSON file.') }}
+          </p>
           <div class="asset-manager__empty-actions">
-            <ElButton type="primary" @click="createDataset">
+            <ElButton type="primary" @click="createDataset()">
               <Database :size="14" aria-hidden="true" />{{ locale.t('assets.createDataset', 'Create dataset') }}
             </ElButton>
-            <ElButton @click="newUrlResource">
+            <ElButton @click="createDataset('ingest')">
+              <Upload :size="14" aria-hidden="true" />{{ locale.t('data.importRows', 'Import CSV / JSON') }}
+            </ElButton>
+          </div>
+          <div class="asset-manager__empty-resources">
+            <span>{{ locale.t('data.resourceHint', 'Need images or files?') }}</span>
+            <ElButton text @click="newUrlResource">
               <Link2 :size="14" aria-hidden="true" />{{ locale.t('assets.createUrlResource', 'Create URL resource') }}
             </ElButton>
             <ElUpload
@@ -1029,7 +1064,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
               :show-file-list="false"
               :on-change="createEmbeddedResource"
             >
-              <ElButton tag="span" :loading="assetBusy">
+              <ElButton tag="span" text :loading="assetBusy">
                 <FilePlus2 :size="14" aria-hidden="true" />{{ locale.t('assets.addFile', 'Add file') }}
               </ElButton>
             </ElUpload>

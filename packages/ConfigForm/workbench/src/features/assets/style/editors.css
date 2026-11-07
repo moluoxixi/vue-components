@@ -194,10 +194,14 @@
   border-right: 0;
 }
 .dataset-column-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 2px 6px;
+}
+.dataset-column-heading > .dataset-column-delete {
+  grid-column: 2;
+  grid-row: 1 / 3;
 }
 .dataset-column-sort {
   display: flex;
@@ -224,7 +228,8 @@
   color: var(--wb-accent-text);
 }
 .dataset-column-type {
-  flex: none;
+  grid-column: 1;
+  grid-row: 2;
   color: var(--wb-muted);
   font-size: 11px;
 }
@@ -385,7 +390,7 @@
 }
 .dataset-table-empty {
   display: flex;
-  min-height: 160px;
+  min-height: 220px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -545,12 +550,12 @@
 .dataset-projection-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 .dataset-projection-grid label {
   display: grid;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--wb-muted);
 }
 .dataset-projection-columns {
@@ -637,7 +642,8 @@
     flex-basis: 120px;
   }
 
-  .dataset-table-toolbar > .el-button {
+  .dataset-table-toolbar > .el-button,
+  .dataset-table-toolbar > .dataset-table-control {
     width: 30px;
     flex: none;
     padding: 0;
@@ -647,16 +653,6 @@
   .dataset-table-discard-label,
   .dataset-save-count {
     display: none;
-  }
-
-  .dataset-table-range,
-  .dataset-table-status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 
   .dataset-table-footer > .el-button {
@@ -671,9 +667,17 @@
   }
 
   .dataset-table-footer {
-    flex-wrap: nowrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px 4px;
   }
+  .dataset-table-range { grid-column: 1 / 3; grid-row: 1; font-size: 11px; }
+  .dataset-table-status { grid-column: 3; grid-row: 1; font-size: 11px; }
+  .dataset-table-pagination { grid-column: 1; grid-row: 2; }
+  .dataset-table-discard { grid-column: 2; grid-row: 2; }
+  .dataset-table-save-hint { grid-column: 3; grid-row: 2; }
+  .dataset-table-save-hint .el-button { padding-inline: 8px; font-size: 12px; }
+  .dataset-table-control > .el-button { width: 100%; padding: 0; }
 
   .dataset-table-pagination {
     margin-right: auto;
@@ -681,7 +685,7 @@
   }
 
   .dataset-table-pagination .el-select {
-    width: 86px;
+    width: 76px;
   }
 
   .dataset-table-pagination .el-select__wrapper {
@@ -691,7 +695,7 @@
   }
 
   .dataset-table-pagination .el-button {
-    width: 24px;
+    width: 22px;
   }
 
   .dataset-cell-detail {
@@ -703,3 +707,39 @@
     font-size: 12px;
   }
 }
+
+.dataset-table-empty-actions,
+.dataset-ingest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dataset-table-empty-actions { justify-content: center; }
+.dataset-ingest { max-width: 920px; }
+.dataset-ingest-preview { margin-top: 20px; }
+.dataset-ingest-preview > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.dataset-ingest-preview > header > span { color: var(--wb-muted); }
+.dataset-ingest-preview-scroll {
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid var(--wb-separator);
+  border-radius: 6px;
+}
+.dataset-ingest-preview-scroll:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.dataset-ingest-preview table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dataset-ingest-preview th,
+.dataset-ingest-preview td { padding: 10px 12px; border-bottom: 1px solid var(--wb-separator); text-align: left; white-space: nowrap; }
+.dataset-ingest-preview th { background: var(--wb-control-bg); font-weight: 500; }
+.dataset-ingest-preview tr:last-child td { border-bottom: 0; }
+.dataset-ingest-actions { justify-content: flex-end; margin-top: 16px; }
+.dataset-ingest .dataset-editor-toolbar .el-button > span { gap: 6px; }
+.dataset-ingest .dataset-editor-hint { font-size: 12px; }
