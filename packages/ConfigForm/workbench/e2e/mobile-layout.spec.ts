@@ -153,3 +153,30 @@ test('preview and source use the remaining phone space without shrinking the run
     await noOverflow(page)
   }
 })
+
+for (const locale of ['zh-CN', 'en-US'] as const) {
+  test(`${locale} browser storage explanation opens by touch and stays readable in narrow navigation`, async ({ page }) => {
+    await page.addInitScript(value => localStorage.setItem('moluoxixi.config-form.workbench.locale', value), locale)
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto('/#/projects')
+    const label = locale === 'zh-CN' ? '存储：浏览器本地' : 'Storage: browser'
+    const status = page.getByRole('button', { name: label, exact: true })
+    const tooltip = page.getByRole('tooltip')
+    await fits(status)
+    await status.tap()
+    await expect(tooltip).toContainText(locale === 'zh-CN' ? '清除网站数据会移除本地项目' : 'Clearing site data removes these projects')
+    await expect(tooltip).toContainText('JSON')
+    await fits(tooltip)
+    await noOverflow(page)
+    await page.keyboard.press('Escape')
+    await expect(tooltip).not.toBeVisible()
+    await page.getByRole('link', { name: locale === 'zh-CN' ? '模板管理' : 'Template management', exact: true }).tap()
+    await fits(status)
+    await status.tap()
+    await fits(tooltip)
+    await expect(tooltip).toContainText(locale === 'zh-CN' ? '不会自动同步' : 'do not sync automatically')
+    await page.locator('.management-navigation').tap({ position: { x: 1, y: 1 } })
+    await expect(tooltip).not.toBeVisible()
+    await noOverflow(page)
+  })
+}
