@@ -13,9 +13,9 @@
 .source-workspace__heading {
   min-height: 52px;
   flex: 0 0 auto;
-  padding: 8px 16px;
+  @apply py-2 px-4;
   flex-wrap: wrap;
-  gap: 12px;
+  @apply gap-3;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -30,7 +30,7 @@
 }
 
 .source-workspace__identity {
-  gap: 12px;
+  @apply gap-3;
 }
 
 .source-workspace__mark {
@@ -55,8 +55,7 @@
   white-space: nowrap;
 }
 .source-workspace__project {
-  margin-top: 4px;
-  gap: 6px;
+  @apply mt-1 gap-1;
   color: var(--wb-muted);
   font-size: 11px;
 }
@@ -71,21 +70,20 @@
 }
 .source-workspace__file-count {
   flex: none;
-  padding-left: 8px;
+  @apply pl-2;
   border-left: 1px solid var(--wb-separator);
 }
 
 .source-workspace__commands {
   flex: none;
-  gap: 14px;
+  @apply gap-3;
 }
 .source-workspace__refresh.el-button,
 .source-workspace__file-action.el-button {
   display: inline-flex;
   width: 30px;
   height: 30px;
-  margin: 0;
-  padding: 0;
+  @apply m-0 p-0;
   align-items: center;
   justify-content: center;
   color: var(--wb-muted);
@@ -108,32 +106,32 @@
 .source-workspace__download > .el-button,
 .source-workspace__download .el-dropdown > .el-button {
   min-height: 34px;
-  margin: 0;
+  @apply m-0;
   font-size: 12px;
 }
 .source-workspace__download-project.el-button {
-  padding: 0 13px;
+  @apply py-0 px-3;
   border-radius: 6px 0 0 6px;
 }
 .source-workspace__download-project.el-button > span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  @apply gap-2;
 }
 .source-workspace__download-options.el-button {
   width: 30px;
-  padding: 0;
+  @apply p-0;
   border-left-color: color-mix(in srgb, var(--wb-action-text) 24%, transparent);
   border-radius: 0 6px 6px 0;
 }
 
 .source-export-menu {
   min-width: 224px;
-  padding: 5px;
+  @apply p-1;
 }
 .source-export-menu .el-dropdown-menu__item {
   min-height: 36px;
-  gap: 10px;
+  @apply gap-2;
   border-radius: 4px;
   font-size: 12px;
 }
@@ -148,12 +146,11 @@
 .source-workspace__toolbar {
   display: flex;
   min-height: 32px;
-  padding: 0;
-  margin-left: auto;
+  @apply p-0 ml-auto;
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  @apply gap-2;
   border-bottom: 0;
   background: var(--wb-surface);
 }
@@ -162,7 +159,7 @@
   --el-segmented-item-selected-bg-color: var(--wb-surface-raised);
   --el-segmented-item-selected-color: var(--wb-text-strong);
   height: 32px;
-  padding: 3px;
+  @apply p-1;
   border: 1px solid var(--wb-separator);
   border-radius: 6px;
   font-size: 12px;
@@ -174,11 +171,11 @@
   display: inline-flex;
   height: 100%;
   align-items: center;
-  gap: 7px;
+  @apply gap-2;
 }
 .source-workspace__mode-compact { display: none; }
 .source-workspace__mode .el-segmented__item {
-  padding-inline: 12px;
+  @apply px-3;
 }
 .source-workspace__mode .is-selected .source-workspace__mode-label > svg {
   color: var(--wb-accent-text);
@@ -187,14 +184,14 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 9px;
+  @apply gap-2;
   color: var(--wb-muted);
 }
 .source-workspace__style-target {
   width: 184px;
 }
 .source-workspace__style-target .el-segmented__item {
-  padding-inline: 10px;
+  @apply px-2;
 }
 
 .source-workspace__body {
@@ -205,9 +202,7 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 16px;
-  padding: 16px 16px 0;
-  margin-bottom: 16px;
+  @apply gap-4 pt-4 pr-4 pb-0 pl-4 mb-4;
   background: var(--wb-bg);
   color: var(--wb-muted);
   font-size: 12px;
@@ -215,11 +210,11 @@
 }
 .source-workspace__guidance > div { flex: 1; min-width: 0; }
 .source-workspace__guide-trigger { display: none; }
-.source-workspace__guidance p { margin: 0; }
-.source-workspace__guidance p + p { margin-top: 4px; }
+.source-workspace__guidance p { @apply m-0; }
+.source-workspace__guidance p + p { @apply mt-1; }
 .source-workspace__guidance > .control-hint { flex: none; }
-.source-workspace__download .control-hint > .el-button { margin: 0; min-height: 34px; font-size: 12px; }
-.source-export-menu .control-hint { align-items: center; gap: 10px; }
+.source-workspace__download .control-hint > .el-button { @apply m-0; min-height: 34px; font-size: 12px; }
+.source-export-menu .control-hint { align-items: center; @apply gap-2; }
 .source-workspace .source-workspace__viewer {
   --cf-source-panel: var(--wb-bg);
   --cf-source-panel-raised: var(--wb-surface);
@@ -252,14 +247,14 @@
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  @apply gap-2;
 }
 
 .source-workspace__file-actions {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 3px;
+  @apply gap-1;
 }
 .source-workspace__loading {
   position: absolute;
@@ -268,7 +263,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  @apply gap-2;
   color: var(--wb-text);
   background: color-mix(in srgb, var(--wb-surface) 94%, transparent);
   font-size: 12px;
@@ -280,7 +275,7 @@
 
 .source-workspace__statusbar {
   min-height: 32px;
-  padding: 4px 18px;
+  @apply py-1 px-4;
   flex: none;
   border-top: 1px solid var(--wb-separator);
   background: var(--wb-surface);
@@ -291,7 +286,7 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  @apply gap-1;
 }
 .source-workspace__status > svg {
   flex: none;
@@ -310,10 +305,10 @@
 }
 .source-workspace__file-meta {
   flex: none;
-  gap: 16px;
+  @apply gap-4;
 }
 .source-workspace__readonly {
-  gap: 4px;
+  @apply gap-1;
 }
 
 @keyframes source-spin {
@@ -323,17 +318,16 @@
 }
 
 @media (max-width: 700px) {
-  .source-workspace__guidance { justify-content: space-between; padding: 16px 12px 0; gap: 8px; }
+  .source-workspace__guidance { justify-content: space-between; @apply pt-4 pr-3 pb-0 pl-3 gap-2; }
   .source-workspace__guidance .source-workspace__guide-copy { display: none; }
   .source-workspace__guide-trigger { display: inline-flex; }
   .source-workspace__heading {
     min-height: 66px;
-    padding: 10px 12px;
-    gap: 10px;
+    @apply py-2 px-3 gap-2;
   }
   .source-workspace__identity {
     flex: 1 1 0;
-    gap: 8px;
+    @apply gap-2;
   }
   .source-workspace__mark {
     width: 32px;
@@ -350,38 +344,37 @@
     display: none;
   }
   .source-workspace__commands {
-    gap: 4px;
+    @apply gap-1;
   }
   .source-workspace__download-project.el-button {
-    padding-inline: 8px;
+    @apply px-2;
     font-size: 11px;
   }
   .source-workspace__download-project.el-button svg {
     display: none;
   }
   .source-workspace__toolbar {
-    padding: 8px 12px;
+    @apply py-2 px-3;
     flex-wrap: wrap;
-    gap: 8px;
+    @apply gap-2;
   }
   .source-workspace__mode {
     flex: 1;
   }
   .source-workspace__mode .el-segmented__item {
-    padding-inline: 8px;
+    @apply px-2;
   }
   .source-workspace__style {
-    margin-left: auto;
+    @apply ml-auto;
   }
   .source-workspace__style > svg {
     display: none;
   }
   .source-workspace__statusbar {
-    padding-inline: 10px;
-    gap: 8px;
+    @apply px-2 gap-2;
   }
   .source-workspace__file-meta {
-    gap: 8px;
+    @apply gap-2;
     font-size: 10px;
   }
   .source-workspace__file-meta > span:nth-child(2) {
@@ -395,7 +388,7 @@
     flex-wrap: wrap;
     flex-basis: 100%;
     order: 1;
-    padding: 0;
+    @apply p-0;
   }
   .source-workspace__mode {
     flex: none;
@@ -413,7 +406,7 @@
   .source-workspace__mode-compact { display: inline; }
   .source-workspace__style {
     width: auto;
-    margin: 0;
+    @apply m-0;
   }
   .source-workspace__style-target {
     width: auto;
@@ -422,6 +415,22 @@
 
 @media (max-width: 360px) {
   .source-workspace__mark { display: none; }
+}
+
+@media (max-height: 520px) {
+  .source-workspace__guidance { justify-content: space-between; }
+  .source-workspace__guide-copy,
+  .source-workspace__mark,
+  .source-workspace__project,
+  .source-workspace__mode-label > svg,
+  .source-workspace__style > svg { display: none; }
+  .source-workspace__guide-trigger { display: inline-flex; }
+  .source-workspace__heading { @apply gap-2; }
+  .source-workspace__heading h2 { font-size: 13px; }
+  .source-workspace__toolbar { @apply p-0 gap-2; }
+  .source-workspace__mode-full { @apply sr-only; }
+  .source-workspace__mode-compact { display: inline; }
+  .source-workspace__mode .el-segmented__item { @apply px-2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

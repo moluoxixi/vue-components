@@ -98,7 +98,7 @@ const projectThemeStylesheet = readFileSync(new URL('../../app/components/Projec
 const exportDialogStylesheet = readFileSync(new URL('../../features/export/style/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(
-  new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url),
+  new URL('../../app/components/StudioLeftPanel/style/index.css', import.meta.url),
   'utf8',
 )
 const pageManagerStylesheet = readFileSync(
@@ -124,7 +124,7 @@ interface CssRule {
 }
 
 function cssRules(source: string): CssRule[] {
-  return [...source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({
+  return [...source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@(?:reference|import)[^;]+;/g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({
     selector: match[1]!.trim().replace(/='([^']*)'(?=\])/g, '="$1"'),
     body: match[2]!,
   }))
@@ -169,10 +169,7 @@ describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
     expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(
       `${stylesheetLayers
-        .map(layer => layer.importPath === './tailwind.css'
-          ? '@import \'./tailwind.css\';'
-          : `@import url(${layer.importPath});`,
-        )
+        .map(layer => `@import '${layer.importPath}';`)
         .join('\n')}\n`,
     )
   })
@@ -270,7 +267,7 @@ describe('workbench theme contract', () => {
       module => module.default,
     )
 
-    expect(component).toMatch(/import '.\/style\/index\.scss'/)
+    expect(component).toMatch(/import '.\/style\/index\.css'/)
     expect(studioLeftPanelStylesheet).toContain('.designer-material-search')
     expect(stylesheet).not.toContain('.designer-material-search')
   })
@@ -320,11 +317,10 @@ describe('workbench theme contract', () => {
     expect(tailwindStylesheet).toMatch(/@import ['"]tailwindcss\/utilities\.css['"] layer\(utilities\) source\(none\);/)
     expect(tailwindStylesheet).not.toMatch(/@import\s+["']tailwindcss["']/)
     expect(tailwindStylesheet).not.toContain('preflight.css')
-    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(4)
-    expect(tailwindStylesheet).toContain('@source "../features/export/index.vue";')
-    expect(tailwindStylesheet).toContain('@source "../features/assets/index.vue";')
-    expect(tailwindStylesheet).toContain('@source "../features/assets/components/AssetManagerWorkspace.vue";')
-    expect(tailwindStylesheet).toContain('@source "../app/components/ProjectThemeEditor/index.vue";')
+    expect(tailwindStylesheet.match(/@source\s+/g)).toHaveLength(3)
+    for (const directory of ['app', 'features', 'components'])
+      expect(tailwindStylesheet).toContain(`@source "../${directory}/**/*.vue";`)
+    expect(tailwindStylesheet).toContain('--spacing: 0.25rem;')
     expect(tailwindStylesheet).toContain('--color-wb-editor-surface: var(--wb-editor-surface);')
     expect(tailwindStylesheet).toContain('--shadow-wb-overlay: var(--wb-shadow-overlay);')
     expect(exportDialogComponent).toContain('bg-wb-editor-surface')

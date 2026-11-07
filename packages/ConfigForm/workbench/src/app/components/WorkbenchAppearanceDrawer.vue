@@ -46,23 +46,26 @@ watch(() => props.open, (open, wasOpen) => {
     :aria-label="locale.t('appearance.title', 'Appearance')"
     @close="emit('close')"
   >
-    <ElButton
-      class="appearance-drawer-close"
-      native-type="button"
-      text
-      circle
-      :title="locale.t('action.close', 'Close')"
-      :aria-label="locale.t('action.close', 'Close')"
-      @click="emit('close')"
-    >
-      <X :size="18" aria-hidden="true" />
-    </ElButton>
     <WorkbenchAppearancePanel
       :locale="props.locale"
       :palette-family="paletteFamily"
       :theme-preference="themePreference"
       @set-palette-family="emit('setPaletteFamily', $event)"
       @set-theme-preference="emit('setThemePreference', $event)"
-    />
+    >
+      <template #header-action>
+        <ElButton
+          class="appearance-drawer-close"
+          native-type="button"
+          text
+          circle
+          :title="locale.t('action.close', 'Close')"
+          :aria-label="locale.t('action.close', 'Close')"
+          @click="emit('close')"
+        >
+          <X :size="18" aria-hidden="true" />
+        </ElButton>
+      </template>
+    </WorkbenchAppearancePanel>
   </ElDrawer>
 </template>

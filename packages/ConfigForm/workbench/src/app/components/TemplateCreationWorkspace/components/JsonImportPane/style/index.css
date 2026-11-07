@@ -9,9 +9,9 @@
 
 .json-import-stage-nav {
   display: grid;
-  padding: 4px 8px;
+  @apply py-1 px-2;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  @apply gap-1;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
 }
@@ -21,7 +21,7 @@
   min-width: 0;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  @apply gap-2;
   color: var(--wb-muted);
   border: 1px solid transparent;
   border-radius: 4px;
@@ -79,9 +79,9 @@
 
 .json-import-source {
   display: grid;
-  padding: 12px;
+  @apply p-3;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  @apply gap-2;
   border-right: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -94,20 +94,20 @@
   min-height: 34px;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  @apply gap-2;
 }
 
 .json-import-panel-title {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 7px;
+  @apply gap-2;
   color: var(--wb-accent-text);
 }
 
 .json-import-pane h2,
 .json-import-pane h3 {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text-strong);
   font-size: 13px;
   letter-spacing: 0;
@@ -122,7 +122,7 @@
 }
 
 .json-import-textarea .el-textarea__inner {
-  padding: 12px;
+  @apply p-3;
   color: var(--wb-text);
   border-radius: 4px;
   background: var(--wb-editor-surface);
@@ -141,7 +141,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .json-import-source > footer {
@@ -164,7 +164,7 @@
   display: grid;
   min-height: 0;
   align-content: center;
-  gap: 12px;
+  @apply gap-3;
 }
 
 .json-import-upload .el-upload,
@@ -175,10 +175,10 @@
 .json-import-upload .el-upload-dragger {
   display: grid;
   min-height: 180px;
-  padding: 24px;
+  @apply p-4;
   place-content: center;
   justify-items: center;
-  gap: 10px;
+  @apply gap-2;
   color: var(--wb-muted);
   border-color: var(--wb-control-border);
   border-radius: 4px;
@@ -193,9 +193,9 @@
 .json-import-file-meta {
   display: flex;
   min-width: 0;
-  padding: 10px;
+  @apply p-2;
   align-items: center;
-  gap: 9px;
+  @apply gap-2;
   color: var(--wb-accent-text);
   border: 0;
   background: var(--wb-elevated);
@@ -204,7 +204,7 @@
 .json-import-file-meta span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  @apply gap-1;
 }
 
 .json-import-file-meta strong,
@@ -232,9 +232,9 @@
 .json-import-diagnostics,
 .json-import-preview {
   display: grid;
-  padding: 12px;
+  @apply p-3;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
+  @apply gap-2;
   overflow: hidden;
 }
 
@@ -260,7 +260,7 @@
 .json-import-status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  @apply gap-1;
   color: var(--wb-positive);
   font-size: 11px;
 }
@@ -280,17 +280,14 @@
 
 .json-import-error-summary ul {
   display: grid;
-  margin: 9px 0 0;
-  padding: 0;
-  gap: 7px;
+  @apply mt-2 mr-0 mb-0 ml-0 p-0 gap-2;
   list-style: none;
 }
 
 .json-import-error-summary li {
   display: grid;
   min-width: 0;
-  padding: 8px;
-  gap: 3px;
+  @apply p-2 gap-1;
   border-left: 2px solid var(--wb-danger);
   background: var(--wb-danger-soft);
 }
@@ -307,7 +304,7 @@
 
 .json-import-error-summary li > span,
 .json-import-error-summary p {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
   font-size: 11px;
   line-height: 1.4;
@@ -316,14 +313,14 @@
 
 .json-import-report dl {
   display: grid;
-  margin: 0;
+  @apply m-0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   border: 1px solid var(--wb-separator);
 }
 
 .json-import-report dl > div {
   min-width: 0;
-  padding: 7px 8px;
+  @apply py-2 px-2;
   border-right: 1px solid var(--wb-separator);
   border-bottom: 1px solid var(--wb-separator);
 }
@@ -336,7 +333,7 @@
 }
 
 .json-import-report dd {
-  margin: 3px 0 0;
+  @apply mt-1 mr-0 mb-0 ml-0;
   color: var(--wb-text-strong);
   font:
     10px/1.35 ui-monospace,
@@ -350,13 +347,13 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-muted);
   font-size: 11px;
 }
 
 .json-import-footer {
-  padding: 8px 12px;
+  @apply py-2 px-3;
   justify-content: space-between;
   border-top: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
@@ -365,7 +362,7 @@
 .json-import-footer p,
 .json-import-footer > span {
   min-width: 0;
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
   font-size: 11px;
   overflow-wrap: anywhere;

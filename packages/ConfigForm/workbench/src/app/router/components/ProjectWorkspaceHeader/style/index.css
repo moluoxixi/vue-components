@@ -1,3 +1,5 @@
+@reference "../../../../../styles/tailwind.css";
+
 .project-workspace-header {
   display: grid;
   min-width: 0;
@@ -5,8 +7,7 @@
   grid-template-areas: 'heading navigation summary status actions';
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px;
+  @apply gap-4 py-0 px-4;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -17,21 +18,21 @@
   min-height: 32px;
   align-items: center;
   grid-area: heading;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .project-workspace-header__heading > .el-button {
   flex: none;
   width: 28px;
   height: 28px;
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
 }
 
 .project-workspace-header h1 {
   min-width: 0;
   flex: 1;
-  margin: 0;
+  @apply m-0;
   overflow: hidden;
   color: var(--wb-text-strong);
   font-family: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei', sans-serif;
@@ -46,7 +47,7 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
   grid-area: actions;
 }
 
@@ -56,7 +57,7 @@
 }
 
 .project-workspace-header__actions :deep(.el-button > span) {
-  gap: 6px;
+  @apply gap-1;
 }
 
 .project-workspace-header__navigation {
@@ -72,7 +73,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 14px;
+  @apply gap-3;
   color: var(--wb-muted);
   font-size: 12px;
   line-height: 20px;
@@ -82,7 +83,7 @@
 .project-workspace-header__summary :deep(span) {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  @apply gap-1;
   white-space: nowrap;
 }
 
@@ -107,7 +108,7 @@
   .project-workspace-header {
     grid-template-areas: 'heading navigation status actions';
     grid-template-columns: minmax(0, 1fr) auto auto auto;
-    gap: 12px;
+    @apply gap-3;
   }
 
   .project-workspace-header__summary {
@@ -131,8 +132,7 @@
     grid-template-areas: 'heading actions' 'navigation navigation';
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 40px 32px;
-    gap: 0 8px;
-    padding-inline: 12px;
+    @apply gap-y-0 gap-x-2 px-3;
   }
 
   .project-workspace-header h1 {

@@ -18,10 +18,10 @@
 .template-workspace-header {
   display: grid;
   min-width: 0;
-  padding: 0 10px;
+  @apply py-0 px-2;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  @apply gap-2;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
 }
@@ -39,12 +39,12 @@
 }
 
 .template-workspace-heading {
-  gap: 8px;
+  @apply gap-2;
 }
 
 .template-workspace-heading > div {
   align-items: baseline;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .template-workspace-heading span {
@@ -56,14 +56,14 @@
 }
 
 .template-workspace-heading h1 {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text-strong);
   font-size: 15px;
   letter-spacing: 0;
 }
 
 .template-workspace-actions {
-  gap: 3px;
+  @apply gap-1;
 }
 
 .creation-mode-switch {
@@ -74,7 +74,7 @@
 .template-workspace-heading .el-button {
   width: 30px;
   height: 30px;
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
 }
 
@@ -103,8 +103,7 @@
 }
 
 .template-state {
-  margin: 0;
-  padding: 14px;
+  @apply m-0 p-3;
   color: var(--wb-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -114,10 +113,10 @@
 .template-preview-error {
   display: grid;
   min-width: 0;
-  padding: 28px 18px;
+  @apply py-4 px-4;
   place-content: center;
   justify-items: start;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-muted);
 }
 
@@ -138,7 +137,7 @@
 .template-no-selection {
   height: 100%;
   max-width: 520px;
-  margin: 0 auto;
+  @apply my-0 mx-auto;
   color: var(--wb-muted);
 }
 
@@ -156,16 +155,16 @@
   display: grid;
   min-width: 0;
   min-height: 54px;
-  padding: 10px 14px;
+  @apply py-2 px-3;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 20px;
+  @apply gap-4;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
 
 .template-detail-header h2 {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text-strong);
   font-size: 15px;
   letter-spacing: 0;
@@ -176,7 +175,7 @@
 
 .template-detail-header p {
   max-width: 720px;
-  margin: 5px 0 0;
+  @apply mt-1 mr-0 mb-0 ml-0;
   color: var(--wb-muted);
   font-size: 12px;
   line-height: 1.4;
@@ -186,9 +185,9 @@
 }
 
 .template-detail-header dl {
-  margin: 0;
+  @apply m-0;
   align-items: stretch;
-  gap: 8px;
+  @apply gap-2;
   border: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -197,10 +196,10 @@
 
 .template-detail-header dl > div {
   min-width: 90px;
-  padding: 6px 8px;
+  @apply py-1 px-2;
   align-items: flex-start;
   flex-direction: column;
-  gap: 2px;
+  @apply gap-1;
   background: var(--wb-elevated);
 }
 
@@ -212,7 +211,7 @@
 }
 
 .template-detail-header dd {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
@@ -221,9 +220,9 @@
 
 .template-eligibility {
   min-height: 48px;
-  padding: 8px 18px;
+  @apply py-2 px-4;
   align-items: flex-start;
-  gap: 9px;
+  @apply gap-2;
   color: var(--wb-positive);
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
@@ -238,24 +237,23 @@
   display: grid;
   min-width: 0;
   justify-items: start;
-  gap: 6px;
+  @apply gap-1;
 }
 
 .template-eligibility.is-blocked .el-button {
   min-height: 26px;
-  margin: 0;
-  padding-inline: 0;
+  @apply m-0 px-0;
   color: var(--wb-danger);
 }
 
 .template-eligibility p,
 .template-eligibility ul {
-  margin: 0;
+  @apply m-0;
 }
 
 .template-eligibility p {
   display: grid;
-  gap: 2px;
+  @apply gap-1;
 }
 
 .template-eligibility p span,
@@ -267,13 +265,13 @@
 }
 
 .template-eligibility ul {
-  padding-left: 17px;
+  @apply pl-4;
 }
 
 .template-runtime-preview {
   min-width: 0;
   min-height: 0;
-  padding: 16px;
+  @apply p-4;
   overflow: hidden;
   background: var(--wb-surface);
 }
@@ -290,7 +288,7 @@
 
 .template-runtime-preview .surface-presentation-shell.is-page {
   height: 100%;
-  padding: 16px;
+  @apply p-4;
   border: 1px solid var(--wb-canvas-frame);
   border-radius: 4px;
   background: var(--wb-canvas-sheet);
@@ -307,9 +305,9 @@
 
 .template-create-footer {
   min-height: 48px;
-  padding: 8px 14px 8px 18px;
+  @apply pt-2 pr-3 pb-2 pl-4;
   justify-content: space-between;
-  gap: 16px;
+  @apply gap-4;
   border-top: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
 }
@@ -319,7 +317,7 @@
 .template-create-footer p,
 .template-create-footer > span {
   min-width: 0;
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
   font-size: 11px;
   line-height: 1.35;
@@ -334,7 +332,7 @@
   width: 132px;
   min-height: 34px;
   flex: 0 0 auto;
-  margin: 0;
+  @apply m-0;
 }
 
 .template-mobile-panes,
@@ -349,15 +347,14 @@
 
 .template-catalog-drawer .el-drawer__header {
   min-height: 48px;
-  margin: 0;
-  padding: 0 12px;
+  @apply m-0 py-0 px-3;
   color: var(--wb-text-strong);
   border-bottom: 1px solid var(--wb-separator);
 }
 
 .template-catalog-drawer .el-drawer__body {
   min-height: 0;
-  padding: 0;
+  @apply p-0;
   overflow: hidden;
 }
 
@@ -373,9 +370,9 @@
     display: flex;
     min-width: 0;
     min-height: 0;
-    padding: 6px 4px;
+    @apply py-1 px-1;
     flex-direction: column;
-    gap: 3px;
+    @apply gap-1;
     border-right: 1px solid var(--wb-separator);
     background: var(--wb-surface);
   }
@@ -384,10 +381,9 @@
     width: 48px;
     height: 48px;
     min-width: 0;
-    margin: 0;
-    padding: 4px 2px;
+    @apply m-0 py-1 px-1;
     flex-direction: column;
-    gap: 3px;
+    @apply gap-1;
     color: var(--wb-muted);
     border-radius: 4px;
     font-size: 11px;
@@ -403,7 +399,7 @@
     background: var(--wb-accent-soft);
   }
   .template-category-rail .template-category-browse {
-    margin-top: auto;
+    @apply mt-auto;
   }
   .template-catalog-pane {
     display: none;
@@ -412,7 +408,7 @@
     grid-column: 2;
   }
   .template-detail-header {
-    gap: 12px;
+    @apply gap-3;
   }
   .template-detail-header dl {
     display: grid;
@@ -431,11 +427,10 @@
     grid-template-rows: 88px minmax(0, 1fr);
   }
   .template-workspace-header {
-    padding: 6px 8px;
+    @apply py-1 px-2;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 34px 36px;
-    column-gap: 4px;
-    row-gap: 5px;
+    @apply gap-x-1 gap-y-1;
   }
   .creation-mode-switch {
     width: 100%;
@@ -445,7 +440,7 @@
     grid-row: 2;
   }
   .creation-mode-switch .el-segmented__item-label {
-    padding-inline: 10px;
+    @apply px-2;
     font-size: 11px;
   }
   .template-workspace-heading,
@@ -466,7 +461,7 @@
   }
   .template-workspace-heading > div {
     display: grid;
-    gap: 0;
+    @apply gap-0;
   }
   .template-workspace-heading span {
     font-size: 11px;
@@ -477,7 +472,7 @@
   .template-mobile-panes {
     display: block;
     width: calc(100% - 16px);
-    margin: 4px 8px;
+    @apply my-1 mx-2;
   }
   .template-workspace-layout {
     display: block;
@@ -504,7 +499,7 @@
   }
   .template-detail-header {
     min-height: 0;
-    padding: 12px 14px;
+    @apply py-3 px-3;
     grid-template-columns: minmax(0, 1fr);
   }
   .template-detail-header dl {
@@ -518,28 +513,26 @@
   .template-mobile-back {
     display: inline-flex;
     width: auto;
-    margin: 0 0 7px;
-    padding: 0;
+    @apply mt-0 mr-0 mb-2 ml-0 p-0;
     align-items: center;
-    gap: 4px;
+    @apply gap-1;
     color: var(--wb-accent-text);
     border: 0;
     background: transparent;
     font-size: 11px;
   }
   .template-eligibility {
-    padding-inline: 14px;
+    @apply px-3;
   }
   .template-runtime-preview {
-    padding: 8px;
+    @apply p-2;
   }
   .template-runtime-preview .design-runtime-host {
     min-height: 220px;
   }
   .template-create-footer {
     min-height: 66px;
-    padding: 8px;
-    gap: 8px;
+    @apply p-2 gap-2;
   }
   .template-create-footer .el-button {
     width: 124px;

@@ -162,6 +162,8 @@ function example(): void {
 </template>
 
 <style scoped>
+@reference "../../../styles/tailwind.css";
+
 .schema-import-intro {
   color: var(--wb-muted);
   font-size: 12px;
@@ -169,13 +171,12 @@ function example(): void {
 }
 .schema-import-actions {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  @apply gap-2 my-3 mx-0;
 }
 .schema-import-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  @apply gap-4;
 }
 .schema-import-review {
   max-height: 410px;
@@ -184,15 +185,14 @@ function example(): void {
 }
 .schema-import-review h3 {
   font-size: 13px;
-  margin: 0 0 12px;
+  @apply mt-0 mr-0 mb-3 ml-0;
 }
 .schema-import-field {
   display: grid;
-  gap: 5px;
-  padding: 12px;
+  @apply gap-1 p-3;
   border: 1px solid var(--wb-separator);
   border-radius: 4px;
-  margin-bottom: 8px;
+  @apply mb-2;
 }
 .schema-import-field code,
 .schema-import-field small {
@@ -207,8 +207,7 @@ function example(): void {
 }
 .schema-import-diagnostic {
   display: grid;
-  gap: 5px;
-  padding: 10px 0;
+  @apply gap-1 py-2 px-0;
   overflow-wrap: anywhere;
 }
 .schema-import-diagnostic[data-severity='warning'] {

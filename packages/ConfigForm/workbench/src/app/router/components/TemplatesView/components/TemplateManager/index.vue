@@ -88,7 +88,7 @@ function clearFilters(): void {
 <template>
   <main class="template-manager" :aria-label="locale.t('management.templates', 'Template management')">
     <div class="template-manager__content">
-      <header class="template-manager__heading">
+      <header class="template-manager__heading flex items-center justify-between gap-4 mb-4">
         <div>
           <h1>{{ locale.t('library.title', 'Template library') }}</h1>
         </div>

@@ -1,5 +1,5 @@
 .workbench-appearance-popover.el-popper {
-  padding: 0;
+  @apply p-0;
   overflow: hidden;
   color: var(--wb-text);
   border: 1px solid var(--wb-separator);

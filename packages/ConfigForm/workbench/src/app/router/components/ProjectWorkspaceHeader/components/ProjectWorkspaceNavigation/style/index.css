@@ -1,14 +1,16 @@
+@reference "../../../../../../../styles/tailwind.css";
+
 .project-workspace-navigation {
   display: flex;
   align-items: center;
-  gap: 24px;
+  @apply gap-4;
 }
 
 .project-workspace-navigation a {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-muted);
   border-bottom: 2px solid transparent;
   text-decoration: none;

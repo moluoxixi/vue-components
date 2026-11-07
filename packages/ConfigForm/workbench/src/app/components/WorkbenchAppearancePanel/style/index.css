@@ -7,12 +7,12 @@
 
 .appearance-panel__header {
   min-height: 42px;
-  padding: 11px 14px 9px;
+  @apply pt-3 pr-3 pb-2 pl-3;
   border-bottom: 1px solid var(--wb-separator);
 }
 
 .appearance-panel__header h2 {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text-strong);
   font-size: 13px;
   font-weight: 700;
@@ -22,12 +22,11 @@
 .appearance-field {
   display: grid;
   min-width: 0;
-  padding: 12px 14px;
-  gap: 8px;
+  @apply py-3 px-3 gap-2;
 }
 
 .appearance-field + .appearance-field {
-  padding-top: 4px;
+  @apply pt-1;
 }
 
 .appearance-field__label {
@@ -62,8 +61,7 @@
   height: auto;
   min-width: 0;
   min-height: 52px;
-  margin: 0;
-  padding: 7px 8px;
+  @apply m-0 py-2 px-2;
   border-bottom: 1px solid var(--wb-separator);
 }
 
@@ -87,7 +85,7 @@
 .appearance-palette-option .el-radio__label {
   width: 100%;
   min-width: 0;
-  padding: 0;
+  @apply p-0;
   color: inherit;
 }
 
@@ -96,7 +94,7 @@
   min-width: 0;
   grid-template-columns: minmax(84px, 1fr) auto 18px;
   align-items: center;
-  gap: 10px;
+  @apply gap-2;
 }
 
 .appearance-palette-option__name {
@@ -116,7 +114,7 @@
 .appearance-palette-option__preview {
   display: grid;
   grid-template-columns: repeat(2, 44px);
-  gap: 5px;
+  @apply gap-1;
 }
 
 .appearance-swatch {

@@ -19,7 +19,7 @@ defineExpose({
   <ElDialog
     class="asset-manager-dialog"
     :model-value="modelValue"
-    :width="workspace?.hasDataset ? 'min(1280px, calc(100vw - 32px))' : 'min(1040px, calc(100vw - 32px))'"
+    :width="workspace?.hasDataset ? 'min(1280px, calc(var(--wb-viewport-width) - 32px))' : 'min(1040px, calc(var(--wb-viewport-width) - 32px))'"
     :title="locale.t('assets.title', 'Assets')"
     append-to="#workbench-overlays"
     align-center

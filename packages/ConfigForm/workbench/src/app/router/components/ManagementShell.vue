@@ -13,8 +13,8 @@ const ui = useWorkbenchUiStore()
 </script>
 
 <template>
-  <div class="management-shell" :data-palette="props.palette" :data-theme="props.theme">
-    <nav class="management-navigation" :aria-label="controller.workbenchLocale.value.t('management.navigation', 'Workspace navigation')">
+  <div class="management-shell grid w-full min-w-0 h-full" :data-palette="props.palette" :data-theme="props.theme">
+    <nav class="management-navigation flex items-center gap-1 px-4 py-0" :aria-label="controller.workbenchLocale.value.t('management.navigation', 'Workspace navigation')">
       <span class="management-navigation__brand"><span class="management-navigation__mark"><PanelsTopLeft :size="18" aria-hidden="true" /></span>ConfigForm</span>
       <RouterLink :to="projectsPath()" :class="{ 'is-active': $route.path.startsWith('/projects') }" :aria-current="$route.path.startsWith('/projects') ? 'page' : undefined" :aria-label="controller.workbenchLocale.value.t('management.projects', 'Project management')">
         <FolderKanban :size="17" aria-hidden="true" /><span class="management-navigation__label">{{ controller.workbenchLocale.value.t('management.projects', 'Project management') }}</span><span class="management-navigation__compact">{{ controller.workbenchLocale.value.t('management.projectsShort', 'Projects') }}</span>
@@ -33,7 +33,7 @@ const ui = useWorkbenchUiStore()
         </ElButton>
       </div>
     </nav>
-    <div class="management-shell__content">
+    <div class="management-shell__content flex min-w-0 min-h-0 overflow-hidden">
       <slot />
     </div>
   </div>

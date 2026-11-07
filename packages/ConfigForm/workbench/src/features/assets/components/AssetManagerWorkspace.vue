@@ -696,7 +696,7 @@ async function importResource(uploadFile: UploadFile): Promise<void> {
           :aria-label="locale.t('assets.list', 'Asset list')"
           data-asset-navigation
         >
-          <div class="asset-manager__list-toolbar">
+          <div class="asset-manager__list-toolbar flex min-w-0 flex-none items-center gap-1">
             <ElInput v-model="assetQuery" clearable :placeholder="locale.t('data.search', 'Search datasets and resources')" :aria-label="locale.t('data.search', 'Search datasets and resources')">
               <template #prefix>
                 <Search :size="14" aria-hidden="true" />

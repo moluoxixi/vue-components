@@ -363,7 +363,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
       </div>
     </section>
 
-    <ElDialog v-model="renameOpen" width="min(420px, calc(100vw - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.renameTitle', 'Rename project')" @opened="renameInput?.focus?.()">
+    <ElDialog v-model="renameOpen" width="min(420px, calc(var(--wb-viewport-width) - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.renameTitle', 'Rename project')" @opened="renameInput?.focus?.()">
       <ElInput ref="renameInput" v-model="renameValue" maxlength="160" show-word-limit :aria-label="locale.t('projects.name', 'Project name')" @keyup.enter="confirmRename" />
       <template #footer>
         <ElButton native-type="button" @click="renameOpen = false">
@@ -375,7 +375,7 @@ async function uploadProjectImage(project: ProjectSummary, uploadFile: UploadFil
       </template>
     </ElDialog>
 
-    <ElDialog v-model="deleteOpen" width="min(420px, calc(100vw - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.deleteTitle', 'Delete project')">
+    <ElDialog v-model="deleteOpen" width="min(420px, calc(var(--wb-viewport-width) - 32px))" append-to="#workbench-overlays" :title="locale.t('projects.deleteTitle', 'Delete project')">
       <p>{{ locale.t('projects.deleteConfirm', 'Delete “{name}” and its local data? This cannot be undone.', { name: deleteTarget?.name ?? '' }) }}</p>
       <template #footer>
         <ElButton native-type="button" @click="deleteOpen = false">

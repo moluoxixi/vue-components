@@ -3,10 +3,13 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities) source(none);
 
-@source "../features/export/index.vue";
-@source "../features/assets/index.vue";
-@source "../features/assets/components/AssetManagerWorkspace.vue";
-@source "../app/components/ProjectThemeEditor/index.vue";
+@source "../app/**/*.vue";
+@source "../features/**/*.vue";
+@source "../components/**/*.vue";
+
+@theme {
+  --spacing: 0.25rem;
+}
 
 @theme inline {
   --color-wb-bg: var(--wb-bg);

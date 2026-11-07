@@ -20,7 +20,7 @@
 }
 
 .page-manager-page__state {
-  margin: auto;
+  @apply m-auto;
   color: var(--wb-muted);
   font-size: 13px;
 }

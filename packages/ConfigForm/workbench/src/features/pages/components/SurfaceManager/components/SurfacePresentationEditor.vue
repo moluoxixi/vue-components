@@ -124,13 +124,14 @@ function save(): void {
 </template>
 
 <style scoped>
+@reference "../../../../../styles/tailwind.css";
+
 .surface-presentation-editor {
   display: grid;
-  padding: 12px;
-  margin-top: 8px;
+  @apply p-3 mt-2;
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  @apply gap-3;
   border: 1px solid var(--wb-separator);
   border-radius: 6px;
   background: var(--wb-surface);
@@ -140,9 +141,7 @@ function save(): void {
 .surface-presentation-editor fieldset {
   display: grid;
   min-width: 0;
-  padding: 0;
-  margin: 0;
-  gap: 6px;
+  @apply p-0 m-0 gap-1;
   border: 0;
 }
 
@@ -155,7 +154,7 @@ function save(): void {
 .surface-presentation-editor fieldset {
   grid-template-columns: minmax(0, 1fr) minmax(72px, 0.55fr);
   align-items: center;
-  gap: 6px;
+  @apply gap-1;
 }
 
 .surface-presentation-editor .el-input-number,
@@ -180,7 +179,7 @@ function save(): void {
 .surface-presentation-editor__switches {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
+  @apply gap-y-2 gap-x-4;
 }
 
 .surface-presentation-editor__switches label {
@@ -188,13 +187,13 @@ function save(): void {
   min-height: 32px;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .surface-presentation-editor footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  @apply gap-2;
 }
 
 @media (max-width: 680px) {

@@ -3,7 +3,7 @@
 }
 
 .workbench-overlays .workbench-command-tooltip {
-  max-width: min(280px, calc(100vw - 16px));
+  max-width: min(280px, calc(var(--wb-viewport-width) - 16px));
   overflow-wrap: anywhere;
   white-space: normal;
 }
@@ -39,5 +39,5 @@
   width: 100%;
   min-height: 24px;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
 }

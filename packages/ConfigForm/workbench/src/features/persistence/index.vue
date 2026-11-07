@@ -138,7 +138,7 @@ watch(() => props.mode, async (mode) => {
     :class="mode ? `persistence-dialog--${mode}` : undefined"
     :model-value="open"
     :title="dialogTitle"
-    :width="mode === 'checkpoint' ? 'min(520px, calc(100vw - 32px))' : 'min(980px, calc(100vw - 32px))'"
+    :width="mode === 'checkpoint' ? 'min(520px, calc(var(--wb-viewport-width) - 32px))' : 'min(980px, calc(var(--wb-viewport-width) - 32px))'"
     align-center
     append-to="#workbench-overlays"
     transition="none"

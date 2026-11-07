@@ -127,10 +127,12 @@ const viewports: { id: DesignRuntimeHostFrameProps['breakpoint'], width: number 
 </template>
 
 <style scoped>
+@reference "../../styles/tailwind.css";
+
 .studio-responsive-views {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
+  @apply gap-4;
 }
 .studio-responsive-views > section {
   min-width: 0;
@@ -140,7 +142,7 @@ const viewports: { id: DesignRuntimeHostFrameProps['breakpoint'], width: number 
 .studio-responsive-views header {
   display: flex;
   justify-content: space-between;
-  padding: 12px;
+  @apply p-3;
   border-bottom: 1px solid var(--wb-separator);
   font-size: 12px;
 }
@@ -152,14 +154,13 @@ const viewports: { id: DesignRuntimeHostFrameProps['breakpoint'], width: number 
   overflow: auto;
   height: 460px;
   background: white;
-  padding: 12px;
+  @apply p-3;
 }
 .studio-responsive-copy {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 16px 0;
+  @apply gap-2 my-4 mx-0;
 }
 .studio-responsive-copy .el-select {
   width: 130px;

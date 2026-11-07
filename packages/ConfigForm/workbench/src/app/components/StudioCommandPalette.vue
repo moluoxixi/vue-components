@@ -91,7 +91,7 @@ function navigate(event: Event | KeyboardEvent): void {
   <ElDialog
     :model-value="open"
     class="studio-command-dialog"
-    width="min(620px, calc(100vw - 24px))"
+    width="min(620px, calc(var(--wb-viewport-width) - 24px))"
     :title="chinese ? '命令中心' : 'Command center'"
     append-to="#workbench-overlays"
     @update:model-value="emit('update:open', $event)"

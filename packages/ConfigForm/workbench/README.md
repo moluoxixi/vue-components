@@ -56,6 +56,14 @@ Workbench 是仓库内部的 ConfigForm Studio UI 设计应用与集成验证入
 不进入 ProjectDocument、IndexedDB、Preview transport 或 Source，也不通过 iframe
 转发。
 
+## 工作台样式与手机适配
+
+- 工作台使用 Tailwind v4，模板负责普通布局，组件样式中的 `@apply` 负责状态选择器和 Element Plus 内部结构。扫描范围仅为 `app`、`features`、`components` 下的 Vue 文件；不启用 Preflight，不注入 Runtime Host。
+- 根字号保持 `100%`，默认 16px。布局间距只使用 `0`、`1`、`2`、`3`、`4` 档，对应 `0`、`0.25rem`、`0.5rem`、`0.75rem`、`1rem`；例如 `gap-2`、`p-4`。标题与首个内容区保持 `1rem`。浏览器字号偏好和页面缩放继续生效。
+- 使用响应式布局、`dvh` 和 `safe-area-inset-*` 处理手机宽度、横屏与系统安全区。安全区是设备占位，不计入内容间距上限。触屏输入控件使用 `1rem` 字号；支持的浏览器在软键盘弹出时调整内容视口。
+- 不引入根据屏宽修改根字号的脚本或全局 px 转 rem 插件，避免影响设计文档中的尺寸以及预览、导出表单的实际布局。
+- `pnpm test:e2e --project=phone-chromium --project=phone-webkit` 验证 320、360、375、390、414、430px 竖屏、844×390 横屏与安全区。属于浏览器模拟验证，发布前仍可补充真机软键盘检查。
+
 ## 当前运行路径
 
 `ProjectDocument` 经过 Compiler 生成 `CanonicalProjectIR`，再由 Vue backend 生成

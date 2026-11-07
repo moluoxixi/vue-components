@@ -2,7 +2,7 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 100vh;
+  min-height: var(--wb-viewport-height);
   flex-direction: column;
   color: var(--wb-text);
   background: var(--wb-bg);
@@ -12,10 +12,10 @@
 .project-creation-header {
   display: flex;
   min-height: 64px;
-  padding: 0 24px;
+  @apply py-0 px-4;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  @apply gap-4;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
 }
@@ -25,11 +25,11 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .project-creation-header h1 {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-text-strong);
   font-size: 16px;
   font-weight: 700;
@@ -39,14 +39,13 @@
   display: grid;
   width: min(640px, calc(100% - 40px));
   min-width: 0;
-  margin: 36px auto;
-  gap: 24px;
+  @apply my-4 mx-auto gap-4;
 }
 
 .project-creation-field {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  @apply gap-2;
 }
 
 .project-creation-field > label,
@@ -60,15 +59,14 @@
   display: grid;
   width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  @apply gap-3;
 }
 
 .project-creation-adapter.el-radio.is-bordered {
   min-width: 0;
   min-height: 56px;
   height: auto;
-  margin: 0;
-  padding: 12px;
+  @apply m-0 p-3;
   border-color: var(--wb-control-border);
   border-radius: 6px;
   background: var(--wb-surface);
@@ -83,7 +81,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-text-strong);
   font-size: 13px;
   line-height: 1.4;
@@ -102,16 +100,16 @@
 .project-creation-footer {
   display: flex;
   min-width: 0;
-  padding-top: 16px;
+  @apply pt-4;
   justify-content: flex-end;
-  gap: 10px;
+  @apply gap-2;
   border-top: 1px solid var(--wb-separator);
 }
 .project-creation-field > .control-hint,
 .project-creation-field > .control-hint > .el-radio-group { width: 100%; }
 
 .project-creation-footer .el-button + .el-button {
-  margin-left: 0;
+  @apply ml-0;
 }
 
 .project-creation-workspace--embedded {
@@ -121,11 +119,11 @@
 
 .project-creation-workspace--embedded .project-creation-form {
   width: 100%;
-  margin: 0;
+  @apply m-0;
 }
 
 .project-creation-dialog.el-dialog {
-  padding: 0;
+  @apply p-0;
   overflow: hidden;
   border: 1px solid var(--wb-control-border);
   border-radius: 8px;
@@ -134,8 +132,7 @@
 }
 
 .project-creation-dialog .el-dialog__header {
-  margin: 0;
-  padding: 18px 24px;
+  @apply m-0 py-4 px-4;
   border-bottom: 1px solid var(--wb-separator);
 }
 
@@ -146,14 +143,14 @@
 }
 
 .project-creation-dialog .el-dialog__body {
-  max-height: calc(100vh - 140px);
-  padding: 24px;
+  max-height: calc(var(--wb-viewport-height) - 140px);
+  @apply p-4;
   overflow: auto;
 }
 
 @media (max-width: 440px) {
-  .project-creation-header { padding-inline: 12px; }
+  .project-creation-header { @apply px-3; }
   .project-creation-adapters { grid-template-columns: minmax(0, 1fr); }
-  .project-creation-dialog .el-dialog__header { padding-inline: 18px; }
-  .project-creation-dialog .el-dialog__body { padding: 18px; }
+  .project-creation-dialog .el-dialog__header { @apply px-4; }
+  .project-creation-dialog .el-dialog__body { @apply p-4; }
 }

@@ -52,8 +52,9 @@ function setPaletteFamily(value: unknown): void {
 
 <template>
   <section class="appearance-panel" :aria-label="locale.t('appearance.title', 'Appearance')">
-    <header class="appearance-panel__header">
+    <header class="appearance-panel__header flex items-center justify-between gap-2">
       <h2>{{ locale.t('appearance.title', 'Appearance') }}</h2>
+      <slot name="header-action" />
     </header>
 
     <div class="appearance-field">

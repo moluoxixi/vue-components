@@ -1923,8 +1923,8 @@ test('keeps left-panel names readable and hides unavailable layer actions', asyn
   const panel = page.locator('.designer-components-panel')
   const searchBox = await visibleBox(search)
   const panelBox = await visibleBox(panel)
-  expect(Math.abs(searchBox.x - panelBox.x - 10)).toBeLessThanOrEqual(1)
-  expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 10)).toBeLessThanOrEqual(1)
+  expect(Math.abs(searchBox.x - panelBox.x - 8)).toBeLessThanOrEqual(1)
+  expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 8)).toBeLessThanOrEqual(1)
   const materialGrid = page.locator('.designer-material-list').first()
   expect(
     await materialGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length),

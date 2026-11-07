@@ -1,10 +1,10 @@
 .workbench-topbar {
   display: grid;
   min-width: 0;
-  padding: 0 16px;
+  @apply py-0 px-4;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 18px;
+  @apply gap-4;
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -13,7 +13,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
   line-height: 1.2;
 }
 
@@ -37,9 +37,9 @@
   display: flex;
   min-width: 0;
   height: 32px;
-  padding: 0;
+  @apply p-0;
   align-items: center;
-  gap: 10px;
+  @apply gap-2;
   overflow: hidden;
   border: 0;
   border-radius: 4px;
@@ -56,7 +56,7 @@
 }
 
 .workspace-context button {
-  padding: 3px 0;
+  @apply py-1 px-0;
   color: var(--wb-muted);
   border: 0;
   background: transparent;
@@ -81,8 +81,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(70px, 1fr));
   height: 34px;
-  padding: 3px;
-  gap: 2px;
+  @apply p-1 gap-1;
   border: 1px solid transparent;
   border-radius: 6px;
   background: var(--wb-control-bg);
@@ -91,10 +90,10 @@
 .workbench-view-switch button {
   display: flex;
   min-width: 0;
-  padding: 0 10px;
+  @apply py-0 px-2;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  @apply gap-1;
   color: var(--wb-muted);
   border: 0;
   border-radius: 3px;
@@ -111,7 +110,7 @@
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  @apply gap-1;
 }
 
 .topbar-actions .is-command-disabled {
@@ -131,8 +130,7 @@
 .mobile-action-popover {
   display: grid;
   width: 208px;
-  padding: 5px;
-  gap: 2px;
+  @apply p-1 gap-1;
 }
 
 .mobile-action-popover .el-dropdown-menu__item {
@@ -140,15 +138,15 @@
   width: 100%;
   min-width: 0;
   height: 32px;
-  padding: 0 8px;
+  @apply py-0 px-2;
   justify-content: flex-start;
-  gap: 8px;
+  @apply gap-2;
   white-space: nowrap;
 }
 
 .workbench-overlays .topbar-status-item {
   display: flex;
-  padding: 8px;
+  @apply p-2;
   align-items: center;
   height: auto;
   min-height: 34px;
@@ -188,17 +186,17 @@
   display: inline-flex;
   width: auto;
   min-width: 58px;
-  padding: 0 8px;
+  @apply py-0 px-2;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  @apply gap-1;
 }
 
 .topbar-actions .export-menu > button {
   display: inline-flex;
   width: auto;
   min-width: 58px;
-  padding: 0 10px;
+  @apply py-0 px-2;
   align-items: center;
   justify-content: center;
   color: var(--wb-text);
@@ -211,7 +209,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  @apply gap-1;
 }
 
 .save-menu-trigger__content > svg {
@@ -248,7 +246,7 @@
 .export-menu-popover {
   display: grid;
   width: 184px;
-  padding: 4px;
+  @apply p-1;
 }
 
 .export-menu-popover .el-dropdown-menu__item {
@@ -257,9 +255,9 @@
   height: auto;
   min-width: 0;
   min-height: 32px;
-  padding: 0 8px;
+  @apply py-0 px-2;
   align-items: center;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-text);
   text-align: left;
   white-space: nowrap;
@@ -282,7 +280,7 @@
   display: inline-grid;
   width: 30px;
   height: 30px;
-  padding: 0;
+  @apply p-0;
   place-items: center;
   color: var(--wb-muted);
   border: 1px solid transparent;
@@ -323,7 +321,7 @@
 }
 
 .revision-state {
-  margin-right: 4px;
+  @apply mr-1;
   color: var(--wb-positive);
   font-size: 11px;
   white-space: nowrap;
@@ -333,7 +331,7 @@
   display: inline-block;
   width: 5px;
   height: 5px;
-  margin-right: 5px;
+  @apply mr-1;
   border-radius: 50%;
   background: currentColor;
   content: "";
@@ -358,7 +356,7 @@
 @media (max-width: 1180px) {
   .workbench-topbar {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
-    gap: 10px;
+    @apply gap-2;
   }
   .revision-state {
     display: none;
@@ -395,7 +393,7 @@
   .workspace-context button,
   .workspace-context__separator { display: none; }
   .workbench-view-switch { grid-template-columns: repeat(3, 28px); border: 0; background: transparent; }
-  .workbench-view-switch button { padding: 0; }
+  .workbench-view-switch button { @apply p-0; }
   .workbench-view-switch button span { display: none; }
 
   .brand-lockup {
@@ -404,7 +402,7 @@
 
   .workbench-topbar {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
-    gap: 6px;
+    @apply gap-1;
   }
 
   .topbar-actions > .topbar-secondary-action,
@@ -428,19 +426,18 @@
   .topbar-actions .topbar-labeled-action {
     width: 30px;
     min-width: 30px;
-    padding: 0;
+    @apply p-0;
   }
 }
 
 @media (max-width: 480px) {
   .workbench-topbar {
     grid-template-columns: minmax(0, 1fr) auto auto;
-    padding-inline: 6px;
-    gap: 4px;
+    @apply px-1 gap-1;
   }
   .brand-lockup { display: none; }
   .topbar-actions {
-    gap: 1px;
+    @apply gap-1;
   }
   .topbar-actions > button,
 .topbar-actions > .mobile-action-menu > .el-dropdown > button {
@@ -450,13 +447,13 @@
   .topbar-actions .export-menu > button {
     width: 28px;
     min-width: 28px;
-    padding: 0;
+    @apply p-0;
   }
   .topbar-actions .export-menu > button .export-chevron {
     display: none;
   }
   .workspace-context {
-    padding-inline: 6px;
+    @apply px-1;
   }
 }
 
@@ -471,7 +468,7 @@
 }
 
 @media (max-width: 640px) and (pointer: coarse) {
-  .workbench-view-switch { height: 44px; padding: 0; grid-template-columns: repeat(3, 44px); }
+  .workbench-view-switch { height: 44px; @apply p-0; grid-template-columns: repeat(3, 44px); }
   .topbar-actions > button,
 .topbar-actions > .mobile-action-menu > .el-dropdown > button,
 .topbar-actions .export-menu > button {

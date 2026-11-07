@@ -80,8 +80,8 @@ function openCurrentProject(): void {
     <ElDialog
       v-model="quickCreationOpen"
       class="page-creation-dialog quick-form-dialog"
-      width="min(1180px, calc(100vw - 28px))"
-      top="3vh"
+      width="min(1180px, calc(var(--wb-viewport-width) - 2rem))"
+      top="1rem"
       append-to="#workbench-overlays"
       destroy-on-close
       :close-on-click-modal="false"
@@ -104,7 +104,7 @@ function openCurrentProject(): void {
     <ElDialog
       v-model="projectCreationOpen"
       class="project-creation-dialog"
-      width="min(520px, calc(100vw - 28px))"
+      width="min(520px, calc(var(--wb-viewport-width) - 2rem))"
       align-center
       append-to="#workbench-overlays"
       destroy-on-close

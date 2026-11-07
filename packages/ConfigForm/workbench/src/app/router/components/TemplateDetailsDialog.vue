@@ -48,7 +48,7 @@ function submit(): void {
     class="template-details-dialog"
     :model-value="modelValue"
     :title="withTypes ? locale.t('library.new', 'New template') : locale.t('pages.saveTemplate', 'Save as template')"
-    width="min(580px, calc(100vw - 24px))"
+    width="min(580px, calc(var(--wb-viewport-width) - 24px))"
     align-center
     append-to="#workbench-overlays"
     :close-on-click-modal="false"

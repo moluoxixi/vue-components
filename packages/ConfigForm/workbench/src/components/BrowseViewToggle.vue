@@ -25,11 +25,12 @@ const views = computed(() => [
 </template>
 
 <style scoped>
+@reference "../styles/tailwind.css";
+
 .browse-view-toggle {
   display: inline-flex;
   flex: none;
-  gap: 2px;
-  padding: 2px;
+  @apply gap-1 p-1;
   border: 1px solid var(--wb-separator);
   border-radius: 6px;
 }
@@ -37,7 +38,7 @@ const views = computed(() => [
   display: grid;
   width: 28px;
   height: 28px;
-  padding: 0;
+  @apply p-0;
   place-items: center;
   color: var(--wb-muted);
   border: 0;

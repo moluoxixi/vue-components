@@ -6,10 +6,7 @@
 }
 
 .appearance-drawer-close.el-button {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  right: 10px;
+  flex: none;
   width: 32px;
   height: 32px;
   color: var(--wb-muted);
@@ -22,7 +19,7 @@
 }
 
 .appearance-drawer-shell .el-drawer__body {
-  padding: 0;
+  @apply p-0;
 }
 
 .appearance-drawer-shell .el-drawer__close-btn {
@@ -31,5 +28,5 @@
 
 .appearance-drawer-shell .appearance-panel__header {
   min-height: 52px;
-  padding: 17px 48px 12px 16px;
+  @apply py-2 px-4;
 }

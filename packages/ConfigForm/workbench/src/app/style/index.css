@@ -37,7 +37,7 @@
   display: flex;
   min-width: 100%;
   min-height: 420px;
-  padding: 28px;
+  @apply p-4;
   align-items: flex-start;
   justify-content: center;
   overflow: auto;
@@ -65,10 +65,10 @@
 .surface-presentation-header {
   display: flex;
   min-height: 44px;
-  padding: 0 14px;
+  @apply py-0 px-3;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  @apply gap-3;
   border-bottom: 1px solid var(--wb-separator);
 }
 
@@ -83,14 +83,14 @@
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-  padding: 0;
+  @apply p-0;
   place-items: center;
   color: var(--wb-muted);
   border: 0;
   background: transparent;
 }
 .surface-presentation-shell.is-drawer {
-  padding: 0;
+  @apply p-0;
 }
 .surface-presentation-shell.is-drawer.is-right {
   justify-content: flex-end;
@@ -149,7 +149,7 @@
   bottom: 14px;
   width: fit-content;
   max-width: min(440px, calc(100% - 28px));
-  margin: 0;
+  @apply m-0;
   border: 1px solid var(--wb-control-border);
   box-shadow: var(--wb-shadow-toast);
 }
@@ -180,7 +180,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 5px;
+  @apply gap-1;
 }
 
 .workbench-toast .el-alert__title > span {
@@ -211,7 +211,7 @@
 
 .workspace-recovery-notice .el-alert__title {
   display: grid;
-  gap: 9px;
+  @apply gap-2;
   line-height: 1.45;
 }
 
@@ -224,7 +224,7 @@
   min-width: 0;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  @apply gap-2;
 }
 
 @media (max-width: 720px) and (pointer: coarse) {
@@ -267,10 +267,10 @@
   .mobile-studio-dock button {
     display: grid;
     min-width: 0;
-    padding: 5px 2px 4px;
+    @apply pt-1 pr-1 pb-1 pl-1;
     place-items: center;
     align-content: center;
-    gap: 2px;
+    @apply gap-1;
     color: var(--wb-muted);
     border: 0;
     border-top: 2px solid transparent;

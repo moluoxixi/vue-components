@@ -241,7 +241,7 @@ function pageActions(page: typeof surfaces.value[number]) {
       </header>
     </slot>
 
-    <div class="page-manager__toolbar">
+    <div class="page-manager__toolbar grid min-w-0 items-center p-4 gap-3">
       <h2 class="page-manager__list-title">
         {{ locale.t('pageManager.projectSurfaces', 'Project pages') }}
         <span>{{ pageStats.total }}</span>

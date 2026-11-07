@@ -27,7 +27,7 @@ import {
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useMaterialPreferences } from './services/preferences'
-import './style/index.scss'
+import './style/index.css'
 
 const props = defineProps<StudioLeftPanelProps>()
 
@@ -606,7 +606,7 @@ function handleSurfaceKeydown(event: KeyboardEvent, surfaceId: string): void {
             native-type="button"
             tabindex="-1"
             class="designer-layer-select"
-            :style="{ paddingLeft: `${10 + layer.depth * 16}px` }"
+            :style="{ '--layer-depth': layer.depth }"
             :title="layer.label"
             @click="selectLayer(layer.id, $event)"
           >

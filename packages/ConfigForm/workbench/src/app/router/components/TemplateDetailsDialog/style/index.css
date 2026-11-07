@@ -1,40 +1,41 @@
+@reference "../../../../../styles/tailwind.css";
+
 .template-details-form {
   display: grid;
   min-height: 0;
-  max-height: calc(100dvh - 120px);
+  max-height: calc(var(--wb-viewport-height) - 120px);
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
+  @apply gap-3;
 }
 .template-details-fields {
   display: grid;
   min-width: 0;
   min-height: 0;
-  gap: 16px;
+  @apply gap-4;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 .template-details-form label {
   display: grid;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-text);
   font-size: 13px;
   font-weight: 600;
 }
 .template-details-form label small {
-  margin-left: 6px;
+  @apply ml-1;
   color: var(--wb-muted);
   font-size: 11px;
   font-weight: 400;
 }
 .template-details-form fieldset {
   min-width: 0;
-  margin: 0;
-  padding: 0;
+  @apply m-0 p-0;
   border: 0;
 }
 .template-details-form legend {
-  margin-bottom: 10px;
+  @apply mb-2;
   color: var(--wb-text);
   font-size: 13px;
   font-weight: 600;
@@ -42,14 +43,13 @@
 .template-kind-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  @apply gap-3;
 }
 .template-kind-options > .el-button {
   display: block;
   width: 100%;
   height: auto;
-  margin: 0;
-  padding: 5px;
+  @apply m-0 p-1;
   overflow: hidden;
   border-color: var(--wb-separator);
   background: var(--wb-surface);
@@ -57,7 +57,7 @@
 .template-kind-options :deep(.el-button > span) {
   display: grid;
   width: 100%;
-  gap: 10px;
+  @apply gap-2;
 }
 .template-kind-options img {
   display: block;
@@ -65,7 +65,7 @@
   border-radius: 3px;
 }
 .template-kind-options :deep(.el-button > span > span) {
-  padding-bottom: 6px;
+  @apply pb-1;
   font-size: 12px;
 }
 .template-kind-options > .el-button.is-selected {
@@ -74,7 +74,7 @@
   color: var(--wb-accent-text);
 }
 .template-details-hint {
-  margin: 0;
+  @apply m-0;
   color: var(--wb-muted);
   font-size: 12px;
   line-height: 1.7;
@@ -82,10 +82,9 @@
 .template-details-form footer {
   display: flex;
   justify-content: flex-end;
-  padding-top: 12px;
-  gap: 8px;
+  @apply pt-3 gap-2;
   border-top: 1px solid var(--wb-separator);
 }
 .template-details-form footer .el-button + .el-button {
-  margin-left: 0;
+  @apply ml-0;
 }

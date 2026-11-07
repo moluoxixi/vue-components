@@ -1,3 +1,5 @@
+@reference "../../../../../styles/tailwind.css";
+
 .project-data-page {
   display: grid;
   min-width: 0;
@@ -6,8 +8,7 @@
   flex: 1;
   grid-template-rows: max-content minmax(0, 1fr);
   overflow: hidden;
-  gap: 16px;
-  padding-bottom: 16px;
+  @apply gap-4 pb-4;
   color: var(--wb-text);
   background: var(--wb-bg);
 }
@@ -26,13 +27,13 @@
 }
 
 .project-data-page :deep(.asset-manager-workspace) {
-  margin-inline: 16px;
+  @apply mx-4;
   border: 1px solid var(--wb-separator);
   border-radius: 8px;
   background: var(--wb-surface);
 }
 @media (max-width: 700px) {
   .project-data-page :deep(.asset-manager-workspace) {
-    margin-inline: 8px;
+    @apply mx-2;
   }
 }

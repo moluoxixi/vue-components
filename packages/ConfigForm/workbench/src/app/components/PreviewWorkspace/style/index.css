@@ -2,7 +2,7 @@
   display: inline-grid;
   width: 30px;
   height: 30px;
-  padding: 0;
+  @apply p-0;
   place-items: center;
   color: var(--wb-muted);
   border: 1px solid transparent;
@@ -47,10 +47,10 @@
   display: flex;
   min-width: 0;
   height: 36px;
-  padding: 0 10px;
+  @apply py-0 px-2;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  @apply gap-2;
   color: var(--wb-muted);
   border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
@@ -61,7 +61,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 9px;
+  @apply gap-2;
 }
 
 .preview-heading {
@@ -72,7 +72,7 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 5px;
+  @apply gap-1;
   color: var(--wb-positive);
   white-space: nowrap;
 }
@@ -95,15 +95,15 @@
 
 .preview-toolbar {
   flex: 0 0 auto;
-  gap: 4px !important;
+  @apply gap-1!;
 }
 
 .preview-viewport-switch {
   display: inline-flex !important;
   height: 28px;
-  padding: 2px;
+  @apply p-1;
   align-items: center;
-  gap: 0 !important;
+  @apply gap-0!;
   border: 1px solid var(--wb-control-border);
   border-radius: 4px;
   background: var(--wb-elevated);

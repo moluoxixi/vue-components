@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -8,8 +8,13 @@ const outputRoot = resolve(root, 'dist')
 const basePath = normalizeBasePath(process.env.CONFIG_FORM_WORKBENCH_BASE ?? '/')
 const indexCss = readEntryCss('index.html')
 const runtimeHostCss = readEntryCss('runtime-host.html')
+const allCss = readdirSync(resolve(outputRoot, 'assets'))
+  .filter(file => file.endsWith('.css'))
+  .map(file => readFileSync(resolve(outputRoot, 'assets', file), 'utf8'))
+  .join('\n')
 
 const requiredUtilities = [
+  ['rem spacing scale', /--spacing:\s*0?\.25rem/],
   ['display utility', /\.flex\{display:flex\}/],
   ['column layout utility', /\.flex-col\{flex-direction:column\}/],
   ['minimum-height utility', /\.min-h-0\{min-height:0\}/],
@@ -25,17 +30,17 @@ for (const [name, pattern] of requiredUtilities) {
 }
 
 const forbiddenPatterns = [
-  ['an unexpanded Tailwind directive', /@(?:source|tailwind|theme)\b/],
+  ['an unexpanded Tailwind directive', /@(?:source|tailwind|theme|apply|reference)\b/],
   ['the Tailwind Preflight form-control reset', /::file-selector-button\s*\{[^}]*box-sizing\s*:\s*border-box/],
-  ['a utility from automatic repository scanning', /\.hidden\{display:none\}/],
+  ['a utility from outside the owned Vue UI', /731px/],
 ]
 
 for (const [name, pattern] of forbiddenPatterns) {
-  if (pattern.test(indexCss))
+  if (pattern.test(allCss))
     throw new Error(`Workbench build unexpectedly contains ${name}.`)
 }
 
-for (const [name, pattern] of requiredUtilities.slice(3)) {
+for (const [name, pattern] of requiredUtilities.slice(4)) {
   if (pattern.test(runtimeHostCss))
     throw new Error(`Runtime Host CSS unexpectedly contains Workbench Tailwind ${name}.`)
 }

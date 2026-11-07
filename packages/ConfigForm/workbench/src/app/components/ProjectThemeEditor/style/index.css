@@ -1,3 +1,5 @@
+@reference "../../../../styles/tailwind.css";
+
 .project-theme-editor {
   display: flex;
   min-width: 0;
@@ -13,7 +15,7 @@
 
 .project-theme-description {
   flex: none;
-  margin: 16px 16px 12px;
+  @apply mt-4 mr-4 mb-3 ml-4;
   color: var(--wb-muted);
   font-size: 12px;
   line-height: 1.6;
@@ -30,8 +32,7 @@
 
 .project-theme-tabs > .el-tabs__header {
   flex: none;
-  margin: 0 16px;
-  padding: 3px;
+  @apply my-0 mx-4 p-1;
   border: 1px solid var(--wb-separator);
   border-radius: 7px;
   background: var(--wb-control-bg);
@@ -44,7 +45,7 @@
 
 .project-theme-tabs > .el-tabs__header .el-tabs__item {
   height: 30px;
-  padding: 0 8px;
+  @apply py-0 px-2;
   color: var(--wb-muted);
   border: 1px solid transparent;
   border-radius: 4px;
@@ -66,7 +67,7 @@
 .project-theme-tabs > .el-tabs__content {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 16px;
+  @apply p-4;
   overflow: auto;
   scrollbar-gutter: stable;
 }
@@ -74,11 +75,11 @@
 .project-theme-groups {
   display: grid;
   min-width: 0;
-  gap: 20px;
+  @apply gap-4;
 }
 
 .project-theme-group h3 {
-  margin: 0 0 8px;
+  @apply mt-0 mr-0 mb-2 ml-0;
   color: var(--wb-text-strong);
   font-size: 12px;
   font-weight: 600;
@@ -87,7 +88,7 @@
 
 .project-theme-group h3 small,
 .designer-theme-field small {
-  margin-left: 4px;
+  @apply ml-1;
   color: var(--wb-muted);
   font-size: 11px;
   font-weight: 400;
@@ -96,17 +97,17 @@
 .project-theme-color-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  column-gap: 20px;
+  @apply gap-x-4;
 }
 
 .project-theme-color {
   display: flex;
   min-width: 0;
   min-height: 42px;
-  padding: 4px 0;
+  @apply py-1 px-0;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  @apply gap-3;
   border-bottom: 1px solid var(--wb-separator);
 }
 
@@ -116,7 +117,7 @@
   flex: 1;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  @apply gap-2;
   font-size: 12px;
   line-height: 1.35;
 }
@@ -135,12 +136,14 @@
 
 .project-theme-editor .el-color-picker {
   flex: none;
+  width: auto;
+  height: auto;
 }
 
 .project-theme-editor .el-color-picker__trigger {
   width: 34px;
   height: 34px;
-  padding: 3px;
+  @apply p-1;
   border-color: var(--wb-separator);
   border-radius: 6px;
   background: var(--wb-surface-raised);
@@ -163,7 +166,7 @@
 .designer-theme-field-grid {
   display: grid;
   min-width: 0;
-  gap: 16px 12px;
+  @apply gap-y-4 gap-x-3;
 }
 
 .designer-theme-type-grid {
@@ -177,7 +180,7 @@
 .designer-theme-field {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  @apply gap-2;
   color: var(--wb-text);
   font-size: 12px;
   line-height: 1.5;
@@ -207,8 +210,7 @@
 
 .project-theme-shadow {
   min-width: 0;
-  margin: 0;
-  padding: 12px;
+  @apply m-0 p-3;
   border: 1px solid var(--wb-separator);
   border-radius: 8px;
 }
@@ -216,11 +218,11 @@
 .project-theme-shadow-list {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
   align-items: start;
-  gap: 16px;
+  @apply gap-4;
 }
 
 .project-theme-shadow legend {
-  padding: 0 6px;
+  @apply py-0 px-1;
   color: var(--wb-text-strong);
   font-size: 12px;
   font-weight: 600;
@@ -229,7 +231,7 @@
 .project-theme-shadow-preview {
   display: grid;
   min-height: 90px;
-  margin-bottom: 16px;
+  @apply mb-4;
   overflow: hidden;
   border-radius: 5px;
   background: var(--wb-control-bg);
@@ -252,8 +254,7 @@
 }
 
 .project-theme-shadow-color {
-  margin-top: 8px;
-  padding-bottom: 0;
+  @apply mt-2 pb-0;
   border: 0;
 }
 
@@ -261,10 +262,10 @@
   display: flex;
   min-width: 0;
   flex: none;
-  padding: 12px 16px;
+  @apply py-3 px-4;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  @apply gap-2;
   border-top: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
@@ -272,7 +273,7 @@
 .project-theme-actions .el-button > span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  @apply gap-1;
 }
 
 @container project-theme (max-width: 360px) {
@@ -282,9 +283,19 @@
 }
 
 @media (pointer: coarse) {
+  .project-theme-color {
+    @apply py-0;
+    min-height: 44px;
+  }
   .project-theme-editor .el-color-picker__trigger,
   .project-theme-actions .el-button {
     min-width: 44px;
     min-height: 44px;
   }
+}
+
+@media (max-height: 520px) {
+  .project-theme-description { display: none; }
+  .project-theme-tabs > .el-tabs__header { @apply mt-4; }
+  .project-theme-actions { @apply py-2; }
 }

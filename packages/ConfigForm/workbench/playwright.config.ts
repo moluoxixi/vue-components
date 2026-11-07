@@ -27,6 +27,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'phone-chromium',
+      testMatch: /mobile-layout\.spec\.ts/,
+      use: { ...devices['Pixel 7'], viewport: { width: 1024, height: 800 } },
+    },
+    {
+      name: 'phone-webkit',
+      testMatch: /mobile-layout\.spec\.ts/,
+      use: { ...devices['iPhone 13'], viewport: { width: 1024, height: 800 } },
+    },
+    {
       name: 'desktop-chromium',
       use: {
         ...devices['Desktop Chrome'],

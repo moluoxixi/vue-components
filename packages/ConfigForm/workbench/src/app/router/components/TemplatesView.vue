@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
   <ManagementShell :palette="ui.paletteFamily.value" :theme="ui.resolvedTheme.value">
     <TemplateManager :templates="templates" :locale="controller.localeOptions.value" :loading="loading" :busy="busy" :error="error" @create="creationError = ''; creationOpen = true" @edit="edit" @duplicate="duplicate" @delete="deleteTarget = $event" @preview="showPreview" @retry="load" />
     <TemplateDetailsDialog v-model="creationOpen" with-types :busy="busy" :error="creationError" :locale="controller.localeOptions.value" @confirm="create" />
-    <ElDialog :model-value="Boolean(deleteTarget)" :title="controller.workbenchLocale.value.t('library.deleteTitle', 'Delete template?')" width="min(440px, calc(100vw - 24px))" align-center append-to="#workbench-overlays" :close-on-press-escape="!busy" :show-close="!busy" @update:model-value="!busy && (deleteTarget = undefined)">
+    <ElDialog :model-value="Boolean(deleteTarget)" :title="controller.workbenchLocale.value.t('library.deleteTitle', 'Delete template?')" width="min(440px, calc(var(--wb-viewport-width) - 24px))" align-center append-to="#workbench-overlays" :close-on-press-escape="!busy" :show-close="!busy" @update:model-value="!busy && (deleteTarget = undefined)">
       <p>{{ controller.workbenchLocale.value.t('library.deleteHint', 'Delete {name}? Pages already created from it will keep their own copies.', { name: deleteTarget ? nameFor(deleteTarget) : '' }) }}</p>
       <template #footer>
         <ElButton :disabled="busy" @click="deleteTarget = undefined">
@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
         </ElButton>
       </template>
     </ElDialog>
-    <ElDialog :model-value="Boolean(previewTarget)" class="library-preview-dialog" :title="previewTarget ? nameFor(previewTarget) : ''" width="min(980px, calc(100vw - 24px))" top="5vh" append-to="#workbench-overlays" destroy-on-close @update:model-value="closePreview">
+    <ElDialog :model-value="Boolean(previewTarget)" class="library-preview-dialog" :title="previewTarget ? nameFor(previewTarget) : ''" width="min(980px, calc(var(--wb-viewport-width) - 24px))" top="1rem" append-to="#workbench-overlays" destroy-on-close @update:model-value="closePreview">
       <p v-if="previewError" role="alert">
         {{ previewError }}
       </p>

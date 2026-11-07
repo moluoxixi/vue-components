@@ -217,8 +217,8 @@ async function exportPageSource(surfaceId: string): Promise<void> {
     <ElDialog
       v-model="pageCreationOpen"
       class="page-creation-dialog"
-      width="min(1180px, calc(100vw - 28px))"
-      top="3vh"
+      width="min(1180px, calc(var(--wb-viewport-width) - 2rem))"
+      top="1rem"
       append-to="#workbench-overlays"
       destroy-on-close
       :close-on-click-modal="false"
@@ -228,12 +228,16 @@ async function exportPageSource(surfaceId: string): Promise<void> {
     >
       <template #header="{ titleId }">
         <div class="page-creation-dialog__heading">
-          <h2 :id="titleId">{{ controller.workbenchLocale.value.t('pages.fromTemplate', 'From template') }}</h2>
-          <ElSegmented v-model="pageCreationKind" class="page-creation-dialog__types" :disabled="controller.busy.value" :options="[
-            { label: controller.workbenchLocale.value.t('pages.kind.form', 'Form'), value: 'page' },
-            { label: controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog'), value: 'dialog' },
-            { label: controller.workbenchLocale.value.t('pages.kind.drawer', 'Drawer'), value: 'drawer' },
-          ]" :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')" />
+          <h2 :id="titleId">
+            {{ controller.workbenchLocale.value.t('pages.fromTemplate', 'From template') }}
+          </h2>
+          <ElSegmented
+            v-model="pageCreationKind" class="page-creation-dialog__types" :disabled="controller.busy.value" :options="[
+              { label: controller.workbenchLocale.value.t('pages.kind.form', 'Form'), value: 'page' },
+              { label: controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog'), value: 'dialog' },
+              { label: controller.workbenchLocale.value.t('pages.kind.drawer', 'Drawer'), value: 'drawer' },
+            ]" :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')"
+          />
           <ElSelect v-model="pageCreationKind" class="page-creation-dialog__type-select" :disabled="controller.busy.value" :aria-label="controller.workbenchLocale.value.t('pages.kindLabel', 'Page type')" append-to="#workbench-overlays">
             <ElOption value="page" :label="controller.workbenchLocale.value.t('pages.kind.form', 'Form')" />
             <ElOption value="dialog" :label="controller.workbenchLocale.value.t('pages.kind.dialog', 'Dialog')" />
@@ -264,8 +268,8 @@ async function exportPageSource(surfaceId: string): Promise<void> {
     <ElDialog
       v-model="pageImportOpen"
       class="page-creation-dialog"
-      width="min(1180px, calc(100vw - 28px))"
-      top="3vh"
+      width="min(1180px, calc(var(--wb-viewport-width) - 2rem))"
+      top="1rem"
       append-to="#workbench-overlays"
       destroy-on-close
       :close-on-click-modal="false"

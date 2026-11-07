@@ -127,7 +127,9 @@ defineExpose({ hasChanges, saving })
         <ElInput v-model="name" :disabled="saving" maxlength="100" :aria-label="locale.t('library.name', 'Template name')" />
       </div>
       <div class="template-editor__actions">
-        <ElButton text circle :aria-label="locale.t('library.information', 'Template information')" :title="locale.t('library.information', 'Template information')" @click="informationOpen = true"><Info :size="17" aria-hidden="true" /></ElButton>
+        <ElButton text circle :aria-label="locale.t('library.information', 'Template information')" :title="locale.t('library.information', 'Template information')" @click="informationOpen = true">
+          <Info :size="17" aria-hidden="true" />
+        </ElButton>
         <span class="template-editor__status" role="status"><Check v-if="!hasChanges && snapshot" :size="15" aria-hidden="true" />{{ hasChanges ? locale.t('library.unsaved', 'Unsaved changes') : locale.t('library.savedShort', 'Saved to library') }}</span>
         <ElButton v-if="surface && surface.kind !== 'page'" class="template-editor__presentation" :disabled="saving" :aria-label="locale.t('surface.presentation', 'Overlay appearance')" :title="locale.t('surface.presentation', 'Overlay appearance')" @click="presentationOpen = true">
           <SlidersHorizontal :size="15" aria-hidden="true" /><span class="template-editor__presentation-label">{{ locale.t('surface.presentation', 'Overlay appearance') }}</span>
@@ -172,11 +174,15 @@ defineExpose({ hasChanges, saving })
     <p v-else role="status">
       {{ locale.t('status.loading', 'Loading') }}
     </p>
-    <ElDialog v-model="informationOpen" :title="locale.t('library.information', 'Template information')" width="min(480px, calc(100vw - 24px))" align-center append-to="#workbench-overlays">
+    <ElDialog v-model="informationOpen" :title="locale.t('library.information', 'Template information')" width="min(480px, calc(var(--wb-viewport-width) - 24px))" align-center append-to="#workbench-overlays">
       <label class="template-editor__information-label">{{ locale.t('library.description', 'Description') }}<ElInput v-model="description" type="textarea" :rows="4" :disabled="saving" maxlength="300" show-word-limit :aria-label="locale.t('library.description', 'Description')" /></label>
-      <template #footer><ElButton type="primary" @click="informationOpen = false">{{ locale.t('action.done', 'Done') }}</ElButton></template>
+      <template #footer>
+        <ElButton type="primary" @click="informationOpen = false">
+          {{ locale.t('action.done', 'Done') }}
+        </ElButton>
+      </template>
     </ElDialog>
-    <ElDialog v-model="presentationOpen" :title="locale.t('surface.presentation', 'Overlay appearance')" width="min(580px, calc(100vw - 24px))" align-center append-to="#workbench-overlays" destroy-on-close>
+    <ElDialog v-model="presentationOpen" :title="locale.t('surface.presentation', 'Overlay appearance')" width="min(580px, calc(var(--wb-viewport-width) - 24px))" align-center append-to="#workbench-overlays" destroy-on-close>
       <SurfacePresentationEditor v-if="surface && surface.kind !== 'page'" :surface="surface" :locale="localeOptions" :disabled="saving" @cancel="presentationOpen = false" @save="updatePresentation" />
     </ElDialog>
   </main>
