@@ -42,6 +42,9 @@ describe('workbench topbar', () => {
   it('keeps commands as host events instead of changing workspace state', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
+      // Element Plus emits visible-change from transition lifecycle hooks.
+      // VTU's default transition stub skips those hooks, unlike the browser.
+      global: { stubs: { transition: false } },
       props: {
         project,
         currentSurface,
