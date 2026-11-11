@@ -5,6 +5,9 @@ const fixtureURL = 'http://127.0.0.1:4314'
 const docsURL = 'http://127.0.0.1:4315'
 
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   testDir: './e2e',
   outputDir: '.playwright/test-results',
   fullyParallel: false,

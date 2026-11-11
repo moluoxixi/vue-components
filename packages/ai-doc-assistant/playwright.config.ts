@@ -5,6 +5,9 @@ import { defineConfig } from '@playwright/test'
  * 仅匹配 __e2e__ 下的 *.e2e.test.ts；server 由 spec 内自起（含 stub 上游），故无 webServer。
  */
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   testDir: './__e2e__',
   testMatch: '**/*.e2e.test.ts',
   fullyParallel: false,

@@ -1,6 +1,9 @@
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   testDir: './e2e',
   timeout: 60_000,
   fullyParallel: false,

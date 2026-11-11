@@ -2,6 +2,9 @@ import process from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   outputDir: './node_modules/.cache/playwright/test-results',
   projects: [
     {

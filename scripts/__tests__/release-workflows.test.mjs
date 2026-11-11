@@ -73,6 +73,20 @@ describe('release workflow topology', () => {
     expect(ciWorkflow.match(/node scripts\/inspect-local-git-metadata\.mjs/g)).toHaveLength(3)
   })
 
+  it.each([
+    'packages/ai-doc-assistant/playwright.config.ts',
+    'packages/i18n-tool/playwright.config.ts',
+    'packages/ConfigForm/local/playwright.config.ts',
+    'packages/vite-config/playwright.config.ts',
+    'packages/ConfigForm/playground/playwright.config.ts',
+    'packages/ConfigForm/workbench/playwright.config.ts',
+    'playgrounds/components-playground/playwright.config.ts',
+    'packages/vitepress-theme-element-plus/playwright.config.ts',
+  ])('keeps report diff capture from truncating Git history in %s', (path) => {
+    const config = readFileSync(resolve(import.meta.dirname, '../../', path), 'utf8')
+    expect(config).toMatch(/captureGitInfo:\s*\{\s*diff:\s*false\s*\}/)
+  })
+
   it('limits concurrency around resource-heavy integration tests', () => {
     expect(rootManifest.scripts.test).toContain('--concurrency=1')
     expect(rootManifest.scripts.test).not.toContain('--concurrency=2')
