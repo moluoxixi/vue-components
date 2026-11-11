@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectTemplateCatalogEntry } from '../../../../../../project'
-import { ArrowRight, Copy, Download, Eye, File, LibraryBig, PanelRight, PanelsTopLeft, Pencil, Plus, Search, Trash2, Upload } from '@lucide/vue'
+import { ArrowRight, Copy, Download, Eye, File, Info, LibraryBig, PanelRight, PanelsTopLeft, Pencil, Plus, Search, Trash2, Upload } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import BrowseViewToggle from '../../../../../../components/BrowseViewToggle.vue'
@@ -42,6 +42,7 @@ function importFile(event: Event): void {
 
 const exportDisabledReason = computed(() => createDisabledReason.value || (!props.templates.some(entry => entry.providerId === 'personal') ? locale.value.t('library.exportEmpty', 'Create or import a personal template before exporting.') : undefined))
 const query = ref('')
+const storageDetailsOpen = ref(false)
 const browseView = useBrowseView('templates', 'cards')
 const adapter = ref('all')
 const source = ref('all')
@@ -106,28 +107,48 @@ function clearFilters(): void {
         <div>
           <h1>{{ locale.t('library.title', 'Template library') }}</h1>
         </div>
-        <div class="flex flex-wrap items-center gap-2 ml-auto">
+        <div class="template-manager__actions">
+          <ElPopover
+            v-model:visible="storageDetailsOpen"
+            trigger="click"
+            transition="none"
+            :width="280"
+            append-to="#workbench-overlays"
+            :title="locale.t('library.storage', 'Storage and backup')"
+          >
+            <template #reference>
+              <ElButton
+                class="template-manager__storage"
+                native-type="button"
+                :aria-label="locale.t('library.storage', 'Storage and backup')"
+                :aria-expanded="storageDetailsOpen"
+                @keydown.esc.stop="storageDetailsOpen = false"
+              >
+                <Info :size="16" aria-hidden="true" />
+              </ElButton>
+            </template>
+            <p class="template-manager__storage-copy">
+              {{ locale.t('library.storageHint', 'Personal templates are stored in this browser. Export a backup to move them; importing creates new copies without replacing existing templates.') }}
+            </p>
+          </ElPopover>
           <WorkbenchCommandHint detached :label="locale.t('library.import', 'Import templates')" :disabled-reason="createDisabledReason">
             <input ref="importInput" type="file" hidden accept=".json,application/json" :disabled="props.busy || props.loading" @change="importFile">
-            <ElButton :disabled="props.busy || props.loading" @click="importInput?.click()">
-              <Upload :size="16" aria-hidden="true" />{{ locale.t('library.import', 'Import templates') }}
+            <ElButton :disabled="props.busy || props.loading" :aria-label="locale.t('library.import', 'Import templates')" @click="importInput?.click()">
+              <Upload :size="16" aria-hidden="true" /><span class="template-manager__action-label">{{ locale.t('library.import', 'Import templates') }}</span>
             </ElButton>
           </WorkbenchCommandHint>
           <WorkbenchCommandHint detached :label="locale.t('library.exportAll', 'Back up my templates')" :disabled-reason="exportDisabledReason">
-            <ElButton :disabled="Boolean(exportDisabledReason)" @click="emit('export')">
-              <Download :size="16" aria-hidden="true" />{{ locale.t('library.exportAll', 'Back up my templates') }}
+            <ElButton :disabled="Boolean(exportDisabledReason)" :aria-label="locale.t('library.exportAll', 'Back up my templates')" @click="emit('export')">
+              <Download :size="16" aria-hidden="true" /><span class="template-manager__action-label">{{ locale.t('library.exportAll', 'Back up my templates') }}</span>
             </ElButton>
           </WorkbenchCommandHint>
           <WorkbenchCommandHint detached :label="locale.t('library.new', 'New template')" :disabled-reason="createDisabledReason">
-            <ElButton type="primary" :disabled="props.busy || props.loading" @click="emit('create')">
-              <Plus :size="17" aria-hidden="true" />{{ locale.t('library.new', 'New template') }}
+            <ElButton type="primary" :disabled="props.busy || props.loading" :aria-label="locale.t('library.new', 'New template')" @click="emit('create')">
+              <Plus :size="17" aria-hidden="true" /><span class="template-manager__action-label">{{ locale.t('library.new', 'New template') }}</span>
             </ElButton>
           </WorkbenchCommandHint>
         </div>
       </header>
-      <p class="mb-4 mt-0 text-xs text-[var(--wb-muted)]">
-        {{ locale.t('library.storageHint', 'Personal templates are stored in this browser. Export a backup to move them; importing creates new copies without replacing existing templates.') }}
-      </p>
       <div class="template-manager__controls">
         <div class="template-manager__filters">
           <ElInput ref="searchInput" v-model="query" type="search" clearable :aria-label="locale.t('template.search', 'Search templates')" :placeholder="locale.t('template.search', 'Search templates')">
