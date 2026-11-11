@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
+// eslint-disable-next-line test/no-import-node-test -- This bootstrap suite runs before dependencies are installed.
 import { test } from 'node:test'
 import { prepareLocalGitMetadata } from '../prepare-local-git-metadata.mjs'
 

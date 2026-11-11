@@ -67,9 +67,10 @@ describe('release workflow topology', () => {
 
   it('checks out complete history before running local Git metadata consumers', () => {
     expect(ciWorkflow).toMatch(/verify:[\s\S]*?- name: Checkout[\s\S]*?fetch-depth: 0[\s\S]*?- name: Setup pnpm/)
-    expect(ciWorkflow.match(/run: node scripts\/prepare-local-git-metadata\.mjs/g)).toHaveLength(2)
+    expect(ciWorkflow.match(/node scripts\/prepare-local-git-metadata\.mjs/g)).toHaveLength(2)
     expect(ciWorkflow.match(/REPOSITORY_DEFAULT_BRANCH: \$\{\{ github\.event\.repository\.default_branch \}\}/g)).toHaveLength(2)
     expect(ciWorkflow).toContain('node --test scripts/__tests__/prepare-local-git-metadata.node-test.mjs')
+    expect(ciWorkflow.match(/node scripts\/inspect-local-git-metadata\.mjs/g)).toHaveLength(3)
   })
 
   it('limits concurrency around resource-heavy integration tests', () => {
