@@ -50,7 +50,9 @@
     "test:pack:browser": "node scripts/verify-published-packages.mjs --browser",
     "lint:workflows": "node scripts/validate-workflows.mjs",
     "typecheck": "turbo run typecheck --filter=\"./packages/**\" --filter=\"./playgrounds/**\" --filter=\"./docs/**\"",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "build:site": "node scripts/build-site.mjs",
+    "preview:site": "pnpm --filter @moluoxixi/docs exec vite preview --outDir ../../out"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
