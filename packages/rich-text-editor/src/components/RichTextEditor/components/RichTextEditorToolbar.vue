@@ -29,13 +29,17 @@ const appearance: Record<RichTextEditorCommandId, { label: string, icon: Compone
   alignRight: { label: '右对齐', icon: AlignRight },
   clearFormatting: { label: '清除格式', icon: RemoveFormatting },
 }
-const items = computed(() => [...new Set(props.items ?? richTextCommandIds)].filter(id => Object.hasOwn(appearance, id)))
+// Resolve typed record keys in script before declaration generation checks template loop variables.
+const toolbarItems = computed(() => [...new Set(props.items ?? richTextCommandIds)]
+  .filter(id => Object.hasOwn(appearance, id))
+  .map(id => ({ id, ...appearance[id], ...props.state.commands[id] })))
 const blocks: { type: RichTextEditorBlockType, label: string }[] = [
   { type: 'paragraph', label: '正文' },
   { type: 'heading-1', label: '标题 1' },
   { type: 'heading-2', label: '标题 2' },
   { type: 'heading-3', label: '标题 3' },
 ]
+const blockOptions = computed(() => blocks.map(block => ({ ...block, enabled: props.state.blocks[block.type] })))
 const editingHint = '当前不可编辑；解除禁用或只读状态后可用。'
 
 function disabledHint(id: RichTextEditorCommandId | 'link'): string {
@@ -58,28 +62,28 @@ function setBlockType(event: Event): void {
   <RichTextEditorControlHint :disabled="!props.state.editable" :message="editingHint">
     <span class="mx-rich-text-editor__block-control">
       <select class="mx-rich-text-editor__block-select" :value="props.state.blockType" :disabled="!props.state.editable" aria-label="文本样式" @change="setBlockType">
-        <option v-for="block in blocks" :key="block.type" :value="block.type" :disabled="!props.state.blocks[block.type]">{{ block.label }}</option>
+        <option v-for="block in blockOptions" :key="block.type" :value="block.type" :disabled="!block.enabled">{{ block.label }}</option>
       </select>
       <ChevronDown class="mx-rich-text-editor__block-chevron" :size="14" aria-hidden="true" />
     </span>
   </RichTextEditorControlHint>
   <RichTextEditorControlHint
-    v-for="id in items"
-    :key="id"
-    :disabled="!props.state.commands[id].enabled"
-    :message="disabledHint(id)"
+    v-for="item in toolbarItems"
+    :key="item.id"
+    :disabled="!item.enabled"
+    :message="disabledHint(item.id)"
   >
     <button
       class="mx-rich-text-editor__tool"
-      :class="{ 'is-active': props.state.commands[id].active }"
+      :class="{ 'is-active': item.active }"
       type="button"
-      :title="props.state.commands[id].enabled ? appearance[id].label : undefined"
-      :aria-label="appearance[id].label"
-      :aria-pressed="props.state.commands[id].active"
-      :disabled="!props.state.commands[id].enabled"
-      @click="props.commands.execute(id)"
+      :title="item.enabled ? item.label : undefined"
+      :aria-label="item.label"
+      :aria-pressed="item.active"
+      :disabled="!item.enabled"
+      @click="props.commands.execute(item.id)"
     >
-      <component :is="appearance[id].icon" :size="17" aria-hidden="true" />
+      <component :is="item.icon" :size="17" aria-hidden="true" />
     </button>
   </RichTextEditorControlHint>
   <RichTextEditorControlHint :disabled="!props.state.link.enabled" :message="disabledHint('link')">

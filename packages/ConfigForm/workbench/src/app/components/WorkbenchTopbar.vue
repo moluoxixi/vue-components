@@ -80,12 +80,29 @@ function chooseMobileAction(action: MobileAction): void {
   })
 }
 
+let pendingSaveDialog: 'checkpoint' | 'versions' | undefined
+
 function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
+  if (action !== 'save') {
+    pendingSaveDialog = action
+    return
+  }
   void nextTick(() => {
     saveTrigger.value?.$el?.focus()
-    if (action === 'save')
-      emit('save')
-    else if (action === 'checkpoint')
+    emit('save')
+  })
+}
+
+function handleSaveMenuVisibility(visible: boolean): void {
+  if (visible || !pendingSaveDialog)
+    return
+  const action = pendingSaveDialog
+  pendingSaveDialog = undefined
+  // Dropdown closes asynchronously and restores its trigger focus. Finish that
+  // update before opening a new focus trap, rather than racing the two layers.
+  void nextTick(() => {
+    saveTrigger.value?.$el?.focus()
+    if (action === 'checkpoint')
       emit('createCheckpoint')
     else
       emit('openVersions')
@@ -207,6 +224,7 @@ function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
           :hide-timeout="0"
           append-to="#workbench-overlays"
           @command="chooseSaveAction"
+          @visible-change="handleSaveMenuVisibility"
         >
           <ElButton
             ref="saveTrigger"

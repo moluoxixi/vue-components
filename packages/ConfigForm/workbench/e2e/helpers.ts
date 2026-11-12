@@ -67,16 +67,19 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
 
   await expect(page.locator('.revision-state')).toContainText(/Saved|Autosaved/, { timeout: 60_000 })
+  const profileName = page
+    .frameLocator('iframe[data-design-runtime-variant="canvas"]')
+    .locator('[data-config-node-id^="profile-name-"]')
+  // Saved confirms persistence, not that the iframe has finished loading its
+  // runtime. Finish setup before reloading rather than canceling that startup.
+  await expect(profileName).toBeVisible({ timeout: 60_000 })
 
   // Reopen the persisted project so setup operations do not become part of the
   // local designer history observed by the interaction scenarios.
   await page.reload()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible({ timeout: 30_000 })
   await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 30_000 })
-  await expect(page
-    .frameLocator('iframe[data-design-runtime-variant="canvas"]')
-    .locator('[data-config-node-id^="profile-name-"]'))
-    .toBeVisible({ timeout: 60_000 })
+  await expect(profileName).toBeVisible({ timeout: 60_000 })
 }
 
 /** Open the page-management console from the designer at any supported width. */

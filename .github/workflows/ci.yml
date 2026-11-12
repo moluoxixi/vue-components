@@ -37,6 +37,16 @@ jobs:
           cache: pnpm
           node-version-file: .node-version
 
+      - name: Test local Git metadata preparation
+        run: node --test scripts/__tests__/prepare-local-git-metadata.node-test.mjs scripts/__tests__/inspect-local-git-metadata.node-test.mjs
+
+      - name: Prepare local Git metadata for detached checkouts
+        run: |
+          node scripts/inspect-local-git-metadata.mjs . packages/vitepress-theme-element-plus/fixtures/basic packages/vitepress-theme-element-plus/fixtures/consumer
+          node scripts/prepare-local-git-metadata.mjs
+        env:
+          REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -118,6 +128,16 @@ jobs:
           cache: pnpm
           node-version-file: .node-version
 
+      - name: Test local Git metadata preparation
+        run: node --test scripts/__tests__/prepare-local-git-metadata.node-test.mjs scripts/__tests__/inspect-local-git-metadata.node-test.mjs
+
+      - name: Prepare local Git metadata for detached checkouts
+        run: |
+          node scripts/inspect-local-git-metadata.mjs . packages/vitepress-theme-element-plus/fixtures/basic packages/vitepress-theme-element-plus/fixtures/consumer
+          node scripts/prepare-local-git-metadata.mjs
+        env:
+          REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -143,7 +163,9 @@ jobs:
         run: pnpm -C playgrounds/components-playground test:e2e
 
       - name: Test documentation theme
-        run: pnpm -C packages/vitepress-theme-element-plus test:e2e:functional
+        run: |
+          node scripts/inspect-local-git-metadata.mjs . packages/vitepress-theme-element-plus/fixtures/basic packages/vitepress-theme-element-plus/fixtures/consumer
+          pnpm -C packages/vitepress-theme-element-plus test:e2e:functional
 
       - name: Upload Playwright diagnostics
         if: failure()

@@ -6,6 +6,9 @@ const serverPort = Number(process.env.CONFIG_FORM_PLAYGROUND_PORT ?? 4313)
 const serverUrl = `http://127.0.0.1:${serverPort}`
 
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   testDir: './e2e',
   testMatch: /config-form-playground\.spec\.ts/,
   outputDir: 'dist/test-results/config-form-playground',

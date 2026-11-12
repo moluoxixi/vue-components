@@ -5,6 +5,9 @@ const serverPort = Number(process.env.CONFIG_FORM_WORKBENCH_E2E_PORT ?? 4331)
 const serverUrl = `http://127.0.0.1:${serverPort}`
 
 export default defineConfig({
+  // Playwright 1.60 diff capture shallows full CI checkouts: microsoft/playwright#42203.
+  // https://github.com/microsoft/playwright/issues/42203
+  captureGitInfo: { diff: false },
   testDir: './e2e',
   testMatch: /(?:accessibility|assets|interaction|json-import|management-layout|template-management|studio)\.spec\.ts/,
   timeout: process.env.CI ? 90_000 : 30_000,

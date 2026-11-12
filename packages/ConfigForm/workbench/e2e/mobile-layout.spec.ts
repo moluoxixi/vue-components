@@ -171,6 +171,9 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await page.keyboard.press('Escape')
     await expect(tooltip).not.toBeVisible()
     await page.getByRole('link', { name: locale === 'zh-CN' ? '模板管理' : 'Template management', exact: true }).tap()
+    // The destination creates a new navigation shell. Do not tap the old
+    // storage button while the lazy route is still replacing it.
+    await expect(page.getByRole('main', { name: locale === 'zh-CN' ? '模板管理' : 'Template management', exact: true })).toBeVisible()
     await fits(status)
     await status.tap()
     await fits(tooltip)

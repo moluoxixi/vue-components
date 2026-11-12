@@ -25,6 +25,15 @@
   height: 32px;
   @apply py-0 px-3;
 }
+.template-manager__actions {
+  @apply flex items-center gap-2 ml-auto;
+}
+.template-manager__heading .template-manager__storage {
+  @apply w-8 px-0;
+}
+.template-manager__storage-copy {
+  @apply m-0 text-xs leading-5;
+}
 .template-manager :deep(.el-button > span) {
   @apply gap-2;
 }
@@ -286,6 +295,20 @@
     grid-template-columns: minmax(0, 1fr);
     @apply gap-4;
   }
+}
+/* Keep management actions reachable without spending the phone viewport on
+   wrapped labels. Accessible names and command hints remain available. */
+@media (max-width: 760px) {
+  .template-manager__heading {
+    flex-wrap: nowrap;
+    @apply gap-2;
+  }
+  .template-manager__heading h1 { font-size: 18px; }
+  .template-manager__actions { @apply gap-1; }
+  .template-manager__actions .el-button {
+    @apply size-8 m-0 p-0;
+  }
+  .template-manager__action-label { @apply sr-only; }
 }
 @media (pointer: coarse) {
   .template-manager__filters :deep(.el-input__wrapper),

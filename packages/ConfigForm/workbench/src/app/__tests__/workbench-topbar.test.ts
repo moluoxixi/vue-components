@@ -42,6 +42,9 @@ describe('workbench topbar', () => {
   it('keeps commands as host events instead of changing workspace state', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
+      // Element Plus emits visible-change from transition lifecycle hooks.
+      // VTU's default transition stub skips those hooks, unlike the browser.
+      global: { stubs: { transition: false } },
       props: {
         project,
         currentSurface,
@@ -57,15 +60,29 @@ describe('workbench topbar', () => {
     expect(wrapper.get('.revision-state').text()).toContain('v0 · Unsaved')
     expect(wrapper.get('.revision-state').attributes('aria-live')).toBe('polite')
     expect(wrapper.get('button[aria-label="Save options"] .topbar-command-label').text()).toBe('Save')
-    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    const saveTrigger = wrapper.get('button[aria-label="Save options"]')
+    await saveTrigger.trigger('click')
+    await vi.waitFor(() => expect(saveTrigger.attributes('aria-expanded')).toBe('true'))
     const overlays = overlayRoot()
     const saveItems = overlays.findAll('[data-save-menu] [role="menuitem"]')
     expect(saveItems.map(item => item.text())).toEqual(['Save now', 'Create named checkpoint', 'Version history'])
     await saveItems[0]!.trigger('click')
-    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    await vi.waitFor(() => expect(saveTrigger.attributes('aria-expanded')).toBe('false'))
+    await saveTrigger.trigger('click')
+    await vi.waitFor(() => expect(saveTrigger.attributes('aria-expanded')).toBe('true'))
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[1]!.trigger('click')
-    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    // A modal command must wait for the dropdown's asynchronous close and focus
+    // restoration instead of opening a second focus trap from the command event.
+    expect(wrapper.emitted('createCheckpoint')).toBeUndefined()
+    await vi.waitFor(() => expect(wrapper.emitted('createCheckpoint')).toHaveLength(1))
+    expect(saveTrigger.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(saveTrigger.element)
+    await saveTrigger.trigger('click')
+    await vi.waitFor(() => expect(saveTrigger.attributes('aria-expanded')).toBe('true'))
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[2]!.trigger('click')
+    expect(wrapper.emitted('openVersions')).toBeUndefined()
+    await vi.waitFor(() => expect(wrapper.emitted('openVersions')).toHaveLength(1))
+    expect(saveTrigger.attributes('aria-expanded')).toBe('false')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
     expect(wrapper.find('[data-create-trigger="topbar-new-surface"]').exists()).toBe(false)
     expect(wrapper.get('button[aria-label="Open appearance settings"]')).toBeDefined()
