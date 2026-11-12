@@ -1,9 +1,9 @@
 ---
 layout: page
-title: MX Components Overview
+title: MX Components Workspace
 sidebar: false
 aside: false
 outline: false
 ---
 
-<OverviewHome />
+<SiteHome />
