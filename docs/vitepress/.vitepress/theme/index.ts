@@ -1,6 +1,6 @@
 import { createElementPlusDocsTheme } from '@moluoxixi/vitepress-theme-element-plus'
 import { VueQueryPlugin } from '@tanstack/vue-query'
-import SiteHome from './components/SiteHome.vue'
+import { SiteHome } from './components'
 import { docsContent } from './integration'
 import '@moluoxixi/rich-text-editor/styles'
 // Dependencies of this site's examples; the reusable theme uses epd-* UI styles.
