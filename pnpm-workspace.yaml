@@ -5,6 +5,7 @@ trustPolicy: no-downgrade
 trustPolicyExclude:
   - '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1'
   - semver@6.3.1
+
 packages:
   - packages/*
   - packages/ConfigForm/*
@@ -151,7 +152,7 @@ catalogs:
     launch-editor: ^2.13.2
     lint-staged: ^17.0.5
     magic-string: ^0.30.17
-    sass: ^1.85.0
+    sass: 1.100.0
     tsup: 8.0.2
     # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- the default development toolchain retains TypeScript 5.8
     typescript: ^5.8.2
@@ -181,3 +182,8 @@ catalogs:
     '@tiptap/vue-3': ^3.29.2
     ant-design-vue: ^4.2.6
     element-plus: ^2.9.1
+allowBuilds:
+  '@parcel/watcher': true
+  core-js: false
+  esbuild: true
+  vue-demi: true

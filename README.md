@@ -4,6 +4,7 @@
 
 在线入口：
 
+- [统一导航工作台](https://vue-components-hub.knitbatch.chatgpt.site/)
 - [组件文档](https://moluoxixi.github.io/vue-components/)
 - [ConfigForm 可视化设计器](https://moluoxixi.github.io/vue-components/config-form-playground/designer.html)
 
@@ -51,6 +52,34 @@ pnpm test
 # 类型检查（含 defineField 推导测试）
 pnpm typecheck
 ```
+
+## 导航站点与部署
+
+导航首页直接复用本仓库的 VitePress 文档主题，并连接仓库内的四个应用入口。组件文档下方的分类、搜索与示例保持可用；中文和英文首页都提供导航。
+
+| 入口              | 站点路径                                          | 源码目录                            |
+| ----------------- | ------------------------------------------------- | ----------------------------------- |
+| 统一导航          | `/`                                               | `docs/vitepress`                    |
+| 组件库文档        | `/components/`                                    | `docs/vitepress` 与各组件原有文档   |
+| ConfigForm 设计器 | `/config-form-playground/designer.html#/projects` | `packages/ConfigForm/workbench`     |
+| 组件演示          | `/components-playground/`                         | `playgrounds/components-playground` |
+| Vue Playground    | `/vue-playground/`                                | `playgrounds/vue-playground`        |
+
+建议使用 Node.js 24 LTS，或 `.node-version` 对应的 Node.js 22 最新补丁版，按仓库的 `packageManager` 安装 pnpm，运行：
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build:site
+pnpm preview:site
+```
+
+`build:site` 调用现有 `scripts/build-pages.mjs`，将根路径 `/` 的完整产物写入 `out/`。Sites 的 `.openai/hosting.json` 指向这个目录；任何支持静态文件的托管服务也可以直接部署它。GitHub Pages 继续使用 `pnpm build:pages`，默认前缀为 `/vue-components/`，产物为 `dist/pages/`。
+
+文档构建默认同步 GitHub 仓库信息；在没有 GitHub API 访问的环境，可使用仓库已有的 `VITE_DOCS_REPOSITORY_METADATA_PROVIDER=local` 环境变量，从本地 Git 生成元数据。该选项保留 GitHub 源码链接。
+
+设计器的浏览器独立模式支持项目、模板、设计、预览、导出及 IndexedDB 本地保存。AI 生成、AI 修改和 MCP 功能需要连接原有 `@moluoxixi/config-form-local` 工作区；静态部署不会启动这些本地服务。Vue Playground 使用原有在线依赖加载机制，运行示例时需要访问其配置的模块 CDN。
+
+站点发布使用本仓库的完整源码与锁文件，导航和部署适配也在仓库内维护。更新 GitHub 源码后需要重新构建并发布，当前 Sites 发布不会自动跟随 GitHub 的每次提交。
 
 ## License
 
