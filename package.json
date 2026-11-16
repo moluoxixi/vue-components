@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix",
     "lint:staged": "lint-staged",
     "prepare": "husky",
-    "pre-commit": "pnpm lint:staged",
+    "pre-commit": "node scripts/check-element-plus-imports.mjs && pnpm lint:staged",
     "release": "pnpm build && changeset publish",
     "test": "pnpm -C packages/ConfigForm/runtime build && pnpm -r --filter \"./packages/**\" test",
     "test:coverage": "pnpm -C packages/ConfigForm/runtime build && pnpm -r --filter \"./packages/**\" test:coverage",
@@ -39,6 +39,6 @@
     "vitest": "catalog:dev"
   },
   "lint-staged": {
-    "*.{js,cjs,mjs,ts,tsx,vue}": "pnpm lint"
+    "*.{js,cjs,mjs,ts,tsx,vue}": "eslint --fix"
   }
 }

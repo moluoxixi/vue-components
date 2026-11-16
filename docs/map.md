@@ -34,6 +34,12 @@
 | shadcn-vue 本地组件协议 | [ShadcnVue](components/ShadcnVue.md) | 本地生成组件注册、字段绑定和只读展示适配 |
 | unplugin-vue-components | [UnpluginVueComponents](components/UnpluginVueComponents.md) | playground 自动导入 Element Plus 组件 |
 
+## 需求模块导航
+
+| 需求模块 | PRD | 架构 | API | 组件 | 测试 |
+|---|---|---|---|---|---|
+| 组件AI文档与调试助手 | [PRD](prds/组件AI文档与调试助手.md)（已定稿） | [架构概览](architecture/overview.md)（已定稿） | [BFF接口](out-api/ai-debug-assistant.md)（契约设计/planned） | [out-components契约](out-components/index.md)（复用为语料） | [测试设计](test/组件AI文档与调试助手.md)（已定稿） |
+
 ## 维护约定
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 `采购订单.md`。
@@ -42,3 +48,9 @@
 - 全局接口协议维护在 `docs/api/_protocol.md`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 `index.md` 和本文件。
 - 文档只记录已确认事实；缺失信息标记为 `MISSING`，不得用代码推断伪造业务结论。
+
+## 知识源入口
+
+| 文件 | 用途 | 状态 |
+|---|---|---|
+| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；当前仅支持文件系统来源，非文件系统来源必须先实现安装、查询和校验合同。 | managed |

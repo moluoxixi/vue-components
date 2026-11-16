@@ -7,12 +7,18 @@ packages:
   - 'packages/ConfigForm/*'
   - 'playgrounds/*'
 
+catalog:
+  '@huggingface/transformers': ^4.0.0
+  vue3-sfc-loader: 0.9.5
 catalogs:
   build:
     dayjs: ^1.11.20
     vue: ^3.5.13
   data:
+    '@orama/orama': ^3.1.18
+    '@orama/plugin-data-persistence': ^3.1.18
     '@tanstack/vue-query': ^5.101.0
+    vue-docgen-api: ^4.79.2
   dev:
     '@antfu/eslint-config': ^8.2.0
     '@babel/parser': ^7.28.5

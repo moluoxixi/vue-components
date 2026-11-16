@@ -4,3 +4,5 @@
 
 | 文档 | 用途 | 状态 |
 |---|---|---|
+| [架构概览](overview.md) | 组件 AI 文档与调试助手：模块边界、依赖方向、数据流、安全边界、部署 | 已定稿(ACCEPTED) |
+| [架构决策索引](decisions/index.md) | ADR 列表（编译器/BFF密钥/沙箱/Orama索引/BFF栈） | accepted |

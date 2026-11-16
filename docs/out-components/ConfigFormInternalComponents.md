@@ -42,7 +42,7 @@
 
 ```ts
 // 推荐：通过顶层组件和 fields 配置使用内部组件链路。
-import { ElementConfigForm, defineField } from '@moluoxixi/components'
+import { defineField, ElementConfigForm } from '@moluoxixi/components'
 ```
 
 ## 测试建议

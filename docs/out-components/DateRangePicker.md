@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { DateRangePicker } from '@moluoxixi/components'
 import type { DateRangePickerProps } from '@moluoxixi/components'
+import { DateRangePicker } from '@moluoxixi/components'
 ```
 
 ## Props
@@ -25,12 +25,12 @@ import type { DateRangePickerProps } from '@moluoxixi/components'
 | modelValue | `string \| number \| Date \| string[] \| number[] \| Date[]` | `[]` | 否 | 外部绑定值，单日期使用单值，范围使用数组。 |
 | outputFormat | `string \| string[]` | 按类型推导 | 否 | 输出格式；数组可分别配置开始值和结束值。 |
 | defaultToday | `boolean` | `true` | 否 | 首次无值时是否自动使用今天作为默认值。 |
-| dateRange | `number \| number[]` | `undefined` | 否 | 日期范围偏移配置。 |
-| dateRangeType | `ManipulateType` | `day` | 否 | 日期范围偏移单位。 |
-| dateRangeBaseDate | `ConfigType` | 当前日期 | 否 | 日期范围偏移基准日期。 |
+| dateRange | `number \| number[]` | `undefined` | 否 | 首次无值时生成默认值的日期偏移配置；不参与禁用日期判断。 |
+| dateRangeType | `ManipulateType` | `day` | 否 | `dateRange` 生成默认值时使用的偏移单位。 |
+| dateRangeBaseDate | `ConfigType` | 当前日期 | 否 | `dateRange` 生成默认值时使用的基准日期。 |
 | minDate | `ConfigType` | `0001-01-01 00:00:00` | 否 | 最小可选日期。 |
 | maxDate | `ConfigType` | `9999-12-31 23:59:59` | 否 | 最大可选日期。 |
-| disabledDateRange | `[ConfigType, ConfigType]` | `undefined` | 否 | 禁用日期范围，优先级高于 `minDate/maxDate`。 |
+| disabledDateRange | `[ConfigType, ConfigType]` | `undefined` | 否 | 可选日期边界，范围外日期会被禁用，优先级高于 `minDate/maxDate`。 |
 | datetimeDisableTypes | `('hours' \| 'minutes' \| 'seconds')[]` | 全部单位 | 否 | `datetime/datetimerange` 下按边界禁用的单位。 |
 | shortcuts | `boolean \| DateRangePickerShortcut[]` | `false` | 否 | `true` 使用默认快捷项，数组使用自定义快捷项。 |
 
@@ -47,8 +47,8 @@ import type { DateRangePickerProps } from '@moluoxixi/components'
 
 ## 状态
 
-- 空值首次挂载时可按 `defaultToday` 或 `dateRange` 生成默认值并同步给调用方。
-- `disabledDateRange`、`minDate`、`maxDate` 控制日期禁用边界。
+- 空值首次挂载时可按 `defaultToday` 或 `dateRange` 生成默认值并同步给调用方；`dateRange` 不控制禁用日期。
+- `disabledDateRange`、`minDate`、`maxDate` 控制日期可选边界，边界外日期禁用；当前组件不支持只禁用某个内部日期区间。
 - `datetimeDisableTypes` 控制时、分、秒禁用规则。
 - `shortcuts=true` 使用今天、三天、一周、一个月四个默认快捷项。
 

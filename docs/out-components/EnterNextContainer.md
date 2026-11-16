@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { EnterNextContainer } from '@moluoxixi/components'
 import type { EnterNextContainerProps } from '@moluoxixi/components'
+import { EnterNextContainer } from '@moluoxixi/components'
 ```
 
 ## Props
