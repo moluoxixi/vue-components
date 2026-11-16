@@ -1,7 +1,6 @@
 name: Pages
 
 on:
-  workflow_dispatch:
   workflow_run:
     workflows:
       - CI
@@ -16,7 +15,6 @@ jobs:
   build-pages:
     name: Build documentation and playgrounds
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       contains(fromJSON('["push", "schedule", "workflow_dispatch"]'), github.event.workflow_run.event) &&
@@ -27,10 +25,10 @@ jobs:
       deploy: ${{ steps.freshness.outputs.deploy }}
 
     steps:
-      - name: Checkout latest main
+      - name: Checkout verified CI revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Check verified revision is current
@@ -39,14 +37,8 @@ jobs:
         env:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          current_sha="$(git rev-parse HEAD)"
-          if [[ -z "$VERIFIED_SHA" || "$VERIFIED_SHA" == "$current_sha" ]]; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          non_release_commits="$(git log --format=%s "$VERIFIED_SHA..HEAD" | grep -v '\[skip ci\]' || true)"
-          if git merge-base --is-ancestor "$VERIFIED_SHA" HEAD && [[ -z "$non_release_commits" ]]; then
+          current_sha="$(git rev-parse origin/main)"
+          if [[ -n "$VERIFIED_SHA" && "$VERIFIED_SHA" == "$current_sha" && "$VERIFIED_SHA" == "$(git rev-parse HEAD)" ]]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi

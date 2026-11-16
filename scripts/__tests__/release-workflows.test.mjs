@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
@@ -131,12 +133,13 @@ describe('release workflow topology', () => {
     expect(releaseWorkflow).not.toContain('NPM_TOKEN')
   })
 
-  it('skips a stale Pages deployment while allowing release-only commits', () => {
+  it('pins Pages to the verified revision and rejects unverified successors', () => {
     expect(pagesWorkflow).toContain('github.event.workflow_run.conclusion == \'success\'')
     expect(pagesWorkflow).toContain('contains(fromJSON(\'["push", "schedule", "workflow_dispatch"]\'), github.event.workflow_run.event)')
     expect(pagesWorkflow).toContain('github.event.workflow_run.head_branch == \'main\'')
     expect(pagesWorkflow).toContain('id: freshness')
-    expect(pagesWorkflow).toContain('grep -v \'\\[skip ci\\]\'')
+    expect(pagesWorkflow).not.toContain('grep -v')
+    expect(parse(pagesWorkflow).jobs['build-pages'].steps[0].with.ref).toBe(['$', '{{ github.event.workflow_run.head_sha }}'].join(''))
     expect(pagesWorkflow).toContain('if: needs.build-pages.outputs.deploy == \'true\'')
   })
 
@@ -218,9 +221,60 @@ describe('release workflow topology', () => {
       github.event.workflow_run.head_repository.full_name = 'outsider/vue-components'
       expect(allowed()).toBe(false)
       github.event_name = 'workflow_dispatch'
-      expect(allowed()).toBe(true)
+      expect(allowed()).toBe(false)
+      expect(workflow.on.workflow_dispatch).toBeUndefined()
+      expect(Object.hasOwn(parse(ciWorkflow).on, 'workflow_dispatch')).toBe(true)
       github.ref = 'refs/heads/feature/example'
       expect(allowed()).toBe(false)
+    },
+  )
+
+  it.each([['release.yml', 'release', 'release'], ['pages.yml', 'build-pages', 'deploy']])(
+    'executes %s freshness gate against current, missing, stale and skip-ci revisions',
+    (file, job, output) => {
+      const directory = mkdtempSync(resolve(tmpdir(), 'release-gate-'))
+      const git = (...args) => {
+        const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8' })
+        expect(result.status, result.stderr).toBe(0)
+        return result.stdout.trim()
+      }
+      const workflow = parse(readFileSync(resolve(workflowDirectory, file), 'utf8'))
+      const script = workflow.jobs[job].steps.find(step => step.id === 'freshness').run
+      const gate = (sha) => {
+        const resultFile = resolve(directory, 'output')
+        writeFileSync(resultFile, '')
+        const result = spawnSync('bash', ['-e', '-c', script], {
+          cwd: directory,
+          env: { ...process.env, VERIFIED_SHA: sha, GITHUB_OUTPUT: resultFile },
+          encoding: 'utf8',
+        })
+        expect(result.status, result.stderr).toBe(0)
+        return readFileSync(resultFile, 'utf8').trim()
+      }
+      try {
+        git('init', '-b', 'main')
+        git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'verified')
+        const verified = git('rev-parse', 'HEAD')
+        git('update-ref', 'refs/remotes/origin/main', verified)
+        expect(gate(verified)).toBe(`${output}=true`)
+        expect(gate('')).toBe(`${output}=false`)
+        // A skip marker is not proof that a commit only changes release metadata.
+        writeFileSync(resolve(directory, 'source.js'), 'export default 42')
+        git('add', 'source.js')
+        git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'source change [skip ci]')
+        const successor = git('rev-parse', 'HEAD')
+        git('update-ref', 'refs/remotes/origin/main', successor)
+        expect(gate(verified)).toBe(`${output}=false`)
+        // A new manual/nightly CI can validate this successor and restore release.
+        expect(gate(successor)).toBe(`${output}=true`)
+        if (file === 'pages.yml') {
+          git('checkout', '--detach', verified)
+          expect(gate(verified)).toBe(`${output}=false`)
+        }
+      }
+      finally {
+        rmSync(directory, { recursive: true, force: true })
+      }
     },
   )
 
