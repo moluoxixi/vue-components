@@ -532,6 +532,9 @@ importers:
         specifier: catalog:dev
         version: 3.25.76
     devDependencies:
+      '@moluoxixi/components':
+        specifier: workspace:*
+        version: link:../components
       '@types/node':
         specifier: catalog:type
         version: 25.6.0

@@ -58,6 +58,7 @@
     "zod": "catalog:dev"
   },
   "devDependencies": {
+    "@moluoxixi/components": "workspace:*",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",

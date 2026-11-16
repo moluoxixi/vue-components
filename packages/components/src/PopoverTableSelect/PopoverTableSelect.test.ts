@@ -150,8 +150,8 @@ describe('popover table select', () => {
 
     await nextTick()
 
-    expect(wrapper.get('[data-testid="popover-input"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="table-base-stub"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="popover-input"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="table-base-stub"]').exists()).toBe(true)
   })
 
   it('同步输入值并透传弹层表格选择、确认和加载事件', async () => {
