@@ -1,5 +1,13 @@
 # @moluoxixi/config-form-designer-antd-vue
 
+## 1.0.1
+
+### Patch Changes
+
+- Automatically release packages changed in 3b1f4254fa3f.
+- Updated dependencies
+  - @moluoxixi/config-form-designer@0.3.1
+
 ## 1.0.0
 
 ### Patch Changes

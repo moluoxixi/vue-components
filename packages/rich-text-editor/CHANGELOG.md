@@ -1,5 +1,11 @@
 # @moluoxixi/rich-text-editor
 
+## 0.1.5
+
+### Patch Changes
+
+- Automatically release packages changed in 3b1f4254fa3f.
+
 ## 0.1.4
 
 ### Patch Changes

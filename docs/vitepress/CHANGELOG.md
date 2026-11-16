@@ -1,5 +1,19 @@
 # @moluoxixi/docs
 
+## 0.1.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/ai-doc-assistant@1.0.2
+  - @moluoxixi/components@0.4.2
+  - @moluoxixi/config-form@0.3.3
+  - @moluoxixi/config-form-antd-vue@0.3.2
+  - @moluoxixi/config-form-element@0.3.2
+  - @moluoxixi/config-form-headless@0.3.3
+  - @moluoxixi/rich-text-editor@0.1.5
+  - @moluoxixi/vitepress-theme-element-plus@0.2.3
+
 ## 0.1.21
 
 ### Patch Changes

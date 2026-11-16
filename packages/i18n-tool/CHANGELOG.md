@@ -1,5 +1,11 @@
 # @moluoxixi/i18n-tool
 
+## 1.0.1
+
+### Patch Changes
+
+- Automatically release packages changed in 3b1f4254fa3f.
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/config-form-local",
   "type": "module",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ConfigForm local workspace server, source CLI and MCP tools",
   "repository": {
     "type": "git",

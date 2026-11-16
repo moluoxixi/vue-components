@@ -1,5 +1,11 @@
 # @moluoxixi/components
 
+## 0.4.2
+
+### Patch Changes
+
+- Automatically release packages changed in 3b1f4254fa3f.
+
 ## 0.4.1
 
 ### Patch Changes
