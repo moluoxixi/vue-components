@@ -336,8 +336,6 @@ try {
     'install',
     '--ignore-scripts',
     '--no-lockfile',
-    '--trust-policy-ignore-after',
-    '10080',
   ])
 
   const consumerEntries = publishable.flatMap(({ manifest }) => (
