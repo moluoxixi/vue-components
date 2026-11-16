@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
 
 const workflowDirectory = resolve(import.meta.dirname, '../../.github/workflows')
 const ciWorkflow = readFileSync(resolve(workflowDirectory, 'ci.yml'), 'utf8')
@@ -32,6 +34,8 @@ describe('release workflow topology', () => {
 
   it('runs core browser suites for pull requests, main, and nightly with diagnostics', () => {
     expect(ciWorkflow).toContain('cron: \'0 18 * * *\'')
+    expect(parse(ciWorkflow).on.push).toEqual({ branches: ['**'] })
+    expect(parse(ciWorkflow).concurrency.group).toContain('github.event_name')
     expect(ciWorkflow).toMatch(/cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/)
     expect(ciWorkflow).toContain('name: Browser tests')
     const playwrightImage = ciWorkflow.match(/mcr\.microsoft\.com\/playwright:v([^@]+)-noble@sha256:([a-f0-9]{64})/)
@@ -108,11 +112,11 @@ describe('release workflow topology', () => {
     expect(workflowValidator).toContain('run(actionlint, workflowFiles.map')
   })
 
-  it('starts release only after a successful main push CI run', () => {
+  it('starts release after successful trusted main CI runs', () => {
     expect(releaseWorkflow).toContain('workflow_run:')
     expect(releaseWorkflow).toContain('- CI')
     expect(releaseWorkflow).toContain('github.event.workflow_run.conclusion == \'success\'')
-    expect(releaseWorkflow).toContain('github.event.workflow_run.event == \'push\'')
+    expect(releaseWorkflow).toContain('contains(fromJSON(\'["push", "schedule", "workflow_dispatch"]\'), github.event.workflow_run.event)')
     expect(releaseWorkflow).toContain('github.event.workflow_run.head_branch == \'main\'')
     expect(releaseWorkflow).toContain('id: freshness')
     expect(releaseWorkflow).toContain('contents: write')
@@ -129,7 +133,7 @@ describe('release workflow topology', () => {
 
   it('skips a stale Pages deployment while allowing release-only commits', () => {
     expect(pagesWorkflow).toContain('github.event.workflow_run.conclusion == \'success\'')
-    expect(pagesWorkflow).toContain('github.event.workflow_run.event == \'push\'')
+    expect(pagesWorkflow).toContain('contains(fromJSON(\'["push", "schedule", "workflow_dispatch"]\'), github.event.workflow_run.event)')
     expect(pagesWorkflow).toContain('github.event.workflow_run.head_branch == \'main\'')
     expect(pagesWorkflow).toContain('id: freshness')
     expect(pagesWorkflow).toContain('grep -v \'\\[skip ci\\]\'')
@@ -167,12 +171,58 @@ describe('release workflow topology', () => {
     }
 
     expect(releaseWorkflow).not.toContain('changesets/action')
-    expect(releaseWorkflow).toContain('find .changeset -maxdepth 1 -type f -name \'*.md\' -print -quit')
+    expect(releaseWorkflow).toContain('find .changeset -maxdepth 1 -type f -name \'*.md\' ! -name \'README.md\' -print -quit')
     const pendingReleaseCondition = 'if: steps.freshness.outputs.release == \'true\' && steps.changesets.outputs.release == \'true\''
     expect(releaseWorkflow.split(pendingReleaseCondition)).toHaveLength(3)
-    const publishRecoveryCondition = 'if: steps.freshness.outputs.release == \'true\' && (steps.changesets.outputs.release == \'true\' || github.event_name == \'workflow_dispatch\')'
-    expect(releaseWorkflow.split(publishRecoveryCondition)).toHaveLength(4)
+    const steps = parse(releaseWorkflow).jobs.release.steps
+    for (const name of ['Setup npm for Trusted Publishing', 'Publish packages', 'Push release tags'])
+      expect(steps.find(step => step.name === name).if).toBe('steps.freshness.outputs.release == \'true\'')
   })
+
+  it.each([['release.yml', 'release'], ['pages.yml', 'build-pages']])(
+    'gates %s by successful same-repository main CI, never PR or failed CI',
+    (file, job) => {
+      const workflow = parse(readFileSync(resolve(workflowDirectory, file), 'utf8'))
+      // Evaluate the actual declarative job condition, not a duplicate policy.
+      const github = {
+        repository: 'moluoxixi/vue-components',
+        event_name: 'workflow_run',
+        ref: 'refs/heads/main',
+        event: {
+          workflow_run: {
+            conclusion: 'success',
+            event: 'push',
+            head_branch: 'main',
+            head_repository: { full_name: 'moluoxixi/vue-components' },
+          },
+        },
+      }
+      const allowed = () => runInNewContext(workflow.jobs[job].if, { github, contains: (values, value) => values.includes(value), fromJSON: JSON.parse })
+      for (const event of ['push', 'schedule', 'workflow_dispatch']) {
+        github.event.workflow_run.event = event
+        expect(allowed()).toBe(true)
+      }
+      for (const event of ['pull_request', 'pull_request_target']) {
+        github.event.workflow_run.event = event
+        expect(allowed()).toBe(false)
+      }
+      github.event.workflow_run.event = 'push'
+      for (const conclusion of ['failure', 'cancelled', 'skipped', 'timed_out']) {
+        github.event.workflow_run.conclusion = conclusion
+        expect(allowed()).toBe(false)
+      }
+      github.event.workflow_run.conclusion = 'success'
+      github.event.workflow_run.head_branch = 'feature/example'
+      expect(allowed()).toBe(false)
+      github.event.workflow_run.head_branch = 'main'
+      github.event.workflow_run.head_repository.full_name = 'outsider/vue-components'
+      expect(allowed()).toBe(false)
+      github.event_name = 'workflow_dispatch'
+      expect(allowed()).toBe(true)
+      github.ref = 'refs/heads/feature/example'
+      expect(allowed()).toBe(false)
+    },
+  )
 
   it('keeps Changesets ignore entries aligned with current workspace packages', () => {
     expect(changesetConfig.ignore).toEqual(['@config-form/playground'])
