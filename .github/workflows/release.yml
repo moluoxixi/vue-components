@@ -18,7 +18,8 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      contains(fromJSON('["push", "schedule", "workflow_dispatch"]'), github.event.workflow_run.event) &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     permissions:
@@ -78,7 +79,7 @@ jobs:
         id: changesets
         shell: bash
         run: |
-          if find .changeset -maxdepth 1 -type f -name '*.md' -print -quit | grep -q .; then
+          if find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print -quit | grep -q .; then
             echo "release=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -87,7 +88,7 @@ jobs:
           echo "No pending changesets; skipping versioning."
 
       - name: Setup npm for Trusted Publishing
-        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
+        if: steps.freshness.outputs.release == 'true'
         shell: bash
         run: |
           npm install --global npm@11
@@ -113,12 +114,15 @@ jobs:
           git commit -m "chore(release): version packages [skip ci]"
           git push origin HEAD:main
 
+      # Changesets publishes only versions absent from npm. Always check so a
+      # previous failure after committing version metadata can recover without
+      # requiring another version bump.
       - name: Publish packages
-        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
+        if: steps.freshness.outputs.release == 'true'
         run: pnpm release
         env:
           NPM_CONFIG_PROVENANCE: true
 
       - name: Push release tags
-        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
+        if: steps.freshness.outputs.release == 'true'
         run: git push origin --tags
