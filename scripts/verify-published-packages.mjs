@@ -328,7 +328,11 @@ try {
   }
   await writeFile(resolve(consumerDirectory, 'package.json'), JSON.stringify(consumerManifest))
   await writeFile(resolve(consumerDirectory, 'pnpm-workspace.yaml'), JSON.stringify({
-    overrides: packedDependencies,
+    overrides: {
+      ...packedDependencies,
+      'vitepress>vite': workspaceManifest.overrides['vitepress>vite'],
+    },
+    trustPolicy: 'no-downgrade',
   }))
   runPnpm([
     '--dir',
@@ -336,8 +340,6 @@ try {
     'install',
     '--ignore-scripts',
     '--no-lockfile',
-    '--trust-policy-ignore-after',
-    '10080',
   ])
 
   const consumerEntries = publishable.flatMap(({ manifest }) => (
