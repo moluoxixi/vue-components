@@ -16,7 +16,18 @@ export function classifyLog(text) {
     ['oidc_internal_failure', /oidc Failure with message:/],
     ['authentication_required', /(?:code|error) ENEEDAUTH/],
   ]
-  return checks.filter(([, pattern]) => pattern.test(text)).map(([label]) => label)
+  // Inspect only exchange HTTP lines, never emit matched text or captured URL data.
+  const exchangeLines = text.split('\n').filter(line => /http fetch POST \d{3} https:\/\/registry\.npmjs\.org\/-\/npm\/v1\/oidc\/token\/exchange\/package\//.test(line))
+  const exchangeChecks = [
+    ['exchange_bad_request', /http fetch POST 400 /],
+    ['exchange_unauthorized', /http fetch POST 401 /],
+    ['exchange_forbidden', /http fetch POST 403 /],
+    ['exchange_not_found', /http fetch POST 404 /],
+    ['exchange_rate_limited', /http fetch POST 429 /],
+    ['exchange_server_error', /http fetch POST 5\d{2} /],
+  ]
+  const statuses = exchangeChecks.filter(([, pattern]) => exchangeLines.some(line => pattern.test(line))).map(([label]) => label)
+  return [...statuses, ...checks.filter(([, pattern]) => pattern.test(text)).map(([label]) => label)]
 }
 
 export function environmentSummary(env) {
