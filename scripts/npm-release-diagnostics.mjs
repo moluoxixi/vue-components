@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 // Never return input, filenames, error messages, URLs, tokens, or log lines.
