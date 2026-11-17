@@ -79,7 +79,9 @@ jobs:
         run: pnpm test:config-form-workbench-templates
 
       - name: Test release automation
-        run: pnpm test:release
+        run: |
+          node scripts/npm-release-diagnostics.check.mjs
+          pnpm test:release
 
       - name: Validate workflows
         run: pnpm lint:workflows
