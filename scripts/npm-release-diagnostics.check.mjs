@@ -29,3 +29,13 @@ assert.deepEqual(classifyLog('verbose oidc Failed because token exchange was mis
 assert.deepEqual(classifyLog(`verbose oidc Failure with message: ${secret}`), ['oidc_internal_failure'])
 assert.equal(Object.values(environmentSummary({})).every(value => value === false), true)
 console.log('npm release diagnostic safety checks passed')
+
+const endpoint = 'https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@scope%2fpackage'
+for (const [code, label] of [[400, 'exchange_bad_request'], [401, 'exchange_unauthorized'], [403, 'exchange_forbidden'], [404, 'exchange_not_found'], [429, 'exchange_rate_limited'], [503, 'exchange_server_error']]) {
+  const result = classifyLog(`40 http fetch POST ${code} ${endpoint}?secret=${secret} 120ms`)
+  assert.deepEqual(result, [label])
+  assert.equal(JSON.stringify(result).includes(secret), false)
+}
+assert.deepEqual(classifyLog('40 http fetch POST 404 https://example.invalid/other'), [])
+assert.deepEqual(classifyLog(`40 http fetch GET 404 ${endpoint}`), [])
+assert.deepEqual(classifyLog(`40 http fetch POST 201 ${endpoint}`), [])
