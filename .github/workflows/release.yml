@@ -94,6 +94,14 @@ jobs:
           node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (major !== 11 || minor < 5 || (minor === 5 && patch < 1)) process.exit(1)" "$npm_version"
           echo "Using npm $npm_version for OIDC Trusted Publishing."
 
+      - name: Validate release diagnostic safety
+        if: steps.freshness.outputs.release == 'true'
+        run: node scripts/npm-release-diagnostics.check.mjs
+
+      - name: Inspect release authentication prerequisites
+        if: steps.freshness.outputs.release == 'true'
+        run: node scripts/npm-release-diagnostics.mjs
+
       - name: Version packages
         if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
         run: pnpm version-packages
@@ -116,10 +124,17 @@ jobs:
       # previous failure after committing version metadata can recover without
       # requiring another version bump.
       - name: Publish packages
+        id: publish
         if: steps.freshness.outputs.release == 'true'
         run: pnpm release
         env:
           NPM_CONFIG_PROVENANCE: true
+          NPM_CONFIG_CACHE: ${{ runner.temp }}/npm-release-diagnostic-cache
+
+      # Only fixed diagnostic labels are printed. Raw npm logs never leave the runner.
+      - name: Classify release authentication failure
+        if: failure() && steps.publish.outcome == 'failure'
+        run: node scripts/npm-release-diagnostics.mjs --logs
 
       - name: Push release tags
         if: steps.freshness.outputs.release == 'true'
